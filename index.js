@@ -22,44 +22,29 @@ const BEYAZ_LISTE = [
     'sarılayım', 'yuklenecek', 'yüklenecek', 'araniyor', 'aranıyor', 'hazir', 'hazır', 'tenteli', 'frigo'
 ];
 
-// 🧹 Sade & Temiz İlan Ayrıştırıcı
-function sadeIlanAyristir(rawText) {
-    // 1. Temel Karakter Temizliği
-    let text = rawText
-        .replace(/[*_~`]/g, '') // WhatsApp formatlama karakterlerini sil
-        .replace(/[-=_]{3,}/g, '') // Uzun cizgileri sil
+// 🧹 Net ve Yalın Metin Düzenleyici
+function netMetinHazirla(rawText) {
+    // 1. WhatsApp yıldız (*), alt çizgi (_) ve uzun çizgileri temizle
+    let temizMetin = rawText
+        .replace(/[*_~`]/g, '')
+        .replace(/[-=_]{3,}/g, '')
         .trim();
 
-    // 2. Telefon Numarasını Çek
+    // 2. İletişim Numaralarını Yakala ve Metinden Ayır
     const telRegex = /(?:0\s*5\d{2}[\s.-]?\d{3}[\s.-]?\d{2}[\s.-]?\d{2})/g;
-    const telefonlar = text.match(telRegex);
+    const telefonlar = temizMetin.match(telRegex);
     const telefonStr = telefonlar ? [...new Set(telefonlar)].join(', ') : 'Belirtilmedi';
 
-    // Numarayı metinden çıkar
-    let temizText = text.replace(telRegex, '').trim();
+    // Numarayı ana metinden sil ki mükerrer yazmasın
+    temizMetin = temizMetin.replace(telRegex, '').trim();
 
-    // 3. Satırları Ayrıştır
-    const satirlar = temizText.split('\n')
+    // 3. Satırları temizle (Kara listedeki reklam satırlarını ve boşlukları at)
+    const temizSatirlar = temizMetin.split('\n')
         .map(s => s.trim())
         .filter(s => s.length > 0 && !KARA_LISTE.some(k => s.toLowerCase().includes(k)));
 
-    // İlk satırı genelde Güzergah/Başlık olarak alıyoruz (En sade ve hatasız yöntem)
-    let guzergah = satirlar[0] || "Belirtilmedi";
-    
-    // Eğer ilk satır çok uzunsa veya ilan detayına benziyorsa kısalt
-    if (guzergah.length > 60) {
-        guzergah = guzergah.substring(0, 57) + "...";
-    }
-
-    // Geri kalan satırları Detay olarak birleştir
-    let detaySatirlari = satirlar.slice(1).filter(s => s.length < 120);
-    
-    // Eğer detay kalmadıysa ilk satırı detay olarak da yaz
-    let detayStr = detaySatirlari.length > 0 ? detaySatirlari.join('\n') : satirlar[0] || 'Detay belirtilmedi';
-
     return {
-        guzergah: guzergah,
-        detay: detayStr,
+        metin: temizSatirlar.join('\n'),
         telefon: telefonStr
     };
 }
@@ -75,17 +60,15 @@ function ilanMiGecerli(text) {
     return BEYAZ_LISTE.some(b => kucuk.includes(b));
 }
 
-// 🔄 Mükerrer (Duplicate) Kontrolü
-function mukerrerIlanMi(telefon, detay) {
-    const ilanKimligi = `${telefon}_${detay.replace(/\s+/g, '').toLowerCase().slice(0, 40)}`;
+// 🔄 30 Dakikalık Aynı İlanı Atmama Kontrolü
+function mukerrerIlanMi(telefon, metin) {
+    const ilanKimligi = `${telefon}_${metin.replace(/\s+/g, '').toLowerCase().slice(0, 40)}`;
     const simdi = Date.now();
 
     if (gonderilenIlanlar.has(ilanKimligi)) {
         const sonGonderim = gonderilenIlanlar.get(ilanKimligi);
-        const gecenSureSaniye = (simdi - sonGonderim) / 1000;
-
-        if (gecenSureSaniye < BEKLEME_SURESI_DK * 60) {
-            console.log(`⏳ Aynı ilan tekrar geldi, pas geçildi.`);
+        if ((simdi - sonGonderim) < BEKLEME_SURESI_DK * 60 * 1000) {
+            console.log(`⏳ Mükerrer ilan pas geçildi.`);
             return true;
         }
     }
@@ -94,7 +77,7 @@ function mukerrerIlanMi(telefon, detay) {
     return false;
 }
 
-// 🧹 Bellek Temizleyici
+// 🧹 Bellek Temizliği
 setInterval(() => {
     const simdi = Date.now();
     for (let [key, zaman] of gonderilenIlanlar.entries()) {
@@ -137,7 +120,7 @@ async function startBot() {
                 setTimeout(startBot, 3000);
             }
         } else if (connection === 'open') {
-            console.log('\n🚀 ✅ WHATSAPP KÖPRÜSÜ AKTİF! SADE VE DÜZENLİ İLANLAR ATILACAK...\n');
+            console.log('\n🚀 ✅ WHATSAPP KÖPRÜSÜ AKTİF! İLANTAR NET VE SADE ATILACAK...\n');
         }
     });
 
@@ -149,29 +132,25 @@ async function startBot() {
             const text = msg.message.conversation || msg.message.extendedTextMessage?.text || "";
 
             if (ilanMiGecerli(text)) {
-                const { guzergah, detay, telefon } = sadeIlanAyristir(text);
+                const { metin, telefon } = netMetinHazirla(text);
 
-                if (mukerrerIlanMi(telefon, detay)) {
+                if (mukerrerIlanMi(telefon, metin)) {
                     return;
                 }
 
                 console.log("🚚 Taze İlan Yakalandı -> Telegram'a Fırlatılıyor...");
 
-                // Telegram Sade Kart Formatı
-                const duzenliMesaj = `📦 **YENİ YÜK İLANI**\n` +
-                                     `───────────────────\n` +
-                                     `📍 **İlan / Güzergah:**\n${guzergah}\n\n` +
-                                     `📋 **Detay:**\n${detay}\n\n` +
-                                     `📞 **İletişim:** ${telefon}\n` +
-                                     `───────────────────\n` +
-                                     `🚛 *Nakliye Cepte*`;
+                // 🌟 TERTEMİZ VE NET TELEGRAM FORMATI
+                const sadeMesaj = `📦 **YÜK İLANI**\n\n` +
+                                  `${metin}\n\n` +
+                                  `📞 **İletişim:** ${telefon}`;
 
                 await axios.post(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
                     chat_id: TELEGRAM_CHAT_ID,
-                    text: duzenliMesaj
+                    text: sadeMesaj
                 });
 
-                console.log("✅ Sade İlan Telegram'a Başarıyla Gönderildi!");
+                console.log("✅ İlan Tertemiz Gönderildi!");
             }
         } catch (err) {
             if (err.response) {
