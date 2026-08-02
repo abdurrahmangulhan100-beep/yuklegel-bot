@@ -1,44 +1,52 @@
-const { default: makeWASocket, useMultiFileAuthState, DisconnectReason } = require('@whiskeysockets/baileys');
+const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion } = require('@whiskeysockets/baileys');
 const axios = require('axios');
 const qrcode = require('qrcode-terminal');
 
-// 1. BotFather'dan aldığın uzun Token'ı yaz:
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '8681317123:AAEuIRb2TxEa2twCsefD7deAXpqkxyvWD-U'; 
-
-// 2. Ekrandan aldığımız Chat ID:
 const TELEGRAM_CHAT_ID = '-100412724337'; 
 
 async function startBot() {
+    // 1. WhatsApp auth klasörünü başlat
     const { state, saveCreds } = await useMultiFileAuthState('auth_info_baileys');
     
+    // 2. Güncel WhatsApp Web sürümünü çek
+    const { version } = await fetchLatestBaileysVersion();
+
     const sock = makeWASocket({ 
+        version,
         auth: state, 
-        printQRInTerminal: false // Özel QR gösterici kullanacağız
+        printQRInTerminal: false,
+        browser: ['Ubuntu', 'Chrome', '110.0.5563.64'], // Standart Web Tarayıcı Kimliği
+        connectTimeoutMs: 60000,
+        defaultQueryTimeoutMs: 60000,
+        keepAliveIntervalMs: 10000
     });
 
     sock.ev.on('creds.update', saveCreds);
 
-    // Bağlantı durumunu dinle ve koparsa yeniden başlat
     sock.ev.on('connection.update', (update) => {
         const { connection, lastDisconnect, qr } = update;
 
         if (qr) {
+            console.log('\n==================================================');
             console.log('📌 LÜTFEN AŞAĞIDAKİ QR KODU WHATSAPP\'TAN OKUTUN:');
+            console.log('==================================================\n');
             qrcode.generate(qr, { small: true });
         }
 
         if (connection === 'close') {
-            const shouldReconnect = (lastDisconnect?.error)?.output?.statusCode !== DisconnectReason.loggedOut;
-            console.log('⚠️ Bağlantı koptu, tekrar deneniyor...', shouldReconnect);
+            const statusCode = (lastDisconnect?.error)?.output?.statusCode;
+            const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
+            console.log(`⚠️ Bağlantı koptu (Kod: ${statusCode}), tekrar deneniyor...`);
+            
             if (shouldReconnect) {
-                startBot();
+                setTimeout(startBot, 3000); // 3 saniye bekleyip tekrar dene
             }
         } else if (connection === 'open') {
-            console.log('🚀 ✅ WHATSAPP KÖPRÜSÜ AKTİF! İLANLAR TELEGRAMA ATILACAK...');
+            console.log('\n🚀 ✅ WHATSAPP KÖPRÜSÜ AKTİF! İLANLAR TELEGRAMA ATILACAK...\n');
         }
     });
 
-    // Mesajları yakala
     sock.ev.on('messages.upsert', async ({ messages }) => {
         try {
             const msg = messages[0];
@@ -46,7 +54,6 @@ async function startBot() {
 
             const text = msg.message.conversation || msg.message.extendedTextMessage?.text || "";
 
-            // Numarayı tespit et
             if (text.includes('05') || text.includes('53') || text.includes('54') || text.includes('55')) {
                 console.log("🚚 İlan Yakalandı -> Telegram'a Fırlatılıyor...");
 
