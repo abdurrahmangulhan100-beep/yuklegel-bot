@@ -1,22 +1,18 @@
 const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion } = require('@whiskeysockets/baileys');
 const axios = require('axios');
-const qrcode = require('qrcode-terminal');
 
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '8681317123:AAEuIRb2TxEa2twCsefD7deAXpqkxyvWD-U'; 
 const TELEGRAM_CHAT_ID = '-100412724337'; 
 
 async function startBot() {
-    // 1. WhatsApp auth klasörünü başlat
     const { state, saveCreds } = await useMultiFileAuthState('auth_info_baileys');
-    
-    // 2. Güncel WhatsApp Web sürümünü çek
     const { version } = await fetchLatestBaileysVersion();
 
     const sock = makeWASocket({ 
         version,
         auth: state, 
         printQRInTerminal: false,
-        browser: ['Ubuntu', 'Chrome', '110.0.5563.64'], // Standart Web Tarayıcı Kimliği
+        browser: ['Ubuntu', 'Chrome', '110.0.5563.64'],
         connectTimeoutMs: 60000,
         defaultQueryTimeoutMs: 60000,
         keepAliveIntervalMs: 10000
@@ -28,10 +24,13 @@ async function startBot() {
         const { connection, lastDisconnect, qr } = update;
 
         if (qr) {
-            console.log('\n==================================================');
-            console.log('📌 LÜTFEN AŞAĞIDAKİ QR KODU WHATSAPP\'TAN OKUTUN:');
-            console.log('==================================================\n');
-            qrcode.generate(qr, { small: true });
+            // QR Kod metnini API ile doğrudan taranabilir net bir QR resim linkine dönüştürüyoruz:
+            const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(qr)}`;
+            
+            console.log('\n================================================================');
+            console.log('📌 QR KODUNUZ HAZIR! LÜTFEN AŞAĞIDAKİ LİNKİ TARAYICIDA AÇIP OKUTUN:');
+            console.log(qrImageUrl);
+            console.log('================================================================\n');
         }
 
         if (connection === 'close') {
@@ -40,7 +39,7 @@ async function startBot() {
             console.log(`⚠️ Bağlantı koptu (Kod: ${statusCode}), tekrar deneniyor...`);
             
             if (shouldReconnect) {
-                setTimeout(startBot, 3000); // 3 saniye bekleyip tekrar dene
+                setTimeout(startBot, 3000);
             }
         } else if (connection === 'open') {
             console.log('\n🚀 ✅ WHATSAPP KÖPRÜSÜ AKTİF! İLANLAR TELEGRAMA ATILACAK...\n');
