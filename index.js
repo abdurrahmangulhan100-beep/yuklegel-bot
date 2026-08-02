@@ -2,7 +2,7 @@ const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, fetchLat
 const axios = require('axios');
 
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '8681317123:AAEuIRb2TxEa2twCsefD7deAXpqkxyvWD-U'; 
-const TELEGRAM_CHAT_ID = '-100412724337'; // Kanal veya Grup ID'niz
+const TELEGRAM_CHAT_ID = '-1004412724337'; // Kanal veya Grup ID'niz
 
 async function startBot() {
     const { state, saveCreds } = await useMultiFileAuthState('auth_info_baileys');
