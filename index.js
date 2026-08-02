@@ -6,85 +6,66 @@ const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID || '-1004412724337';
 
 // ⏱️ MÜKERRER İLAN ENGELLEME SÜRESİ (Dakika)
 const BEKLEME_SURESI_DK = 30; 
-const gonderilenIlanlar = new Map(); // { ilanKimligi: timestamp }
+const gonderilenIlanlar = new Map();
 
-// 🚫 KARA LİSTE (Spam, reklam ve gereksiz metinler)
+// 🚫 KARA LİSTE (Reklam ve Sohbet Filtresi)
 const KARA_LISTE = [
     'grup kuralı', 'grup kuralları', 'reklam', 'satılık tır', 'satılık çekici', 
     'satılık dorsa', 'kiralık', 'üye ol', 'chat.whatsapp.com', 't.me/', 
-    'hoşgeldiniz', 'saygılar', 'hayırlı işler', 'hayırlı cumalar', 'aranmaktadır'
+    'hoşgeldiniz', 'saygılar', 'hayırlı işler', 'hayırlı cumalar'
 ];
 
-// 🚚 BEYAZ LİSTE (Yük ve Araç Kelimeleri)
+// 🚚 BEYAZ LİSTE (Yük ve Araç Terimleri)
 const BEYAZ_LISTE = [
     'yuk', 'yük', 'ton', 'kapak', 'dorse', 'tır', 'tir', 'kamyon', 'kırkayak', 'kirkayak',
     'onteker', 'on teker', 'fide', 'palet', 'çuval', 'cuval', 'dökme', 'dokme', 'sarilacak',
     'sarılayım', 'yuklenecek', 'yüklenecek', 'araniyor', 'aranıyor', 'hazir', 'hazır', 'tenteli', 'frigo'
 ];
 
-// 🧹 Metin Temizleme ve Ayrıştırma Motoru
-function detayliIlanAyristir(rawText) {
-    // 1. Temel temizlik: Fazla yıldız, çizgi ve gereksiz karakterleri at
+// 🧹 Sade & Temiz İlan Ayrıştırıcı
+function sadeIlanAyristir(rawText) {
+    // 1. Temel Karakter Temizliği
     let text = rawText
-        .replace(/[*_~`]/g, '') // WhatsApp kalın/italik işaretlerini temizle
-        .replace(/[-=_]{3,}/g, '') // --- veya === şeklindeki uzun çizgileri temizle
-        .replace(/\n{3,}/g, '\n\n') // Fazla boş satırları teke düşür
+        .replace(/[*_~`]/g, '') // WhatsApp formatlama karakterlerini sil
+        .replace(/[-=_]{3,}/g, '') // Uzun cizgileri sil
         .trim();
 
-    // 2. İletişim Numaralarını Yakala
+    // 2. Telefon Numarasını Çek
     const telRegex = /(?:0\s*5\d{2}[\s.-]?\d{3}[\s.-]?\d{2}[\s.-]?\d{2})/g;
     const telefonlar = text.match(telRegex);
     const telefonStr = telefonlar ? [...new Set(telefonlar)].join(', ') : 'Belirtilmedi';
 
-    // Telefondan arındırılmış metin hazırlayalım
+    // Numarayı metinden çıkar
     let temizText = text.replace(telRegex, '').trim();
 
-    // 3. Güzergah Yakalama (Örn: İzmir - Ankara veya Gebze'den Adana'ya)
-    const guzergahRegex = /([A-ZÇĞİÖŞÜa-zçğıöşü]+(?:\s+[A-ZÇĞİÖŞÜa-zçğıöşü]+)?(?:\s*['’]?[dae]n|\s*['’]?[dae]n)?)\s*(?:[-─>➔]|den|dan|ya|ye|e|a)\s*([A-ZÇĞİÖŞÜa-zçğıöşü]+(?:\s+[A-ZÇĞİÖŞÜa-zçğıöşü]+)?(?:\s*['’]?[yae]|\s*['’]?[yae])?)/i;
+    // 3. Satırları Ayrıştır
+    const satirlar = temizText.split('\n')
+        .map(s => s.trim())
+        .filter(s => s.length > 0 && !KARA_LISTE.some(k => s.toLowerCase().includes(k)));
+
+    // İlk satırı genelde Güzergah/Başlık olarak alıyoruz (En sade ve hatasız yöntem)
+    let guzergah = satirlar[0] || "Belirtilmedi";
     
-    let guzergah = "Belirtilmedi";
-    const satirlar = temizText.split('\n');
-    
-    // Satırlar içinden kritik bilgileri ayıkla
-    let yukDetaylari = [];
-
-    satirlar.forEach(satir => {
-        const s = satir.trim();
-        if (!s) return;
-        
-        const kucuk = s.toLowerCase();
-        if (KARA_LISTE.some(k => kucuk.includes(k))) return;
-
-        // Güzergah tespiti yap
-        if (guzergah === "Belirtilmedi" && (kucuk.includes('-') || kucuk.includes('>') || kucuk.includes('den') || kucuk.includes('dan'))) {
-            const m = s.match(guzergahRegex);
-            if (m && m[1] && m[2] && m[1].length > 2 && m[2].length > 2) {
-                guzergah = `${m[1].trim()} ➔ ${m[2].trim()}`;
-            }
-        }
-
-        // Yük/Araç/Tonaj içeren satırları detay listesine ekle
-        if (BEYAZ_LISTE.some(b => kucuk.includes(b)) || kucuk.includes('ton') || kucuk.includes('m3')) {
-            if (s.length < 100) { // Çok uzun reklam paragrafı değilse al
-                yukDetaylari.push(s);
-            }
-        }
-    });
-
-    // Detay satırı kalmadıysa ilk 2 temiz satırı koy
-    if (yukDetaylari.length === 0) {
-        yukDetaylari = satirlar.filter(s => s.trim().length > 3 && !KARA_LISTE.some(k => s.toLowerCase().includes(k))).slice(0, 2);
+    // Eğer ilk satır çok uzunsa veya ilan detayına benziyorsa kısalt
+    if (guzergah.length > 60) {
+        guzergah = guzergah.substring(0, 57) + "...";
     }
+
+    // Geri kalan satırları Detay olarak birleştir
+    let detaySatirlari = satirlar.slice(1).filter(s => s.length < 120);
+    
+    // Eğer detay kalmadıysa ilk satırı detay olarak da yaz
+    let detayStr = detaySatirlari.length > 0 ? detaySatirlari.join('\n') : satirlar[0] || 'Detay belirtilmedi';
 
     return {
         guzergah: guzergah,
-        detay: yukDetaylari.join('\n') || 'Yük Detayı Belirtilmedi',
+        detay: detayStr,
         telefon: telefonStr
     };
 }
 
-// 🛡️ Geçerli İlan Filtresi
-function ilanMimiGecerli(text) {
+// 🛡️ Geçerli İlan Kontrolü
+function ilanMiGecerli(text) {
     const kucuk = text.toLowerCase();
     if (KARA_LISTE.some(k => kucuk.includes(k))) return false;
     
@@ -96,8 +77,7 @@ function ilanMimiGecerli(text) {
 
 // 🔄 Mükerrer (Duplicate) Kontrolü
 function mukerrerIlanMi(telefon, detay) {
-    // İlana özel benzersiz kimlik (Tel + Detay metni)
-    const ilanKimligi = `${telefon}_${detay.replace(/\s+/g, '').toLowerCase().slice(0, 50)}`;
+    const ilanKimligi = `${telefon}_${detay.replace(/\s+/g, '').toLowerCase().slice(0, 40)}`;
     const simdi = Date.now();
 
     if (gonderilenIlanlar.has(ilanKimligi)) {
@@ -105,8 +85,7 @@ function mukerrerIlanMi(telefon, detay) {
         const gecenSureSaniye = (simdi - sonGonderim) / 1000;
 
         if (gecenSureSaniye < BEKLEME_SURESI_DK * 60) {
-            const kalanDk = (BEKLEME_SURESI_DK - (gecenSureSaniye / 60)).toFixed(1);
-            console.log(`⏳ Aynı ilan tekrar geldi, pas geçildi. (${kalanDk} dk sonra tekrar atılabilir)`);
+            console.log(`⏳ Aynı ilan tekrar geldi, pas geçildi.`);
             return true;
         }
     }
@@ -115,7 +94,7 @@ function mukerrerIlanMi(telefon, detay) {
     return false;
 }
 
-// 🧹 Bellek Temizleyici (Her 10 dk'da bir eski verileri siler)
+// 🧹 Bellek Temizleyici
 setInterval(() => {
     const simdi = Date.now();
     for (let [key, zaman] of gonderilenIlanlar.entries()) {
@@ -158,7 +137,7 @@ async function startBot() {
                 setTimeout(startBot, 3000);
             }
         } else if (connection === 'open') {
-            console.log('\n🚀 ✅ WHATSAPP KÖPRÜSÜ AKTİF! AKILLI VE TEMİZ İLANLAR TELEGRAMA ATILACAK...\n');
+            console.log('\n🚀 ✅ WHATSAPP KÖPRÜSÜ AKTİF! SADE VE DÜZENLİ İLANLAR ATILACAK...\n');
         }
     });
 
@@ -169,32 +148,30 @@ async function startBot() {
 
             const text = msg.message.conversation || msg.message.extendedTextMessage?.text || "";
 
-            if (ilanMimiGecerli(text)) {
-                // Detaylı Ayrıştırma Yap
-                const { guzergah, detay, telefon } = detayliIlanAyristir(text);
+            if (ilanMiGecerli(text)) {
+                const { guzergah, detay, telefon } = sadeIlanAyristir(text);
 
-                // Mükerrer Kontrolü Yap
                 if (mukerrerIlanMi(telefon, detay)) {
-                    return; // Aynı ilan geldiyse dur ve atma
+                    return;
                 }
 
-                console.log("🚚 Taze Yük İlanı Ayrıştırıldı -> Telegram'a Fırlatılıyor...");
+                console.log("🚚 Taze İlan Yakalandı -> Telegram'a Fırlatılıyor...");
 
-                // Telegram Formatı
+                // Telegram Sade Kart Formatı
                 const duzenliMesaj = `📦 **YENİ YÜK İLANI**\n` +
                                      `───────────────────\n` +
-                                     `📍 **Güzergah:** ${guzergah}\n\n` +
-                                     `📋 **İlan Detayı:**\n${detay}\n\n` +
+                                     `📍 **İlan / Güzergah:**\n${guzergah}\n\n` +
+                                     `📋 **Detay:**\n${detay}\n\n` +
                                      `📞 **İletişim:** ${telefon}\n` +
                                      `───────────────────\n` +
-                                     `🚛 *Nakliye Cepte Bot*`;
+                                     `🚛 *Nakliye Cepte*`;
 
                 await axios.post(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
                     chat_id: TELEGRAM_CHAT_ID,
                     text: duzenliMesaj
                 });
 
-                console.log("✅ Tertemiz İlan Telegram'a Gönderildi!");
+                console.log("✅ Sade İlan Telegram'a Başarıyla Gönderildi!");
             }
         } catch (err) {
             if (err.response) {
