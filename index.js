@@ -13,8 +13,8 @@ http.createServer((req, res) => {
 
 // -------------------------------------------------------------
 
-const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || 'BOT_FATHERDAN_ALDIGIN_TOKEN'; 
-const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID || '-1002412724337'; 
+const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '8681317123:AAEuIRb2TxEa2twCsefD7deAXpqkxyvWD-U'; 
+const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID || '--1004412724337'; 
 
 // ⏱️ MÜKERRER İLAN ENGELLEME SÜRESİ (30 Dakika)
 const BEKLEME_SURESI_DK = 30; 
