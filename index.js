@@ -1,8 +1,23 @@
 const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion } = require('@whiskeysockets/baileys');
 const axios = require('axios');
+const express = require('express');
 
-const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '8681317123:AAEuIRb2TxEa2twCsefD7deAXpqkxyvWD-U'; 
-const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID || '-1004412724337'; 
+// 🌐 RENDER ZAMAN AŞIMI (TIMED OUT) ENGELLEYICI HTTP SUNUCUSU
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+app.get('/', (req, res) => {
+    res.send('Nakliye Cepte Bot Sistemleri Aktif 7/24 Çalışıyor! 🚚');
+});
+
+app.listen(PORT, () => {
+    console.log(`🌐 Web sunucusu ${PORT} portunda dinleniyor (Render Timed Out engellendi).`);
+});
+
+// -------------------------------------------------------------
+
+const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || 'BOT_FATHERDAN_ALDIGIN_TOKEN'; 
+const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID || '-1002412724337'; 
 
 // ⏱️ MÜKERRER İLAN ENGELLEME SÜRESİ (Dakika)
 const BEKLEME_SURESI_DK = 30; 
@@ -24,21 +39,17 @@ const BEYAZ_LISTE = [
 
 // 🧹 Net ve Yalın Metin Düzenleyici
 function netMetinHazirla(rawText) {
-    // 1. WhatsApp yıldız (*), alt çizgi (_) ve uzun çizgileri temizle
     let temizMetin = rawText
         .replace(/[*_~`]/g, '')
         .replace(/[-=_]{3,}/g, '')
         .trim();
 
-    // 2. İletişim Numaralarını Yakala ve Metinden Ayır
     const telRegex = /(?:0\s*5\d{2}[\s.-]?\d{3}[\s.-]?\d{2}[\s.-]?\d{2})/g;
     const telefonlar = temizMetin.match(telRegex);
     const telefonStr = telefonlar ? [...new Set(telefonlar)].join(', ') : 'Belirtilmedi';
 
-    // Numarayı ana metinden sil ki mükerrer yazmasın
     temizMetin = temizMetin.replace(telRegex, '').trim();
 
-    // 3. Satırları temizle (Kara listedeki reklam satırlarını ve boşlukları at)
     const temizSatirlar = temizMetin.split('\n')
         .map(s => s.trim())
         .filter(s => s.length > 0 && !KARA_LISTE.some(k => s.toLowerCase().includes(k)));
@@ -60,7 +71,7 @@ function ilanMiGecerli(text) {
     return BEYAZ_LISTE.some(b => kucuk.includes(b));
 }
 
-// 🔄 30 Dakikalık Aynı İlanı Atmama Kontrolü
+// 🔄 30 Dakikalık Mükerrer Kontrolü
 function mukerrerIlanMi(telefon, metin) {
     const ilanKimligi = `${telefon}_${metin.replace(/\s+/g, '').toLowerCase().slice(0, 40)}`;
     const simdi = Date.now();
@@ -120,7 +131,7 @@ async function startBot() {
                 setTimeout(startBot, 3000);
             }
         } else if (connection === 'open') {
-            console.log('\n🚀 ✅ WHATSAPP KÖPRÜSÜ AKTİF! İLANTAR NET VE SADE ATILACAK...\n');
+            console.log('\n🚀 ✅ WHATSAPP KÖPRÜSÜ AKTİF!\n');
         }
     });
 
@@ -140,7 +151,6 @@ async function startBot() {
 
                 console.log("🚚 Taze İlan Yakalandı -> Telegram'a Fırlatılıyor...");
 
-                // 🌟 TERTEMİZ VE NET TELEGRAM FORMATI
                 const sadeMesaj = `📦 **YÜK İLANI**\n\n` +
                                   `${metin}\n\n` +
                                   `📞 **İletişim:** ${telefon}`;
