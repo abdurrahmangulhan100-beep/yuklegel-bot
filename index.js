@@ -1,16 +1,13 @@
 const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion } = require('@whiskeysockets/baileys');
 const axios = require('axios');
-const express = require('express');
+const http = require('http'); // Node.js'in kendi dahili modülü (npm install GEREKTİRMEZ)
 
-// 🌐 RENDER ZAMAN AŞIMI (TIMED OUT) ENGELLEYICI HTTP SUNUCUSU
-const app = express();
+// 🌐 RENDER ZAMAN AŞIMI ENGELLEYİCİ (Node.js Dahili HTTP Server)
 const PORT = process.env.PORT || 3000;
-
-app.get('/', (req, res) => {
-    res.send('Nakliye Cepte Bot Sistemleri Aktif 7/24 Çalışıyor! 🚚');
-});
-
-app.listen(PORT, () => {
+http.createServer((req, res) => {
+    res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
+    res.end('Nakliye Cepte Bot Sistemleri Aktif 7/24 Çalışıyor! 🚚');
+}).listen(PORT, () => {
     console.log(`🌐 Web sunucusu ${PORT} portunda dinleniyor (Render Timed Out engellendi).`);
 });
 
@@ -19,7 +16,7 @@ app.listen(PORT, () => {
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || 'BOT_FATHERDAN_ALDIGIN_TOKEN'; 
 const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID || '-1002412724337'; 
 
-// ⏱️ MÜKERRER İLAN ENGELLEME SÜRESİ (Dakika)
+// ⏱️ MÜKERRER İLAN ENGELLEME SÜRESİ (30 Dakika)
 const BEKLEME_SURESI_DK = 30; 
 const gonderilenIlanlar = new Map();
 
