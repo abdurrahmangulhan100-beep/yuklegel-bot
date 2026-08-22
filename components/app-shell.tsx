@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { motion, AnimatePresence } from 'framer-motion'
 import { ListingsView } from '@/components/listings/listings-view'
 import { AddListingForm } from '@/components/add-listing-form'
 import { TripCalculator } from '@/components/trip-calculator'
