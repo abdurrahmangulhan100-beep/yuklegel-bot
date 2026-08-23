@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect, useRef, useCallback } from 'react'
+import React, { useMemo, useState, useEffect, useRef, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { timeAgo } from '@/lib/format'
 import { subscribeToPushNotifications } from '@/lib/push-client'
@@ -73,7 +73,6 @@ function fixEncoding(str: string): string {
   }
 }
 
-// Okunabilirlik için BÜYÜK harfli metinleri Title Case (İlk Harfleri Büyük) formatına dönüştürücü
 function toTitleCase(str: string): string {
   if (!str) return ''
   try {
@@ -146,7 +145,7 @@ function normalizeTR(text: any = ''): string {
 
 function extractMessageText(ilan: any): string {
   if (!ilan) return ''
-  return[cite: 2] ilan.ham_mesaj || ilan.mesaj_metni || ilan.message || ilan.icerik || ilan.text || ilan.content || ''
+  return ilan.ham_mesaj || ilan.mesaj_metni || ilan.message || ilan.icerik || ilan.text || ilan.content || ''
 }
 
 function isSpamOrGarbage(rawMessage: string, senderName: string): boolean {
@@ -227,13 +226,11 @@ function extractPhoneNumbers(ilan: any, text: string): string[] {
   return Array.from(new Set(foundPhones))
 }
 
-// Tonaj, Kasa Tipi ve Zaman ifadelerini otomatik tespit edip öne çıkaran regex kalıpları
 const HIGHLIGHT_REGEX = /\b(\d+\s*(?:TON|T|KM|KASA|TEKER|L|KG)|13\.60|13 60|FRİGO|FRIGO|TENTELİ|TENTE|DAMPERLİ|DAMPER|KIRKAYAK|TIR|YARIN|BUGÜN|BU GÜN|GECE\s*\d+|SABAH|AKŞAM|ACİL|HEMEN|PEŞİN)\b/gi
 
 function FormattedListingText({ text, query }: { text: string; query: string }) {
   if (!text) return null
 
-  // Okunabilirliği artırmak için durak ayraçları (+ ve ,) etrafındaki boşlukları normalize et
   const normalizedText = text
     .replace(/\s*\+\s*/g, ' + ')
     .replace(/\s*\,\s*/g, ', ')
@@ -263,7 +260,6 @@ function FormattedListingText({ text, query }: { text: string; query: string }) 
 }
 
 function renderFormattedWords(line: string, query: string) {
-  // Kelimeleri ve boşlukları koruyarak parçala
   const parts = line.split(new RegExp(`(${HIGHLIGHT_REGEX.source})`, 'gi'))
 
   return parts.map((part, i) => {
@@ -294,7 +290,6 @@ function renderFormattedWords(line: string, query: string) {
   })
 }
 
-// Performans için Kart Bileşeni React.memo ile sarmalandı
 const ListingCard = React.memo(({ 
   ilan, 
   isFav, 
@@ -336,7 +331,6 @@ const ListingCard = React.memo(({
       <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-primary/30 via-primary to-primary/30 opacity-0 group-hover:opacity-100 transition-opacity" />
 
       <div className="space-y-4">
-        {/* Üst Kısım: Firma Adı + Zaman + Favori/Not */}
         <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800/80 pb-3">
           <div className="flex items-center gap-2.5 max-w-[62%] truncate">
             <div className="size-8 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shrink-0 shadow-sm">
@@ -350,7 +344,7 @@ const ListingCard = React.memo(({
           <div className="flex items-center gap-1.5 shrink-0">
             <span className="flex items-center gap-1 rounded-xl bg-zinc-100 dark:bg-zinc-800/80 px-2.5 py-1 text-[10px] font-bold text-zinc-500 dark:text-zinc-400">
               <Clock className="size-3 text-zinc-400" />
-              {dateVal ? timeAgo(dateVal) : 'Yeni'}[cite: 2]
+              {dateVal ? timeAgo(dateVal) : 'Yeni'}
             </span>
 
             <button
@@ -384,7 +378,6 @@ const ListingCard = React.memo(({
           </div>
         </div>
 
-        {/* Araç ve Yük Etiketleri (Rozetler) */}
         {ilan._badges && ilan._badges.length > 0 && (
           <div className="flex flex-wrap gap-1.5">
             {ilan._badges.map((badge: any, idx: number) => (
@@ -398,7 +391,6 @@ const ListingCard = React.memo(({
           </div>
         )}
 
-        {/* İlan Metni ve "Tümünü Gör" Genişleme Animasyonu */}
         <div className="relative">
           <div className={`transition-all duration-300 overflow-hidden ${!expanded && isLongText ? 'line-clamp-3' : ''}`}>
             <FormattedListingText text={displayContent} query={searchQuery} />
@@ -424,7 +416,6 @@ const ListingCard = React.memo(({
         )}
       </div>
 
-      {/* Alt Aksiyon Butonları */}
       <div className="mt-5 border-t border-zinc-100 dark:border-zinc-800/80 pt-3.5 flex items-center justify-between gap-2">
         <button
           type="button"
@@ -476,7 +467,6 @@ export function ListingsView({ listings: propListings = [] }: { listings?: any[]
   const [refreshing, setRefreshing] = useState<boolean>(false)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   
-  // Arama ve filtre state'leri
   const [searchQuery, setSearchQuery] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [selectedChip, setSelectedChip] = useState('ALL')
@@ -497,7 +487,6 @@ export function ListingsView({ listings: propListings = [] }: { listings?: any[]
 
   const isInitialFetchedRef = useRef(false)
 
-  // 150ms Debounce mekanizması (Arama ve filtre reaktifliği için)
   useEffect(() => {
     const handler = setTimeout(() => {
       setDebouncedSearch(searchQuery)
@@ -729,7 +718,6 @@ export function ListingsView({ listings: propListings = [] }: { listings?: any[]
     }
   }, [])
 
-  // 900+ ilan için optimize edilmiş useMemo filtreleme
   const filteredListings = useMemo(() => {
     const activeChipObj = CHIP_FILTERS.find(c => c.id === selectedChip)
     const chipKeywords = activeChipObj?.keywords ? activeChipObj.keywords.map(normalizeTR) : []
@@ -797,7 +785,6 @@ export function ListingsView({ listings: propListings = [] }: { listings?: any[]
         </div>
       )}
 
-      {/* Arama ve Filtre Paneli */}
       <div className="flex flex-col gap-4 rounded-3xl border border-zinc-200/80 dark:border-zinc-800/80 bg-white/80 dark:bg-zinc-900/80 p-4 sm:p-5 shadow-xl shadow-zinc-900/5 backdrop-blur-2xl">
         <div className="relative">
           <Search className="absolute left-4 top-1/2 size-4 -translate-y-1/2 text-zinc-400" />
@@ -976,7 +963,6 @@ export function ListingsView({ listings: propListings = [] }: { listings?: any[]
         </div>
       )}
 
-      {/* Not Ekleme Modal */}
       {noteModalIlan && (() => {
         const modalIlanNotes = userNotes.filter(n => n.ilan_id === noteModalIlan._stableKey)
 
@@ -1045,7 +1031,6 @@ export function ListingsView({ listings: propListings = [] }: { listings?: any[]
         )
       })()}
 
-      {/* İlan Detay Modal */}
       {selectedIlan && (() => {
         const modalText = selectedIlan._originalRawText || selectedIlan._rawText
         const modalPhones = extractPhoneNumbers(selectedIlan, modalText)
@@ -1100,7 +1085,7 @@ export function ListingsView({ listings: propListings = [] }: { listings?: any[]
                           className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 rounded-2xl bg-blue-600 text-white px-5 py-3 text-xs font-extrabold hover:bg-blue-700 transition-all shadow-md shadow-blue-600/25 active:scale-95"
                         >
                           <Phone className="size-4" />
-                        <span>TELEFONLA ARA</span>
+                          <span>TELEFONLA ARA</span>
                         </a>
                       </div>
                     ))}
