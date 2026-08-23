@@ -209,6 +209,7 @@ function AppShellContent() {
 
           <nav className="space-y-1">
             <button
+              type="button"
               onClick={() => navigateTo('dashboard')}
               className={cn(
                 "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-xs font-bold transition-colors",
@@ -222,6 +223,7 @@ function AppShellContent() {
             {MODULE_CARDS.map((item) => (
               <button
                 key={item.id}
+                type="button"
                 onClick={() => navigateTo(item.id)}
                 className={cn(
                   "flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-xs font-bold transition-colors",
@@ -242,7 +244,7 @@ function AppShellContent() {
             <div className="space-y-1">
               <div className="flex items-center justify-between rounded-xl bg-zinc-50 dark:bg-zinc-800/50 p-2.5 text-xs font-bold">
                 <span className="truncate max-w-[120px]">{user.email?.split('@')[0]}</span>
-                <button onClick={() => signOut()} title="Çıkış Yap" className="text-zinc-400 hover:text-rose-500"><LogOut className="size-4"/></button>
+                <button type="button" onClick={() => signOut()} title="Çıkış Yap" className="text-zinc-400 hover:text-rose-500"><LogOut className="size-4"/></button>
               </div>
               <div className="flex items-center justify-between px-2 pt-1 text-[10px] font-semibold text-zinc-400">
                 <Link href="/privacy" className="hover:text-blue-500 transition-colors">Gizlilik</Link>
@@ -252,7 +254,7 @@ function AppShellContent() {
             </div>
           ) : (
             <div>
-              <button onClick={() => openAuthModal()} className="w-full rounded-xl bg-blue-600 py-2.5 text-xs font-bold text-white hover:bg-blue-700 transition-colors mb-2">Giriş Yap</button>
+              <button type="button" onClick={() => openAuthModal()} className="w-full rounded-xl bg-blue-600 py-2.5 text-xs font-bold text-white hover:bg-blue-700 transition-colors mb-2">Giriş Yap</button>
               <div className="flex justify-center gap-2 text-[10px] text-zinc-400">
                 <Link href="/privacy" className="hover:underline">Gizlilik</Link>
                 <span>•</span>
@@ -271,6 +273,7 @@ function AppShellContent() {
           <div className="flex items-center gap-3">
             {activeTab !== 'dashboard' ? (
               <button
+                type="button"
                 onClick={() => navigateTo('dashboard')}
                 className="flex items-center gap-1.5 rounded-xl bg-zinc-100 dark:bg-zinc-800 px-3 py-1.5 text-xs font-bold text-zinc-700 dark:text-zinc-200 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors"
               >
@@ -290,16 +293,16 @@ function AppShellContent() {
 
           <div className="flex items-center gap-2">
             {user ? (
-              <button onClick={() => signOut()} className="lg:hidden p-2 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 hover:bg-rose-100 transition-colors">
+              <button type="button" onClick={() => signOut()} className="lg:hidden p-2 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 hover:bg-rose-100 transition-colors">
                 <LogOut className="size-4"/>
               </button>
             ) : (
-              <button onClick={() => openAuthModal()} className="lg:hidden rounded-xl bg-blue-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-blue-700 transition-colors">
+              <button type="button" onClick={() => openAuthModal()} className="lg:hidden rounded-xl bg-blue-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-blue-700 transition-colors">
                 Giriş
               </button>
             )}
 
-            <button onClick={toggleTheme} className="p-2 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400">
+            <button type="button" onClick={toggleTheme} className="p-2 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400">
               {isDarkMode ? <Sun className="size-4"/> : <Moon className="size-4"/>}
             </button>
           </div>
@@ -331,14 +334,13 @@ function AppShellContent() {
                           isPinned ? "border-blue-500/40 bg-blue-500/5 dark:bg-blue-500/5 shadow-xs" : "border-zinc-200/80 dark:border-zinc-800"
                         )}
                       >
-                        {/* KART ÜST KISIM */}
                         <div className="flex items-start justify-between mb-3">
                           <div className={cn("flex size-11 items-center justify-center rounded-xl border", card.color)}>
                             <Icon className="size-5"/>
                           </div>
                           
-                          {/* İĞNELEME (PIN) BUTONU */}
                           <button
+                            type="button"
                             onClick={(e) => togglePin(e, card.id)}
                             className={cn(
                               "p-1.5 rounded-lg transition-colors",
@@ -352,7 +354,6 @@ function AppShellContent() {
                           </button>
                         </div>
 
-                        {/* KART BAŞLIK & AÇIKLAMA */}
                         <div className="mt-2">
                           <div className="flex items-center justify-between">
                             <h2 className="text-xs font-extrabold text-zinc-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
@@ -389,18 +390,16 @@ function AppShellContent() {
         </main>
       </div>
 
-      {/* AUTH MODAL (Google Play Hazır + Şifremi Unuttum) */}
+      {/* AUTH MODAL */}
       {isAuthModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div onClick={closeAuthModal} className="absolute inset-0 bg-black/60 backdrop-blur-xs" />
           <div className="relative w-full max-w-sm rounded-3xl bg-white dark:bg-zinc-900 p-6 shadow-2xl border border-zinc-200 dark:border-zinc-800">
             
-            {/* Kapat Butonu */}
-            <button onClick={closeAuthModal} className="absolute right-4 top-4 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors">
+            <button type="button" onClick={closeAuthModal} className="absolute right-4 top-4 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors">
               <X className="size-5"/>
             </button>
 
-            {/* Başlık ve İkon */}
             <div className="text-center mb-5">
               <div className="mx-auto mb-2.5 flex size-12 items-center justify-center rounded-2xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-900/40">
                 {authMode === 'forgot' ? <KeyRound className="size-6"/> : <Truck className="size-6"/>}
@@ -417,7 +416,6 @@ function AppShellContent() {
               </p>
             </div>
 
-            {/* Form */}
             <form onSubmit={handleAuthSubmit} className="space-y-3">
               <div className="relative">
                 <Mail className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-zinc-400" />
@@ -468,7 +466,6 @@ function AppShellContent() {
               </button>
             </form>
 
-            {/* Google ile Giriş */}
             {authMode !== 'forgot' && (
               <>
                 <div className="relative my-4">
@@ -492,12 +489,11 @@ function AppShellContent() {
               </>
             )}
 
-            {/* Alt Geçiş Metinleri & Gizlilik / Hesap Silme Bağlantıları */}
             <div className="mt-5 text-center space-y-2">
               {authMode === 'login' && (
                 <p className="text-xs text-zinc-500">
                   Hesabınız yok mu?{' '}
-                  <button onClick={() => setAuthMode('register')} className="font-bold text-blue-600 dark:text-blue-400 hover:underline">
+                  <button type="button" onClick={() => setAuthMode('register')} className="font-bold text-blue-600 dark:text-blue-400 hover:underline">
                     Kayıt Olun
                   </button>
                 </p>
@@ -505,13 +501,13 @@ function AppShellContent() {
               {authMode === 'register' && (
                 <p className="text-xs text-zinc-500">
                   Zaten hesabınız var mı?{' '}
-                  <button onClick={() => setAuthMode('login')} className="font-bold text-blue-600 dark:text-blue-400 hover:underline">
+                  <button type="button" onClick={() => setAuthMode('login')} className="font-bold text-blue-600 dark:text-blue-400 hover:underline">
                     Giriş Yapın
                   </button>
                 </p>
               )}
               {authMode === 'forgot' && (
-                <button onClick={() => setAuthMode('login')} className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline">
+                <button type="button" onClick={() => setAuthMode('login')} className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline">
                   ← Giriş Ekranına Dön
                 </button>
               )}
@@ -535,7 +531,10 @@ function AppShellContent() {
   )
 }
 
-function ProfileView({ user, openAuthModal, signOut }: { user: any; openAuthModal: () => void; signOut: () => void }) {
+function ProfileView({ user, openAuthModal, signOut }: { user: any; openAuthModal?: () => void; signOut?: () => void }) {
+  const auth = useAuth()
+  const handleOpenAuth = openAuthModal || auth?.openAuthModal
+
   if (!user) {
     return (
       <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-8 text-center space-y-4">
@@ -549,8 +548,12 @@ function ProfileView({ user, openAuthModal, signOut }: { user: any; openAuthModa
           </p>
         </div>
         <button
-          onClick={openAuthModal}
-          className="rounded-xl bg-blue-600 px-6 py-2.5 text-xs font-bold text-white shadow-md hover:bg-blue-700 transition-all active:scale-95"
+          type="button"
+          onClick={(e) => {
+            e.preventDefault()
+            if (handleOpenAuth) handleOpenAuth()
+          }}
+          className="rounded-xl bg-blue-600 px-6 py-2.5 text-xs font-bold text-white shadow-md hover:bg-blue-700 transition-all active:scale-95 cursor-pointer"
         >
           Giriş Yap / Kayıt Ol
         </button>
@@ -566,7 +569,6 @@ function ProfileView({ user, openAuthModal, signOut }: { user: any; openAuthModa
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* Kullanıcı Kartı */}
         <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-5 space-y-4">
           <div className="flex items-center gap-3">
             <div className="size-12 rounded-xl bg-emerald-600 text-white font-black text-lg flex items-center justify-center shadow-md shadow-emerald-500/20">
@@ -585,7 +587,6 @@ function ProfileView({ user, openAuthModal, signOut }: { user: any; openAuthModa
           </div>
         </div>
 
-        {/* Paket / Abonelik Kartı */}
         <div className="rounded-2xl border border-blue-200 dark:border-blue-900/50 bg-blue-50/50 dark:bg-blue-950/20 p-5 space-y-3 relative overflow-hidden">
           <div className="flex items-center justify-between">
             <span className="inline-flex items-center gap-1 rounded-md bg-blue-600/10 px-2 py-0.5 text-[10px] font-black text-blue-600 dark:text-blue-400">
@@ -599,7 +600,6 @@ function ProfileView({ user, openAuthModal, signOut }: { user: any; openAuthModa
           </div>
         </div>
 
-        {/* İşlemler */}
         <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-5 flex flex-col justify-between space-y-3">
           <div>
             <h4 className="text-xs font-extrabold text-zinc-900 dark:text-white mb-1">Hesap Yönetimi</h4>
@@ -609,7 +609,8 @@ function ProfileView({ user, openAuthModal, signOut }: { user: any; openAuthModa
             </div>
           </div>
           <button
-            onClick={() => signOut()}
+            type="button"
+            onClick={() => signOut && signOut()}
             className="w-full flex items-center justify-center gap-2 rounded-xl bg-rose-50 dark:bg-rose-950/40 py-2.5 text-xs font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/60 transition-colors"
           >
             <LogOut className="size-4"/>
