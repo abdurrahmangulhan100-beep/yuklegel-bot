@@ -1,185 +1,243 @@
-'use client'
+import React, { useState } from 'react';
 
-import React, { useState } from 'react'
-import { supabase } from '@/lib/supabase'
-import { Mail, Lock, LogIn, UserPlus, ArrowRight, X, Loader2 } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { createClient } from '@supabase/supabase-js';
 
-interface AuthModalProps {
-  isOpen: boolean
-  onClose: () => void
-}
 
-export function AuthModal({ isOpen, onClose }: AuthModalProps) {
-  const [mode, setMode] = useState<'login' | 'register' | 'forgot'>('login')
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [message, setMessage] = useState<{ type: 'error' | 'success'; text: string } | null>(null)
-  const [loading, setLoading] = useState(false)
 
-  if (!isOpen) return null
+// Supabase istemciniz (index.js veya supabaseClient.js dosyanızdaki ile aynı)
 
-  const handleClose = () => {
-    setMessage(null)
-    setEmail('')
-    setPassword('')
-    onClose()
-  }
+const SUPABASE_URL = process.env.REACT_APP_SUPABASE_URL || 'https://fkcmlkbpwpjgdamhtegn.supabase.co';
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setMessage(null)
-    setLoading(true)
+const SUPABASE_KEY = process.env.REACT_APP_SUPABASE_KEY || 'YOUR_SUPABASE_KEY';
+
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+
+
+export default function AuthModal({ isOpen, onClose, onLoginSuccess }) {
+
+  const [mode, setMode] = useState('login'); // 'login', 'register', 'forgot'
+
+  const [email, setEmail] = useState('');
+
+  const [password, setPassword] = useState('');
+
+  const [message, setMessage] = useState({ type: '', text: '' });
+
+  const [loading, setLoading] = useState(false);
+
+
+
+  if (!isOpen) return null;
+
+
+
+  const handleSubmit = async (e) => {
+
+    e.preventDefault();
+
+    setMessage({ type: '', text: '' });
+
+    setLoading(true);
+
+
 
     try {
+
       if (mode === 'login') {
-        const { error } = await supabase.auth.signInWithPassword({ email, password })
-        if (error) throw error
-        setMessage({ type: 'success', text: 'Giriş başarılı! Yönlendiriliyorsunuz...' })
-        setTimeout(() => handleClose(), 800)
-      } else if (mode === 'register') {
-        const { error } = await supabase.auth.signUp({ email, password })
-        if (error) throw error
-        setMessage({ type: 'success', text: 'Kayıt başarılı! Giriş yapabilirsiniz.' })
-        setMode('login')
-      } else if (mode === 'forgot') {
+
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+
+        if (error) throw error;
+
+        setMessage({ type: 'success', text: 'Giriş başarılı! Yönlendiriliyorsunuz...' });
+
+        setTimeout(() => {
+
+          onLoginSuccess(data.user);
+
+          onClose();
+
+        }, 1000);
+
+      } 
+
+      else if (mode === 'register') {
+
+        const { data, error } = await supabase.auth.signUp({ email, password });
+
+        if (error) throw error;
+
+        setMessage({ type: 'success', text: 'Kayıt başarılı! Giriş yapabilirsiniz.' });
+
+        setMode('login');
+
+      } 
+
+      else if (mode === 'forgot') {
+
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
-          redirectTo: `${window.location.origin}/reset-password`,
-        })
-        if (error) throw error
-        setMessage({ type: 'success', text: 'Şifre sıfırlama bağlantısı e-postanıza gönderildi.' })
+
+          redirectTo: window.location.origin + '/reset-password',
+
+        });
+
+        if (error) throw error;
+
+        setMessage({ type: 'success', text: 'Şifre sıfırlama bağlantısı e-posta adresinize gönderildi.' });
+
       }
-    } catch (err: any) {
-      setMessage({ type: 'error', text: err.message || 'Bir işlem hatası oluştu.' })
+
+    } catch (err) {
+
+      setMessage({ type: 'error', text: err.message || 'Bir hata oluştu.' });
+
     } finally {
-      setLoading(false)
+
+      setLoading(false);
+
     }
-  }
+
+  };
+
+
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-      <div className="relative w-full max-w-sm rounded-3xl bg-white p-6 shadow-2xl dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800">
+
+    <div style={modalOverlayStyle}>
+
+      <div style={modalCardStyle}>
+
+        <button onClick={onClose} style={closeButtonStyle}>✕</button>
+
         
-        {/* Kapat Butonu */}
-        <button
-          onClick={handleClose}
-          className="absolute right-4 top-4 rounded-full p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-800 dark:hover:text-zinc-200 transition-colors"
-        >
-          <X className="size-5" />
-        </button>
 
-        {/* Başlık İkonu & Metinler */}
-        <div className="text-center space-y-2 mb-6">
-          <div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400">
-            {mode === 'login' && <LogIn className="size-6" />}
-            {mode === 'register' && <UserPlus className="size-6" />}
-            {mode === 'forgot' && <Lock className="size-6" />}
-          </div>
+        <h2>
 
-          <h2 className="text-xl font-black tracking-tight text-zinc-900 dark:text-white flex items-center justify-center gap-2">
-            {mode === 'login' && <span>🔑 Giriş Yap</span>}
-            {mode === 'register' && <span>📝 Kayıt Ol</span>}
-            {mode === 'forgot' && <span>🔒 Şifre Sıfırla</span>}
-          </h2>
-          <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400">
-            Bu özelliği kullanmak için ücretsiz giriş yapın.
-          </p>
-        </div>
+          {mode === 'login' && '🔑 Giriş Yap'}
 
-        {/* Bildirim Kutusu */}
-        {message && (
-          <div
-            className={cn(
-              "mb-4 rounded-xl p-3 text-xs font-bold text-center border",
-              message.type === 'error'
-                ? "bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-900/50"
-                : "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-900/50"
-            )}
-          >
+          {mode === 'register' && '📝 Kayıt Ol'}
+
+          {mode === 'forgot' && '🔒 Şifremi Unuttum'}
+
+        </h2>
+
+
+
+        {message.text && (
+
+          <div style={{ ...messageBoxStyle, backgroundColor: message.type === 'error' ? '#fee2e2' : '#dcfce7', color: message.type === 'error' ? '#991b1b' : '#166534' }}>
+
             {message.text}
+
           </div>
+
         )}
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-3">
-          <div className="relative">
-            <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-zinc-400" />
-            <input
-              type="email"
-              placeholder="E-posta Adresiniz"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              className="w-full rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-800/50 py-3 pl-10 pr-4 text-xs font-medium text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/20 transition-all"
-            />
-          </div>
+
+
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '15px' }}>
+
+          <input
+
+            type="email"
+
+            placeholder="E-posta Adresiniz"
+
+            value={email}
+
+            onChange={(e) => setEmail(e.target.value)}
+
+            required
+
+            style={inputStyle}
+
+          />
+
+
 
           {mode !== 'forgot' && (
-            <div className="relative">
-              <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-zinc-400" />
-              <input
-                type="password"
-                placeholder="Şifreniz"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                className="w-full rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-800/50 py-3 pl-10 pr-4 text-xs font-medium text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/20 transition-all"
-              />
-            </div>
+
+            <input
+
+              type="password"
+
+              placeholder="Şifreniz"
+
+              value={password}
+
+              onChange={(e) => setPassword(e.target.value)}
+
+              required
+
+              style={inputStyle}
+
+            />
+
           )}
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 py-3 text-xs font-bold text-white shadow-lg shadow-blue-600/20 hover:bg-blue-700 active:scale-[0.98] disabled:opacity-70 transition-all"
-          >
-            {loading ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : (
-              <>
-                <span>
-                  {mode === 'login' && 'Giriş Yap'}
-                  {mode === 'register' && 'Kayıt Ol'}
-                  {mode === 'forgot' && 'Sıfırlama Linki Gönder'}
-                </span>
-                <ArrowRight className="size-4" />
-              </>
-            )}
+
+
+          <button type="submit" disabled={loading} style={primaryButtonStyle}>
+
+            {loading ? 'İşleniyor...' : mode === 'login' ? 'Giriş Yap' : mode === 'register' ? 'Kayıt Ol' : 'Sıfırlama Linki Gönder'}
+
           </button>
+
         </form>
 
-        {/* Alt Geçiş Bağlantıları */}
-        <div className="mt-5 flex items-center justify-between border-t border-zinc-100 dark:border-zinc-800 pt-4 text-xs font-bold text-zinc-500 dark:text-zinc-400">
+
+
+        <div style={{ marginTop: '15px', fontSize: '13px', display: 'flex', justifyContent: 'space-between' }}>
+
           {mode === 'login' && (
+
             <>
-              <button onClick={() => setMode('forgot')} className="hover:text-zinc-800 dark:hover:text-white transition-colors">
-                Şifremi Unuttum?
-              </button>
-              <button onClick={() => setMode('register')} className="text-zinc-700 dark:text-zinc-300">
-                Hesabın yok mu? <span className="text-blue-600 dark:text-blue-400 hover:underline">Kayıt Ol</span>
-              </button>
+
+              <span onClick={() => setMode('forgot')} style={linkStyle}>Şifremi Unuttum?</span>
+
+              <span onClick={() => setMode('register')} style={linkStyle}>Hesabın yok mu? <b>Kayıt Ol</b></span>
+
             </>
+
           )}
 
           {mode === 'register' && (
-            <div className="w-full text-center">
-              <span>Zaten hesabın var mı? </span>
-              <button onClick={() => setMode('login')} className="text-blue-600 dark:text-blue-400 hover:underline">
-                Giriş Yap
-              </button>
-            </div>
+
+            <span onClick={() => setMode('login')} style={linkStyle}>Zaten hesabın var mı? <b>Giriş Yap</b></span>
+
           )}
 
           {mode === 'forgot' && (
-            <div className="w-full text-center">
-              <button onClick={() => setMode('login')} className="text-blue-600 dark:text-blue-400 hover:underline">
-                Giriş Ekranına Dön
-              </button>
-            </div>
+
+            <span onClick={() => setMode('login')} style={linkStyle}> Giriş Ekranına Dön</span>
+
           )}
+
         </div>
 
       </div>
+
     </div>
-  )
+
+  );
+
 }
+
+
+
+// Basit CSS Stilleri
+
+const modalOverlayStyle = { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 };
+
+const modalCardStyle = { background: '#fff', padding: '25px', borderRadius: '12px', width: '360px', position: 'relative', boxShadow: '0 10px 25px rgba(0,0,0,0.2)' };
+
+const closeButtonStyle = { position: 'absolute', top: '12px', right: '12px', border: 'none', background: 'none', cursor: 'pointer', fontSize: '16px' };
+
+const inputStyle = { padding: '10px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '14px' };
+
+const primaryButtonStyle = { padding: '10px', borderRadius: '6px', border: 'none', backgroundColor: '#2563eb', color: '#fff', fontWeight: 'bold', cursor: 'pointer' };
+
+const messageBoxStyle = { padding: '10px', borderRadius: '6px', fontSize: '13px', margin: '10px 0' };
+
+const linkStyle = { color: '#2563eb', cursor: 'pointer' };
