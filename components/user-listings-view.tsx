@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
-import { Truck, MapPin, Phone, Building2, Package, Loader2, RefreshCw, Calendar } from 'lucide-react'
+import { Truck, MapPin, Phone, Building2, Loader2, RefreshCw, Search, X } from 'lucide-react'
 
 export interface UserListing {
   id: string
@@ -27,6 +27,7 @@ export interface UserListing {
 export function UserListingsView() {
   const [listings, setListings] = useState<UserListing[]>([])
   const [loading, setLoading] = useState(true)
+  const [searchTerm, setSearchTerm] = useState('')
 
   // 1. Veritabanından ilanları çekme fonksiyonu
   const fetchListings = async () => {
@@ -66,6 +67,22 @@ export function UserListingsView() {
     }
   }, [])
 
+  // Şehir, ilçe, yük cinsi, firma adı ve açıklamada arama yapma
+  const filteredListings = listings.filter((item) => {
+    const term = searchTerm.toLowerCase().trim()
+    if (!term) return true
+
+    return (
+      item.kalkis_il?.toLowerCase().includes(term) ||
+      item.kalkis_ilce?.toLowerCase().includes(term) ||
+      item.varis_il?.toLowerCase().includes(term) ||
+      item.varis_ilce?.toLowerCase().includes(term) ||
+      item.yuk_cinsi?.toLowerCase().includes(term) ||
+      item.firma_adi?.toLowerCase().includes(term) ||
+      item.aciklama?.toLowerCase().includes(term)
+    )
+  })
+
   const formatPriceType = (type?: string) => {
     switch (type) {
       case 'ton': return 'Ton Başı'
@@ -84,7 +101,8 @@ export function UserListingsView() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
+      {/* BAŞLIK & YENİLE BUTONU */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-black text-zinc-900 dark:text-white">Sizden Gelen İlanlar</h1>
@@ -101,19 +119,46 @@ export function UserListingsView() {
         </button>
       </div>
 
+      {/* ARAMA ÇUBUĞU */}
+      <div className="relative w-full">
+        <Search className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-zinc-400" />
+        <input
+          type="text"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          placeholder="Kalkış/Varış ili, ilçe veya yük tipi ara (örn: İstanbul, Ilgın, Mermer)..."
+          className="w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 py-2.5 pl-10 pr-10 text-xs text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all shadow-xs"
+        />
+        {searchTerm && (
+          <button
+            onClick={() => setSearchTerm('')}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"
+          >
+            <X className="size-4" />
+          </button>
+        )}
+      </div>
+
+      {/* İLAN LİSTESİ */}
       {loading ? (
         <div className="flex h-48 w-full items-center justify-center rounded-2xl border border-dashed border-zinc-200 dark:border-zinc-800 bg-white/50 dark:bg-zinc-900/50">
           <Loader2 className="size-6 animate-spin text-blue-600" />
         </div>
-      ) : listings.length === 0 ? (
+      ) : filteredListings.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-zinc-200 dark:border-zinc-800 p-8 text-center bg-white/50 dark:bg-zinc-900/50">
           <Truck className="size-10 text-zinc-400 mb-2" />
-          <p className="text-sm font-bold text-zinc-600 dark:text-zinc-400">Henüz yayınlanmış bir ilan yok</p>
-          <p className="text-xs text-zinc-400 mt-0.5">İlk ilanı oluşturmak için "İlan Ekle" bölümünü kullanabilirsiniz.</p>
+          <p className="text-sm font-bold text-zinc-600 dark:text-zinc-400">
+            {searchTerm ? 'Aramanıza uygun ilan bulunamadı' : 'Henüz yayınlanmış bir ilan yok'}
+          </p>
+          <p className="text-xs text-zinc-400 mt-0.5">
+            {searchTerm
+              ? 'Farklı bir il, ilçe veya anahtar kelime ile tekrar arama yapabilirsiniz.'
+              : 'İlk ilanı oluşturmak için "İlan Ekle" bölümünü kullanabilirsiniz.'}
+          </p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {listings.map((item) => (
+          {filteredListings.map((item) => (
             <div
               key={item.id}
               className="relative flex flex-col justify-between rounded-2xl border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-4 shadow-xs hover:border-blue-500/50 transition-all"
