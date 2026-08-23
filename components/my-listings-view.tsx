@@ -1,34 +1,123 @@
 'use client'
 
-import { useState } from 'react'
-import { MapPin, Truck, Calendar, Trash2, Tag, Image as ImageIcon } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { useAuth } from '@/lib/auth-context'
+import { supabase } from '@/lib/supabase'
+import { MapPin, Truck, Calendar, Trash2, Tag, Loader2, RefreshCw } from 'lucide-react'
+
+export interface UserListing {
+  id: string
+  created_at: string
+  user_id: string
+  type: 'yuk' | 'bos_arac'
+  kalkis_il: string
+  kalkis_ilce?: string
+  varis_il: string
+  varis_ilce?: string
+  yuk_cinsi?: string
+  tonaj?: number
+  hacim?: number
+  fiyat?: number
+  price_type?: string
+  kdv_status?: string
+  aciklama?: string
+  firma_adi?: string
+  telefon: string
+}
 
 export function MyListingsView() {
-  const [listings, setListings] = useState([
-    {
-      id: '1',
-      title: 'İstanbul → Ankara Paletli Yük',
-      type: 'Yük İlanı',
-      from: 'İstanbul / Hadımköy',
-      to: 'Ankara / Sincan',
-      weight: '24 Ton',
-      volume: '86 m³',
-      price: '18.500 ₺',
-      date: 'Bugün, 14:20',
-      images: ['https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=500&auto=format&fit=crop']
-    }
-  ])
+  const { user, loading: authLoading } = useAuth()
+  const [listings, setListings] = useState<UserListing[]>([])
+  const [loading, setLoading] = useState(true)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
 
-  const handleDelete = (id: string) => {
-    if (confirm('Bu ilanı silmek istediğinize emin misiniz?')) {
-      setListings((prev) => prev.filter((item) => item.id !== id))
+  // Sadece giriş yapan kullanıcının kendi ilanlarını çek
+  const fetchMyListings = async () => {
+    if (!user) {
+      setLoading(false)
+      return
     }
+
+    setLoading(true)
+    try {
+      const { data, error } = await supabase
+        .from('user_listings')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+
+      if (error) throw error
+      if (data) setListings(data as UserListing[])
+    } catch (err: any) {
+      console.error('İlanlar çekilirken hata oluştu:', err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchMyListings()
+  }, [user])
+
+  // İlan Silme İşlemi
+  const handleDelete = async (id: string) => {
+    if (!confirm('Bu ilanı silmek istediğinize emin misiniz?')) return
+
+    setDeletingId(id)
+    try {
+      const { error } = await supabase
+        .from('user_listings')
+        .delete()
+        .eq('id', id)
+        .eq('user_id', user?.id) // Güvenlik kontrolü
+
+      if (error) throw error
+
+      // State'den silinen ilanı kaldır
+      setListings((prev) => prev.filter((item) => item.id !== id))
+      alert('İlan başarıyla silindi.')
+    } catch (err: any) {
+      console.error('İlan silinirken hata:', err)
+      alert(`İlan silinemedi: ${err.message || 'Bilinmeyen hata'}`)
+    } finally {
+      setDeletingId(null)
+    }
+  }
+
+  const formatPrice = (item: UserListing) => {
+    if (item.price_type === 'teklif' || !item.fiyat) return 'Teklif Usulü'
+    return `${item.fiyat.toLocaleString('tr-TR')} ₺`
+  }
+
+  if (authLoading || loading) {
+    return (
+      <div className="flex h-48 w-full items-center justify-center rounded-2xl border border-dashed border-border bg-card">
+        <Loader2 className="size-6 animate-spin text-primary" />
+      </div>
+    )
+  }
+
+  if (!user) {
+    return (
+      <div className="bg-card rounded-2xl border border-border p-8 text-center space-y-2">
+        <p className="text-muted-foreground text-sm">İlanlarınızı görmek ve yönetmek için lütfen giriş yapın.</p>
+      </div>
+    )
   }
 
   return (
     <div className="space-y-4 max-w-4xl mx-auto">
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-bold text-foreground">Yayınladığım İlanlar ({listings.length})</h2>
+        <h2 className="text-xl font-bold text-foreground">
+          Yayınladığım İlanlar ({listings.length})
+        </h2>
+        <button
+          onClick={fetchMyListings}
+          className="flex items-center gap-1.5 rounded-xl border border-border bg-background px-3 py-1.5 text-xs font-bold text-foreground hover:bg-muted transition-colors cursor-pointer"
+        >
+          <RefreshCw className="size-3.5" />
+          <span>Yenile</span>
+        </button>
       </div>
 
       {listings.length === 0 ? (
@@ -38,59 +127,80 @@ export function MyListingsView() {
       ) : (
         <div className="grid gap-4">
           {listings.map((item) => (
-            <div key={item.id} className="bg-card rounded-2xl border border-border p-4 shadow-xs flex flex-col sm:flex-row gap-4 transition-all hover:border-primary/40">
-              {/* İlan Fotoğrafı */}
-              <div className="w-full sm:w-44 h-32 rounded-xl overflow-hidden bg-muted shrink-0 relative">
-                {item.images.length > 0 ? (
-                  <img src={item.images[0]} alt={item.title} className="w-full h-full object-cover" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-                    <ImageIcon className="size-8 opacity-40" />
+            <div
+              key={item.id}
+              className="bg-card rounded-2xl border border-border p-4 shadow-xs flex flex-col gap-3 transition-all hover:border-primary/40"
+            >
+              <div className="flex items-start justify-between gap-2 border-b border-border pb-3">
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`rounded-md px-2 py-0.5 text-[10px] font-extrabold ${
+                      item.type === 'bos_arac'
+                        ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400'
+                        : 'bg-primary/10 text-primary'
+                    }`}
+                  >
+                    {item.type === 'bos_arac' ? 'Boş Araç' : 'Yük İlanı'}
+                  </span>
+                  <div className="flex items-center gap-1.5 font-bold text-sm text-foreground">
+                    <MapPin className="size-4 text-primary shrink-0" />
+                    <span>{item.kalkis_il} {item.kalkis_ilce ? `(${item.kalkis_ilce})` : ''}</span>
+                    <span className="text-muted-foreground">→</span>
+                    <span>{item.varis_il} {item.varis_ilce ? `(${item.varis_ilce})` : ''}</span>
                   </div>
-                )}
-                <span className="absolute top-2 left-2 bg-black/60 text-white text-[10px] font-bold px-2 py-0.5 rounded-md backdrop-blur-xs">
-                  {item.type}
+                </div>
+
+                <span className="text-xs font-extrabold text-emerald-600 bg-emerald-500/10 px-2.5 py-1 rounded-lg shrink-0">
+                  {formatPrice(item)}
                 </span>
               </div>
 
-              {/* Bilgiler */}
-              <div className="flex-1 space-y-2">
-                <div className="flex items-start justify-between gap-2">
-                  <h3 className="font-bold text-base text-foreground">{item.title}</h3>
-                  <span className="text-xs font-extrabold text-emerald-600 bg-emerald-500/10 px-2.5 py-1 rounded-lg">
-                    {item.price}
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-2 text-xs text-muted-foreground font-semibold">
-                  <MapPin className="size-3.5 text-primary" />
-                  <span>{item.from}</span>
-                  <span>→</span>
-                  <span>{item.to}</span>
-                </div>
-
-                <div className="flex flex-wrap gap-2 pt-1">
+              {/* Detay Etiketleri */}
+              <div className="flex flex-wrap gap-2">
+                {item.yuk_cinsi && (
                   <span className="inline-flex items-center gap-1 text-[11px] bg-muted px-2.5 py-1 rounded-md font-medium text-foreground">
-                    <Truck className="size-3 text-muted-foreground" /> {item.weight}
+                    <Truck className="size-3 text-muted-foreground" /> {item.yuk_cinsi}
                   </span>
+                )}
+                {item.tonaj && (
                   <span className="inline-flex items-center gap-1 text-[11px] bg-muted px-2.5 py-1 rounded-md font-medium text-foreground">
-                    <Tag className="size-3 text-muted-foreground" /> {item.volume}
+                    <Tag className="size-3 text-muted-foreground" /> {item.tonaj} Ton
                   </span>
+                )}
+                {item.hacim && (
                   <span className="inline-flex items-center gap-1 text-[11px] bg-muted px-2.5 py-1 rounded-md font-medium text-foreground">
-                    <Calendar className="size-3 text-muted-foreground" /> {item.date}
+                    <Tag className="size-3 text-muted-foreground" /> {item.hacim} m³
                   </span>
-                </div>
+                )}
+                <span className="inline-flex items-center gap-1 text-[11px] bg-muted px-2.5 py-1 rounded-md font-medium text-muted-foreground ml-auto">
+                  <Calendar className="size-3" />
+                  {new Date(item.created_at).toLocaleDateString('tr-TR', {
+                    day: 'numeric',
+                    month: 'short',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })}
+                </span>
+              </div>
 
-                <div className="flex items-center justify-end gap-2 pt-2 border-t border-border">
-                  <button
-                    type="button"
-                    onClick={() => handleDelete(item.id)}
-                    className="p-2 text-destructive hover:bg-destructive/10 rounded-lg transition-colors cursor-pointer"
-                    title="İlanı Sil"
-                  >
-                    <Trash2 className="size-4" />
-                  </button>
-                </div>
+              {/* Alt Silme Alanı */}
+              <div className="flex items-center justify-end pt-2 border-t border-border">
+                <button
+                  type="button"
+                  onClick={() => handleDelete(item.id)}
+                  disabled={deletingId === item.id}
+                  className="p-2 text-destructive hover:bg-destructive/10 rounded-lg transition-colors cursor-pointer flex items-center gap-1 text-xs font-semibold disabled:opacity-50"
+                  title="İlanı Sil"
+                >
+                  {deletingId === item.id ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    <>
+                      <Trash2 className="size-4" />
+                      <span>Sil</span>
+                    </>
+                  )}
+                </button>
               </div>
             </div>
           ))}
