@@ -1,15 +1,20 @@
 'use client'
 
-import { useState } from 'react'
+import React, { useState } from 'react'
 import { useAuth } from '@/lib/auth-context'
 import { supabase } from '@/lib/supabase'
 import { Loader2, Plus, Truck, Package, Calculator, ImagePlus, X } from 'lucide-react'
 
-export function AddListingForm({ onSuccess }: { onSuccess?: () => void }) {
+interface AddListingFormProps {
+  onCreated?: () => void
+  onSuccess?: () => void
+}
+
+export function AddListingForm({ onCreated, onSuccess }: AddListingFormProps) {
   const { user, loading: authLoading, openAuthModal } = useAuth()
   const [submitting, setSubmitting] = useState(false)
 
-  // Form State
+  // Form State'leri
   const [type, setType] = useState<'yuk' | 'bos_arac'>('yuk')
   const [kalkisIl, setKalkisIl] = useState('')
   const [kalkisIlce, setKalkisIlce] = useState('')
@@ -46,16 +51,16 @@ export function AddListingForm({ onSuccess }: { onSuccess?: () => void }) {
     setImagePreviews((prev) => prev.filter((_, i) => i !== index))
   }
 
-  // Yeni İlan Kaydetme
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
     if (!user) {
       openAuthModal('İlan yayınlamak için lütfen giriş yapın.')
       return
     }
 
     if (!kalkisIl || !varisIl || !telefon) {
-      alert('Lütfen gerekli kalkış, varış ve telefon alanlarını doldurun.')
+      alert('Lütfen kalkış ili, varış ili ve telefon numarası alanlarını doldurun.')
       return
     }
 
@@ -85,9 +90,7 @@ export function AddListingForm({ onSuccess }: { onSuccess?: () => void }) {
 
       if (error) throw error
 
-      alert('İlanınız başarıyla yayınlandı!')
-      
-      // Formu temizle
+      // Temizlik
       setKalkisIl('')
       setKalkisIlce('')
       setVarisIl('')
@@ -100,12 +103,13 @@ export function AddListingForm({ onSuccess }: { onSuccess?: () => void }) {
       setImages([])
       setImagePreviews([])
 
-      if (onSuccess) {
-        onSuccess() // Başarılı olunca "İlanlarım" sekmesine yönlendirir
-      }
+      // Yönlendirme Tetikleyicisi
+      if (onCreated) onCreated()
+      if (onSuccess) onSuccess()
+
     } catch (err: any) {
-      console.error('İlan eklenirken hata:', err)
-      alert(`İlan eklenemedi: ${err.message}`)
+      console.error('İlan eklenirken hata oluştu:', err)
+      alert(`İlan eklenemedi: ${err.message || 'Bilinmeyen bir hata oluştu.'}`)
     } finally {
       setSubmitting(false)
     }
@@ -114,16 +118,16 @@ export function AddListingForm({ onSuccess }: { onSuccess?: () => void }) {
   if (authLoading) {
     return (
       <div className="flex h-48 items-center justify-center">
-        <Loader2 className="size-6 animate-spin text-primary" />
+        <Loader2 className="size-6 animate-spin text-blue-600" />
       </div>
     )
   }
 
   return (
-    <div className="mx-auto max-w-2xl rounded-2xl border border-border bg-card p-6 shadow-sm">
+    <div className="mx-auto max-w-2xl rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-6 shadow-sm">
       <div className="mb-6">
-        <h2 className="text-xl font-bold text-foreground">Yeni İlan Ekle</h2>
-        <p className="text-xs text-muted-foreground">İlan türünü seçin, görselleri ve detaylı bilgileri doldurun.</p>
+        <h2 className="text-xl font-bold text-zinc-900 dark:text-white">Yeni İlan Ekle</h2>
+        <p className="text-xs text-zinc-500">İlan türünü seçin ve detaylı bilgileri doldurun.</p>
       </div>
 
       {/* Tür Seçimi */}
@@ -133,8 +137,8 @@ export function AddListingForm({ onSuccess }: { onSuccess?: () => void }) {
           onClick={() => setType('yuk')}
           className={`flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold border transition-all cursor-pointer ${
             type === 'yuk'
-              ? 'border-primary bg-primary/10 text-primary'
-              : 'border-border bg-background text-muted-foreground'
+              ? 'border-blue-600 bg-blue-500/10 text-blue-600 dark:text-blue-400'
+              : 'border-zinc-200 dark:border-zinc-800 bg-transparent text-zinc-500'
           }`}
         >
           <Package className="size-4" />
@@ -145,8 +149,8 @@ export function AddListingForm({ onSuccess }: { onSuccess?: () => void }) {
           onClick={() => setType('bos_arac')}
           className={`flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold border transition-all cursor-pointer ${
             type === 'bos_arac'
-              ? 'border-primary bg-primary/10 text-primary'
-              : 'border-border bg-background text-muted-foreground'
+              ? 'border-blue-600 bg-blue-500/10 text-blue-600 dark:text-blue-400'
+              : 'border-zinc-200 dark:border-zinc-800 bg-transparent text-zinc-500'
           }`}
         >
           <Truck className="size-4" />
@@ -155,129 +159,102 @@ export function AddListingForm({ onSuccess }: { onSuccess?: () => void }) {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Güzergah Bilgileri */}
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-xs font-medium text-foreground mb-1">Kalkış İl *</label>
+            <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">Kalkış İl *</label>
             <input
               type="text"
               placeholder="Örn: İstanbul"
               value={kalkisIl}
               onChange={(e) => setKalkisIl(e.target.value)}
               required
-              className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/50 px-3 py-2 text-xs text-zinc-900 dark:text-white focus:outline-none focus:border-blue-500"
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-foreground mb-1">Kalkış İlçe</label>
+            <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">Kalkış İlçe</label>
             <input
               type="text"
               placeholder="Örn: Hadımköy"
               value={kalkisIlce}
               onChange={(e) => setKalkisIlce(e.target.value)}
-              className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/50 px-3 py-2 text-xs text-zinc-900 dark:text-white focus:outline-none focus:border-blue-500"
             />
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-xs font-medium text-foreground mb-1">Varış İl *</label>
+            <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">Varış İl *</label>
             <input
               type="text"
               placeholder="Örn: Ankara"
               value={varisIl}
               onChange={(e) => setVarisIl(e.target.value)}
               required
-              className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/50 px-3 py-2 text-xs text-zinc-900 dark:text-white focus:outline-none focus:border-blue-500"
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-foreground mb-1">Varış İlçe</label>
+            <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">Varış İlçe</label>
             <input
               type="text"
               placeholder="Örn: Sincan"
               value={varisIlce}
               onChange={(e) => setVarisIlce(e.target.value)}
-              className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/50 px-3 py-2 text-xs text-zinc-900 dark:text-white focus:outline-none focus:border-blue-500"
             />
           </div>
         </div>
 
+        {/* Yük / Araç Tipi ve Ölçüler */}
         <div className="grid grid-cols-3 gap-3">
           <div>
-            <label className="block text-xs font-medium text-foreground mb-1">Yük / Araç Tipi</label>
+            <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">Yük / Araç Tipi</label>
             <input
               type="text"
               placeholder="Örn: Paletli / Tır 13.60"
               value={yukCinsi}
               onChange={(e) => setYukCinsi(e.target.value)}
-              className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/50 px-3 py-2 text-xs text-zinc-900 dark:text-white focus:outline-none focus:border-blue-500"
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-foreground mb-1">Tonaj (ton)</label>
+            <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">Tonaj (ton)</label>
             <input
               type="number"
               placeholder="Örn: 24"
               value={tonaj}
               onChange={(e) => setTonaj(e.target.value)}
-              className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/50 px-3 py-2 text-xs text-zinc-900 dark:text-white focus:outline-none focus:border-blue-500"
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-foreground mb-1">Hacim (m³)</label>
+            <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">Hacim (m³)</label>
             <input
               type="number"
               placeholder="Örn: 86"
               value={hacim}
               onChange={(e) => setHacim(e.target.value)}
-              className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none"
+              className="w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/50 px-3 py-2 text-xs text-zinc-900 dark:text-white focus:outline-none focus:border-blue-500"
             />
           </div>
         </div>
 
-        {/* Görsel Yükleme Alanı */}
-        <div className="space-y-2">
-          <label className="text-xs font-bold text-foreground flex justify-between">
-            <span>İlan Fotoğrafları</span>
-            <span className="text-muted-foreground font-normal">{imagePreviews.length}/5 Görsel</span>
-          </label>
-          <div className="grid grid-cols-5 gap-2">
-            {imagePreviews.map((src, index) => (
-              <div key={index} className="relative aspect-square rounded-xl overflow-hidden border border-border">
-                <img src={src} alt="Önizleme" className="w-full h-full object-cover" />
-                <button
-                  type="button"
-                  onClick={() => removeImage(index)}
-                  className="absolute top-1 right-1 p-1 bg-black/60 text-white rounded-full hover:bg-destructive transition-colors cursor-pointer"
-                >
-                  <X className="size-3" />
-                </button>
-              </div>
-            ))}
-            {imagePreviews.length < 5 && (
-              <label className="aspect-square rounded-xl border-2 border-dashed border-border hover:border-primary/50 bg-muted/30 flex flex-col items-center justify-center gap-1 cursor-pointer transition-all">
-                <ImagePlus className="size-5 text-muted-foreground" />
-                <span className="text-[10px] text-muted-foreground font-semibold">Fotoğraf Ekle</span>
-                <input type="file" accept="image/*" multiple onChange={handleImageChange} className="hidden" />
-              </label>
-            )}
-          </div>
-        </div>
-
-        {/* Fiyatlandırma Esnek Alanı */}
-        <div className="rounded-xl border border-border bg-muted/30 p-3 space-y-3">
-          <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
-            <Calculator className="size-4 text-primary" /> Fiyatlandırma ve KDV Detayı
+        {/* Fiyat Bilgileri */}
+        <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/30 p-3 space-y-3">
+          <span className="text-xs font-bold text-zinc-900 dark:text-white flex items-center gap-1.5">
+            <Calculator className="size-4 text-blue-600" /> Fiyatlandırma ve KDV Detayı
           </span>
 
           <div className="grid grid-cols-3 gap-3">
             <div>
-              <label className="block text-[11px] font-medium text-muted-foreground mb-1">Fiyat Hesabı</label>
+              <label className="block text-[11px] font-medium text-zinc-500 mb-1">Fiyat Hesabı</label>
               <select
                 value={priceType}
                 onChange={(e: any) => setPriceType(e.target.value)}
-                className="w-full rounded-lg border border-input bg-background px-2.5 py-1.5 text-xs focus:outline-none"
+                className="w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-2.5 py-1.5 text-xs text-zinc-900 dark:text-white focus:outline-none"
               >
                 <option value="toplam">Toplam Navlun</option>
                 <option value="ton">Ton Başı Fiyat</option>
@@ -289,7 +266,7 @@ export function AddListingForm({ onSuccess }: { onSuccess?: () => void }) {
             {priceType !== 'teklif' && (
               <>
                 <div>
-                  <label className="block text-[11px] font-medium text-muted-foreground mb-1">
+                  <label className="block text-[11px] font-medium text-zinc-500 mb-1">
                     {priceType === 'ton' ? 'Ton Başı Fiyat' : priceType === 'm3' ? 'm³ Başı Fiyat' : 'Tutar (TL)'}
                   </label>
                   <input
@@ -297,16 +274,16 @@ export function AddListingForm({ onSuccess }: { onSuccess?: () => void }) {
                     placeholder={priceType === 'ton' ? '800' : '18500'}
                     value={fiyat}
                     onChange={(e) => setFiyat(e.target.value)}
-                    className="w-full rounded-lg border border-input bg-background px-2.5 py-1.5 text-xs focus:outline-none"
+                    className="w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-2.5 py-1.5 text-xs text-zinc-900 dark:text-white focus:outline-none"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-medium text-muted-foreground mb-1">KDV Durumu</label>
+                  <label className="block text-[11px] font-medium text-zinc-500 mb-1">KDV Durumu</label>
                   <select
                     value={kdvStatus}
                     onChange={(e: any) => setKdvStatus(e.target.value)}
-                    className="w-full rounded-lg border border-input bg-background px-2.5 py-1.5 text-xs focus:outline-none"
+                    className="w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-2.5 py-1.5 text-xs text-zinc-900 dark:text-white focus:outline-none"
                   >
                     <option value="dahil">KDV Dahil</option>
                     <option value="haric">+ %20 KDV</option>
@@ -318,48 +295,51 @@ export function AddListingForm({ onSuccess }: { onSuccess?: () => void }) {
           </div>
         </div>
 
+        {/* Açıklama */}
         <div>
-          <label className="block text-xs font-medium text-foreground mb-1">Açıklama</label>
+          <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">Açıklama</label>
           <textarea
-            placeholder="Yükleme şekli, özel notlar, kapalı kasa vb."
+            placeholder="Yükleme detayları, tonaj şartı vb."
             value={aciklama}
             onChange={(e) => setAciklama(e.target.value)}
             rows={2}
-            className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+            className="w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/50 px-3 py-2 text-xs text-zinc-900 dark:text-white focus:outline-none focus:border-blue-500"
           />
         </div>
 
+        {/* İletişim Bilgileri */}
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-xs font-medium text-foreground mb-1">İlan Sahibi / Firma</label>
+            <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">İlan Sahibi / Firma</label>
             <input
               type="text"
               placeholder="Firma Adı"
               value={firmaAdi}
               onChange={(e) => setFirmaAdi(e.target.value)}
-              className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none"
+              className="w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/50 px-3 py-2 text-xs text-zinc-900 dark:text-white focus:outline-none focus:border-blue-500"
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-foreground mb-1">Telefon (WhatsApp) *</label>
+            <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">Telefon (WhatsApp) *</label>
             <input
               type="text"
               placeholder="5xx xxx xx xx"
               value={telefon}
               onChange={(e) => setTelefon(e.target.value)}
               required
-              className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/50 px-3 py-2 text-xs text-zinc-900 dark:text-white focus:outline-none focus:border-blue-500"
             />
           </div>
         </div>
 
+        {/* Gönder Butonu */}
         <button
           type="submit"
           disabled={submitting}
-          className="w-full rounded-xl bg-primary py-3 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
+          className="w-full rounded-xl bg-blue-600 py-3 text-xs font-bold text-white transition-colors hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer shadow-md shadow-blue-500/20"
         >
           {submitting ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />}
-          İlanı Yayınla
+          <span>İlanı Yayınla</span>
         </button>
       </form>
     </div>
