@@ -246,9 +246,22 @@ function AppShellContent() {
             )}
           </div>
 
-          <button onClick={toggleTheme} className="p-2 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400">
-            {isDarkMode ? <Sun className="size-4"/> : <Moon className="size-4"/>}
-          </button>
+          <div className="flex items-center gap-2">
+            {/* MOBİL İÇİN GİRİŞ / ÇIKIŞ BUTONU */}
+            {user ? (
+              <button onClick={() => signOut()} className="lg:hidden p-2 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 hover:bg-rose-100 transition-colors">
+                <LogOut className="size-4"/>
+              </button>
+            ) : (
+              <button onClick={() => openAuthModal()} className="lg:hidden rounded-xl bg-blue-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-blue-700 transition-colors">
+                Giriş
+              </button>
+            )}
+
+            <button onClick={toggleTheme} className="p-2 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400">
+              {isDarkMode ? <Sun className="size-4"/> : <Moon className="size-4"/>}
+            </button>
+          </div>
         </header>
 
         {/* GÖVDE (MAIN GRID) */}
@@ -274,7 +287,7 @@ function AppShellContent() {
                         onClick={() => navigateTo(card.id)}
                         className={cn(
                           "group relative flex flex-col justify-between rounded-2xl border bg-white dark:bg-zinc-900 p-4 text-left transition-all duration-150 cursor-pointer hover:border-blue-500/50 hover:shadow-md active:scale-[0.98]",
-                          isPinned ? "border-blue-500/40 bg-blue-500/5 dark:bg-blue-500/5" : "border-zinc-200/80 dark:border-zinc-800"
+                          isPinned ? "border-blue-500/40 bg-blue-500/5 dark:bg-blue-500/5 shadow-xs" : "border-zinc-200/80 dark:border-zinc-800"
                         )}
                       >
                         {/* KART ÜST KISIM */}
@@ -283,23 +296,34 @@ function AppShellContent() {
                             <Icon className="size-5"/>
                           </div>
                           
-                          <div className="flex items-center gap-1">
-                            {/* GERÇEK SUPABASE VERİ ROZETİ */}
-                            {isPazar && listingCount !== null && (
-                              <span className="rounded-md bg-blue-100 dark:bg-blue-950 px-2 py-0.5 text-[10px] font-black text-blue-600 dark:text-blue-400 animate-pulse">
-                                {listingCount} Canlı İlan
+                          <div className="flex items-center gap-1.5">
+                            {/* CANLI RADAR VE SUPABASE VERİ ROZETİ (SADECE İLAN PAZARI) */}
+                            {isPazar && (
+                              <span className="rounded-md bg-blue-50 dark:bg-blue-950/60 border border-blue-200/60 dark:border-blue-800/40 px-2 py-0.5 text-[10px] font-black text-blue-600 dark:text-blue-400 flex items-center gap-1.5">
+                                <span className="relative flex h-1.5 w-1.5">
+                                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-blue-600"></span>
+                                </span>
+                                {listingCount !== null ? (
+                                  <span>{listingCount} Canlı İlan</span>
+                                ) : (
+                                  <Loader2 className="size-3 animate-spin text-blue-600 dark:text-blue-400"/>
+                                )}
                               </span>
                             )}
 
+                            {/* İĞNELEME (PIN) BUTONU */}
                             <button
                               onClick={(e) => togglePin(e, card.id)}
                               className={cn(
                                 "p-1.5 rounded-lg transition-colors",
-                                isPinned ? "text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/50" : "text-zinc-300 hover:text-zinc-500 dark:text-zinc-600"
+                                isPinned 
+                                  ? "text-blue-600 dark:text-blue-400 bg-blue-100/70 dark:bg-blue-900/40" 
+                                  : "text-zinc-300 dark:text-zinc-600 hover:text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"
                               )}
                               title={isPinned ? "Sabitlemeyi Kaldır" : "En Üste Sabitle"}
                             >
-                              <Pin className="size-3.5 fill-current"/>
+                              <Pin className={cn("size-3.5", isPinned && "fill-current")}/>
                             </button>
                           </div>
                         </div>
@@ -312,8 +336,8 @@ function AppShellContent() {
                             </h2>
                             <ChevronRight className="size-3.5 text-zinc-400 opacity-0 group-hover:opacity-100 transition-opacity" />
                           </div>
-                          <p className="text-[10px] text-zinc-500 mt-0.5 line-clamp-1">
-                            {isPazar && listingCount !== null ? `Şu an yayında ${listingCount} yük var` : card.desc}
+                          <p className="text-[10px] text-zinc-500 dark:text-zinc-400 mt-0.5 line-clamp-1">
+                            {isPazar && listingCount !== null ? `Şu an yayında ${listingCount} aktif yük var` : card.desc}
                           </p>
                         </div>
                       </div>
@@ -357,7 +381,7 @@ function AppShellContent() {
                 value={email} 
                 onChange={(e) => setEmail(e.target.value)} 
                 placeholder="E-Posta" 
-                className="w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800 px-3 py-2 text-xs" 
+                className="w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800 px-3 py-2 text-xs focus:outline-none focus:border-blue-500" 
               />
               <input 
                 type="password" 
@@ -365,7 +389,7 @@ function AppShellContent() {
                 value={password} 
                 onChange={(e) => setPassword(e.target.value)} 
                 placeholder="Şifre" 
-                className="w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800 px-3 py-2 text-xs" 
+                className="w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800 px-3 py-2 text-xs focus:outline-none focus:border-blue-500" 
               />
               <button type="submit" disabled={loading} className="w-full rounded-xl bg-blue-600 py-2.5 text-xs font-bold text-white hover:bg-blue-700 transition-colors">
                 {loading ? <Loader2 className="size-4 animate-spin mx-auto"/> : (authMode === 'login' ? 'Giriş Yap' : 'Kayıt Ol')}
