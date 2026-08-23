@@ -152,7 +152,7 @@ function AppShellContent() {
     } catch (err: unknown) {
       const error = err as Error
       setToast({ type: 'error', text: error.message || 'Bir hata oluştu' })
-    } finally {
+    } fontally {
       setLoading(false)
     }
   }
@@ -673,7 +673,7 @@ function ProfileView({ user, openAuthModal, signOut }: { user: any; openAuthModa
               <div>
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-blue-600 dark:text-blue-400">Aylık Plan</span>
-                  <span className="text-sm font-black text-zinc-900 dark:text-white">₺99 <span className="text-[10px] text-zinc-400 font-normal">/ ay</span></span>
+                  <span className="text-sm font-black text-zinc-900 dark:text-white">₺150 <span className="text-[10px] text-zinc-400 font-normal">/ ay</span></span>
                 </div>
                 <h4 className="text-base font-black text-zinc-900 dark:text-white mt-1">PRO Aylık</h4>
                 <ul className="mt-3 space-y-1.5 text-xs text-zinc-500">
@@ -687,7 +687,7 @@ function ProfileView({ user, openAuthModal, signOut }: { user: any; openAuthModa
                 onClick={() => alert("Abonelik satın alma altyapısı entegrasyon aşamasındadır.")}
                 className="w-full rounded-xl bg-blue-600 py-2.5 text-xs font-bold text-white shadow-md hover:bg-blue-700 transition-all cursor-pointer"
               >
-                Aylık Paket Seç (₺99)
+                Aylık Paket Seç (₺150)
               </button>
             </div>
 
@@ -699,12 +699,12 @@ function ProfileView({ user, openAuthModal, signOut }: { user: any; openAuthModa
               <div>
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-blue-600 dark:text-blue-400">Yıllık Plan</span>
-                  <span className="text-sm font-black text-zinc-900 dark:text-white">₺999 <span className="text-[10px] text-zinc-400 font-normal">/ yıl</span></span>
+                  <span className="text-sm font-black text-zinc-900 dark:text-white">₺1.500 <span className="text-[10px] text-zinc-400 font-normal">/ yıl</span></span>
                 </div>
                 <h4 className="text-base font-black text-zinc-900 dark:text-white mt-1">PRO Yıllık</h4>
                 <ul className="mt-3 space-y-1.5 text-xs text-zinc-500">
                   <li className="flex items-center gap-1.5"><ShieldCheck className="size-3.5 text-blue-600"/> Tüm PRO Aylık özellikleri</li>
-                  <li className="flex items-center gap-1.5"><ShieldCheck className="size-3.5 text-blue-600"/> Yıllık alımda ₺189 tasarruf</li>
+                  <li className="flex items-center gap-1.5"><ShieldCheck className="size-3.5 text-blue-600"/> Yıllık alımda ₺300 tasarruf</li>
                   <li className="flex items-center gap-1.5"><ShieldCheck className="size-3.5 text-blue-600"/> VIP Destek Hattı</li>
                 </ul>
               </div>
@@ -713,7 +713,7 @@ function ProfileView({ user, openAuthModal, signOut }: { user: any; openAuthModa
                 onClick={() => alert("Abonelik satın alma altyapısı entegrasyon aşamasındadır.")}
                 className="w-full rounded-xl bg-blue-600 py-2.5 text-xs font-bold text-white shadow-md hover:bg-blue-700 transition-all cursor-pointer"
               >
-                Yıllık Paket Seç (₺999)
+                Yıllık Paket Seç (₺1.500)
               </button>
             </div>
 
