@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect, useRef, Suspense } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { motion, AnimatePresence, useScroll, useMotionValueEvent } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import { ListingsView } from '@/components/listings/listings-view'
 import { AddListingForm } from '@/components/add-listing-form'
 import { TripCalculator } from '@/components/trip-calculator'
@@ -15,25 +15,24 @@ import { supabase } from '@/lib/supabase'
 import { 
   Truck, Store, PlusCircle, Calculator, Fuel, NotebookPen, Wallet, Timer,
   User, LogOut, LogIn, X, Mail, KeyRound, Loader2, Sparkles, 
-  Eye, EyeOff, Moon, Sun, Bell, Search, Mic, SlidersHorizontal,
-  MapPin, Map, List, ShieldCheck, ChevronRight
+  Eye, EyeOff, Moon, Sun, Bell, Search, Mic, MapPin, ChevronRight
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 type ModuleId = 'pazar' | 'ekle' | 'finans' | 'takograf' | 'sefer' | 'yakit' | 'notlar'
 
-const MODULES: { id: ModuleId; label: string; short: string; icon: typeof Store; badge?: string }[] = [
-  { id: 'pazar', label: 'İlan Pazarı', short: 'Pazar', icon: Store, badge: 'Canlı' },
-  { id: 'ekle', label: 'İlan Ekle', short: 'Ekle', icon: PlusCircle },
-  { id: 'finans', label: 'Gider & Kazanç', short: 'Finans', icon: Wallet },
-  { id: 'takograf', label: 'Takograf Asistanı', short: 'Takograf', icon: Timer, badge: 'Yasal' },
-  { id: 'sefer', label: 'Sefer Hesabı', short: 'Sefer', icon: Calculator },
-  { id: 'yakit', label: 'Yakıt Hesabı', short: 'Yakıt', icon: Fuel },
-  { id: 'notlar', label: 'Notlarım', short: 'Notlar', icon: NotebookPen },
+const MODULES: { id: ModuleId; label: string; icon: typeof Store; badge?: string }[] = [
+  { id: 'pazar', label: 'İlan Pazarı', icon: Store, badge: 'Canlı' },
+  { id: 'ekle', label: 'İlan Ekle', icon: PlusCircle },
+  { id: 'finans', label: 'Gider & Kazanç', icon: Wallet },
+  { id: 'takograf', label: 'Takograf Asistanı', icon: Timer, badge: 'Yasal' },
+  { id: 'sefer', label: 'Sefer Hesabı', icon: Calculator },
+  { id: 'yakit', label: 'Yakıt Hesabı', icon: Fuel },
+  { id: 'notlar', label: 'Notlarım', icon: NotebookPen },
 ]
 
 const TITLES: Record<ModuleId, { title: string; desc: string }> = {
-  pazar: { title: 'Canlı İlan Pazarı', desc: 'Bot ağından gelen güncel yük ve boş araç ilanları.' },
+  pazar: { title: 'Canlı İlan Pazarı', desc: 'Güncel yük ve boş araç ilanları.' },
   ekle: { title: 'Yeni İlan Ekle', desc: 'Yük veya boş araç ilanınızı anında yayınlayın.' },
   finans: { title: 'Gider & Kazanç Defteri', desc: 'Navlun gelirlerinizi ve sefer masraflarınızı takip edin.' },
   takograf: { title: 'Takograf & Sürüş Süresi', desc: 'Yasal sürüş sürelerinizi ve molalarınızı canlı takip edin.' },
@@ -59,25 +58,7 @@ function AppShellContent() {
   const [isDarkMode, setIsDarkMode] = useState(false)
   const [isToolsSheetOpen, setIsToolsSheetOpen] = useState(false)
   const [isMoreSheetOpen, setIsMoreSheetOpen] = useState(false)
-  const [isFilterSheetOpen, setIsFilterSheetOpen] = useState(false)
-  const [viewMode, setViewMode] = useState<'list' | 'map'>('list')
   const [isListening, setIsListening] = useState(false)
-
-  const [isNavVisible, setIsNavVisible] = useState(true)
-  const { scrollY } = useScroll()
-  const lastScrollY = useRef(0)
-
-  useMotionValueEvent(scrollY, "change", (latest) => {
-    const diff = latest - lastScrollY.current
-    if (Math.abs(diff) > 10) {
-      if (diff > 0 && latest > 80) {
-        setIsNavVisible(false)
-      } else {
-        setIsNavVisible(true)
-      }
-      lastScrollY.current = latest
-    }
-  })
 
   const handleTabChange = (id: ModuleId) => {
     router.push(`?tab=${id}`, { scroll: false })
@@ -87,7 +68,7 @@ function AppShellContent() {
 
   useEffect(() => {
     if (toast) {
-      const timer = setTimeout(() => setToast(null), 4000)
+      const timer = setTimeout(() => setToast(null), 3000)
       return () => clearTimeout(timer)
     }
   }, [toast])
@@ -112,19 +93,17 @@ function AppShellContent() {
       if (authMode === 'login') {
         const { error } = await supabase.auth.signInWithPassword({ email, password })
         if (error) throw error
-        setToast({ type: 'success', text: 'Giriş başarılı! Hoş geldiniz.' })
-        setTimeout(() => closeAuthModal(), 1000)
+        setToast({ type: 'success', text: 'Giriş başarılı!' })
+        setTimeout(() => closeAuthModal(), 800)
       } else if (authMode === 'register') {
         const { error } = await supabase.auth.signUp({ email, password })
         if (error) throw error
-        setToast({ type: 'success', text: 'Kayıt başarılı! Şimdi giriş yapabilirsiniz.' })
+        setToast({ type: 'success', text: 'Kayıt başarılı! Giriş yapabilirsiniz.' })
         setAuthMode('login')
       } else if (authMode === 'forgot') {
-        const { error } = await supabase.auth.resetPasswordForEmail(email, {
-          redirectTo: typeof window !== 'undefined' ? `${window.location.origin}/reset-password` : undefined,
-        })
+        const { error } = await supabase.auth.resetPasswordForEmail(email)
         if (error) throw error
-        setToast({ type: 'success', text: 'Şifre sıfırlama bağlantısı e-postanıza gönderildi.' })
+        setToast({ type: 'success', text: 'Sıfırlama bağlantısı gönderildi.' })
       }
     } catch (err: unknown) {
       const error = err as Error
@@ -138,14 +117,14 @@ function AppShellContent() {
     setIsListening(true)
     setTimeout(() => {
       setIsListening(false)
-      setToast({ type: 'success', text: 'Dinleme tamamlandı: "Ankara Frigo Yük"' })
-    }, 3000)
+      setToast({ type: 'success', text: 'Arama: "Ankara Frigo Yük"' })
+    }, 2000)
   }
 
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 transition-colors duration-300">
+    <div className="flex h-screen w-full overflow-hidden bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100">
       
-      {/* GLOBAL TOAST */}
+      {/* TOAST NOTIFICATION */}
       <AnimatePresence>
         {toast && (
           <motion.div
@@ -153,47 +132,39 @@ function AppShellContent() {
             animate={{ opacity: 1, y: 0, x: '-50%' }}
             exit={{ opacity: 0, y: -20, x: '-50%' }}
             className={cn(
-              "fixed top-6 left-1/2 z-[100] flex items-center gap-3 rounded-2xl px-5 py-3.5 shadow-2xl backdrop-blur-2xl border transition-all duration-300",
-              toast.type === 'error' 
-                ? 'bg-rose-500/90 text-white border-rose-600/50 shadow-rose-500/20' 
-                : 'bg-emerald-500/90 text-white border-emerald-600/50 shadow-emerald-500/20'
+              "fixed top-4 left-1/2 z-[100] flex items-center gap-2 rounded-xl px-4 py-3 shadow-xl border text-xs font-bold",
+              toast.type === 'error' ? 'bg-rose-600 text-white border-rose-700' : 'bg-emerald-600 text-white border-emerald-700'
             )}
           >
-            {toast.type === 'error' ? <X className="size-5"/> : <Sparkles className="size-5"/>}
-            <span className="text-sm font-bold tracking-tight">{toast.text}</span>
+            {toast.type === 'error' ? <X className="size-4"/> : <Sparkles className="size-4"/>}
+            <span>{toast.text}</span>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* MASAÜSTÜ SIDEBAR */}
-      <aside className="hidden w-72 flex-col border-r border-zinc-200/80 dark:border-zinc-800/80 bg-white/70 dark:bg-zinc-900/70 backdrop-blur-2xl lg:flex justify-between p-4 z-30">
+      {/* DESKTOP SIDEBAR */}
+      <aside className="hidden w-64 flex-col border-r border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 lg:flex justify-between p-4 z-30">
         <div className="space-y-6">
-          <div className="rounded-2xl border border-zinc-200/80 dark:border-zinc-800/80 bg-zinc-50/50 dark:bg-zinc-800/30 p-3.5 backdrop-blur-md">
+          <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/50 p-3">
             {user ? (
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3 overflow-hidden">
-                  <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white shadow-md font-bold text-sm">
+                <div className="flex items-center gap-2.5 overflow-hidden">
+                  <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-blue-600 text-white font-bold text-xs">
                     {user.email?.charAt(0).toUpperCase()}
                   </div>
                   <div className="flex flex-col truncate">
-                    <span className="text-xs font-bold text-zinc-900 dark:text-white truncate">
-                      {user.email?.split('@')[0]}
-                    </span>
-                    <span className="text-[10px] text-zinc-500 dark:text-zinc-400 truncate">{user.email}</span>
+                    <span className="text-xs font-bold truncate">{user.email?.split('@')[0]}</span>
+                    <span className="text-[10px] text-zinc-500 truncate">{user.email}</span>
                   </div>
                 </div>
-                <button 
-                  onClick={() => signOut()}
-                  className="p-1.5 rounded-lg text-zinc-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors"
-                  title="Çıkış Yap"
-                >
+                <button onClick={() => signOut()} className="p-1 text-zinc-400 hover:text-rose-500">
                   <LogOut className="size-4"/>
                 </button>
               </div>
             ) : (
               <button
                 onClick={() => openAuthModal()}
-                className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 py-2.5 text-xs font-bold text-white shadow-lg shadow-blue-600/20 transition-all hover:bg-blue-700 active:scale-95"
+                className="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 py-2 text-xs font-bold text-white hover:bg-blue-700 transition-colors"
               >
                 <LogIn className="size-4"/>
                 <span>Giriş Yap / Kayıt Ol</span>
@@ -201,18 +172,17 @@ function AppShellContent() {
             )}
           </div>
 
-          <div className="flex items-center gap-3 px-2">
-            <div className="flex size-10 items-center justify-center rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 text-white shadow-md shadow-blue-500/20">
+          <div className="flex items-center gap-3 px-1">
+            <div className="flex size-9 items-center justify-center rounded-xl bg-blue-600 text-white shadow-md shadow-blue-500/20">
               <Truck className="size-5"/>
             </div>
-            <div className="leading-tight">
-              <p className="font-extrabold tracking-tight bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent text-base">Nakliye Cepte</p>
-              <p className="text-[10px] text-zinc-400 font-semibold tracking-wider uppercase">Pro Asistan</p>
+            <div>
+              <p className="font-black text-sm tracking-tight text-blue-600 dark:text-blue-400">Nakliye Cepte</p>
+              <p className="text-[10px] text-zinc-400 font-medium">Lojistik Asistanı</p>
             </div>
           </div>
 
           <nav className="space-y-1">
-            <div className="mb-2 px-3 text-[10px] font-bold uppercase tracking-wider text-zinc-400">Modüller</div>
             {MODULES.map((m) => {
               const Icon = m.icon
               const isActive = active === m.id
@@ -221,25 +191,18 @@ function AppShellContent() {
                   key={m.id}
                   onClick={() => handleTabChange(m.id)}
                   className={cn(
-                    "relative flex w-full items-center justify-between rounded-xl px-3.5 py-2.5 text-xs font-bold transition-all duration-200",
+                    "flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-xs font-bold transition-colors",
                     isActive 
-                      ? "text-blue-600 dark:text-blue-400" 
-                      : "text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800/50 hover:text-zinc-900 dark:hover:text-zinc-100"
+                      ? "bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400" 
+                      : "text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800"
                   )}
                 >
-                  {isActive && (
-                    <motion.div
-                      layoutId="sidebarActivePill"
-                      className="absolute inset-0 rounded-xl bg-blue-50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/20 shadow-sm"
-                      transition={{ type: "spring", stiffness: 350, damping: 30 }}
-                    />
-                  )}
-                  <div className="relative z-10 flex items-center gap-3">
+                  <div className="flex items-center gap-2.5">
                     <Icon className="size-4"/>
                     <span>{m.label}</span>
                   </div>
                   {m.badge && (
-                    <span className="relative z-10 rounded-full bg-blue-500/10 dark:bg-blue-400/20 px-2 py-0.5 text-[9px] font-extrabold text-blue-600 dark:text-blue-400 border border-blue-500/20">
+                    <span className="rounded-md bg-blue-100 dark:bg-blue-950 px-1.5 py-0.5 text-[9px] font-black text-blue-600 dark:text-blue-400">
                       {m.badge}
                     </span>
                   )}
@@ -249,243 +212,130 @@ function AppShellContent() {
           </nav>
         </div>
 
-        <div className="space-y-3 pt-4 border-t border-zinc-200/80 dark:border-zinc-800/80">
-          <div className="flex items-center justify-between px-2">
-            <span className="flex items-center gap-2 rounded-full bg-emerald-500/10 px-2.5 py-1 text-[10px] font-extrabold text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-              <span className="size-1.5 rounded-full bg-emerald-500 animate-ping" />
-              Sistem Aktif
-            </span>
-            <button 
-              onClick={toggleTheme}
-              className="flex size-8 items-center justify-center rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors"
-            >
-              {isDarkMode ? <Sun className="size-4"/> : <Moon className="size-4"/>}
-            </button>
-          </div>
+        <div className="flex items-center justify-between pt-4 border-t border-zinc-200 dark:border-zinc-800">
+          <span className="flex items-center gap-1.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+            <span className="size-2 rounded-full bg-emerald-500" />
+            Sistem Çevrimiçi
+          </span>
+          <button onClick={toggleTheme} className="p-2 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400">
+            {isDarkMode ? <Sun className="size-4"/> : <Moon className="size-4"/>}
+          </button>
         </div>
       </aside>
 
-      {/* MAIN CONTENT AREA */}
-      <div className="flex flex-1 flex-col overflow-hidden relative">
-        <motion.header 
-          animate={{ y: isNavVisible ? 0 : -100 }}
-          transition={{ duration: 0.2 }}
-          className="sticky top-0 z-20 flex min-h-[64px] items-center justify-between border-b border-zinc-200/80 dark:border-zinc-800/80 bg-white/80 dark:bg-zinc-900/80 px-4 backdrop-blur-2xl sm:px-8"
-        >
-          <div className="flex items-center gap-2.5 lg:hidden">
-            <div className="flex size-8 items-center justify-center rounded-lg bg-gradient-to-tr from-blue-600 to-indigo-500 text-white shadow-md">
+      {/* MAIN CONTAINER */}
+      <div className="flex flex-1 flex-col overflow-hidden">
+        
+        {/* HEADER */}
+        <header className="flex h-14 items-center justify-between border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-4 sm:px-6">
+          <div className="flex items-center gap-2 lg:hidden">
+            <div className="flex size-7 items-center justify-center rounded-lg bg-blue-600 text-white">
               <Truck className="size-4"/>
             </div>
-            <p className="font-extrabold tracking-tight text-zinc-900 dark:text-white text-sm">Nakliye Cepte</p>
+            <span className="font-extrabold text-sm">Nakliye Cepte</span>
           </div>
 
-          <div className="hidden lg:flex items-center flex-1 max-w-md relative">
-            <Search className="absolute left-3.5 top-2.5 size-4 text-zinc-400"/>
+          <div className="hidden lg:flex items-center flex-1 max-w-sm relative">
+            <Search className="absolute left-3 top-2.5 size-4 text-zinc-400"/>
             <input 
               type="text" 
-              placeholder="İl, ilçe veya yük detayına göre hızlı ara..." 
-              className="w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50 pl-10 pr-10 py-2 text-xs font-medium text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/10 transition-all"
+              placeholder="Şehir veya yük ara..." 
+              className="w-full rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 pl-9 pr-8 py-1.5 text-xs focus:outline-none focus:border-blue-500"
             />
-            <button 
-              onClick={handleVoiceSearch}
-              className={cn(
-                "absolute right-2.5 top-2 p-1 rounded-lg transition-colors",
-                isListening ? "text-rose-500 bg-rose-50 dark:bg-rose-500/20 animate-pulse" : "text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"
-              )}
-              title="Sesli Arama"
-            >
+            <button onClick={handleVoiceSearch} className={cn("absolute right-2 top-2 p-0.5", isListening && "text-rose-500 animate-pulse")}>
               <Mic className="size-3.5"/>
             </button>
           </div>
 
-          <div className="flex items-center gap-2 sm:gap-3">
-            {active === 'pazar' && (
-              <div className="flex items-center rounded-xl bg-zinc-100 dark:bg-zinc-800 p-1 border border-zinc-200 dark:border-zinc-700">
-                <button 
-                  onClick={() => setViewMode('list')}
-                  className={cn(
-                    "flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-bold transition-all",
-                    viewMode === 'list' ? "bg-white dark:bg-zinc-900 text-blue-600 dark:text-blue-400 shadow-sm" : "text-zinc-500"
-                  )}
-                >
-                  <List className="size-3.5"/>
-                  <span className="hidden sm:inline">Liste</span>
-                </button>
-                <button 
-                  onClick={() => setViewMode('map')}
-                  className={cn(
-                    "flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-bold transition-all",
-                    viewMode === 'map' ? "bg-white dark:bg-zinc-900 text-blue-600 dark:text-blue-400 shadow-sm" : "text-zinc-500"
-                  )}
-                >
-                  <Map className="size-3.5"/>
-                  <span className="hidden sm:inline">Harita</span>
-                </button>
-              </div>
-            )}
-
-            <button 
-              onClick={() => setIsFilterSheetOpen(true)}
-              className="lg:hidden flex size-9 items-center justify-center rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-zinc-600 dark:text-zinc-300"
-            >
-              <SlidersHorizontal className="size-4"/>
-            </button>
-
-            <button className="flex size-9 items-center justify-center rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors relative">
+          <div className="flex items-center gap-2">
+            <button className="p-2 rounded-lg border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400">
               <Bell className="size-4"/>
-              <span className="absolute top-2 right-2 size-2 rounded-full bg-blue-600" />
             </button>
-
             <button 
               onClick={() => handleTabChange('ekle')}
-              className="hidden sm:flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-4 py-2 text-xs font-extrabold text-white shadow-lg shadow-blue-600/20 transition-all hover:opacity-90 active:scale-95"
+              className="hidden sm:flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-blue-700 transition-colors"
             >
               <PlusCircle className="size-4"/>
-              <span>Hızlı İlan Ekle</span>
+              <span>İlan Ekle</span>
             </button>
           </div>
-        </motion.header>
+        </header>
 
-        <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-8 pb-36 lg:pb-8 relative">
-          <div className="mx-auto max-w-6xl">
-            <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        {/* CONTENT MAIN */}
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6 pb-24 lg:pb-6">
+          <div className="mx-auto max-w-5xl">
+            <div className="mb-4 flex items-center justify-between">
               <div>
-                <div className="flex items-center space-x-2 mb-1">
-                  <Sparkles className="size-5 text-blue-600 dark:text-blue-400"/>
-                  <h1 className="text-2xl font-black tracking-tight text-zinc-900 dark:text-white">
-                    {TITLES[active].title}
-                  </h1>
-                </div>
-                <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400">
-                  {TITLES[active].desc}
-                </p>
+                <h1 className="text-xl font-black text-zinc-900 dark:text-white">{TITLES[active].title}</h1>
+                <p className="text-xs text-zinc-500">{TITLES[active].desc}</p>
               </div>
-
               {active === 'pazar' && (
-                <div className="flex items-center gap-2 bg-blue-50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/20 rounded-xl px-3 py-2 text-xs font-bold text-blue-600 dark:text-blue-400 self-start sm:self-auto">
-                  <MapPin className="size-4 shrink-0"/>
-                  <span>KIRIKKALE ➔ DİYARBAKIR (720 km)</span>
+                <div className="hidden sm:flex items-center gap-1.5 text-xs font-bold text-blue-600 bg-blue-50 dark:bg-blue-950 px-2.5 py-1 rounded-lg">
+                  <MapPin className="size-3.5"/>
+                  <span>Canlı Akış</span>
                 </div>
               )}
             </div>
 
-            <AnimatePresence mode="wait">
-              <motion.div 
-                key={active}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                transition={{ duration: 0.15 }}
-                className="w-full"
-              >
-                {active === 'pazar' && (
-                  viewMode === 'list' ? <ListingsView/> : (
-                    <div className="flex flex-col items-center justify-center min-h-[400px] rounded-3xl border border-zinc-200 dark:border-zinc-800 bg-white/50 dark:bg-zinc-900/50 backdrop-blur-xl p-8 text-center">
-                      <Map className="size-12 text-blue-600 mb-4 animate-bounce"/>
-                      <h3 className="text-lg font-black text-zinc-900 dark:text-white mb-2">Canlı Türkiye Harita Görünümü</h3>
-                      <p className="text-xs text-zinc-500 dark:text-zinc-400 max-w-sm mb-4">Türkiye genelindeki aktif yük ve boş araç ilanları canlı koordinat pini olarak haritaya işleniyor.</p>
-                      <button onClick={() => setViewMode('list')} className="rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white">Liste Görünümüne Dön</button>
-                    </div>
-                  )
-                )}
-                {active === 'ekle' && <AddListingForm onCreated={() => handleTabChange('pazar')} />}
-                {active === 'finans' && <FinanceView/>}
-                {active === 'takograf' && <TachographCalculator/>}
-                {active === 'sefer' && <TripCalculator/>}
-                {active === 'yakit' && <FuelCalculator/>}
-                {active === 'notlar' && <NotesView/>}
-              </motion.div>
-            </AnimatePresence>
+            <div className="w-full">
+              {active === 'pazar' && <ListingsView/>}
+              {active === 'ekle' && <AddListingForm onCreated={() => handleTabChange('pazar')} />}
+              {active === 'finans' && <FinanceView/>}
+              {active === 'takograf' && <TachographCalculator/>}
+              {active === 'sefer' && <TripCalculator/>}
+              {active === 'yakit' && <FuelCalculator/>}
+              {active === 'notlar' && <NotesView/>}
+            </div>
           </div>
         </main>
 
-        {/* MOBİL FLOATING DOCK */}
-        <AnimatePresence>
-          {isNavVisible && (
-            <motion.nav 
-              initial={{ y: 100, x: '-50%', opacity: 0 }}
-              animate={{ y: 0, x: '-50%', opacity: 1 }}
-              exit={{ y: 100, x: '-50%', opacity: 0 }}
-              transition={{ type: 'spring', stiffness: 300, damping: 25 }}
-              className="fixed bottom-4 left-1/2 z-40 flex items-center justify-around w-[92%] max-w-md rounded-3xl border border-zinc-200/80 dark:border-zinc-800/80 bg-white/90 dark:bg-zinc-900/90 p-2 shadow-2xl backdrop-blur-2xl lg:hidden"
-            >
-              <button
-                onClick={() => handleTabChange('pazar')}
-                className={cn(
-                  "flex flex-col items-center gap-1 rounded-2xl p-2 min-w-[56px] transition-all relative",
-                  active === 'pazar' ? "text-blue-600 dark:text-blue-400 font-black" : "text-zinc-500 dark:text-zinc-400 font-semibold"
-                )}
-              >
-                <Store className="size-5"/>
-                <span className="text-[10px]">Pazar</span>
-                {active === 'pazar' && <motion.div layoutId="mobileNavActive" className="absolute bottom-1 size-1 rounded-full bg-blue-600" />}
-              </button>
+        {/* MOBIL DOCK */}
+        <nav className="fixed bottom-0 left-0 right-0 z-40 flex items-center justify-around border-t border-zinc-200 dark:border-zinc-800 bg-white/95 dark:bg-zinc-900/95 py-2 lg:hidden backdrop-blur-md">
+          <button onClick={() => handleTabChange('pazar')} className={cn("flex flex-col items-center gap-1 text-[10px] font-bold", active === 'pazar' ? "text-blue-600" : "text-zinc-500")}>
+            <Store className="size-5"/>
+            <span>Pazar</span>
+          </button>
 
-              <button
-                onClick={() => setIsToolsSheetOpen(true)}
-                className={cn(
-                  "flex flex-col items-center gap-1 rounded-2xl p-2 min-w-[56px] transition-all relative",
-                  ['takograf', 'sefer', 'yakit'].includes(active) ? "text-blue-600 dark:text-blue-400 font-black" : "text-zinc-500 dark:text-zinc-400 font-semibold"
-                )}
-              >
-                <Calculator className="size-5"/>
-                <span className="text-[10px]">Araçlar</span>
-              </button>
+          <button onClick={() => setIsToolsSheetOpen(true)} className={cn("flex flex-col items-center gap-1 text-[10px] font-bold", ['takograf', 'sefer', 'yakit'].includes(active) ? "text-blue-600" : "text-zinc-500")}>
+            <Calculator className="size-5"/>
+            <span>Araçlar</span>
+          </button>
 
-              <button
-                onClick={() => handleTabChange('ekle')}
-                className="-top-5 relative flex size-14 items-center justify-center rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 text-white shadow-xl shadow-blue-600/30 active:scale-90 transition-transform border-4 border-zinc-50 dark:border-zinc-950"
-              >
-                <PlusCircle className="size-7"/>
-              </button>
+          <button onClick={() => handleTabChange('ekle')} className="flex size-11 items-center justify-center rounded-full bg-blue-600 text-white shadow-lg">
+            <PlusCircle className="size-6"/>
+          </button>
 
-              <button
-                onClick={() => handleTabChange('finans')}
-                className={cn(
-                  "flex flex-col items-center gap-1 rounded-2xl p-2 min-w-[56px] transition-all relative",
-                  active === 'finans' ? "text-blue-600 dark:text-blue-400 font-black" : "text-zinc-500 dark:text-zinc-400 font-semibold"
-                )}
-              >
-                <Wallet className="size-5"/>
-                <span className="text-[10px]">Finans</span>
-                {active === 'finans' && <motion.div layoutId="mobileNavActive" className="absolute bottom-1 size-1 rounded-full bg-blue-600" />}
-              </button>
+          <button onClick={() => handleTabChange('finans')} className={cn("flex flex-col items-center gap-1 text-[10px] font-bold", active === 'finans' ? "text-blue-600" : "text-zinc-500")}>
+            <Wallet className="size-5"/>
+            <span>Finans</span>
+          </button>
 
-              <button
-                onClick={() => setIsMoreSheetOpen(true)}
-                className={cn(
-                  "flex flex-col items-center gap-1 rounded-2xl p-2 min-w-[56px] transition-all relative",
-                  ['notlar'].includes(active) ? "text-blue-600 dark:text-blue-400 font-black" : "text-zinc-500 dark:text-zinc-400 font-semibold"
-                )}
-              >
-                <User className="size-5"/>
-                <span className="text-[10px]">Profil</span>
-              </button>
-            </motion.nav>
-          )}
-        </AnimatePresence>
+          <button onClick={() => setIsMoreSheetOpen(true)} className={cn("flex flex-col items-center gap-1 text-[10px] font-bold", active === 'notlar' ? "text-blue-600" : "text-zinc-500")}>
+            <User className="size-5"/>
+            <span>Profil</span>
+          </button>
+        </nav>
       </div>
 
-      {/* ARAÇLAR BOTTOM SHEET */}
+      {/* ARAÇLAR SHEET */}
       <AnimatePresence>
         {isToolsSheetOpen && (
           <div className="fixed inset-0 z-50 flex items-end justify-center lg:hidden">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsToolsSheetOpen(false)} className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
-            <motion.div initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} transition={{ type: 'spring', damping: 25, stiffness: 200 }} className="relative w-full rounded-t-[2.5rem] border-t border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-6 shadow-2xl">
-              <div className="mx-auto mb-6 h-1.5 w-12 rounded-full bg-zinc-200 dark:bg-zinc-800" />
-              <h3 className="text-lg font-black text-zinc-900 dark:text-white mb-4">Hesaplama Araçları</h3>
-              <div className="grid grid-cols-3 gap-3">
-                <button onClick={() => handleTabChange('takograf')} className="flex flex-col items-center gap-2 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/50 p-4">
-                  <Timer className="size-6 text-blue-600"/>
-                  <span className="text-xs font-bold text-zinc-800 dark:text-zinc-200">Takograf</span>
+            <div onClick={() => setIsToolsSheetOpen(false)} className="absolute inset-0 bg-black/50" />
+            <motion.div initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} className="relative w-full rounded-t-2xl bg-white dark:bg-zinc-900 p-5">
+              <h3 className="text-sm font-bold mb-3">Hesaplama Araçları</h3>
+              <div className="grid grid-cols-3 gap-2">
+                <button onClick={() => handleTabChange('takograf')} className="flex flex-col items-center p-3 rounded-xl bg-zinc-50 dark:bg-zinc-800 text-xs font-bold gap-2">
+                  <Timer className="size-5 text-blue-600"/>
+                  <span>Takograf</span>
                 </button>
-                <button onClick={() => handleTabChange('sefer')} className="flex flex-col items-center gap-2 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/50 p-4">
-                  <Calculator className="size-6 text-indigo-600"/>
-                  <span className="text-xs font-bold text-zinc-800 dark:text-zinc-200">Sefer Hesabı</span>
+                <button onClick={() => handleTabChange('sefer')} className="flex flex-col items-center p-3 rounded-xl bg-zinc-50 dark:bg-zinc-800 text-xs font-bold gap-2">
+                  <Calculator className="size-5 text-indigo-600"/>
+                  <span>Sefer</span>
                 </button>
-                <button onClick={() => handleTabChange('yakit')} className="flex flex-col items-center gap-2 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/50 p-4">
-                  <Fuel className="size-6 text-emerald-600"/>
-                  <span className="text-xs font-bold text-zinc-800 dark:text-zinc-200">Yakıt Hesabı</span>
+                <button onClick={() => handleTabChange('yakit')} className="flex flex-col items-center p-3 rounded-xl bg-zinc-50 dark:bg-zinc-800 text-xs font-bold gap-2">
+                  <Fuel className="size-5 text-emerald-600"/>
+                  <span>Yakıt</span>
                 </button>
               </div>
             </motion.div>
@@ -493,73 +343,36 @@ function AppShellContent() {
         )}
       </AnimatePresence>
 
-      {/* PROFİL & DİĞER BOTTOM SHEET */}
+      {/* PROFİL SHEET */}
       <AnimatePresence>
         {isMoreSheetOpen && (
           <div className="fixed inset-0 z-50 flex items-end justify-center lg:hidden">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsMoreSheetOpen(false)} className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
-            <motion.div initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} transition={{ type: 'spring', damping: 25, stiffness: 200 }} className="relative w-full rounded-t-[2.5rem] border-t border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-6 shadow-2xl">
-              <div className="mx-auto mb-6 h-1.5 w-12 rounded-full bg-zinc-200 dark:bg-zinc-800" />
-              <div className="space-y-3">
-                <button onClick={() => handleTabChange('notlar')} className="flex w-full items-center justify-between rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/50 p-4">
-                  <div className="flex items-center gap-3">
-                    <NotebookPen className="size-5 text-blue-600"/>
-                    <span className="text-sm font-bold text-zinc-800 dark:text-zinc-200">Notlarım & Hatırlatmalar</span>
-                  </div>
-                  <ChevronRight className="size-4 text-zinc-400"/>
-                </button>
-
-                <div className="flex items-center justify-between rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/50 p-4">
-                  <div className="flex items-center gap-3">
-                    {isDarkMode ? <Sun className="size-5 text-amber-500"/> : <Moon className="size-5 text-indigo-600"/>}
-                    <span className="text-sm font-bold text-zinc-800 dark:text-zinc-200">Karanlık Tema</span>
-                  </div>
-                  <button onClick={toggleTheme} className="rounded-xl bg-zinc-200 dark:bg-zinc-700 px-3 py-1.5 text-xs font-bold">
-                    {isDarkMode ? 'Açık' : 'Koyu'}
-                  </button>
+            <div onClick={() => setIsMoreSheetOpen(false)} className="absolute inset-0 bg-black/50" />
+            <motion.div initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} className="relative w-full rounded-t-2xl bg-white dark:bg-zinc-900 p-5 space-y-3">
+              <button onClick={() => handleTabChange('notlar')} className="flex w-full items-center justify-between p-3 rounded-xl bg-zinc-50 dark:bg-zinc-800 text-xs font-bold">
+                <div className="flex items-center gap-2">
+                  <NotebookPen className="size-4 text-blue-600"/>
+                  <span>Notlarım</span>
                 </div>
+                <ChevronRight className="size-4 text-zinc-400"/>
+              </button>
 
-                {user ? (
-                  <button onClick={() => { signOut(); setIsMoreSheetOpen(false); }} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-rose-500/10 text-rose-600 p-4 text-sm font-bold">
-                    <LogOut className="size-4"/>
-                    <span>Oturumu Kapat</span>
-                  </button>
-                ) : (
-                  <button onClick={() => { setIsMoreSheetOpen(false); openAuthModal(); }} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 text-white p-4 text-sm font-bold shadow-lg shadow-blue-600/20">
-                    <LogIn className="size-4"/>
-                    <span>Giriş Yap / Kayıt Ol</span>
-                  </button>
-                )}
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      {/* MOBİL FİLTRE BOTTOM SHEET */}
-      <AnimatePresence>
-        {isFilterSheetOpen && (
-          <div className="fixed inset-0 z-50 flex items-end justify-center lg:hidden">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsFilterSheetOpen(false)} className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
-            <motion.div initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} transition={{ type: 'spring', damping: 25, stiffness: 200 }} className="relative w-full rounded-t-[2.5rem] border-t border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-6 shadow-2xl">
-              <div className="mx-auto mb-6 h-1.5 w-12 rounded-full bg-zinc-200 dark:bg-zinc-800" />
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-black text-zinc-900 dark:text-white">Detaylı İlan Filtreleme</h3>
-                <button onClick={() => setIsFilterSheetOpen(false)} className="p-1 rounded-lg text-zinc-400"><X className="size-5"/></button>
-              </div>
-              <div className="space-y-4">
-                <div>
-                  <label className="text-xs font-bold text-zinc-500 mb-1 block">Kalkış Şehri</label>
-                  <input type="text" placeholder="Örn: İstanbul" className="w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800 p-3 text-xs font-semibold" />
-                </div>
-                <div>
-                  <label className="text-xs font-bold text-zinc-500 mb-1 block">Varış Şehri</label>
-                  <input type="text" placeholder="Örn: Ankara" className="w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800 p-3 text-xs font-semibold" />
-                </div>
-                <button onClick={() => setIsFilterSheetOpen(false)} className="w-full rounded-2xl bg-blue-600 py-3.5 text-xs font-extrabold text-white shadow-lg shadow-blue-600/20">
-                  Sonuçları Uygula
+              <div className="flex items-center justify-between p-3 rounded-xl bg-zinc-50 dark:bg-zinc-800 text-xs font-bold">
+                <span>Karanlık Mod</span>
+                <button onClick={toggleTheme} className="px-2.5 py-1 rounded-md bg-zinc-200 dark:bg-zinc-700">
+                  {isDarkMode ? 'Açık' : 'Koyu'}
                 </button>
               </div>
+
+              {user ? (
+                <button onClick={() => { signOut(); setIsMoreSheetOpen(false); }} className="w-full p-3 rounded-xl bg-rose-50 dark:bg-rose-950/30 text-rose-600 text-xs font-bold">
+                  Çıkış Yap
+                </button>
+              ) : (
+                <button onClick={() => { setIsMoreSheetOpen(false); openAuthModal(); }} className="w-full p-3 rounded-xl bg-blue-600 text-white text-xs font-bold">
+                  Giriş Yap
+                </button>
+              )}
             </motion.div>
           </div>
         )}
@@ -569,59 +382,30 @@ function AppShellContent() {
       <AnimatePresence>
         {isAuthModalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={closeAuthModal} className="absolute inset-0 bg-black/60 backdrop-blur-md" />
-            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="relative w-full max-w-md overflow-hidden rounded-3xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-6 shadow-2xl">
-              <button onClick={closeAuthModal} className="absolute right-4 top-4 rounded-xl p-2 text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800"><X className="size-5"/></button>
-              
-              <div className="mb-6 text-center">
-                <div className="mx-auto mb-3 flex size-12 items-center justify-center rounded-2xl bg-blue-600/10 text-blue-600">
-                  <ShieldCheck className="size-6"/>
-                </div>
-                <h3 className="text-xl font-black text-zinc-900 dark:text-white">
-                  {authMode === 'login' && 'Hoş Geldiniz'}
-                  {authMode === 'register' && 'Hesap Oluştur'}
-                  {authMode === 'forgot' && 'Şifremi Unuttum'}
-                </h3>
-                <p className="text-xs text-zinc-500 mt-1">Lojistik pazarında ilan vermek ve detayları görmek için giriş yapın.</p>
-              </div>
+            <div onClick={closeAuthModal} className="absolute inset-0 bg-black/50" />
+            <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} exit={{ scale: 0.95 }} className="relative w-full max-w-sm rounded-2xl bg-white dark:bg-zinc-900 p-6 shadow-xl">
+              <button onClick={closeAuthModal} className="absolute right-4 top-4 text-zinc-400"><X className="size-4"/></button>
+              <h3 className="text-base font-bold text-center mb-4">
+                {authMode === 'login' && 'Giriş Yap'}
+                {authMode === 'register' && 'Hesap Oluştur'}
+                {authMode === 'forgot' && 'Şifre Sıfırla'}
+              </h3>
 
-              <form onSubmit={handleAuthSubmit} className="space-y-4">
-                <div>
-                  <label className="text-xs font-bold text-zinc-600 dark:text-zinc-400 mb-1 block">E-Posta Adresi</label>
-                  <div className="relative">
-                    <Mail className="absolute left-3.5 top-3.5 size-4 text-zinc-400"/>
-                    <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="ornek@nakliye.com" className="w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/50 pl-10 pr-4 py-3 text-xs font-medium focus:border-blue-500 focus:outline-none" />
-                  </div>
-                </div>
-
+              <form onSubmit={handleAuthSubmit} className="space-y-3">
+                <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="E-Posta" className="w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800 p-2.5 text-xs" />
                 {authMode !== 'forgot' && (
-                  <div>
-                    <label className="text-xs font-bold text-zinc-600 dark:text-zinc-400 mb-1 block">Şifre</label>
-                    <div className="relative">
-                      <KeyRound className="absolute left-3.5 top-3.5 size-4 text-zinc-400"/>
-                      <input type={showPassword ? 'text' : 'password'} required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" className="w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/50 pl-10 pr-10 py-3 text-xs font-medium focus:border-blue-500 focus:outline-none" />
-                      <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3.5 top-3.5 text-zinc-400">{showPassword ? <EyeOff className="size-4"/> : <Eye className="size-4"/>}</button>
-                    </div>
-                  </div>
+                  <input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Şifre" className="w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800 p-2.5 text-xs" />
                 )}
-
-                <button type="submit" disabled={loading} className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 py-3.5 text-xs font-extrabold text-white shadow-lg shadow-blue-600/20 hover:opacity-90 active:scale-95 transition-all">
-                  {loading ? <Loader2 className="size-4 animate-spin"/> : (
-                    <span>
-                      {authMode === 'login' && 'Giriş Yap'}
-                      {authMode === 'register' && 'Hesabımı Oluştur'}
-                      {authMode === 'forgot' && 'Sıfırlama Bağlantısı Gönder'}
-                    </span>
-                  )}
+                <button type="submit" disabled={loading} className="w-full rounded-xl bg-blue-600 py-2.5 text-xs font-bold text-white">
+                  {loading ? <Loader2 className="size-4 animate-spin mx-auto"/> : 'Devam Et'}
                 </button>
               </form>
 
-              <div className="mt-4 text-center text-xs text-zinc-500">
-                {authMode === 'login' && (
-                  <p>Hesabınız yok mu? <button onClick={() => setAuthMode('register')} className="font-bold text-blue-600 hover:underline">Kayıt Ol</button></p>
-                )}
-                {authMode === 'register' && (
-                  <p>Zaten hesabınız var mı? <button onClick={() => setAuthMode('login')} className="font-bold text-blue-600 hover:underline">Giriş Yap</button></p>
+              <div className="mt-3 text-center text-xs text-zinc-500">
+                {authMode === 'login' ? (
+                  <button onClick={() => setAuthMode('register')} className="text-blue-600 font-bold">Kayıt Ol</button>
+                ) : (
+                  <button onClick={() => setAuthMode('login')} className="text-blue-600 font-bold">Giriş Yap</button>
                 )}
               </div>
             </motion.div>
@@ -633,12 +417,11 @@ function AppShellContent() {
   )
 }
 
-// SUSPENSE WRAPPER (Build Prerender hatasını çözen kısım)
 export function AppShell() {
   return (
     <Suspense fallback={
-      <div className="flex h-screen w-full items-center justify-center bg-zinc-950 text-white">
-        <Loader2 className="size-8 animate-spin text-blue-500"/>
+      <div className="flex h-screen w-full items-center justify-center bg-zinc-950 text-white text-xs">
+        Yükleniyor...
       </div>
     }>
       <AppShellContent />
