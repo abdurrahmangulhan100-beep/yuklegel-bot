@@ -8,7 +8,7 @@ import { useAuth } from '@/lib/auth-context'
 import { supabase } from '@/lib/supabase'
 import { 
   Truck, Store, PlusCircle, Calculator, Fuel, NotebookPen, Wallet, Timer,
-  LogOut, X, Loader2, Sparkles, Sun, Moon, ArrowLeft, ChevronRight, Pin, UserCheck, Users, Mail, Lock, KeyRound, ShieldCheck, Trash2
+  LogOut, X, Loader2, Sparkles, Sun, Moon, ArrowLeft, ChevronRight, Pin, UserCheck, Users, Mail, Lock, KeyRound, ShieldCheck, Trash2, User, CreditCard, Shield, Heart, FileText
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -34,7 +34,7 @@ function ModuleLoader() {
   )
 }
 
-type ModuleId = 'dashboard' | 'pazar' | 'ekle' | 'ilanlarim' | 'sizden-gelenler' | 'finans' | 'takograf' | 'sefer' | 'yakit' | 'notlar'
+type ModuleId = 'dashboard' | 'pazar' | 'ekle' | 'ilanlarim' | 'sizden-gelenler' | 'finans' | 'takograf' | 'sefer' | 'yakit' | 'notlar' | 'profil'
 type AuthMode = 'login' | 'register' | 'forgot'
 
 interface CardItem {
@@ -55,6 +55,7 @@ const MODULE_CARDS: CardItem[] = [
   { id: 'yakit', title: 'Hızlı Yakıt', desc: 'Mesafe ve lt/km hesaplama', icon: Fuel, color: 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-800/50' },
   { id: 'notlar', title: 'Pratik Notlar', desc: 'Bakım, evrak ve hatırlatıcılar', icon: NotebookPen, color: 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-200 dark:border-purple-800/50' },
   { id: 'ekle', title: 'İlan Ekle', desc: 'Hızlı yük/araç ilanı oluştur', icon: PlusCircle, color: 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-200 dark:border-cyan-800/50' },
+  { id: 'profil', title: 'Profil & Abonelik', desc: 'Hesap detayları ve ayarlar', icon: User, color: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/50' },
 ]
 
 function AppShellContent() {
@@ -381,6 +382,7 @@ function AppShellContent() {
               {activeTab === 'sefer' && <TripCalculator />}
               {activeTab === 'yakit' && <FuelCalculator />}
               {activeTab === 'notlar' && <NotesView />}
+              {activeTab === 'profil' && <ProfileView user={user} openAuthModal={openAuthModal} signOut={signOut} />}
             </div>
 
           </div>
@@ -529,6 +531,92 @@ function AppShellContent() {
         </div>
       )}
 
+    </div>
+  )
+}
+
+function ProfileView({ user, openAuthModal, signOut }: { user: any; openAuthModal: () => void; signOut: () => void }) {
+  if (!user) {
+    return (
+      <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-8 text-center space-y-4">
+        <div className="size-14 rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+          <User className="size-7" />
+        </div>
+        <div>
+          <h3 className="text-base font-black text-zinc-900 dark:text-white">Profil & Hesabınız</h3>
+          <p className="text-xs text-zinc-500 max-w-sm mt-1">
+            Hesap bilgilerinizi görüntülemek, abonelik durumunuzu yönetmek ve ilan kaydetmek için lütfen giriş yapın.
+          </p>
+        </div>
+        <button
+          onClick={openAuthModal}
+          className="rounded-xl bg-blue-600 px-6 py-2.5 text-xs font-bold text-white shadow-md hover:bg-blue-700 transition-all active:scale-95"
+        >
+          Giriş Yap / Kayıt Ol
+        </button>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-lg font-black tracking-tight text-zinc-900 dark:text-white">Profil & Abonelik</h2>
+        <p className="text-xs text-zinc-500">Hesap bilgilerinizi ve paket detaylarınızı buradan yönetebilirsiniz.</p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* Kullanıcı Kartı */}
+        <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-5 space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="size-12 rounded-xl bg-emerald-600 text-white font-black text-lg flex items-center justify-center shadow-md shadow-emerald-500/20">
+              {user.email?.[0].toUpperCase()}
+            </div>
+            <div className="overflow-hidden">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Aktif Hesap</span>
+              <p className="text-xs font-extrabold text-zinc-900 dark:text-white truncate">{user.email}</p>
+            </div>
+          </div>
+          <div className="pt-3 border-t border-zinc-100 dark:border-zinc-800 text-xs flex justify-between text-zinc-500">
+            <span>Durum:</span>
+            <span className="font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+              <ShieldCheck className="size-3.5"/> Doğrulanmış
+            </span>
+          </div>
+        </div>
+
+        {/* Paket / Abonelik Kartı */}
+        <div className="rounded-2xl border border-blue-200 dark:border-blue-900/50 bg-blue-50/50 dark:bg-blue-950/20 p-5 space-y-3 relative overflow-hidden">
+          <div className="flex items-center justify-between">
+            <span className="inline-flex items-center gap-1 rounded-md bg-blue-600/10 px-2 py-0.5 text-[10px] font-black text-blue-600 dark:text-blue-400">
+              <Sparkles className="size-3" /> STANDART PAKET
+            </span>
+            <CreditCard className="size-5 text-blue-600 dark:text-blue-400" />
+          </div>
+          <div>
+            <h4 className="text-sm font-black text-zinc-900 dark:text-white">Nakliye Cepte Sürücü</h4>
+            <p className="text-xs text-zinc-500 mt-0.5">Sınırsız ilan erişimi ve hesap araçları</p>
+          </div>
+        </div>
+
+        {/* İşlemler */}
+        <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-5 flex flex-col justify-between space-y-3">
+          <div>
+            <h4 className="text-xs font-extrabold text-zinc-900 dark:text-white mb-1">Hesap Yönetimi</h4>
+            <div className="space-y-2 text-xs">
+              <Link href="/privacy" className="block text-zinc-500 hover:text-blue-600 dark:hover:text-blue-400">Gizlilik Politikası</Link>
+              <Link href="/delete-account" className="block text-rose-500 hover:underline">Hesabımı Sil</Link>
+            </div>
+          </div>
+          <button
+            onClick={() => signOut()}
+            className="w-full flex items-center justify-center gap-2 rounded-xl bg-rose-50 dark:bg-rose-950/40 py-2.5 text-xs font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/60 transition-colors"
+          >
+            <LogOut className="size-4"/>
+            <span>Oturumu Kapat</span>
+          </button>
+        </div>
+      </div>
     </div>
   )
 }
