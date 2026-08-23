@@ -7,13 +7,14 @@ import { useAuth } from '@/lib/auth-context'
 import { supabase } from '@/lib/supabase'
 import { 
   Truck, Store, PlusCircle, Calculator, Fuel, NotebookPen, Wallet, Timer,
-  LogOut, X, Loader2, Sparkles, Sun, Moon, ArrowLeft, ChevronRight, Pin
+  LogOut, X, Loader2, Sparkles, Sun, Moon, ArrowLeft, ChevronRight, Pin, UserCheck
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 // Lazy Loading Modules (Kod bölme - Performans için)
 const ListingsView = dynamic(() => import('@/components/listings/listings-view').then(m => m.ListingsView), { loading: () => <ModuleLoader /> })
 const AddListingForm = dynamic(() => import('@/components/add-listing-form').then(m => m.AddListingForm), { loading: () => <ModuleLoader /> })
+const MyListingsView = dynamic(() => import('@/components/my-listings-view').then(m => m.MyListingsView), { loading: () => <ModuleLoader /> })
 const FinanceView = dynamic(() => import('@/components/finance-view').then(m => m.FinanceView), { loading: () => <ModuleLoader /> })
 const TachographCalculator = dynamic(() => import('@/components/tachograph-calculator').then(m => m.TachographCalculator), { loading: () => <ModuleLoader /> })
 const TripCalculator = dynamic(() => import('@/components/trip-calculator').then(m => m.TripCalculator), { loading: () => <ModuleLoader /> })
@@ -31,7 +32,7 @@ function ModuleLoader() {
   )
 }
 
-type ModuleId = 'dashboard' | 'pazar' | 'ekle' | 'finans' | 'takograf' | 'sefer' | 'yakit' | 'notlar'
+type ModuleId = 'dashboard' | 'pazar' | 'ekle' | 'ilanlarim' | 'finans' | 'takograf' | 'sefer' | 'yakit' | 'notlar'
 
 interface CardItem {
   id: ModuleId
@@ -43,6 +44,7 @@ interface CardItem {
 
 const MODULE_CARDS: CardItem[] = [
   { id: 'pazar', title: 'İlan Pazarı', desc: 'Canlı yük ve araç ilanları', icon: Store, color: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800/50' },
+  { id: 'ilanlarim', title: 'İlanlarım', desc: 'Eklediğiniz ilanları yönetin', icon: UserCheck, color: 'bg-teal-500/10 text-teal-600 dark:text-teal-400 border-teal-200 dark:border-teal-800/50' },
   { id: 'takograf', title: 'Takograf Asistanı', desc: 'Yasal sürüş ve mola süreleri', icon: Timer, color: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-800/50' },
   { id: 'finans', title: 'Gider & Kazanç', desc: 'Navlun ve sefer masrafları', icon: Wallet, color: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/50' },
   { id: 'sefer', title: 'Sefer Maliyeti', desc: 'Net kâr ve gider hesabı', icon: Calculator, color: 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800/50' },
@@ -88,7 +90,7 @@ function AppShellContent() {
   const fetchListingCount = async () => {
     try {
       const { count, error } = await supabase
-        .from('listings')
+        .from('user_listings')
         .select('*', { count: 'exact', head: true })
 
       if (!error && count !== null) {
@@ -247,7 +249,6 @@ function AppShellContent() {
           </div>
 
           <div className="flex items-center gap-2">
-            {/* MOBİL İÇİN GİRİŞ / ÇIKIŞ BUTONU */}
             {user ? (
               <button onClick={() => signOut()} className="lg:hidden p-2 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 hover:bg-rose-100 transition-colors">
                 <LogOut className="size-4"/>
@@ -297,7 +298,6 @@ function AppShellContent() {
                           </div>
                           
                           <div className="flex items-center gap-1.5">
-                            {/* CANLI RADAR VE SUPABASE VERİ ROZETİ (SADECE İLAN PAZARI) */}
                             {isPazar && (
                               <span className="rounded-md bg-blue-50 dark:bg-blue-950/60 border border-blue-200/60 dark:border-blue-800/40 px-2 py-0.5 text-[10px] font-black text-blue-600 dark:text-blue-400 flex items-center gap-1.5">
                                 <span className="relative flex h-1.5 w-1.5">
@@ -351,6 +351,7 @@ function AppShellContent() {
             <div className="transition-opacity duration-150">
               {activeTab === 'pazar' && <ListingsView />}
               {activeTab === 'ekle' && <AddListingForm onCreated={() => navigateTo('pazar')} />}
+              {activeTab === 'ilanlarim' && <MyListingsView />}
               {activeTab === 'finans' && <FinanceView />}
               {activeTab === 'takograf' && <TachographCalculator />}
               {activeTab === 'sefer' && <TripCalculator />}
