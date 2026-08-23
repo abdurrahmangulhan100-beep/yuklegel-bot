@@ -3,11 +3,12 @@
 import React, { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import dynamic from 'next/dynamic'
+import Link from 'next/link'
 import { useAuth } from '@/lib/auth-context'
 import { supabase } from '@/lib/supabase'
 import { 
   Truck, Store, PlusCircle, Calculator, Fuel, NotebookPen, Wallet, Timer,
-  LogOut, X, Loader2, Sparkles, Sun, Moon, ArrowLeft, ChevronRight, Pin, UserCheck, Users, Mail, Lock, KeyRound
+  LogOut, X, Loader2, Sparkles, Sun, Moon, ArrowLeft, ChevronRight, Pin, UserCheck, Users, Mail, Lock, KeyRound, ShieldCheck, Trash2
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -235,14 +236,28 @@ function AppShellContent() {
           </nav>
         </div>
 
-        <div className="space-y-3 pt-4 border-t border-zinc-200 dark:border-zinc-800">
+        <div className="space-y-2 pt-4 border-t border-zinc-200 dark:border-zinc-800">
           {user ? (
-            <div className="flex items-center justify-between rounded-xl bg-zinc-50 dark:bg-zinc-800/50 p-2.5 text-xs font-bold">
-              <span className="truncate max-w-[120px]">{user.email?.split('@')[0]}</span>
-              <button onClick={() => signOut()} className="text-zinc-400 hover:text-rose-500"><LogOut className="size-4"/></button>
+            <div className="space-y-1">
+              <div className="flex items-center justify-between rounded-xl bg-zinc-50 dark:bg-zinc-800/50 p-2.5 text-xs font-bold">
+                <span className="truncate max-w-[120px]">{user.email?.split('@')[0]}</span>
+                <button onClick={() => signOut()} title="Çıkış Yap" className="text-zinc-400 hover:text-rose-500"><LogOut className="size-4"/></button>
+              </div>
+              <div className="flex items-center justify-between px-2 pt-1 text-[10px] font-semibold text-zinc-400">
+                <Link href="/privacy" className="hover:text-blue-500 transition-colors">Gizlilik</Link>
+                <span>•</span>
+                <Link href="/delete-account" className="hover:text-rose-500 transition-colors">Hesabı Sil</Link>
+              </div>
             </div>
           ) : (
-            <button onClick={() => openAuthModal()} className="w-full rounded-xl bg-blue-600 py-2.5 text-xs font-bold text-white hover:bg-blue-700 transition-colors">Giriş Yap</button>
+            <div>
+              <button onClick={() => openAuthModal()} className="w-full rounded-xl bg-blue-600 py-2.5 text-xs font-bold text-white hover:bg-blue-700 transition-colors mb-2">Giriş Yap</button>
+              <div className="flex justify-center gap-2 text-[10px] text-zinc-400">
+                <Link href="/privacy" className="hover:underline">Gizlilik</Link>
+                <span>•</span>
+                <Link href="/delete-account" className="hover:underline text-rose-500">Hesap Silme</Link>
+              </div>
+            </div>
           )}
         </div>
       </aside>
@@ -475,7 +490,7 @@ function AppShellContent() {
               </>
             )}
 
-            {/* Alt Geçiş Metinleri & Gizlilik Politikası Bağlantısı */}
+            {/* Alt Geçiş Metinleri & Gizlilik / Hesap Silme Bağlantıları */}
             <div className="mt-5 text-center space-y-2">
               {authMode === 'login' && (
                 <p className="text-xs text-zinc-500">
@@ -499,14 +514,14 @@ function AppShellContent() {
                 </button>
               )}
 
-              <div className="pt-3 border-t border-zinc-100 dark:border-zinc-800/60">
-                <p className="text-[10px] text-zinc-400">
-                  Devam ederek{' '}
-                  <a href="/privacy" target="_blank" className="underline hover:text-zinc-600 dark:hover:text-zinc-300">
-                    Gizlilik Politikası
-                  </a>
-                  'nı kabul etmiş olursunuz.
-                </p>
+              <div className="pt-3 border-t border-zinc-100 dark:border-zinc-800/60 flex items-center justify-center gap-3 text-[10px] text-zinc-400">
+                <Link href="/privacy" onClick={closeAuthModal} className="underline hover:text-zinc-600 dark:hover:text-zinc-300">
+                  Gizlilik Politikası
+                </Link>
+                <span>•</span>
+                <Link href="/delete-account" onClick={closeAuthModal} className="underline hover:text-rose-500">
+                  Hesabımı Sil
+                </Link>
               </div>
             </div>
 
