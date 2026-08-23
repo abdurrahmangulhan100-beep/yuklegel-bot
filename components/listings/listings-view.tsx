@@ -4,7 +4,8 @@ import { timeAgo } from '@/lib/format'
 import { subscribeToPushNotifications } from '@/lib/push-client'
 import { 
   Search, X, Clock, Heart, Phone, Copy, Check, Loader2, MessageSquare, 
-  Bell, RotateCcw, Truck, AlertCircle, RefreshCw, FileText, Plus, Trash2, LogIn, Sparkles, ChevronDown
+  Bell, RotateCcw, Truck, AlertCircle, RefreshCw, FileText, Plus, Trash2, LogIn, Sparkles, ChevronDown,
+  Store, Users
 } from 'lucide-react'
 
 const CHIP_FILTERS = [
@@ -381,6 +382,10 @@ export function ListingsView({ listings: propListings = [] }: { listings?: any[]
   const [refreshing, setRefreshing] = useState<boolean>(false)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   
+  // Canlı İlan ve Kullanıcı İlan Sayıları
+  const [botCount, setBotCount] = useState<number>(0)
+  const [userCount, setUserCount] = useState<number>(0)
+  
   const [searchQuery, setSearchQuery] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [selectedChip, setSelectedChip] = useState('ALL')
@@ -399,7 +404,6 @@ export function ListingsView({ listings: propListings = [] }: { listings?: any[]
   const [isSavingNote, setIsSavingNote] = useState(false)
   const [showAuthWarning, setShowAuthWarning] = useState(false)
 
-  // Mobil Performans için Render Limiti (Kademeli Yükleme)
   const [displayLimit, setDisplayLimit] = useState(30)
 
   useEffect(() => {
@@ -435,6 +439,21 @@ export function ListingsView({ listings: propListings = [] }: { listings?: any[]
     if (currentUser) loadUserData(currentUser)
   }, [currentUser, loadUserData])
 
+  // 'ilanlar' ve 'user_listings' tablolarının sayılarını bağımsız çekme
+  const fetchListingCounts = useCallback(async () => {
+    try {
+      const [botRes, userRes] = await Promise.all([
+        supabase.from('ilanlar').select('*', { count: 'exact', head: true }),
+        supabase.from('user_listings').select('*', { count: 'exact', head: true })
+      ])
+
+      if (botRes.count !== null) setBotCount(botRes.count)
+      if (userRes.count !== null) setUserCount(userRes.count)
+    } catch (err) {
+      console.error('İlan sayıları alınamadı:', err)
+    }
+  }, [])
+
   const fetchListings = useCallback(async (isSilent = false) => {
     try {
       if (!isSilent) setRefreshing(true)
@@ -452,6 +471,9 @@ export function ListingsView({ listings: propListings = [] }: { listings?: any[]
         const processed = data.map(processListingItem).filter(Boolean)
         setListings(processed)
       }
+      
+      // Sayıları da yenile
+      fetchListingCounts()
     } catch (err: any) {
       console.error('Yükleme hatası:', err)
       setErrorMsg('İlanlar yüklenirken sorun oluştu.')
@@ -459,16 +481,17 @@ export function ListingsView({ listings: propListings = [] }: { listings?: any[]
       setLoading(false)
       setRefreshing(false)
     }
-  }, [])
+  }, [fetchListingCounts])
 
   useEffect(() => {
     if (propListings && propListings.length > 0) {
       setListings(propListings.map(processListingItem).filter(Boolean))
       setLoading(false)
+      fetchListingCounts()
     } else {
       fetchListings()
     }
-  }, [propListings, fetchListings])
+  }, [propListings, fetchListings, fetchListingCounts])
 
   useEffect(() => {
     let channel: any
@@ -479,6 +502,7 @@ export function ListingsView({ listings: propListings = [] }: { listings?: any[]
           const item = processListingItem(payload.new)
           if (item) {
             setListings(prev => [item, ...prev.filter(p => p._stableKey !== item._stableKey)])
+            setBotCount(prev => prev + 1)
             setNewToast(true)
             setTimeout(() => setNewToast(false), 3000)
           }
@@ -568,6 +592,59 @@ export function ListingsView({ listings: propListings = [] }: { listings?: any[]
 
   return (
     <div className="space-y-5 max-w-7xl mx-auto px-2.5 sm:px-6 relative pb-16 font-sans w-full overflow-x-hidden">
+      
+      {/* 🟢 HIZLI MODÜLLER PANERİ (EKLENEN DÜZELTİLMİŞ BÖLÜM) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        {/* İlan Pazarı Modülü */}
+        <div className="relative flex flex-col justify-between p-4 rounded-2xl border border-blue-500/30 bg-blue-500/5 shadow-xs">
+          {/* Mavi Canlı Rozet (Çakışmayı önlemek için sağ üst köşeye hizalı) */}
+          <div className="absolute top-3.5 right-3.5 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-600 dark:text-blue-400 text-[11px] font-black">
+            <span className="size-2 rounded-full bg-blue-600 animate-pulse" />
+            <span>{botCount} Canlı İlan</span>
+          </div>
+
+          <div className="space-y-3 pr-28">
+            <div className="size-10 rounded-xl bg-blue-500/10 text-blue-600 flex items-center justify-center">
+              <Store className="size-5" />
+            </div>
+            <div>
+              <h3 className="font-extrabold text-sm text-zinc-900 dark:text-zinc-100">İlan Pazarı</h3>
+              <p className="text-xs text-zinc-500 mt-0.5">
+                Şu an yayında {botCount} aktif yük var
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Sizden Gelen İlanlar Modülü */}
+        <div className="relative flex flex-col justify-between p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
+          <div className="space-y-3">
+            <div className="size-10 rounded-xl bg-purple-500/10 text-purple-600 flex items-center justify-center">
+              <Users className="size-5" />
+            </div>
+            <div>
+              <h3 className="font-extrabold text-sm text-zinc-900 dark:text-zinc-100">Sizden Gelen İlanlar</h3>
+              <p className="text-xs text-zinc-500 mt-0.5">
+                {userCount > 0 ? `Kullanıcıların eklediği ${userCount} güncel ilan` : 'Kullanıcıların eklediği güncel ilanlar'}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* İlanlarım Modülü */}
+        <div className="relative flex flex-col justify-between p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
+          <div className="space-y-3">
+            <div className="size-10 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center">
+              <FileText className="size-5" />
+            </div>
+            <div>
+              <h3 className="font-extrabold text-sm text-zinc-900 dark:text-zinc-100">İlanlarım</h3>
+              <p className="text-xs text-zinc-500 mt-0.5">Eklemiş olduğunuz ilanları yönetin</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {newToast && (
         <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2.5 rounded-2xl bg-emerald-600 px-4 py-3 text-white shadow-2xl border border-emerald-500/40">
           <Sparkles className="size-4 text-emerald-200 animate-bounce" />
@@ -595,9 +672,8 @@ export function ListingsView({ listings: propListings = [] }: { listings?: any[]
         </div>
       )}
 
-      {/* YENİLENMİŞ & GELİŞMİŞ FİLTRELEME VE ARAMA KONTROL PANELİ */}
+      {/* FİLTRELEME VE ARAMA KONTROL PANELİ */}
       <div className="flex flex-col gap-3.5 rounded-[26px] border border-zinc-200/90 dark:border-zinc-800/90 bg-white/95 dark:bg-zinc-900/95 p-3.5 sm:p-5 shadow-sm backdrop-blur-xl">
-        {/* 1. Arama Çubuğu */}
         <div className="relative w-full">
           <Search className="absolute left-4 top-1/2 size-4 -translate-y-1/2 text-zinc-400" />
           <input
@@ -614,7 +690,6 @@ export function ListingsView({ listings: propListings = [] }: { listings?: any[]
           )}
         </div>
 
-        {/* 2. Kategori Çipleri (Yatay Kaydırma) */}
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar -mx-1 px-1">
           {CHIP_FILTERS.map((chip) => {
             const isActive = selectedChip === chip.id
@@ -635,9 +710,7 @@ export function ListingsView({ listings: propListings = [] }: { listings?: any[]
           })}
         </div>
 
-        {/* 3. Gelişmiş Zaman & Aksiyon Paneli (Daha Düzenli & Modern Segmented Stili) */}
         <div className="grid grid-cols-1 md:grid-cols-12 gap-2.5 pt-1 border-t border-zinc-100 dark:border-zinc-800/70">
-          {/* Sol: Segmented Zaman Filtresi */}
           <div className="md:col-span-5 flex items-center bg-zinc-100/90 dark:bg-zinc-800/70 p-1 rounded-2xl border border-zinc-200/50 dark:border-zinc-800/50">
             {(['all', '15m', '1h'] as const).map((t) => {
               const active = timeFilter === t
@@ -660,7 +733,6 @@ export function ListingsView({ listings: propListings = [] }: { listings?: any[]
             })}
           </div>
 
-          {/* Sağ: İşlevsel Aksiyon Butonları Grid */}
           <div className="md:col-span-7 grid grid-cols-2 sm:grid-cols-4 gap-1.5">
             <button
               type="button"
@@ -713,7 +785,6 @@ export function ListingsView({ listings: propListings = [] }: { listings?: any[]
         </div>
       </div>
 
-      {/* İlan Durumu Sayacı */}
       <div className="flex items-center justify-between text-xs font-bold text-zinc-500 px-1">
         <span>Görüntülenen İlan: <strong className="text-zinc-900 dark:text-zinc-100">{filteredListings.length}</strong></span>
         <span className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-bold text-[11px] bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20">
@@ -725,7 +796,6 @@ export function ListingsView({ listings: propListings = [] }: { listings?: any[]
         </span>
       </div>
 
-      {/* İlan Listesi */}
       {loading ? (
         <div className="flex flex-col items-center justify-center py-20 space-y-3">
           <Loader2 className="size-9 animate-spin text-blue-600" />
@@ -759,7 +829,6 @@ export function ListingsView({ listings: propListings = [] }: { listings?: any[]
             })}
           </div>
 
-          {/* Performans Dostu "Daha Fazla Göster" Butonu */}
           {filteredListings.length > displayLimit && (
             <div className="pt-4 text-center">
               <button
