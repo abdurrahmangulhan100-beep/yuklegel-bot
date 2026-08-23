@@ -7,11 +7,11 @@ import { useAuth } from '@/lib/auth-context'
 import { supabase } from '@/lib/supabase'
 import { 
   Truck, Store, PlusCircle, Calculator, Fuel, NotebookPen, Wallet, Timer,
-  LogOut, LogIn, X, Loader2, Sparkles, Sun, Moon, ArrowLeft, ChevronRight, Pin, Play, Pause
+  LogOut, X, Loader2, Sparkles, Sun, Moon, ArrowLeft, ChevronRight, Pin
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-// Lazy Loading Modules (Sadece tıklandığında yüklenir)
+// Lazy Loading Modules (Kod bölme - Performans için)
 const ListingsView = dynamic(() => import('@/components/listings/listings-view').then(m => m.ListingsView), { loading: () => <ModuleLoader /> })
 const AddListingForm = dynamic(() => import('@/components/add-listing-form').then(m => m.AddListingForm), { loading: () => <ModuleLoader /> })
 const FinanceView = dynamic(() => import('@/components/finance-view').then(m => m.FinanceView), { loading: () => <ModuleLoader /> })
@@ -25,7 +25,7 @@ function ModuleLoader() {
     <div className="flex h-64 w-full items-center justify-center rounded-2xl border border-dashed border-zinc-200 dark:border-zinc-800 bg-white/50 dark:bg-zinc-900/50">
       <div className="flex items-center gap-2 text-xs font-bold text-zinc-400">
         <Loader2 className="size-4 animate-spin text-blue-600" />
-        <span>Modül Hazırlanıyor...</span>
+        <span>Modül Yükleniyor...</span>
       </div>
     </div>
   )
@@ -39,79 +39,16 @@ interface CardItem {
   desc: string
   icon: React.ElementType
   color: string
-  badge?: string
-  widgetValue: string
-  widgetSubText: string
-  quickAction?: boolean
 }
 
-const INITIAL_CARDS: CardItem[] = [
-  { 
-    id: 'pazar', 
-    title: 'İlan Pazarı', 
-    desc: 'Canlı yük ve araç ilanları', 
-    icon: Store, 
-    color: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800/50', 
-    badge: 'Canlı',
-    widgetValue: '+18 Yeni Yük',
-    widgetSubText: 'Konya: 4 Yük Bekliyor'
-  },
-  { 
-    id: 'takograf', 
-    title: 'Takograf Asistanı', 
-    desc: 'Yasal sürüş ve mola süreleri', 
-    icon: Timer, 
-    color: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-800/50', 
-    badge: 'Yasal',
-    widgetValue: '04:30 / 09:00',
-    widgetSubText: 'Kalan Sürüş: 04:30 Sa',
-    quickAction: true
-  },
-  { 
-    id: 'finans', 
-    title: 'Gider & Kazanç', 
-    desc: 'Navlun ve sefer masrafları', 
-    icon: Wallet, 
-    color: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/50',
-    widgetValue: '₺42.500',
-    widgetSubText: 'Bu Ay Net Kâr'
-  },
-  { 
-    id: 'sefer', 
-    title: 'Sefer Maliyeti', 
-    desc: 'Net kâr ve gider hesabı', 
-    icon: Calculator, 
-    color: 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800/50',
-    widgetValue: '%32 Ort. Kâr',
-    widgetSubText: 'Son Sefer: Konya - Adana'
-  },
-  { 
-    id: 'yakit', 
-    title: 'Hızlı Yakıt', 
-    desc: 'Mesafe ve lt/km hesaplama', 
-    icon: Fuel, 
-    color: 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-800/50',
-    widgetValue: '43.50 TL/Lt',
-    widgetSubText: 'Güncel Mazot Fiyatı'
-  },
-  { 
-    id: 'notlar', 
-    title: 'Pratik Notlar', 
-    desc: 'Bakım, evrak ve hatırlatıcılar', 
-    icon: NotebookPen, 
-    color: 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-200 dark:border-purple-800/50',
-    widgetValue: '2 Uyarı',
-    widgetSubText: 'Muayene Yaklaşıyor'
-  },
-  { 
-    id: 'ekle', 
-    title: 'İlan Ekle', 
-    desc: 'Hızlı yük/araç ilanı oluştur', 
-    icon: PlusCircle, 
-    color: 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-200 dark:border-cyan-800/50',
-    widgetValue: 'Hızlı İlan',
-    widgetSubText: 'Anında Yayınla'
-  },
+const MODULE_CARDS: CardItem[] = [
+  { id: 'pazar', title: 'İlan Pazarı', desc: 'Canlı yük ve araç ilanları', icon: Store, color: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800/50' },
+  { id: 'takograf', title: 'Takograf Asistanı', desc: 'Yasal sürüş ve mola süreleri', icon: Timer, color: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-800/50' },
+  { id: 'finans', title: 'Gider & Kazanç', desc: 'Navlun ve sefer masrafları', icon: Wallet, color: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/50' },
+  { id: 'sefer', title: 'Sefer Maliyeti', desc: 'Net kâr ve gider hesabı', icon: Calculator, color: 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800/50' },
+  { id: 'yakit', title: 'Hızlı Yakıt', desc: 'Mesafe ve lt/km hesaplama', icon: Fuel, color: 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-800/50' },
+  { id: 'notlar', title: 'Pratik Notlar', desc: 'Bakım, evrak ve hatırlatıcılar', icon: NotebookPen, color: 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-200 dark:border-purple-800/50' },
+  { id: 'ekle', title: 'İlan Ekle', desc: 'Hızlı yük/araç ilanı oluştur', icon: PlusCircle, color: 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-200 dark:border-cyan-800/50' },
 ]
 
 function AppShellContent() {
@@ -127,9 +64,9 @@ function AppShellContent() {
   const [loading, setLoading] = useState(false)
   const [toast, setToast] = useState<{ type: 'error' | 'success'; text: string } | null>(null)
 
-  // Pinli Kartlar State'i
+  // Gerçek Veri State'i
+  const [listingCount, setListingCount] = useState<number | null>(null)
   const [pinnedIds, setPinnedIds] = useState<string[]>([])
-  const [isDriving, setIsDriving] = useState(false)
 
   useEffect(() => {
     if (document.documentElement.classList.contains('dark')) setIsDarkMode(true)
@@ -137,6 +74,8 @@ function AppShellContent() {
     if (savedPins) {
       try { setPinnedIds(JSON.parse(savedPins)) } catch {}
     }
+
+    fetchListingCount()
   }, [])
 
   useEffect(() => {
@@ -145,6 +84,20 @@ function AppShellContent() {
       return () => clearTimeout(timer)
     }
   }, [toast])
+
+  const fetchListingCount = async () => {
+    try {
+      const { count, error } = await supabase
+        .from('listings')
+        .select('*', { count: 'exact', head: true })
+
+      if (!error && count !== null) {
+        setListingCount(count)
+      }
+    } catch (err) {
+      console.error("İlan sayısı çekilemedi:", err)
+    }
+  }
 
   const togglePin = (e: React.MouseEvent, id: string) => {
     e.stopPropagation()
@@ -191,8 +144,7 @@ function AppShellContent() {
     }
   }
 
-  // Pinlenmiş kartları en üste sırala
-  const sortedCards = [...INITIAL_CARDS].sort((a, b) => {
+  const sortedCards = [...MODULE_CARDS].sort((a, b) => {
     const aPinned = pinnedIds.includes(a.id)
     const bPinned = pinnedIds.includes(b.id)
     if (aPinned && !bPinned) return -1
@@ -223,7 +175,7 @@ function AppShellContent() {
             </div>
             <div>
               <p className="font-black text-base tracking-tight text-zinc-900 dark:text-white">Nakliye Cepte</p>
-              <p className="text-[10px] font-bold text-blue-600 dark:text-blue-400">Canlı Kokpit</p>
+              <p className="text-[10px] font-bold text-blue-600 dark:text-blue-400">Lojistik Paneli</p>
             </div>
           </div>
 
@@ -236,10 +188,10 @@ function AppShellContent() {
               )}
             >
               <Truck className="size-4"/>
-              <span>Ana Menü (Grid)</span>
+              <span>Ana Menü</span>
             </button>
             <div className="my-2 border-t border-zinc-100 dark:border-zinc-800"/>
-            {INITIAL_CARDS.map((item) => (
+            {MODULE_CARDS.map((item) => (
               <button
                 key={item.id}
                 onClick={() => navigateTo(item.id)}
@@ -294,31 +246,28 @@ function AppShellContent() {
             )}
           </div>
 
-          <div className="flex items-center gap-2">
-            <button onClick={toggleTheme} className="p-2 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400">
-              {isDarkMode ? <Sun className="size-4"/> : <Moon className="size-4"/>}
-            </button>
-          </div>
+          <button onClick={toggleTheme} className="p-2 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400">
+            {isDarkMode ? <Sun className="size-4"/> : <Moon className="size-4"/>}
+          </button>
         </header>
 
-        {/* GÖVDE (MAIN) */}
+        {/* GÖVDE (MAIN GRID) */}
         <main className="flex-1 overflow-y-auto p-4 sm:p-6">
           <div className="mx-auto max-w-5xl">
             
-            {/* CANLI SMART GRID (ANA MENÜ) */}
             {activeTab === 'dashboard' && (
               <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h1 className="text-lg font-black tracking-tight text-zinc-900 dark:text-white">Canlı Modül Paneli</h1>
-                    <p className="text-xs text-zinc-500">Sık kullandığınız modülleri üst sıraya pinleyebilirsiniz.</p>
-                  </div>
+                <div>
+                  <h1 className="text-lg font-black tracking-tight text-zinc-900 dark:text-white">Hızlı Modüller</h1>
+                  <p className="text-xs text-zinc-500">Sık kullandığınız modülleri iğneleyerek en üste taşıyabilirsiniz.</p>
                 </div>
 
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-3">
                   {sortedCards.map((card) => {
                     const Icon = card.icon
                     const isPinned = pinnedIds.includes(card.id)
+                    const isPazar = card.id === 'pazar'
+
                     return (
                       <div
                         key={card.id}
@@ -328,22 +277,24 @@ function AppShellContent() {
                           isPinned ? "border-blue-500/40 bg-blue-500/5 dark:bg-blue-500/5" : "border-zinc-200/80 dark:border-zinc-800"
                         )}
                       >
-                        {/* ÜST BİLGİ & PIN */}
+                        {/* KART ÜST KISIM */}
                         <div className="flex items-start justify-between mb-3">
-                          <div className={cn("flex size-10 items-center justify-center rounded-xl border", card.color)}>
+                          <div className={cn("flex size-11 items-center justify-center rounded-xl border", card.color)}>
                             <Icon className="size-5"/>
                           </div>
                           
                           <div className="flex items-center gap-1">
-                            {card.badge && (
-                              <span className="rounded-md bg-blue-100 dark:bg-blue-950 px-1.5 py-0.5 text-[9px] font-black text-blue-600 dark:text-blue-400">
-                                {card.badge}
+                            {/* GERÇEK SUPABASE VERİ ROZETİ */}
+                            {isPazar && listingCount !== null && (
+                              <span className="rounded-md bg-blue-100 dark:bg-blue-950 px-2 py-0.5 text-[10px] font-black text-blue-600 dark:text-blue-400 animate-pulse">
+                                {listingCount} Canlı İlan
                               </span>
                             )}
+
                             <button
                               onClick={(e) => togglePin(e, card.id)}
                               className={cn(
-                                "p-1 rounded-lg transition-colors",
+                                "p-1.5 rounded-lg transition-colors",
                                 isPinned ? "text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/50" : "text-zinc-300 hover:text-zinc-500 dark:text-zinc-600"
                               )}
                               title={isPinned ? "Sabitlemeyi Kaldır" : "En Üste Sabitle"}
@@ -353,38 +304,17 @@ function AppShellContent() {
                           </div>
                         </div>
 
-                        {/* WIDGET CANLI VERİ KUTUSU */}
-                        <div className="my-2 rounded-xl bg-zinc-50 dark:bg-zinc-800/60 p-2.5 border border-zinc-100 dark:border-zinc-800">
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs font-black text-zinc-900 dark:text-white">{card.widgetValue}</span>
-                            {card.quickAction && (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  setIsDriving(!isDriving)
-                                }}
-                                className={cn(
-                                  "flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold text-white transition-all",
-                                  isDriving ? "bg-rose-600" : "bg-emerald-600"
-                                )}
-                              >
-                                {isDriving ? <Pause className="size-3"/> : <Play className="size-3"/>}
-                                <span>{isDriving ? 'Mola' : 'Sürüş'}</span>
-                              </button>
-                            )}
-                          </div>
-                          <p className="text-[10px] text-zinc-500 font-medium truncate mt-0.5">{card.widgetSubText}</p>
-                        </div>
-
-                        {/* KART BAŞLIĞI */}
-                        <div className="mt-1">
+                        {/* KART BAŞLIK & AÇIKLAMA */}
+                        <div className="mt-2">
                           <div className="flex items-center justify-between">
                             <h2 className="text-xs font-extrabold text-zinc-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                               {card.title}
                             </h2>
                             <ChevronRight className="size-3.5 text-zinc-400 opacity-0 group-hover:opacity-100 transition-opacity" />
                           </div>
-                          <p className="text-[10px] text-zinc-400 line-clamp-1">{card.desc}</p>
+                          <p className="text-[10px] text-zinc-500 mt-0.5 line-clamp-1">
+                            {isPazar && listingCount !== null ? `Şu an yayında ${listingCount} yük var` : card.desc}
+                          </p>
                         </div>
                       </div>
                     )
@@ -437,10 +367,19 @@ function AppShellContent() {
                 placeholder="Şifre" 
                 className="w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800 px-3 py-2 text-xs" 
               />
-              <button type="submit" disabled={loading} className="w-full rounded-xl bg-blue-600 py-2.5 text-xs font-bold text-white">
-                {loading ? <Loader2 className="size-4 animate-spin mx-auto"/> : 'Devam Et'}
+              <button type="submit" disabled={loading} className="w-full rounded-xl bg-blue-600 py-2.5 text-xs font-bold text-white hover:bg-blue-700 transition-colors">
+                {loading ? <Loader2 className="size-4 animate-spin mx-auto"/> : (authMode === 'login' ? 'Giriş Yap' : 'Kayıt Ol')}
               </button>
             </form>
+
+            <div className="mt-4 text-center">
+              <button 
+                onClick={() => setAuthMode(authMode === 'login' ? 'register' : 'login')}
+                className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline"
+              >
+                {authMode === 'login' ? 'Hesabınız yok mu? Kayıt Olun' : 'Zaten hesabınız var mı? Giriş Yapın'}
+              </button>
+            </div>
           </div>
         </div>
       )}
