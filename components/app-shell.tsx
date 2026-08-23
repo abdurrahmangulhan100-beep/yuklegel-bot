@@ -535,6 +535,34 @@ function ProfileView({ user, openAuthModal, signOut }: { user: any; openAuthModa
   const auth = useAuth()
   const handleOpenAuth = openAuthModal || auth?.openAuthModal
 
+  const [profile, setProfile] = useState<{
+    subscription_tier: string
+    subscription_status: string
+    subscription_end_date: string | null
+  } | null>(null)
+
+  useEffect(() => {
+    if (!user) return
+
+    async function fetchProfile() {
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('subscription_tier, subscription_status, subscription_end_date')
+          .eq('id', user.id)
+          .single()
+
+        if (!error && data) {
+          setProfile(data)
+        }
+      } catch (err) {
+        console.error("Profil bilgisi çekilemedi:", err)
+      }
+    }
+
+    fetchProfile()
+  }, [user])
+
   if (!user) {
     return (
       <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-8 text-center space-y-4">
@@ -561,11 +589,13 @@ function ProfileView({ user, openAuthModal, signOut }: { user: any; openAuthModa
     )
   }
 
+  const isPro = profile?.subscription_status === 'active'
+
   return (
     <div className="space-y-6">
       <div>
         <h2 className="text-lg font-black tracking-tight text-zinc-900 dark:text-white">Profil & Abonelik</h2>
-        <p className="text-xs text-zinc-500">Hesap bilgilerinizi ve paket detaylarınızı buradan yönetebilirsiniz.</p>
+        <p className="text-xs text-zinc-500">Hesap detaylarınızı ve abonelik paketinizi buradan yönetebilirsiniz.</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -575,28 +605,42 @@ function ProfileView({ user, openAuthModal, signOut }: { user: any; openAuthModa
               {user.email?.[0].toUpperCase()}
             </div>
             <div className="overflow-hidden">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Aktif Hesap</span>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Aktif Kullanıcı</span>
               <p className="text-xs font-extrabold text-zinc-900 dark:text-white truncate">{user.email}</p>
             </div>
           </div>
           <div className="pt-3 border-t border-zinc-100 dark:border-zinc-800 text-xs flex justify-between text-zinc-500">
-            <span>Durum:</span>
+            <span>Hesap Durumu:</span>
             <span className="font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
               <ShieldCheck className="size-3.5"/> Doğrulanmış
             </span>
           </div>
         </div>
 
-        <div className="rounded-2xl border border-blue-200 dark:border-blue-900/50 bg-blue-50/50 dark:bg-blue-950/20 p-5 space-y-3 relative overflow-hidden">
+        <div className={cn(
+          "rounded-2xl border p-5 space-y-3 relative overflow-hidden flex flex-col justify-between",
+          isPro 
+            ? "border-emerald-300 dark:border-emerald-900/50 bg-emerald-50/50 dark:bg-emerald-950/20" 
+            : "border-blue-200 dark:border-blue-900/50 bg-blue-50/50 dark:bg-blue-950/20"
+        )}>
           <div className="flex items-center justify-between">
-            <span className="inline-flex items-center gap-1 rounded-md bg-blue-600/10 px-2 py-0.5 text-[10px] font-black text-blue-600 dark:text-blue-400">
-              <Sparkles className="size-3" /> STANDART PAKET
+            <span className={cn(
+              "inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-black uppercase",
+              isPro ? "bg-emerald-600 text-white" : "bg-blue-600/10 text-blue-600 dark:text-blue-400"
+            )}>
+              <Sparkles className="size-3" /> {isPro ? 'PRO ABONE' : 'ÜCRETSİZ PLAN'}
             </span>
-            <CreditCard className="size-5 text-blue-600 dark:text-blue-400" />
+            <CreditCard className={cn("size-5", isPro ? "text-emerald-600" : "text-blue-600")} />
           </div>
           <div>
-            <h4 className="text-sm font-black text-zinc-900 dark:text-white">Nakliye Cepte Sürücü</h4>
-            <p className="text-xs text-zinc-500 mt-0.5">Sınırsız ilan erişimi ve hesap araçları</p>
+            <h4 className="text-sm font-black text-zinc-900 dark:text-white">
+              {isPro ? 'Nakliye Cepte PRO' : 'Standart Sürücü'}
+            </h4>
+            <p className="text-xs text-zinc-500 mt-0.5">
+              {isPro 
+                ? `Aboneliğiniz ${profile?.subscription_end_date ? new Date(profile.subscription_end_date).toLocaleDateString('tr-TR') : 'Aktif'} tarihine kadar geçerli.`
+                : 'Sınırsız ilan eklemek ve öncelikli listelenmek için PRO pakete geçin.'}
+            </p>
           </div>
         </div>
 
@@ -618,6 +662,64 @@ function ProfileView({ user, openAuthModal, signOut }: { user: any; openAuthModa
           </button>
         </div>
       </div>
+
+      {!isPro && (
+        <div className="space-y-3 pt-2">
+          <h3 className="text-sm font-black text-zinc-900 dark:text-white">Abonelik Paketleri</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            
+            {/* Aylık Paket */}
+            <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-5 flex flex-col justify-between space-y-4 hover:border-blue-500 transition-all">
+              <div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-blue-600 dark:text-blue-400">Aylık Plan</span>
+                  <span className="text-sm font-black text-zinc-900 dark:text-white">₺99 <span className="text-[10px] text-zinc-400 font-normal">/ ay</span></span>
+                </div>
+                <h4 className="text-base font-black text-zinc-900 dark:text-white mt-1">PRO Aylık</h4>
+                <ul className="mt-3 space-y-1.5 text-xs text-zinc-500">
+                  <li className="flex items-center gap-1.5"><ShieldCheck className="size-3.5 text-blue-600"/> Sınırsız yük & araç ilanı yayınlama</li>
+                  <li className="flex items-center gap-1.5"><ShieldCheck className="size-3.5 text-blue-600"/> Arama sonuçlarında öncelikli görünüm</li>
+                  <li className="flex items-center gap-1.5"><ShieldCheck className="size-3.5 text-blue-600"/> Doğrulanmış Sürücü Rozeti</li>
+                </ul>
+              </div>
+              <button
+                type="button"
+                onClick={() => alert("Abonelik satın alma altyapısı entegrasyon aşamasındadır.")}
+                className="w-full rounded-xl bg-blue-600 py-2.5 text-xs font-bold text-white shadow-md hover:bg-blue-700 transition-all cursor-pointer"
+              >
+                Aylık Paket Seç (₺99)
+              </button>
+            </div>
+
+            {/* Yıllık Paket */}
+            <div className="rounded-2xl border-2 border-blue-600 bg-white dark:bg-zinc-900 p-5 flex flex-col justify-between space-y-4 relative shadow-lg shadow-blue-500/10">
+              <span className="absolute -top-3 right-4 rounded-full bg-blue-600 px-3 py-0.5 text-[10px] font-black text-white uppercase tracking-wider">
+                2 Ay Bedava
+              </span>
+              <div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-blue-600 dark:text-blue-400">Yıllık Plan</span>
+                  <span className="text-sm font-black text-zinc-900 dark:text-white">₺999 <span className="text-[10px] text-zinc-400 font-normal">/ yıl</span></span>
+                </div>
+                <h4 className="text-base font-black text-zinc-900 dark:text-white mt-1">PRO Yıllık</h4>
+                <ul className="mt-3 space-y-1.5 text-xs text-zinc-500">
+                  <li className="flex items-center gap-1.5"><ShieldCheck className="size-3.5 text-blue-600"/> Tüm PRO Aylık özellikleri</li>
+                  <li className="flex items-center gap-1.5"><ShieldCheck className="size-3.5 text-blue-600"/> Yıllık alımda ₺189 tasarruf</li>
+                  <li className="flex items-center gap-1.5"><ShieldCheck className="size-3.5 text-blue-600"/> VIP Destek Hattı</li>
+                </ul>
+              </div>
+              <button
+                type="button"
+                onClick={() => alert("Abonelik satın alma altyapısı entegrasyon aşamasındadır.")}
+                className="w-full rounded-xl bg-blue-600 py-2.5 text-xs font-bold text-white shadow-md hover:bg-blue-700 transition-all cursor-pointer"
+              >
+                Yıllık Paket Seç (₺999)
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
     </div>
   )
 }
