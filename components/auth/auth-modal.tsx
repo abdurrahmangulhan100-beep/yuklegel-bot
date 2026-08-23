@@ -41,7 +41,7 @@ export function AuthModal() {
         setMessage({ type: 'success', text: 'Giriş başarılı! Yönlendiriliyorsunuz...' })
         setTimeout(() => {
           closeAuthModal()
-        }, 1000)
+        }, 800)
       } else if (mode === 'register') {
         const { error } = await supabase.auth.signUp({ email, password })
         if (error) throw error
@@ -73,43 +73,44 @@ export function AuthModal() {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="relative w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-2xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="relative w-full max-w-sm rounded-3xl bg-white p-6 shadow-2xl dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800">
+        
         {/* Kapatma Butonu */}
         <button
           type="button"
           onClick={closeAuthModal}
-          className="absolute right-4 top-4 rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+          className="absolute right-4 top-4 rounded-full p-1.5 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-800 dark:hover:text-zinc-200 transition-colors"
         >
           <X className="size-5" />
         </button>
 
         {/* Başlık & İkon */}
         <div className="flex flex-col items-center text-center">
-          <div className="flex size-12 items-center justify-center rounded-2xl bg-primary/10 text-primary mb-3">
+          <div className="flex size-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 dark:bg-blue-950/50 dark:text-blue-400 mb-3">
             {mode === 'login' && <LogIn className="size-6" />}
             {mode === 'register' && <UserPlus className="size-6" />}
             {mode === 'forgot' && <KeyRound className="size-6" />}
           </div>
 
-          <h3 className="text-xl font-bold text-foreground">
+          <h3 className="text-xl font-extrabold text-zinc-900 dark:text-white flex items-center gap-2">
             {mode === 'login' && '🔑 Giriş Yap'}
             {mode === 'register' && '📝 Kayıt Ol'}
             {mode === 'forgot' && '🔒 Şifremi Unuttum'}
           </h3>
 
-          <p className="mt-1.5 text-xs text-muted-foreground max-w-xs leading-relaxed">
-            {modalReason || 'Lojistik fırsatlarına erişmek ve işlemlerinizi yönetmek için oturum açın.'}
+          <p className="mt-1.5 text-xs font-medium text-zinc-500 dark:text-zinc-400 max-w-xs leading-relaxed">
+            {modalReason || 'Bu özelliği kullanmak için ücretsiz giriş yapın.'}
           </p>
         </div>
 
         {/* Bilgilendirme Mesaj Kutusu */}
         {message.text && (
           <div
-            className={`mt-4 rounded-xl p-3 text-xs font-medium border text-center ${
+            className={`mt-4 rounded-xl p-3 text-xs font-bold border text-center ${
               message.type === 'error'
-                ? 'bg-rose-500/10 text-rose-600 border-rose-500/20'
-                : 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20'
+                ? 'bg-rose-50 text-rose-600 border-rose-200 dark:bg-rose-950/30 dark:border-rose-900/50 dark:text-rose-400'
+                : 'bg-emerald-50 text-emerald-600 border-emerald-200 dark:bg-emerald-950/30 dark:border-emerald-900/50 dark:text-emerald-400'
             }`}
           >
             {message.text}
@@ -117,29 +118,29 @@ export function AuthModal() {
         )}
 
         {/* Form Alanı */}
-        <form onSubmit={handleSubmit} className="mt-4 flex flex-col gap-3">
+        <form onSubmit={handleSubmit} className="mt-5 flex flex-col gap-3">
           <div className="relative">
-            <Mail className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Mail className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-zinc-400" />
             <input
               type="email"
               required
               placeholder="E-posta Adresiniz"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-xl border border-input bg-background py-2.5 pl-9 pr-3 text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary min-h-[44px]"
+              className="w-full rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-800/50 py-3 pl-10 pr-4 text-xs font-medium text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/20 transition-all min-h-[44px]"
             />
           </div>
 
           {mode !== 'forgot' && (
             <div className="relative">
-              <Lock className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Lock className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-zinc-400" />
               <input
                 type="password"
                 required
                 placeholder="Şifreniz"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full rounded-xl border border-input bg-background py-2.5 pl-9 pr-3 text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary min-h-[44px]"
+                className="w-full rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-800/50 py-3 pl-10 pr-4 text-xs font-medium text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/20 transition-all min-h-[44px]"
               />
             </div>
           )}
@@ -147,7 +148,7 @@ export function AuthModal() {
           <button
             type="submit"
             disabled={loading}
-            className="mt-1 flex w-full items-center justify-center gap-2 rounded-xl bg-primary min-h-[44px] py-2.5 px-4 text-sm font-semibold text-primary-foreground shadow-md hover:bg-primary/90 transition-colors disabled:opacity-50"
+            className="mt-1 flex w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 hover:bg-blue-700 active:scale-[0.98] min-h-[44px] py-3 px-4 text-xs font-bold text-white shadow-lg shadow-blue-600/20 transition-all disabled:opacity-70"
           >
             {loading ? (
               <Loader2 className="size-4 animate-spin" />
@@ -165,22 +166,22 @@ export function AuthModal() {
         </form>
 
         {/* Alt Geçiş Bağlantıları */}
-        <div className="mt-5 border-t border-border/60 pt-4 text-xs flex justify-between items-center text-muted-foreground">
+        <div className="mt-5 border-t border-zinc-100 dark:border-zinc-800 pt-4 text-xs font-bold flex justify-between items-center text-zinc-500 dark:text-zinc-400">
           {mode === 'login' && (
             <>
               <button
                 type="button"
                 onClick={() => switchMode('forgot')}
-                className="hover:text-primary transition-colors cursor-pointer"
+                className="hover:text-zinc-800 dark:hover:text-white transition-colors cursor-pointer"
               >
                 Şifremi Unuttum?
               </button>
               <button
                 type="button"
                 onClick={() => switchMode('register')}
-                className="hover:text-primary font-semibold text-foreground transition-colors cursor-pointer"
+                className="hover:text-zinc-800 dark:hover:text-white transition-colors cursor-pointer text-zinc-700 dark:text-zinc-300"
               >
-                Hesabın yok mu? <span className="text-primary underline">Kayıt Ol</span>
+                Hesabın yok mu? <span className="text-blue-600 dark:text-blue-400 hover:underline">Kayıt Ol</span>
               </button>
             </>
           )}
@@ -189,9 +190,9 @@ export function AuthModal() {
             <button
               type="button"
               onClick={() => switchMode('login')}
-              className="w-full text-center hover:text-primary font-semibold text-foreground transition-colors cursor-pointer"
+              className="w-full text-center hover:text-zinc-800 dark:hover:text-white transition-colors cursor-pointer"
             >
-              Zaten hesabın var mı? <span className="text-primary underline">Giriş Yap</span>
+              Zaten hesabın var mı? <span className="text-blue-600 dark:text-blue-400 hover:underline">Giriş Yap</span>
             </button>
           )}
 
@@ -199,7 +200,7 @@ export function AuthModal() {
             <button
               type="button"
               onClick={() => switchMode('login')}
-              className="w-full text-center hover:text-primary font-semibold text-foreground transition-colors cursor-pointer"
+              className="w-full text-center text-blue-600 dark:text-blue-400 hover:underline transition-colors cursor-pointer"
             >
               ← Giriş Ekranına Dön
             </button>
