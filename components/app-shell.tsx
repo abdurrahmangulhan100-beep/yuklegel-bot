@@ -7,11 +7,11 @@ import { useAuth } from '@/lib/auth-context'
 import { supabase } from '@/lib/supabase'
 import { 
   Truck, Store, PlusCircle, Calculator, Fuel, NotebookPen, Wallet, Timer,
-  LogOut, X, Loader2, Sparkles, Sun, Moon, ArrowLeft, ChevronRight, Pin, UserCheck, Users
+  LogOut, X, Loader2, Sparkles, Sun, Moon, ArrowLeft, ChevronRight, Pin, UserCheck, Users, Mail, Lock, KeyRound
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-// Lazy Loading Modules (Kod bölme - Performans için)
+// Lazy Loading Modules
 const ListingsView = dynamic(() => import('@/components/listings/listings-view').then(m => m.ListingsView), { loading: () => <ModuleLoader /> })
 const AddListingForm = dynamic(() => import('@/components/add-listing-form').then(m => m.AddListingForm), { loading: () => <ModuleLoader /> })
 const MyListingsView = dynamic(() => import('@/components/my-listings-view').then(m => m.MyListingsView), { loading: () => <ModuleLoader /> })
@@ -34,6 +34,7 @@ function ModuleLoader() {
 }
 
 type ModuleId = 'dashboard' | 'pazar' | 'ekle' | 'ilanlarim' | 'sizden-gelenler' | 'finans' | 'takograf' | 'sefer' | 'yakit' | 'notlar'
+type AuthMode = 'login' | 'register' | 'forgot'
 
 interface CardItem {
   id: ModuleId
@@ -62,13 +63,12 @@ function AppShellContent() {
 
   const { user, signOut, isAuthModalOpen, openAuthModal, closeAuthModal } = useAuth()
   const [isDarkMode, setIsDarkMode] = useState(false)
-  const [authMode, setAuthMode] = useState<'login' | 'register'>('login')
+  const [authMode, setAuthMode] = useState<AuthMode>('login')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [toast, setToast] = useState<{ type: 'error' | 'success'; text: string } | null>(null)
 
-  // Gerçek Veri State'i
   const [listingCount, setListingCount] = useState<number | null>(null)
   const [pinnedIds, setPinnedIds] = useState<string[]>([])
 
@@ -84,7 +84,7 @@ function AppShellContent() {
 
   useEffect(() => {
     if (toast) {
-      const timer = setTimeout(() => setToast(null), 3000)
+      const timer = setTimeout(() => setToast(null), 3500)
       return () => clearTimeout(timer)
     }
   }, [toast])
@@ -134,17 +134,39 @@ function AppShellContent() {
         if (error) throw error
         setToast({ type: 'success', text: 'Giriş başarılı!' })
         closeAuthModal()
-      } else {
+      } else if (authMode === 'register') {
         const { error } = await supabase.auth.signUp({ email, password })
         if (error) throw error
-        setToast({ type: 'success', text: 'Kayıt başarılı!' })
+        setToast({ type: 'success', text: 'Kayıt başarılı! Lütfen e-postanızı onaylayın.' })
+        setAuthMode('login')
+      } else if (authMode === 'forgot') {
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: `${window.location.origin}/reset-password`,
+        })
+        if (error) throw error
+        setToast({ type: 'success', text: 'Şifre sıfırlama bağlantısı e-postanıza gönderildi.' })
         setAuthMode('login')
       }
     } catch (err: unknown) {
       const error = err as Error
-      setToast({ type: 'error', text: error.message || 'Hata oluştu' })
+      setToast({ type: 'error', text: error.message || 'Bir hata oluştu' })
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleGoogleLogin = async () => {
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: window.location.origin,
+        },
+      })
+      if (error) throw error
+    } catch (err: unknown) {
+      const error = err as Error
+      setToast({ type: 'error', text: error.message || 'Google ile giriş yaparken hata oluştu.' })
     }
   }
 
@@ -350,48 +372,144 @@ function AppShellContent() {
         </main>
       </div>
 
-      {/* AUTH MODAL */}
+      {/* AUTH MODAL (Google Play Hazır + Şifremi Unuttum) */}
       {isAuthModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div onClick={closeAuthModal} className="absolute inset-0 bg-black/60 backdrop-blur-xs" />
-          <div className="relative w-full max-w-sm rounded-2xl bg-white dark:bg-zinc-900 p-6 shadow-2xl border border-zinc-200 dark:border-zinc-800">
-            <button onClick={closeAuthModal} className="absolute right-4 top-4 text-zinc-400 hover:text-zinc-200">
-              <X className="size-4"/>
+          <div className="relative w-full max-w-sm rounded-3xl bg-white dark:bg-zinc-900 p-6 shadow-2xl border border-zinc-200 dark:border-zinc-800">
+            
+            {/* Kapat Butonu */}
+            <button onClick={closeAuthModal} className="absolute right-4 top-4 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors">
+              <X className="size-5"/>
             </button>
-            <h3 className="text-base font-black text-center mb-4">
-              {authMode === 'login' ? 'Giriş Yap' : 'Kayıt Ol'}
-            </h3>
 
+            {/* Başlık ve İkon */}
+            <div className="text-center mb-5">
+              <div className="mx-auto mb-2.5 flex size-12 items-center justify-center rounded-2xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-900/40">
+                {authMode === 'forgot' ? <KeyRound className="size-6"/> : <Truck className="size-6"/>}
+              </div>
+              <h3 className="text-lg font-black text-zinc-900 dark:text-white">
+                {authMode === 'login' && 'Giriş Yap'}
+                {authMode === 'register' && 'Hesap Oluştur'}
+                {authMode === 'forgot' && 'Şifremi Unuttum'}
+              </h3>
+              <p className="text-xs text-zinc-500 mt-0.5">
+                {authMode === 'login' && 'İlan eklemek ve yönetmek için giriş yapın.'}
+                {authMode === 'register' && 'Ücretsiz hesabınızı hemen oluşturun.'}
+                {authMode === 'forgot' && 'E-posta adresinize sıfırlama bağlantısı göndereceğiz.'}
+              </p>
+            </div>
+
+            {/* Form */}
             <form onSubmit={handleAuthSubmit} className="space-y-3">
-              <input 
-                type="email" 
-                required 
-                value={email} 
-                onChange={(e) => setEmail(e.target.value)} 
-                placeholder="E-Posta" 
-                className="w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800 px-3 py-2 text-xs focus:outline-none focus:border-blue-500" 
-              />
-              <input 
-                type="password" 
-                required 
-                value={password} 
-                onChange={(e) => setPassword(e.target.value)} 
-                placeholder="Şifre" 
-                className="w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800 px-3 py-2 text-xs focus:outline-none focus:border-blue-500" 
-              />
-              <button type="submit" disabled={loading} className="w-full rounded-xl bg-blue-600 py-2.5 text-xs font-bold text-white hover:bg-blue-700 transition-colors">
-                {loading ? <Loader2 className="size-4 animate-spin mx-auto"/> : (authMode === 'login' ? 'Giriş Yap' : 'Kayıt Ol')}
+              <div className="relative">
+                <Mail className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-zinc-400" />
+                <input 
+                  type="email" 
+                  required 
+                  value={email} 
+                  onChange={(e) => setEmail(e.target.value)} 
+                  placeholder="E-posta Adresiniz" 
+                  className="w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/60 py-2.5 pl-10 pr-3 text-xs text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 focus:outline-none focus:border-blue-500 transition-all" 
+                />
+              </div>
+
+              {authMode !== 'forgot' && (
+                <div className="relative">
+                  <Lock className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-zinc-400" />
+                  <input 
+                    type="password" 
+                    required 
+                    value={password} 
+                    onChange={(e) => setPassword(e.target.value)} 
+                    placeholder="Şifreniz" 
+                    className="w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/60 py-2.5 pl-10 pr-3 text-xs text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 focus:outline-none focus:border-blue-500 transition-all" 
+                  />
+                </div>
+              )}
+
+              {authMode === 'login' && (
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setAuthMode('forgot')}
+                    className="text-[11px] font-bold text-zinc-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                  >
+                    Şifremi Unuttum
+                  </button>
+                </div>
+              )}
+
+              <button 
+                type="submit" 
+                disabled={loading} 
+                className="w-full rounded-xl bg-blue-600 py-2.5 text-xs font-bold text-white shadow-md shadow-blue-500/20 hover:bg-blue-700 active:scale-[0.99] transition-all flex items-center justify-center gap-2"
+              >
+                {loading ? <Loader2 className="size-4 animate-spin"/> : (
+                  authMode === 'login' ? 'Giriş Yap' : authMode === 'register' ? 'Kayıt Ol' : 'Sıfırlama Bağlantısı Gönder'
+                )}
               </button>
             </form>
 
-            <div className="mt-4 text-center">
-              <button 
-                onClick={() => setAuthMode(authMode === 'login' ? 'register' : 'login')}
-                className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline"
-              >
-                {authMode === 'login' ? 'Hesabınız yok mu? Kayıt Olun' : 'Zaten hesabınız var mı? Giriş Yapın'}
-              </button>
+            {/* Google ile Giriş */}
+            {authMode !== 'forgot' && (
+              <>
+                <div className="relative my-4">
+                  <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-zinc-100 dark:border-zinc-800"></div></div>
+                  <div className="relative flex justify-center text-[10px] uppercase"><span className="bg-white dark:bg-zinc-900 px-2 text-zinc-400 font-bold">veya</span></div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleGoogleLogin}
+                  className="w-full flex items-center justify-center gap-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-800/40 py-2.5 text-xs font-bold text-zinc-700 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
+                >
+                  <svg className="size-4" viewBox="0 0 24 24">
+                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+                  </svg>
+                  <span>Google ile Devam Et</span>
+                </button>
+              </>
+            )}
+
+            {/* Alt Geçiş Metinleri & Gizlilik Politikası Bağlantısı */}
+            <div className="mt-5 text-center space-y-2">
+              {authMode === 'login' && (
+                <p className="text-xs text-zinc-500">
+                  Hesabınız yok mu?{' '}
+                  <button onClick={() => setAuthMode('register')} className="font-bold text-blue-600 dark:text-blue-400 hover:underline">
+                    Kayıt Olun
+                  </button>
+                </p>
+              )}
+              {authMode === 'register' && (
+                <p className="text-xs text-zinc-500">
+                  Zaten hesabınız var mı?{' '}
+                  <button onClick={() => setAuthMode('login')} className="font-bold text-blue-600 dark:text-blue-400 hover:underline">
+                    Giriş Yapın
+                  </button>
+                </p>
+              )}
+              {authMode === 'forgot' && (
+                <button onClick={() => setAuthMode('login')} className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline">
+                  ← Giriş Ekranına Dön
+                </button>
+              )}
+
+              <div className="pt-3 border-t border-zinc-100 dark:border-zinc-800/60">
+                <p className="text-[10px] text-zinc-400">
+                  Devam ederek{' '}
+                  <a href="/privacy" target="_blank" className="underline hover:text-zinc-600 dark:hover:text-zinc-300">
+                    Gizlilik Politikası
+                  </a>
+                  'nı kabul etmiş olursunuz.
+                </p>
+              </div>
             </div>
+
           </div>
         </div>
       )}
