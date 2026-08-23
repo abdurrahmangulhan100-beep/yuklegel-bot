@@ -4,7 +4,7 @@ import { timeAgo } from '@/lib/format'
 import { subscribeToPushNotifications } from '@/lib/push-client'
 import { 
   Search, X, Clock, Heart, Phone, Copy, Check, Loader2, MessageSquare, 
-  Bell, RotateCcw, Truck, AlertCircle, RefreshCw, FileText, Plus, Trash2, LogIn, Sparkles
+  Bell, RotateCcw, Truck, AlertCircle, RefreshCw, FileText, Plus, Trash2, LogIn, Sparkles, ChevronDown
 } from 'lucide-react'
 
 const CHIP_FILTERS = [
@@ -73,6 +73,27 @@ function fixEncoding(str: string): string {
   }
 }
 
+// Okunabilirlik için BÜYÜK harfli metinleri Title Case (İlk Harfleri Büyük) formatına dönüştürücü
+function toTitleCase(str: string): string {
+  if (!str) return ''
+  try {
+    const smallWords = /^(ve|ile|de|da|için|icin|bir|bu|şu|o|kadar|gibi|göre|gore)$/i
+    return str
+      .toLocaleLowerCase('tr-TR')
+      .split(' ')
+      .map((word, index) => {
+        if (!word) return ''
+        if (index > 0 && smallWords.test(word)) {
+          return word
+        }
+        return word.charAt(0).toLocaleUpperCase('tr-TR') + word.slice(1)
+      })
+      .join(' ')
+  } catch {
+    return str
+  }
+}
+
 function cleanLogisticsText(text: string): string {
   if (!text) return ''
   try {
@@ -86,9 +107,8 @@ function cleanLogisticsText(text: string): string {
       .replace(/[^\w\sğüşıöçĞÜŞİÖÇ\.\,\:\;\-\+\/\(\)\@]/gi, ' ')
       .replace(/\s+/g, ' ')
       .trim()
-      .toLocaleUpperCase('tr-TR')
   } catch {
-    return String(text || '').toLocaleUpperCase('tr-TR')
+    return String(text || '').trim()
   }
 }
 
@@ -101,9 +121,8 @@ function formatCleanText(text: string): string {
       .replace(/[^\w\sğüşıöçĞÜŞİÖÇ\.\,\:\;\-\+\/\(\)\@]/gi, ' ')
       .replace(/\s+/g, ' ')
       .trim()
-      .toLocaleUpperCase('tr-TR')
   } catch {
-    return String(text || '').toLocaleUpperCase('tr-TR')
+    return String(text || '').trim()
   }
 }
 
@@ -127,7 +146,7 @@ function normalizeTR(text: any = ''): string {
 
 function extractMessageText(ilan: any): string {
   if (!ilan) return ''
-  return ilan.ham_mesaj || ilan.mesaj_metni || ilan.message || ilan.icerik || ilan.text || ilan.content || ''
+  return[cite: 2] ilan.ham_mesaj || ilan.mesaj_metni || ilan.message || ilan.icerik || ilan.text || ilan.content || ''
 }
 
 function isSpamOrGarbage(rawMessage: string, senderName: string): boolean {
@@ -158,7 +177,7 @@ function processListingItem(ilan: any) {
   if (!ilan) return null
   try {
     const raw = extractMessageText(ilan)
-    const sender = (ilan?.ilan_sahibi || ilan?.username || ilan?.sender || 'Lojistik Grubu').toLocaleUpperCase('tr-TR')
+    const sender = toTitleCase(ilan?.ilan_sahibi || ilan?.username || ilan?.sender || 'Lojistik Grubu')
     
     if (isSpamOrGarbage(raw, sender)) return null
 
@@ -208,25 +227,33 @@ function extractPhoneNumbers(ilan: any, text: string): string[] {
   return Array.from(new Set(foundPhones))
 }
 
+// Tonaj, Kasa Tipi ve Zaman ifadelerini otomatik tespit edip öne çıkaran regex kalıpları
+const HIGHLIGHT_REGEX = /\b(\d+\s*(?:TON|T|KM|KASA|TEKER|L|KG)|13\.60|13 60|FRİGO|FRIGO|TENTELİ|TENTE|DAMPERLİ|DAMPER|KIRKAYAK|TIR|YARIN|BUGÜN|BU GÜN|GECE\s*\d+|SABAH|AKŞAM|ACİL|HEMEN|PEŞİN)\b/gi
+
 function FormattedListingText({ text, query }: { text: string; query: string }) {
   if (!text) return null
 
-  const upperText = text.toLocaleUpperCase('tr-TR')
+  // Okunabilirliği artırmak için durak ayraçları (+ ve ,) etrafındaki boşlukları normalize et
+  const normalizedText = text
+    .replace(/\s*\+\s*/g, ' + ')
+    .replace(/\s*\,\s*/g, ', ')
+
+  const titleCasedText = toTitleCase(normalizedText)
   const upperQuery = query ? query.trim().toLocaleUpperCase('tr-TR') : ''
 
-  const lines = upperText
+  const lines = titleCasedText
     .split(/\n+|\s+\/\s+(?![^\(]*\))/)
     .map(l => l.trim())
     .filter(Boolean)
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2.5">
       {lines.map((line, lIdx) => (
-        <div key={lIdx} className={lines.length > 1 ? 'flex items-start gap-2.5 text-[13px]' : 'text-[13.5px]'}>
+        <div key={lIdx} className={lines.length > 1 ? 'flex items-start gap-2.5 text-[13.5px]' : 'text-[14px]'}>
           {lines.length > 1 && (
-            <span className="inline-block text-primary font-bold shrink-0 mt-1.5 size-1.5 rounded-full bg-primary/60 shadow-sm" />
+            <span className="inline-block text-primary font-bold shrink-0 mt-2 size-1.5 rounded-full bg-primary/70 shadow-sm" />
           )}
-          <p className="leading-relaxed font-semibold text-zinc-800 dark:text-zinc-100 break-words flex-1 tracking-tight">
+          <p className="leading-relaxed font-medium text-zinc-800 dark:text-zinc-100 break-words flex-1 tracking-tight">
             {renderFormattedWords(line, upperQuery)}
           </p>
         </div>
@@ -236,35 +263,211 @@ function FormattedListingText({ text, query }: { text: string; query: string }) 
 }
 
 function renderFormattedWords(line: string, query: string) {
-  const words = line.split(/(\s+)/)
+  // Kelimeleri ve boşlukları koruyarak parçala
+  const parts = line.split(new RegExp(`(${HIGHLIGHT_REGEX.source})`, 'gi'))
 
-  return words.map((word, i) => {
-    const normWord = word.trim()
-    if (!normWord) return word
+  return parts.map((part, i) => {
+    if (!part) return null
 
-    const normTRWord = normalizeTR(normWord)
-    const isQueryMatch = query && normTRWord.includes(normalizeTR(query))
-    const isCritical = CRITICAL_KEYWORDS.some(k => normTRWord.includes(normalizeTR(k)))
+    const normPart = part.trim()
+    const normTRPart = normalizeTR(normPart)
+    const isQueryMatch = query && normTRPart.includes(normalizeTR(query))
+    const isHighlight = HIGHLIGHT_REGEX.test(part)
 
     if (isQueryMatch) {
       return (
-        <mark key={i} className="bg-primary/20 text-primary px-1.5 py-0.5 rounded-lg font-bold border border-primary/30 shadow-sm">
-          {word}
+        <mark key={i} className="bg-primary/20 text-primary px-1.5 py-0.5 rounded-md font-bold border border-primary/30 shadow-sm">
+          {part}
         </mark>
       )
     }
 
-    if (isCritical) {
+    if (isHighlight) {
       return (
-        <span key={i} className="bg-amber-500/15 text-amber-700 dark:text-amber-300 font-bold px-1.5 py-0.5 rounded-lg border border-amber-500/25 shadow-sm">
-          {word}
+        <span key={i} className="bg-amber-500/15 dark:bg-amber-500/20 text-amber-800 dark:text-amber-300 font-bold px-1.5 py-0.5 rounded-md border border-amber-500/30 shadow-sm inline-block mx-0.5">
+          {part}
         </span>
       )
     }
 
-    return word
+    return part
   })
 }
+
+// Performans için Kart Bileşeni React.memo ile sarmalandı
+const ListingCard = React.memo(({ 
+  ilan, 
+  isFav, 
+  ilanNotes, 
+  copiedId, 
+  searchQuery, 
+  onToggleFavorite, 
+  onOpenNoteModal, 
+  onCopyText, 
+  onSelectIlan 
+}: { 
+  ilan: any
+  isFav: boolean
+  ilanNotes: any[]
+  copiedId: string | null
+  searchQuery: string
+  onToggleFavorite: (e: React.MouseEvent, key: string) => void
+  onOpenNoteModal: (ilan: any) => void
+  onCopyText: (e: React.MouseEvent, text: string, id: string) => void
+  onSelectIlan: (ilan: any) => void
+}) => {
+  const [expanded, setExpanded] = useState(false)
+
+  const ilanKey = ilan._stableKey
+  const displayContent = ilan._rawText
+  const fullContent = ilan._originalRawText || displayContent
+  const phones = extractPhoneNumbers(ilan, fullContent)
+  const dateVal = ilan?.created_at || ilan?.ilan_tarihi
+  const waMessage = safeEncode(`Merhaba, Nakliye Cepte üzerindeki "${displayContent.slice(0, 60)}..." ilanınız için ulaşıyorum.`)
+  
+  const isLongText = displayContent.length > 140
+
+  return (
+    <div 
+      onClick={() => onSelectIlan(ilan)}
+      style={{ willChange: 'transform' }}
+      className="group relative flex flex-col justify-between rounded-3xl border border-zinc-200/80 dark:border-zinc-800/80 bg-white/90 dark:bg-zinc-900/90 p-5 shadow-xs hover:shadow-xl hover:-translate-y-0.5 hover:border-primary/50 transition-all duration-300 cursor-pointer overflow-hidden backdrop-blur-xl"
+    >
+      <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-primary/30 via-primary to-primary/30 opacity-0 group-hover:opacity-100 transition-opacity" />
+
+      <div className="space-y-4">
+        {/* Üst Kısım: Firma Adı + Zaman + Favori/Not */}
+        <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800/80 pb-3">
+          <div className="flex items-center gap-2.5 max-w-[62%] truncate">
+            <div className="size-8 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shrink-0 shadow-sm">
+              <Truck className="size-4" />
+            </div>
+            <span className="font-extrabold text-zinc-900 dark:text-zinc-100 truncate text-xs tracking-wide">
+              {ilan._sender}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-1.5 shrink-0">
+            <span className="flex items-center gap-1 rounded-xl bg-zinc-100 dark:bg-zinc-800/80 px-2.5 py-1 text-[10px] font-bold text-zinc-500 dark:text-zinc-400">
+              <Clock className="size-3 text-zinc-400" />
+              {dateVal ? timeAgo(dateVal) : 'Yeni'}[cite: 2]
+            </span>
+
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onOpenNoteModal(ilan); }}
+              className={`rounded-xl p-2 transition-all relative cursor-pointer active:scale-90 ${
+                ilanNotes.length > 0 
+                  ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20 shadow-sm' 
+                  : 'bg-zinc-100 dark:bg-zinc-800/80 text-zinc-500 hover:text-amber-500 hover:bg-amber-500/10'
+              }`}
+              title="Not Ekle / Gör"
+            >
+              <FileText className="size-3.5" />
+              {ilanNotes.length > 0 && (
+                <span className="absolute -top-1 -right-1 flex size-4 items-center justify-center rounded-full bg-amber-500 text-[9px] font-black text-white shadow-md animate-pulse">
+                  {ilanNotes.length}
+                </span>
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={(e) => onToggleFavorite(e, ilanKey)}
+              className={`rounded-xl p-2 transition-all cursor-pointer active:scale-90 ${
+                isFav ? 'bg-rose-500/10 text-rose-500 shadow-sm' : 'bg-zinc-100 dark:bg-zinc-800/80 text-zinc-500 hover:text-rose-500 hover:bg-rose-500/10'
+              }`}
+              title="Favorilere Ekle"
+            >
+              <Heart className={`size-3.5 ${isFav ? 'fill-rose-500 text-rose-500' : ''}`} />
+            </button>
+          </div>
+        </div>
+
+        {/* Araç ve Yük Etiketleri (Rozetler) */}
+        {ilan._badges && ilan._badges.length > 0 && (
+          <div className="flex flex-wrap gap-1.5">
+            {ilan._badges.map((badge: any, idx: number) => (
+              <span 
+                key={idx} 
+                className={`inline-flex items-center rounded-xl border px-2.5 py-1 text-[10px] font-extrabold tracking-wider uppercase ${badge.color}`}
+              >
+                {badge.label}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {/* İlan Metni ve "Tümünü Gör" Genişleme Animasyonu */}
+        <div className="relative">
+          <div className={`transition-all duration-300 overflow-hidden ${!expanded && isLongText ? 'line-clamp-3' : ''}`}>
+            <FormattedListingText text={displayContent} query={searchQuery} />
+          </div>
+
+          {isLongText && (
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }}
+              className="mt-2 text-xs font-bold text-primary inline-flex items-center gap-1 hover:underline cursor-pointer"
+            >
+              <span>{expanded ? 'Daha Az Göster' : 'Tümünü Gör'}</span>
+              <ChevronDown className={`size-3.5 transition-transform duration-300 ${expanded ? 'rotate-180' : ''}`} />
+            </button>
+          )}
+        </div>
+
+        {ilanNotes.length > 0 && (
+          <div className="rounded-2xl bg-amber-500/10 dark:bg-amber-500/15 border border-amber-500/20 p-3 text-[11px] text-amber-900 dark:text-amber-200 shadow-sm">
+            <span className="font-extrabold block text-[10px] mb-0.5 tracking-wider uppercase text-amber-700 dark:text-amber-400">Özel Notunuz:</span>
+            <p className="line-clamp-2 italic font-medium">{ilanNotes[0].not_metni.toLocaleUpperCase('tr-TR')}</p>
+          </div>
+        )}
+      </div>
+
+      {/* Alt Aksiyon Butonları */}
+      <div className="mt-5 border-t border-zinc-100 dark:border-zinc-800/80 pt-3.5 flex items-center justify-between gap-2">
+        <button
+          type="button"
+          onClick={(e) => onCopyText(e, displayContent, ilanKey)}
+          className="flex flex-1 items-center justify-center gap-1.5 rounded-2xl bg-zinc-100 dark:bg-zinc-800/80 px-3.5 py-2.5 text-[11px] font-bold text-zinc-700 dark:text-zinc-200 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-all cursor-pointer active:scale-95 shadow-sm"
+        >
+          {copiedId === ilanKey ? <Check className="size-3.5 text-emerald-500" /> : <Copy className="size-3.5 text-zinc-400" />}
+          <span>{copiedId === ilanKey ? 'KOPYALANDI' : 'KOPYALA'}</span>
+        </button>
+
+        {phones.length > 0 ? (
+          <div className="flex items-center gap-1.5">
+            <a
+              href={`https://wa.me/90${phones[0].replace(/^0/, '')}?text=${waMessage}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="flex items-center gap-1.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 text-[11px] font-extrabold transition-all shadow-md shadow-emerald-600/25 active:scale-95"
+              title="WhatsApp İle Yaz"
+            >
+              <MessageSquare className="size-3.5" />
+              <span>WP</span>
+            </a>
+
+            <a
+              href={`tel:${phones[0]}`}
+              onClick={(e) => e.stopPropagation()}
+              className="flex items-center gap-1.5 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 text-[11px] font-extrabold transition-all shadow-md shadow-blue-600/25 active:scale-95"
+              title="Doğrudan Ara"
+            >
+              <Phone className="size-3.5" />
+              <span>ARA</span>
+            </a>
+          </div>
+        ) : (
+          <span className="text-[10px] text-zinc-400 italic px-2">Numara Yok</span>
+        )}
+      </div>
+    </div>
+  )
+})
+
+ListingCard.displayName = 'ListingCard'
 
 export function ListingsView({ listings: propListings = [] }: { listings?: any[] }) {
   const [currentUser, setCurrentUser] = useState<any>(null)
@@ -272,8 +475,12 @@ export function ListingsView({ listings: propListings = [] }: { listings?: any[]
   const [loading, setLoading] = useState<boolean>(true)
   const [refreshing, setRefreshing] = useState<boolean>(false)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
+  
+  // Arama ve filtre state'leri
   const [searchQuery, setSearchQuery] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
   const [selectedChip, setSelectedChip] = useState('ALL')
+  
   const [favorites, setFavorites] = useState<string[]>([])
   const [timeFilter, setTimeFilter] = useState<'all' | '15m' | '1h'>('all')
   const [onlyFavorites, setOnlyFavorites] = useState(false)
@@ -289,6 +496,14 @@ export function ListingsView({ listings: propListings = [] }: { listings?: any[]
   const [showAuthWarning, setShowAuthWarning] = useState(false)
 
   const isInitialFetchedRef = useRef(false)
+
+  // 150ms Debounce mekanizması (Arama ve filtre reaktifliği için)
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(searchQuery)
+    }, 150)
+    return () => clearTimeout(handler)
+  }, [searchQuery])
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -430,7 +645,7 @@ export function ListingsView({ listings: propListings = [] }: { listings?: any[]
     }
   }, [fetchListings])
 
-  const handleToggleFavorite = async (e: React.MouseEvent, key: string) => {
+  const handleToggleFavorite = useCallback(async (e: React.MouseEvent, key: string) => {
     e.stopPropagation()
 
     if (!currentUser) {
@@ -456,7 +671,7 @@ export function ListingsView({ listings: propListings = [] }: { listings?: any[]
 
       if (error) setFavorites(prev => prev.filter(k => k !== key))
     }
-  }
+  }, [currentUser, favorites])
 
   const handleAddNote = async () => {
     if (!currentUser) {
@@ -490,7 +705,7 @@ export function ListingsView({ listings: propListings = [] }: { listings?: any[]
     await supabase.from('notlar').delete().eq('id', noteId).eq('user_id', currentUser.id)
   }
 
-  const handleCopyText = async (e: React.MouseEvent, text: string, id: string) => {
+  const handleCopyText = useCallback(async (e: React.MouseEvent, text: string, id: string) => {
     e.stopPropagation()
     const cleanToCopy = formatCleanText(text) || text
     try {
@@ -512,12 +727,13 @@ export function ListingsView({ listings: propListings = [] }: { listings?: any[]
     } catch (err) {
       console.error('Kopyalama hatası:', err)
     }
-  }
+  }, [])
 
+  // 900+ ilan için optimize edilmiş useMemo filtreleme
   const filteredListings = useMemo(() => {
     const activeChipObj = CHIP_FILTERS.find(c => c.id === selectedChip)
     const chipKeywords = activeChipObj?.keywords ? activeChipObj.keywords.map(normalizeTR) : []
-    const searchNorm = normalizeTR(searchQuery)
+    const searchNorm = normalizeTR(debouncedSearch)
     const now = Date.now()
 
     const notedIlanIds = userNotes.map(n => n.ilan_id).filter(Boolean)
@@ -540,7 +756,15 @@ export function ListingsView({ listings: propListings = [] }: { listings?: any[]
 
       return true
     })
-  }, [listings, selectedChip, timeFilter, onlyFavorites, favorites, onlyNotes, userNotes, searchQuery])
+  }, [listings, selectedChip, timeFilter, onlyFavorites, favorites, onlyNotes, userNotes, debouncedSearch])
+
+  const handleOpenNoteModal = useCallback((ilan: any) => {
+    setNoteModalIlan(ilan)
+  }, [])
+
+  const handleSelectIlan = useCallback((ilan: any) => {
+    setSelectedIlan(ilan)
+  }, [])
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto px-3 sm:px-6 relative pb-16 font-sans w-full overflow-x-hidden">
@@ -573,6 +797,7 @@ export function ListingsView({ listings: propListings = [] }: { listings?: any[]
         </div>
       )}
 
+      {/* Arama ve Filtre Paneli */}
       <div className="flex flex-col gap-4 rounded-3xl border border-zinc-200/80 dark:border-zinc-800/80 bg-white/80 dark:bg-zinc-900/80 p-4 sm:p-5 shadow-xl shadow-zinc-900/5 backdrop-blur-2xl">
         <div className="relative">
           <Search className="absolute left-4 top-1/2 size-4 -translate-y-1/2 text-zinc-400" />
@@ -718,143 +943,22 @@ export function ListingsView({ listings: propListings = [] }: { listings?: any[]
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 items-stretch">
           {filteredListings.map((ilan) => {
             const ilanKey = ilan._stableKey
-            const displayContent = ilan._rawText
-            const fullContent = ilan._originalRawText || displayContent
-            const phones = extractPhoneNumbers(ilan, fullContent)
             const isFav = favorites.includes(ilanKey)
-            const dateVal = ilan?.created_at || ilan?.ilan_tarihi
             const ilanNotes = userNotes.filter(n => n.ilan_id === ilanKey)
-            const waMessage = safeEncode(`Merhaba, Nakliye Cepte üzerindeki "${displayContent.slice(0, 60)}..." ilanınız için ulaşıyorum.`)
 
             return (
-              <div 
+              <ListingCard
                 key={ilanKey}
-                onClick={() => setSelectedIlan(ilan)}
-                className="group relative flex flex-col justify-between rounded-3xl border border-zinc-200/80 dark:border-zinc-800/80 bg-white/90 dark:bg-zinc-900/90 p-5 shadow-md hover:shadow-2xl hover:border-primary/50 transition-all duration-300 cursor-pointer overflow-hidden backdrop-blur-xl"
-              >
-                <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-primary/30 via-primary to-primary/30 opacity-0 group-hover:opacity-100 transition-opacity" />
-
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800/80 pb-3">
-                    <div className="flex items-center gap-2.5 max-w-[62%] truncate">
-                      <div className="size-8 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shrink-0 shadow-sm">
-                        <Truck className="size-4" />
-                      </div>
-                      <span className="font-extrabold text-zinc-900 dark:text-zinc-100 truncate text-xs tracking-wide">
-                        {ilan._sender}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <span className="flex items-center gap-1 rounded-xl bg-zinc-100 dark:bg-zinc-800/80 px-2.5 py-1 text-[10px] font-bold text-zinc-500 dark:text-zinc-400">
-                        <Clock className="size-3 text-zinc-400" />
-                        {dateVal ? timeAgo(dateVal) : 'Yeni'}
-                      </span>
-
-                      <button
-                        type="button"
-                        onClick={(e) => { e.stopPropagation(); setNoteModalIlan(ilan); }}
-                        className={`rounded-xl p-2 transition-all relative cursor-pointer active:scale-90 ${
-                          ilanNotes.length > 0 
-                            ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20 shadow-sm' 
-                            : 'bg-zinc-100 dark:bg-zinc-800/80 text-zinc-500 hover:text-amber-500 hover:bg-amber-500/10'
-                        }`}
-                        title="Not Ekle / Gör"
-                      >
-                        <FileText className="size-3.5" />
-                        {ilanNotes.length > 0 && (
-                          <span className="absolute -top-1 -right-1 flex size-4 items-center justify-center rounded-full bg-amber-500 text-[9px] font-black text-white shadow-md animate-pulse">
-                            {ilanNotes.length}
-                          </span>
-                        )}
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={(e) => handleToggleFavorite(e, ilanKey)}
-                        className={`rounded-xl p-2 transition-all cursor-pointer active:scale-90 ${
-                          isFav ? 'bg-rose-500/10 text-rose-500 shadow-sm' : 'bg-zinc-100 dark:bg-zinc-800/80 text-zinc-500 hover:text-rose-500 hover:bg-rose-500/10'
-                        }`}
-                        title="Favorilere Ekle"
-                      >
-                        <Heart className={`size-3.5 ${isFav ? 'fill-rose-500 text-rose-500' : ''}`} />
-                      </button>
-                    </div>
-                  </div>
-
-                  {ilan._badges && ilan._badges.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5">
-                      {ilan._badges.map((badge: any, idx: number) => (
-                        <span 
-                          key={idx} 
-                          className={`inline-flex items-center rounded-xl border px-2.5 py-1 text-[10px] font-extrabold tracking-wider uppercase ${badge.color}`}
-                        >
-                          {badge.label}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-
-                  <div className="relative">
-                    <div className="line-clamp-4">
-                      <FormattedListingText text={displayContent} query={searchQuery} />
-                    </div>
-                    {displayContent.length > 130 && (
-                      <span className="text-[11px] font-extrabold text-primary mt-2 inline-flex items-center gap-1 hover:underline">
-                        <span>Devamını Oku</span>
-                        <span>→</span>
-                      </span>
-                    )}
-                  </div>
-
-                  {ilanNotes.length > 0 && (
-                    <div className="rounded-2xl bg-amber-500/10 dark:bg-amber-500/15 border border-amber-500/20 p-3 text-[11px] text-amber-900 dark:text-amber-200 shadow-sm">
-                      <span className="font-extrabold block text-[10px] mb-0.5 tracking-wider uppercase text-amber-700 dark:text-amber-400">Özel Notunuz:</span>
-                      <p className="line-clamp-2 italic font-medium">{ilanNotes[0].not_metni.toLocaleUpperCase('tr-TR')}</p>
-                    </div>
-                  )}
-                </div>
-
-                <div className="mt-5 border-t border-zinc-100 dark:border-zinc-800/80 pt-3.5 flex items-center justify-between gap-2">
-                  <button
-                    type="button"
-                    onClick={(e) => handleCopyText(e, displayContent, ilanKey)}
-                    className="flex flex-1 items-center justify-center gap-1.5 rounded-2xl bg-zinc-100 dark:bg-zinc-800/80 px-3.5 py-2.5 text-[11px] font-bold text-zinc-700 dark:text-zinc-200 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-all cursor-pointer active:scale-95 shadow-sm"
-                  >
-                    {copiedId === ilanKey ? <Check className="size-3.5 text-emerald-500" /> : <Copy className="size-3.5 text-zinc-400" />}
-                    <span>{copiedId === ilanKey ? 'KOPYALANDI' : 'KOPYALA'}</span>
-                  </button>
-
-                  {phones.length > 0 ? (
-                    <div className="flex items-center gap-1.5">
-                      <a
-                        href={`https://wa.me/90${phones[0].replace(/^0/, '')}?text=${waMessage}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={(e) => e.stopPropagation()}
-                        className="flex items-center gap-1.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 text-[11px] font-extrabold transition-all shadow-md shadow-emerald-600/25 active:scale-95"
-                        title="WhatsApp İle Yaz"
-                      >
-                        <MessageSquare className="size-3.5" />
-                        <span>WP</span>
-                      </a>
-
-                      <a
-                        href={`tel:${phones[0]}`}
-                        onClick={(e) => e.stopPropagation()}
-                        className="flex items-center gap-1.5 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 text-[11px] font-extrabold transition-all shadow-md shadow-blue-600/25 active:scale-95"
-                        title="Doğrudan Ara"
-                      >
-                        <Phone className="size-3.5" />
-                        <span>ARA</span>
-                      </a>
-                    </div>
-                  ) : (
-                    <span className="text-[10px] text-zinc-400 italic px-2">Numara Yok</span>
-                  )}
-                </div>
-
-              </div>
+                ilan={ilan}
+                isFav={isFav}
+                ilanNotes={ilanNotes}
+                copiedId={copiedId}
+                searchQuery={searchQuery}
+                onToggleFavorite={handleToggleFavorite}
+                onOpenNoteModal={handleOpenNoteModal}
+                onCopyText={handleCopyText}
+                onSelectIlan={handleSelectIlan}
+              />
             )
           })}
         </div>
@@ -872,6 +976,7 @@ export function ListingsView({ listings: propListings = [] }: { listings?: any[]
         </div>
       )}
 
+      {/* Not Ekleme Modal */}
       {noteModalIlan && (() => {
         const modalIlanNotes = userNotes.filter(n => n.ilan_id === noteModalIlan._stableKey)
 
@@ -940,6 +1045,7 @@ export function ListingsView({ listings: propListings = [] }: { listings?: any[]
         )
       })()}
 
+      {/* İlan Detay Modal */}
       {selectedIlan && (() => {
         const modalText = selectedIlan._originalRawText || selectedIlan._rawText
         const modalPhones = extractPhoneNumbers(selectedIlan, modalText)
@@ -994,7 +1100,7 @@ export function ListingsView({ listings: propListings = [] }: { listings?: any[]
                           className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 rounded-2xl bg-blue-600 text-white px-5 py-3 text-xs font-extrabold hover:bg-blue-700 transition-all shadow-md shadow-blue-600/25 active:scale-95"
                         >
                           <Phone className="size-4" />
-                          <span>TELEFONLA ARA</span>
+                        <span>TELEFONLA ARA</span>
                         </a>
                       </div>
                     ))}
