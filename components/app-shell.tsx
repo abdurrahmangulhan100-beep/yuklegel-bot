@@ -152,7 +152,7 @@ function AppShellContent() {
     } catch (err: unknown) {
       const error = err as Error
       setToast({ type: 'error', text: error.message || 'Bir hata oluştu' })
-    } fontally {
+    } finally {
       setLoading(false)
     }
   }
