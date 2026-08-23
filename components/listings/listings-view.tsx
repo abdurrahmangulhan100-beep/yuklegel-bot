@@ -20,20 +20,14 @@ const CHIP_FILTERS = [
 ]
 
 const DETECTABLE_BADGES = [
-  { keys: ['acil'], label: '⚡ ACİL YÜK', color: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20 shadow-sm' },
-  { keys: ['frigo', 'soguk', 'soğuk'], label: '❄️ FRİGO', color: 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/20 shadow-sm' },
-  { keys: ['damper'], label: 'DAMPER', color: 'bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20 shadow-sm' },
-  { keys: ['tenteli', 'tente'], label: '📦 TENTELİ', color: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20 shadow-sm' },
-  { keys: ['13.60', '1360', '13/60'], label: '🚛 13.60', color: 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20 shadow-sm' },
-  { keys: ['kirkayak'], label: '🚚 KIRKAYAK', color: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 shadow-sm' },
-  { keys: ['10 teker', '10teker', 'onteker'], label: '🚚 10 TEKER', color: 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20 shadow-sm' },
-  { keys: ['tir'], label: '🚛 TIR', color: 'bg-slate-500/10 text-slate-700 dark:text-slate-300 border-slate-500/20 shadow-sm' }
-]
-
-const CRITICAL_KEYWORDS = [
-  'PEŞİN ÖDEME', 'PEŞİN', 'SABAH İNDİRİR', 'HEMEN YÜKLEME', 'ACİL YÜK', 'ACİL',
-  'DÖNÜŞ YÜKÜ', 'SINIRSIZ ARAÇ', 'AÇIK ARAÇ', 'KAPALI ARAÇ', 'KDV DAHİL',
-  'KDV HARİÇ', 'BUGÜN YÜKLEME', 'YARIN YÜKLEME', 'SABAH YÜKLEME', 'AKŞAM YÜKLEME'
+  { keys: ['acil'], label: '⚡ ACİL YÜK', color: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20' },
+  { keys: ['frigo', 'soguk', 'soğuk'], label: '❄️ FRİGO', color: 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/20' },
+  { keys: ['damper'], label: 'DAMPER', color: 'bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20' },
+  { keys: ['tenteli', 'tente'], label: '📦 TENTELİ', color: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20' },
+  { keys: ['13.60', '1360', '13/60'], label: '🚛 13.60', color: 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20' },
+  { keys: ['kirkayak'], label: '🚚 KIRKAYAK', color: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' },
+  { keys: ['10 teker', '10teker', 'onteker'], label: '🚚 10 TEKER', color: 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20' },
+  { keys: ['tir'], label: '🚛 TIR', color: 'bg-slate-500/10 text-slate-700 dark:text-slate-300 border-slate-500/20' }
 ]
 
 const DEFAULT_BLOCKED_SENDERS = ['ROJHAT BAYIK', 'ROJHAT BAYİK']
@@ -226,68 +220,45 @@ function extractPhoneNumbers(ilan: any, text: string): string[] {
   return Array.from(new Set(foundPhones))
 }
 
-const HIGHLIGHT_REGEX = /\b(\d+\s*(?:TON|T|KM|KASA|TEKER|L|KG)|13\.60|13 60|FRİGO|FRIGO|TENTELİ|TENTE|DAMPERLİ|DAMPER|KIRKAYAK|TIR|YARIN|BUGÜN|BU GÜN|GECE\s*\d+|SABAH|AKŞAM|ACİL|HEMEN|PEŞİN)\b/gi
-
 function FormattedListingText({ text, query }: { text: string; query: string }) {
   if (!text) return null
 
-  const normalizedText = text
-    .replace(/\s*\+\s*/g, ' + ')
-    .replace(/\s*\,\s*/g, ', ')
+  const formatted = toTitleCase(text.trim())
+  const lines = formatted.split(/\n+/).map(l => l.trim()).filter(Boolean)
+  const q = query ? query.trim() : ''
 
-  const titleCasedText = toTitleCase(normalizedText)
-  const upperQuery = query ? query.trim().toLocaleUpperCase('tr-TR') : ''
-
-  const lines = titleCasedText
-    .split(/\n+|\s+\/\s+(?![^\(]*\))/)
-    .map(l => l.trim())
-    .filter(Boolean)
+  if (!q) {
+    return (
+      <div className="space-y-1.5">
+        {lines.map((line, idx) => (
+          <p key={idx} className="text-sm font-semibold text-zinc-800 dark:text-zinc-100 leading-relaxed break-words">
+            {line}
+          </p>
+        ))}
+      </div>
+    )
+  }
 
   return (
-    <div className="space-y-2.5">
-      {lines.map((line, lIdx) => (
-        <div key={lIdx} className={lines.length > 1 ? 'flex items-start gap-2.5 text-[13.5px]' : 'text-[14px]'}>
-          {lines.length > 1 && (
-            <span className="inline-block text-primary font-bold shrink-0 mt-2 size-1.5 rounded-full bg-primary/70 shadow-sm" />
-          )}
-          <p className="leading-relaxed font-medium text-zinc-800 dark:text-zinc-100 break-words flex-1 tracking-tight">
-            {renderFormattedWords(line, upperQuery)}
+    <div className="space-y-1.5">
+      {lines.map((line, idx) => {
+        const parts = line.split(new RegExp(`(${q})`, 'gi'))
+        return (
+          <p key={idx} className="text-sm font-semibold text-zinc-800 dark:text-zinc-100 leading-relaxed break-words">
+            {parts.map((part, pIdx) => 
+              normalizeTR(part) === normalizeTR(q) ? (
+                <mark key={pIdx} className="bg-amber-500/20 text-amber-900 dark:text-amber-300 px-1 py-0.5 rounded font-bold">
+                  {part}
+                </mark>
+              ) : (
+                part
+              )
+            )}
           </p>
-        </div>
-      ))}
+        )
+      })}
     </div>
   )
-}
-
-function renderFormattedWords(line: string, query: string) {
-  const parts = line.split(new RegExp(`(${HIGHLIGHT_REGEX.source})`, 'gi'))
-
-  return parts.map((part, i) => {
-    if (!part) return null
-
-    const normPart = part.trim()
-    const normTRPart = normalizeTR(normPart)
-    const isQueryMatch = query && normTRPart.includes(normalizeTR(query))
-    const isHighlight = HIGHLIGHT_REGEX.test(part)
-
-    if (isQueryMatch) {
-      return (
-        <mark key={i} className="bg-primary/20 text-primary px-1.5 py-0.5 rounded-md font-bold border border-primary/30 shadow-sm">
-          {part}
-        </mark>
-      )
-    }
-
-    if (isHighlight) {
-      return (
-        <span key={i} className="bg-amber-500/15 dark:bg-amber-500/20 text-amber-800 dark:text-amber-300 font-bold px-1.5 py-0.5 rounded-md border border-amber-500/30 shadow-sm inline-block mx-0.5">
-          {part}
-        </span>
-      )
-    }
-
-    return part
-  })
 }
 
 const ListingCard = React.memo(({ 
@@ -325,7 +296,6 @@ const ListingCard = React.memo(({
   return (
     <div 
       onClick={() => onSelectIlan(ilan)}
-      style={{ willChange: 'transform' }}
       className="group relative flex flex-col justify-between rounded-3xl border border-zinc-200/80 dark:border-zinc-800/80 bg-white/90 dark:bg-zinc-900/90 p-5 shadow-xs hover:shadow-xl hover:-translate-y-0.5 hover:border-primary/50 transition-all duration-300 cursor-pointer overflow-hidden backdrop-blur-xl"
     >
       <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-primary/30 via-primary to-primary/30 opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -785,24 +755,30 @@ export function ListingsView({ listings: propListings = [] }: { listings?: any[]
         </div>
       )}
 
-      <div className="flex flex-col gap-4 rounded-3xl border border-zinc-200/80 dark:border-zinc-800/80 bg-white/80 dark:bg-zinc-900/80 p-4 sm:p-5 shadow-xl shadow-zinc-900/5 backdrop-blur-2xl">
-        <div className="relative">
+      {/* Yenilenmiş Üst Arama ve Filtreleme Paneli (Screenshot_7 Tasarımı) */}
+      <div className="flex flex-col gap-4 rounded-[28px] border border-zinc-200/90 dark:border-zinc-800/90 bg-white/95 dark:bg-zinc-900/95 p-4 sm:p-5 shadow-sm backdrop-blur-xl">
+        {/* Arama Çubuğu */}
+        <div className="relative w-full">
           <Search className="absolute left-4 top-1/2 size-4 -translate-y-1/2 text-zinc-400" />
           <input
             type="text"
             placeholder="İl, ilçe veya yük detayına göre arayın..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-950/50 py-3.5 pl-11 pr-10 text-xs font-medium text-zinc-900 dark:text-zinc-100 transition-all focus:border-primary focus:bg-white dark:focus:bg-zinc-950 focus:outline-none focus:ring-4 focus:ring-primary/10 shadow-sm"
+            className="w-full rounded-2xl border border-zinc-200/80 dark:border-zinc-800 bg-zinc-50/70 dark:bg-zinc-950/70 py-3 pl-11 pr-10 text-xs font-semibold text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 focus:border-blue-600 focus:bg-white dark:focus:bg-zinc-950 focus:outline-none focus:ring-4 focus:ring-blue-600/10 shadow-inner transition-all"
           />
           {searchQuery && (
-            <button onClick={() => setSearchQuery('')} className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 cursor-pointer">
+            <button 
+              onClick={() => setSearchQuery('')} 
+              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 cursor-pointer p-1"
+            >
               <X className="size-4" />
             </button>
           )}
         </div>
 
-        <div className="flex items-center gap-2 overflow-x-auto pb-2 pt-1 no-scrollbar -mx-2 px-2">
+        {/* Kategori Filtre Butonları */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar -mx-1 px-1">
           {CHIP_FILTERS.map((chip) => {
             const isActive = selectedChip === chip.id
             return (
@@ -810,10 +786,10 @@ export function ListingsView({ listings: propListings = [] }: { listings?: any[]
                 key={chip.id}
                 type="button"
                 onClick={() => setSelectedChip(chip.id)}
-                className={`rounded-xl px-4 py-2.5 text-xs font-bold transition-all shrink-0 border cursor-pointer active:scale-95 ${
+                className={`rounded-2xl px-4 py-2 text-xs font-bold transition-all shrink-0 cursor-pointer active:scale-95 ${
                   isActive 
-                    ? 'bg-primary text-primary-foreground border-primary shadow-lg shadow-primary/25 scale-[1.02]' 
-                    : 'bg-zinc-100/70 dark:bg-zinc-800/60 text-zinc-600 dark:text-zinc-300 border-zinc-200/60 dark:border-zinc-700/60 hover:bg-zinc-200 dark:hover:bg-zinc-800'
+                    ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20' 
+                    : 'bg-zinc-100/90 dark:bg-zinc-800/80 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700'
                 }`}
               >
                 {chip.label}
@@ -822,15 +798,19 @@ export function ListingsView({ listings: propListings = [] }: { listings?: any[]
           })}
         </div>
 
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t border-zinc-100 dark:border-zinc-800/80">
-          <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0 no-scrollbar">
+        {/* Alt Zaman ve Aksiyon Filtreleri */}
+        <div className="flex flex-col md:flex-row items-center justify-between gap-3 pt-2 border-t border-zinc-100 dark:border-zinc-800/60">
+          {/* Zaman Filtreleri */}
+          <div className="flex items-center gap-1.5 overflow-x-auto w-full md:w-auto no-scrollbar">
             {(['all', '15m', '1h'] as const).map((t) => (
               <button
                 key={t}
                 type="button"
                 onClick={() => setTimeFilter(t)}
-                className={`rounded-xl px-3.5 py-2 text-[11px] font-bold transition-all shrink-0 cursor-pointer active:scale-95 ${
-                  timeFilter === t ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 shadow-md' : 'bg-zinc-100 dark:bg-zinc-800/80 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-800'
+                className={`rounded-2xl px-3.5 py-2 text-[11px] font-bold transition-all shrink-0 cursor-pointer active:scale-95 ${
+                  timeFilter === t 
+                    ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 shadow-sm' 
+                    : 'bg-zinc-100/80 dark:bg-zinc-800/70 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200/80'
                 }`}
               >
                 {t === 'all' && 'Tüm Zamanlar'}
@@ -843,21 +823,22 @@ export function ListingsView({ listings: propListings = [] }: { listings?: any[]
               <button
                 type="button"
                 onClick={() => { setSearchQuery(''); setSelectedChip('ALL'); setTimeFilter('all'); setOnlyFavorites(false); setOnlyNotes(false); }}
-                className="flex items-center gap-1 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400 px-3 py-2 text-[11px] font-bold hover:bg-rose-500/20 transition-all shrink-0 ml-1 cursor-pointer active:scale-95"
+                className="flex items-center gap-1 rounded-2xl bg-rose-500/10 text-rose-600 dark:text-rose-400 px-3 py-2 text-[11px] font-bold hover:bg-rose-500/20 transition-all shrink-0 ml-1 cursor-pointer active:scale-95"
               >
                 <RotateCcw className="size-3" /> Sıfırla
               </button>
             )}
           </div>
 
-          <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 w-full sm:w-auto">
+          {/* Sağ Aksiyon Butonları */}
+          <div className="flex flex-wrap items-center gap-2 w-full md:w-auto justify-start md:justify-end">
             <button
               type="button"
               onClick={() => {
                 const cities = searchQuery.trim() ? [searchQuery.trim()] : []
                 subscribeToPushNotifications(cities, currentUser?.id)
               }}
-              className="flex items-center justify-center gap-1.5 rounded-xl border border-indigo-500/30 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 px-3 py-2 text-[11px] font-bold transition-all w-full sm:w-auto active:scale-95 cursor-pointer shadow-sm"
+              className="flex items-center justify-center gap-1.5 rounded-2xl border border-indigo-200/60 dark:border-indigo-900/50 bg-indigo-50/80 dark:bg-indigo-950/40 hover:bg-indigo-100/80 text-indigo-600 dark:text-indigo-400 px-3.5 py-2 text-[11px] font-bold transition-all cursor-pointer active:scale-95 shadow-xs"
             >
               <Bell className="size-3.5" />
               <span>Bildirim Aç</span>
@@ -867,17 +848,19 @@ export function ListingsView({ listings: propListings = [] }: { listings?: any[]
               type="button"
               onClick={() => fetchListings(false)}
               disabled={refreshing}
-              className="flex items-center justify-center gap-1.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 hover:bg-zinc-50 dark:hover:bg-zinc-900 px-3 py-2 text-[11px] font-bold transition-all w-full sm:w-auto active:scale-95 text-zinc-700 dark:text-zinc-200 cursor-pointer shadow-sm"
+              className="flex items-center justify-center gap-1.5 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 hover:bg-zinc-50 dark:hover:bg-zinc-900 px-3.5 py-2 text-[11px] font-bold text-zinc-700 dark:text-zinc-200 transition-all cursor-pointer active:scale-95 shadow-xs"
             >
-              <RefreshCw className={`size-3.5 ${refreshing ? 'animate-spin text-primary' : ''}`} />
-              <span>{refreshing ? 'Yenileniyor...' : 'Yenile'}</span>
+              <RefreshCw className={`size-3.5 ${refreshing ? 'animate-spin text-blue-600' : ''}`} />
+              <span>Yenile</span>
             </button>
 
             <button
               type="button"
               onClick={() => { setOnlyNotes(!onlyNotes); if (!onlyNotes) setOnlyFavorites(false); }}
-              className={`flex items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-[11px] font-bold transition-all w-full sm:w-auto cursor-pointer active:scale-95 shadow-sm ${
-                onlyNotes ? 'bg-amber-500 text-white shadow-amber-500/25' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200'
+              className={`flex items-center justify-center gap-1.5 rounded-2xl px-3.5 py-2 text-[11px] font-bold transition-all cursor-pointer active:scale-95 shadow-xs ${
+                onlyNotes 
+                  ? 'bg-amber-500 text-white shadow-amber-500/20' 
+                  : 'bg-zinc-100/80 dark:bg-zinc-800/80 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200'
               }`}
             >
               <FileText className="size-3.5" />
@@ -887,8 +870,10 @@ export function ListingsView({ listings: propListings = [] }: { listings?: any[]
             <button
               type="button"
               onClick={() => { setOnlyFavorites(!onlyFavorites); if (!onlyFavorites) setOnlyNotes(false); }}
-              className={`flex items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-[11px] font-bold transition-all w-full sm:w-auto cursor-pointer active:scale-95 shadow-sm ${
-                onlyFavorites ? 'bg-rose-500 text-white shadow-rose-500/25' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200'
+              className={`flex items-center justify-center gap-1.5 rounded-2xl px-3.5 py-2 text-[11px] font-bold transition-all cursor-pointer active:scale-95 shadow-xs ${
+                onlyFavorites 
+                  ? 'bg-rose-500 text-white shadow-rose-500/20' 
+                  : 'bg-zinc-100/80 dark:bg-zinc-800/80 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200'
               }`}
             >
               <Heart className={`size-3.5 ${onlyFavorites ? 'fill-white text-white' : ''}`} />
@@ -900,7 +885,7 @@ export function ListingsView({ listings: propListings = [] }: { listings?: any[]
 
       <div className="flex items-center justify-between text-xs font-semibold text-zinc-500 dark:text-zinc-400 px-1">
         <span>Görüntülenen İlan: <strong className="text-zinc-900 dark:text-zinc-100 font-extrabold">{filteredListings.length}</strong></span>
-        <span className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-bold text-[11px] bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20 shadow-sm">
+        <span className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-bold text-[11px] bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20 shadow-xs">
           <span className="relative flex size-2">
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
             <span className="relative inline-flex size-2 rounded-full bg-emerald-500"></span>
@@ -951,7 +936,7 @@ export function ListingsView({ listings: propListings = [] }: { listings?: any[]
         </div>
       ) : (
         <div className="flex flex-col items-center justify-center py-24 text-center rounded-3xl border border-dashed border-zinc-200 dark:border-zinc-800 bg-white/50 dark:bg-zinc-900/50 space-y-3">
-          <div className="size-12 rounded-2xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-400 shadow-sm">
+          <div className="size-12 rounded-2xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-400 shadow-xs">
             <MessageSquare className="size-6" />
           </div>
           <div className="space-y-1">
@@ -1013,7 +998,7 @@ export function ListingsView({ listings: propListings = [] }: { listings?: any[]
                   <p className="text-xs text-zinc-400 italic text-center py-4">Bu ilana ait kayıtlı bir notunuz yok.</p>
                 ) : (
                   modalIlanNotes.map((note) => (
-                    <div key={note.id} className="flex items-start justify-between gap-3 p-3.5 rounded-2xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200/60 dark:border-zinc-800 text-xs shadow-sm">
+                    <div key={note.id} className="flex items-start justify-between gap-3 p-3.5 rounded-2xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200/60 dark:border-zinc-800 text-xs shadow-xs">
                       <p className="text-zinc-800 dark:text-zinc-200 leading-relaxed break-words font-medium">{note.not_metni}</p>
                       <button
                         onClick={() => handleDeleteNote(note.id)}
@@ -1047,7 +1032,7 @@ export function ListingsView({ listings: propListings = [] }: { listings?: any[]
             >
               <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800 pb-3">
                 <h3 className="text-sm font-bold flex items-center gap-2 text-zinc-900 dark:text-zinc-100">
-                  <div className="size-8 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shadow-sm">
+                  <div className="size-8 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shadow-xs">
                     <Truck className="size-4" />
                   </div>
                   <span>İlan Detayı ({selectedIlan._sender})</span>
