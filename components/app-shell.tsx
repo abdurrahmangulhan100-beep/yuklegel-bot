@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { ListingsView } from '@/components/listings/listings-view'
 import { AddListingForm } from '@/components/add-listing-form'
@@ -40,7 +40,7 @@ const TITLES: Record<ModuleId, { title: string; desc: string }> = {
   notlar: { title: 'Pratik Notlar & Takip', desc: 'Bakım, muayene ve sigorta hatırlatmaları.' },
 }
 
-export function AppShell() {
+function AppShellContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const active = (searchParams.get('tab') as ModuleId) || 'pazar'
@@ -389,5 +389,17 @@ export function AppShell() {
         </div>
       )}
     </div>
+  )
+}
+
+export function AppShell() {
+  return (
+    <Suspense fallback={
+      <div className="flex h-screen w-full items-center justify-center bg-zinc-50 dark:bg-zinc-950">
+        <Loader2 className="size-8 animate-spin text-blue-600" />
+      </div>
+    }>
+      <AppShellContent />
+    </Suspense>
   )
 }
