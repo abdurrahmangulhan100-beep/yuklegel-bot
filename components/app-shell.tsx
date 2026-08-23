@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { motion, AnimatePresence, useScroll, useMotionValueEvent } from 'framer-motion'
 import { ListingsView } from '@/components/listings/listings-view'
@@ -42,7 +42,7 @@ const TITLES: Record<ModuleId, { title: string; desc: string }> = {
   notlar: { title: 'Pratik Notlar', desc: 'Bakım, muayene ve sigorta hatırlatmaları.' },
 }
 
-export function AppShell() {
+function AppShellContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const active = (searchParams.get('tab') as ModuleId) || 'pazar'
@@ -63,7 +63,6 @@ export function AppShell() {
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list')
   const [isListening, setIsListening] = useState(false)
 
-  // Mobil Auto-hide bar kontrolü
   const [isNavVisible, setIsNavVisible] = useState(true)
   const { scrollY } = useScroll()
   const lastScrollY = useRef(0)
@@ -169,7 +168,6 @@ export function AppShell() {
       {/* MASAÜSTÜ SIDEBAR */}
       <aside className="hidden w-72 flex-col border-r border-zinc-200/80 dark:border-zinc-800/80 bg-white/70 dark:bg-zinc-900/70 backdrop-blur-2xl lg:flex justify-between p-4 z-30">
         <div className="space-y-6">
-          {/* USER CARD IN SIDEBAR HEADER */}
           <div className="rounded-2xl border border-zinc-200/80 dark:border-zinc-800/80 bg-zinc-50/50 dark:bg-zinc-800/30 p-3.5 backdrop-blur-md">
             {user ? (
               <div className="flex items-center justify-between">
@@ -203,7 +201,6 @@ export function AppShell() {
             )}
           </div>
 
-          {/* LOGO */}
           <div className="flex items-center gap-3 px-2">
             <div className="flex size-10 items-center justify-center rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 text-white shadow-md shadow-blue-500/20">
               <Truck className="size-5"/>
@@ -214,7 +211,6 @@ export function AppShell() {
             </div>
           </div>
 
-          {/* MODULES NAV */}
           <nav className="space-y-1">
             <div className="mb-2 px-3 text-[10px] font-bold uppercase tracking-wider text-zinc-400">Modüller</div>
             {MODULES.map((m) => {
@@ -253,7 +249,6 @@ export function AppShell() {
           </nav>
         </div>
 
-        {/* BOTTOM SIDEBAR ITEMS */}
         <div className="space-y-3 pt-4 border-t border-zinc-200/80 dark:border-zinc-800/80">
           <div className="flex items-center justify-between px-2">
             <span className="flex items-center gap-2 rounded-full bg-emerald-500/10 px-2.5 py-1 text-[10px] font-extrabold text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
@@ -272,14 +267,11 @@ export function AppShell() {
 
       {/* MAIN CONTENT AREA */}
       <div className="flex flex-1 flex-col overflow-hidden relative">
-        
-        {/* DESKTOP HEADER */}
         <motion.header 
           animate={{ y: isNavVisible ? 0 : -100 }}
           transition={{ duration: 0.2 }}
           className="sticky top-0 z-20 flex min-h-[64px] items-center justify-between border-b border-zinc-200/80 dark:border-zinc-800/80 bg-white/80 dark:bg-zinc-900/80 px-4 backdrop-blur-2xl sm:px-8"
         >
-          {/* Mobile Header Logo */}
           <div className="flex items-center gap-2.5 lg:hidden">
             <div className="flex size-8 items-center justify-center rounded-lg bg-gradient-to-tr from-blue-600 to-indigo-500 text-white shadow-md">
               <Truck className="size-4"/>
@@ -287,7 +279,6 @@ export function AppShell() {
             <p className="font-extrabold tracking-tight text-zinc-900 dark:text-white text-sm">Nakliye Cepte</p>
           </div>
 
-          {/* Desktop Search Bar */}
           <div className="hidden lg:flex items-center flex-1 max-w-md relative">
             <Search className="absolute left-3.5 top-2.5 size-4 text-zinc-400"/>
             <input 
@@ -307,9 +298,7 @@ export function AppShell() {
             </button>
           </div>
 
-          {/* Action Buttons Header */}
           <div className="flex items-center gap-2 sm:gap-3">
-            {/* View Mode Toggle (Map/List) */}
             {active === 'pazar' && (
               <div className="flex items-center rounded-xl bg-zinc-100 dark:bg-zinc-800 p-1 border border-zinc-200 dark:border-zinc-700">
                 <button 
@@ -357,11 +346,8 @@ export function AppShell() {
           </div>
         </motion.header>
 
-        {/* MAIN BODY */}
         <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-8 pb-36 lg:pb-8 relative">
           <div className="mx-auto max-w-6xl">
-            
-            {/* TITLE BAR */}
             <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <div className="flex items-center space-x-2 mb-1">
@@ -383,7 +369,6 @@ export function AppShell() {
               )}
             </div>
 
-            {/* TAB CONTENT TRANSITION */}
             <AnimatePresence mode="wait">
               <motion.div 
                 key={active}
@@ -424,7 +409,6 @@ export function AppShell() {
               transition={{ type: 'spring', stiffness: 300, damping: 25 }}
               className="fixed bottom-4 left-1/2 z-40 flex items-center justify-around w-[92%] max-w-md rounded-3xl border border-zinc-200/80 dark:border-zinc-800/80 bg-white/90 dark:bg-zinc-900/90 p-2 shadow-2xl backdrop-blur-2xl lg:hidden"
             >
-              {/* PAZAR */}
               <button
                 onClick={() => handleTabChange('pazar')}
                 className={cn(
@@ -437,7 +421,6 @@ export function AppShell() {
                 {active === 'pazar' && <motion.div layoutId="mobileNavActive" className="absolute bottom-1 size-1 rounded-full bg-blue-600" />}
               </button>
 
-              {/* ARAÇLAR */}
               <button
                 onClick={() => setIsToolsSheetOpen(true)}
                 className={cn(
@@ -449,7 +432,6 @@ export function AppShell() {
                 <span className="text-[10px]">Araçlar</span>
               </button>
 
-              {/* CENTER FAB */}
               <button
                 onClick={() => handleTabChange('ekle')}
                 className="-top-5 relative flex size-14 items-center justify-center rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 text-white shadow-xl shadow-blue-600/30 active:scale-90 transition-transform border-4 border-zinc-50 dark:border-zinc-950"
@@ -457,7 +439,6 @@ export function AppShell() {
                 <PlusCircle className="size-7"/>
               </button>
 
-              {/* FİNANS */}
               <button
                 onClick={() => handleTabChange('finans')}
                 className={cn(
@@ -470,7 +451,6 @@ export function AppShell() {
                 {active === 'finans' && <motion.div layoutId="mobileNavActive" className="absolute bottom-1 size-1 rounded-full bg-blue-600" />}
               </button>
 
-              {/* PROFİL */}
               <button
                 onClick={() => setIsMoreSheetOpen(true)}
                 className={cn(
@@ -650,5 +630,18 @@ export function AppShell() {
       </AnimatePresence>
 
     </div>
+  )
+}
+
+// SUSPENSE WRAPPER (Build Prerender hatasını çözen kısım)
+export function AppShell() {
+  return (
+    <Suspense fallback={
+      <div className="flex h-screen w-full items-center justify-center bg-zinc-950 text-white">
+        <Loader2 className="size-8 animate-spin text-blue-500"/>
+      </div>
+    }>
+      <AppShellContent />
+    </Suspense>
   )
 }
