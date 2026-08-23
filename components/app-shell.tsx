@@ -299,35 +299,19 @@ function AppShellContent() {
                             <Icon className="size-5"/>
                           </div>
                           
-                          <div className="flex items-center gap-1.5">
-                            {isPazar && (
-                              <span className="rounded-md bg-blue-50 dark:bg-blue-950/60 border border-blue-200/60 dark:border-blue-800/40 px-2 py-0.5 text-[10px] font-black text-blue-600 dark:text-blue-400 flex items-center gap-1.5">
-                                <span className="relative flex h-1.5 w-1.5">
-                                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-                                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-blue-600"></span>
-                                </span>
-                                {listingCount !== null ? (
-                                  <span>{listingCount} Canlı İlan</span>
-                                ) : (
-                                  <Loader2 className="size-3 animate-spin text-blue-600 dark:text-blue-400"/>
-                                )}
-                              </span>
+                          {/* İĞNELEME (PIN) BUTONU */}
+                          <button
+                            onClick={(e) => togglePin(e, card.id)}
+                            className={cn(
+                              "p-1.5 rounded-lg transition-colors",
+                              isPinned 
+                                ? "text-blue-600 dark:text-blue-400 bg-blue-100/70 dark:bg-blue-900/40" 
+                                : "text-zinc-300 dark:text-zinc-600 hover:text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"
                             )}
-
-                            {/* İĞNELEME (PIN) BUTONU */}
-                            <button
-                              onClick={(e) => togglePin(e, card.id)}
-                              className={cn(
-                                "p-1.5 rounded-lg transition-colors",
-                                isPinned 
-                                  ? "text-blue-600 dark:text-blue-400 bg-blue-100/70 dark:bg-blue-900/40" 
-                                  : "text-zinc-300 dark:text-zinc-600 hover:text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"
-                              )}
-                              title={isPinned ? "Sabitlemeyi Kaldır" : "En Üste Sabitle"}
-                            >
-                              <Pin className={cn("size-3.5", isPinned && "fill-current")}/>
-                            </button>
-                          </div>
+                            title={isPinned ? "Sabitlemeyi Kaldır" : "En Üste Sabitle"}
+                          >
+                            <Pin className={cn("size-3.5", isPinned && "fill-current")}/>
+                          </button>
                         </div>
 
                         {/* KART BAŞLIK & AÇIKLAMA */}
