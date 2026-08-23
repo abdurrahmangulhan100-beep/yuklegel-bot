@@ -439,7 +439,6 @@ export function ListingsView({ listings: propListings = [] }: { listings?: any[]
     if (currentUser) loadUserData(currentUser)
   }, [currentUser, loadUserData])
 
-  // 'ilanlar' ve 'user_listings' tablolarının sayılarını bağımsız çekme
   const fetchListingCounts = useCallback(async () => {
     try {
       const [botRes, userRes] = await Promise.all([
@@ -472,7 +471,6 @@ export function ListingsView({ listings: propListings = [] }: { listings?: any[]
         setListings(processed)
       }
       
-      // Sayıları da yenile
       fetchListingCounts()
     } catch (err: any) {
       console.error('Yükleme hatası:', err)
@@ -593,17 +591,11 @@ export function ListingsView({ listings: propListings = [] }: { listings?: any[]
   return (
     <div className="space-y-5 max-w-7xl mx-auto px-2.5 sm:px-6 relative pb-16 font-sans w-full overflow-x-hidden">
       
-      {/* 🟢 HIZLI MODÜLLER PANERİ (EKLENEN DÜZELTİLMİŞ BÖLÜM) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+      {/* HIZLI MODÜLLER PANENİ (İlanlarım kaldırıldı, Mavi rozet yazısı temizlendi) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {/* İlan Pazarı Modülü */}
         <div className="relative flex flex-col justify-between p-4 rounded-2xl border border-blue-500/30 bg-blue-500/5 shadow-xs">
-          {/* Mavi Canlı Rozet (Çakışmayı önlemek için sağ üst köşeye hizalı) */}
-          <div className="absolute top-3.5 right-3.5 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-600 dark:text-blue-400 text-[11px] font-black">
-            <span className="size-2 rounded-full bg-blue-600 animate-pulse" />
-            <span>{botCount} Canlı İlan</span>
-          </div>
-
-          <div className="space-y-3 pr-28">
+          <div className="space-y-3">
             <div className="size-10 rounded-xl bg-blue-500/10 text-blue-600 flex items-center justify-center">
               <Store className="size-5" />
             </div>
@@ -627,19 +619,6 @@ export function ListingsView({ listings: propListings = [] }: { listings?: any[]
               <p className="text-xs text-zinc-500 mt-0.5">
                 {userCount > 0 ? `Kullanıcıların eklediği ${userCount} güncel ilan` : 'Kullanıcıların eklediği güncel ilanlar'}
               </p>
-            </div>
-          </div>
-        </div>
-
-        {/* İlanlarım Modülü */}
-        <div className="relative flex flex-col justify-between p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
-          <div className="space-y-3">
-            <div className="size-10 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center">
-              <FileText className="size-5" />
-            </div>
-            <div>
-              <h3 className="font-extrabold text-sm text-zinc-900 dark:text-zinc-100">İlanlarım</h3>
-              <p className="text-xs text-zinc-500 mt-0.5">Eklemiş olduğunuz ilanları yönetin</p>
             </div>
           </div>
         </div>
