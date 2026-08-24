@@ -391,7 +391,10 @@ export function ListingsView({ listings: propListings }: { listings?: any[] }) {
   const [selectedChip, setSelectedChip] = useState('ALL')
   
   const [favorites, setFavorites] = useState<string[]>([])
-  const [timeFilter, setTimeFilter] = useState<'all' | '15m' | '1h'>('all')
+  
+  // 1. ZAMAN FİLTRESİNE '5h' (SON 5 SAAT) EKLENDİ
+  const [timeFilter, setTimeFilter] = useState<'all' | '15m' | '1h' | '5h'>('all')
+  
   const [onlyFavorites, setOnlyFavorites] = useState(false)
   const [onlyNotes, setOnlyNotes] = useState(false)
   const [copiedId, setCopiedId] = useState<string | null>(null)
@@ -474,24 +477,27 @@ export function ListingsView({ listings: propListings }: { listings?: any[] }) {
         .from('ilanlar')
         .select('id, created_at, title, content, phone')
         .order('created_at', { ascending: false })
-        .limit(100)
+        .limit(500) // 2. LİMİT 100'DEN 500'E YÜKSELTİLDİ
 
-      // 1. Zaman Filtresi (Veritabanı Seviyesinde)
+      // 3. Zaman Filtresi (15m, 1h ve 5h Seçenekleri)
       if (timeFilter === '15m') {
         const fifteenMinsAgo = new Date(Date.now() - 15 * 60 * 1000).toISOString()
         query = query.gte('created_at', fifteenMinsAgo)
       } else if (timeFilter === '1h') {
         const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString()
         query = query.gte('created_at', oneHourAgo)
+      } else if (timeFilter === '5h') {
+        const fiveHoursAgo = new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString()
+        query = query.gte('created_at', fiveHoursAgo)
       }
 
-      // 2. Arama Sorgusu (Veritabanının Tamamında Arar)
+      // Arama Sorgusu (Veritabanının Tamamında Arar)
       const cleanSearch = debouncedSearch.trim().replace(/[%_]/g, '')
       if (cleanSearch) {
         query = query.or(`content.ilike.%${cleanSearch}%,title.ilike.%${cleanSearch}%`)
       }
 
-      // 3. Kategori / Chip Filtresi (Veritabanı Seviyesinde)
+      // Kategori / Chip Filtresi
       if (selectedChip !== 'ALL') {
         const chipObj = CHIP_FILTERS.find(c => c.id === selectedChip)
         if (chipObj?.keywords && chipObj.keywords.length > 0) {
@@ -500,7 +506,7 @@ export function ListingsView({ listings: propListings }: { listings?: any[] }) {
         }
       }
 
-      // 4. Sadece Favoriler Seçildiyse
+      // Sadece Favoriler Seçildiyse
       if (onlyFavorites) {
         if (favorites.length === 0) {
           setListings([])
@@ -517,7 +523,6 @@ export function ListingsView({ listings: propListings }: { listings?: any[] }) {
       if (data) {
         let processed = data.map(processListingItem).filter(Boolean)
 
-        // 5. Notlarım Filtresi (İstemci Tarafında)
         if (onlyNotes) {
           const noteIds = new Set(userNotes.map(n => n.ilan_id))
           processed = processed.filter(item => noteIds.has(item._stableKey))
@@ -536,7 +541,6 @@ export function ListingsView({ listings: propListings }: { listings?: any[] }) {
     }
   }, [debouncedSearch, selectedChip, timeFilter, onlyFavorites, favorites, onlyNotes, userNotes, fetchListingCounts])
 
-  // Filtreler veya arama terimi değiştiğinde veritabanından tekrar çek
   useEffect(() => {
     fetchListings()
   }, [fetchListings])
@@ -709,8 +713,9 @@ export function ListingsView({ listings: propListings }: { listings?: any[] }) {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-12 gap-2.5 pt-1 border-t border-zinc-100 dark:border-zinc-800/70">
+          {/* 4. BUTONLARA SON 5 SAAT DÂHİL EDİLDİ */}
           <div className="md:col-span-5 flex items-center bg-zinc-100/90 dark:bg-zinc-800/70 p-1 rounded-2xl border border-zinc-200/50 dark:border-zinc-800/50">
-            {(['all', '15m', '1h'] as const).map((t) => {
+            {(['all', '15m', '1h', '5h'] as const).map((t) => {
               const active = timeFilter === t
               return (
                 <button
@@ -724,8 +729,9 @@ export function ListingsView({ listings: propListings }: { listings?: any[] }) {
                   }`}
                 >
                   {t === 'all' && 'Tüm Zamanlar'}
-                  {t === '15m' && '⚡ Son 15 Dk'}
-                  {t === '1h' && '⏰ Son 1 Saat'}
+                  {t === '15m' && '⚡ 15 Dk'}
+                  {t === '1h' && '⏰ 1 Saat'}
+                  {t === '5h' && '🕒 5 Saat'}
                 </button>
               )
             })}
