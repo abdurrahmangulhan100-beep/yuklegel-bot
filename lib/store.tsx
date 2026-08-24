@@ -2,7 +2,6 @@
 
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react'
 import type { Ilan, Not } from './types'
-import { SEED_NOTLAR } from './seed-data'
 import { supabase } from '@/lib/supabase'
 
 interface StoreContextValue {
@@ -21,25 +20,29 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [notlar, setNotlar] = useState<Not[]>([])
   const [loading, setLoading] = useState(true)
 
-  // Supabase'den Canlı İlanları Çekme
+  // Supabase'den Canlı İlanları Çekme (Performans için limit eklendi)
   useEffect(() => {
+    let isMounted = true
+
     async function fetchIlanlar() {
       try {
         const { data, error } = await supabase
           .from('ilanlar')
           .select('*')
           .order('created_at', { ascending: false })
+          .limit(200)
 
         if (error) throw error
-        if (data) setIlanlar(data as Ilan[])
+        if (data && isMounted) setIlanlar(data as Ilan[])
       } catch (err) {
         console.error('Supabase ilan çekme hatası:', err)
       } finally {
-        setLoading(false)
+        if (isMounted) setLoading(false)
       }
     }
 
     fetchIlanlar()
+    return () => { isMounted = false }
   }, [])
 
   const addIlan = useCallback(async (ilan: Omit<Ilan, 'id' | 'ilan_tarihi'>) => {
