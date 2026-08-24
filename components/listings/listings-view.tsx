@@ -5,7 +5,7 @@ import { subscribeToPushNotifications } from '@/lib/push-client'
 import { 
   Search, X, Clock, Heart, Phone, Copy, Check, Loader2, MessageSquare, 
   Bell, RefreshCw, FileText, Plus, Trash2, LogIn, Sparkles, ChevronDown,
-  Store, Users, AlertCircle
+  Store, Users, AlertCircle, Truck
 } from 'lucide-react'
 
 const CHIP_FILTERS = [
@@ -205,7 +205,8 @@ const FormattedListingText = React.memo(({ text, query }: { text: string; query:
     return <p className="text-sm font-semibold text-zinc-800 dark:text-zinc-100 leading-relaxed break-words">{formatted}</p>
   }
 
-  const parts = formatted.split(new RegExp(`(${q})`, 'gi'))
+  const escapedQ = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const parts = formatted.split(new RegExp(`(${escapedQ})`, 'gi'))
   return (
     <p className="text-sm font-semibold text-zinc-800 dark:text-zinc-100 leading-relaxed break-words">
       {parts.map((part, pIdx) => 
@@ -406,7 +407,6 @@ export function ListingsView({ listings: propListings = [] }: { listings?: any[]
 
   const [displayLimit, setDisplayLimit] = useState(30)
 
-  // Map & Set Performans Hazırlığı O(1)
   const favoritesSet = useMemo(() => new Set(favorites), [favorites])
   const userNotesMap = useMemo(() => {
     const map = new Map<string, any[]>()
@@ -492,7 +492,7 @@ export function ListingsView({ listings: propListings = [] }: { listings?: any[]
     } catch (err: any) {
       console.error('Yükleme hatası:', err)
       setErrorMsg('İlanlar yüklenirken sorun oluştu.')
-    } finally {
+    } fontally {
       setLoading(false)
       setRefreshing(false)
     }
