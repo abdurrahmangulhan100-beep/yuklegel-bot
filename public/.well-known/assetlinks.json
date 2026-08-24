@@ -3,9 +3,9 @@
     "relation": ["delegate_permission/common.handle_all_urls"],
     "target": {
       "namespace": "android_app",
-      "package_name": "com.nakliyecepte.app",
+      "package_name": "online.nakliyecepte.twa",
       "sha256_cert_fingerprints": [
-        "BURAYA_PLAY_CONSOLE_SHA256_PARMAK_IZI_GELECEK"
+        "9A:44:71:05:63:0C:4C:83:CD:B1:70:E8:F9:70:1B:D1:F2:6C:1A:88:31:79:51:D9:9F:5C:C8:6A:75:B6:BE:13"
       ]
     }
   }
