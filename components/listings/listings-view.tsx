@@ -137,7 +137,6 @@ function extractPhoneNumbers(ilan: any, text: string): string[] {
   const foundPhones: string[] = []
   try {
     if (ilan?.phone) foundPhones.push(String(ilan.phone))
-    if (ilan?.telefon) foundPhones.push(String(ilan.telefon))
 
     const rawMatches = text.match(/(?:(?:\+?90)|0)?\s*5[\d\s\-\.]{8,16}\d/g) || []
     for (const rawMatch of rawMatches) {
@@ -160,10 +159,10 @@ function extractPhoneNumbers(ilan: any, text: string): string[] {
 function processListingItem(ilan: any) {
   if (!ilan) return null
   try {
-    const raw = ilan.content || ilan.ham_mesaj || ilan.mesaj_metni || ilan.message || ilan.icerik || ilan.text || ''
-    const sender = toTitleCase(ilan?.title || ilan?.ilan_sahibi || ilan?.username || ilan?.sender || 'Lojistik Grubu')
+    const raw = ilan.content || ilan.title || ''
+    const sender = toTitleCase(ilan?.title || 'Lojistik Grubu')
     
-    if (!raw || raw.trim().length < 5) return null
+    if (!raw || raw.trim().length < 3) return null
 
     const cleanedRaw = cleanLogisticsText(raw)
     if (!cleanedRaw || cleanedRaw.length < 3) return null
@@ -247,7 +246,7 @@ const ListingCard = React.memo(({
   const ilanKey = ilan._stableKey
   const displayContent = ilan._rawText
   const phones = ilan._phones || []
-  const dateVal = ilan?.created_at || ilan?.ilan_tarihi
+  const dateVal = ilan?.created_at
   const isLongText = displayContent.length > 140
 
   return (
@@ -377,7 +376,7 @@ const ListingCard = React.memo(({
 })
 ListingCard.displayName = 'ListingCard'
 
-export function ListingsView({ listings: propListings = [] }: { listings?: any[] }) {
+export function ListingsView({ listings: propListings }: { listings?: any[] }) {
   const [currentUser, setCurrentUser] = useState<any>(null)
   const [listings, setListings] = useState<any[]>([])
   const [loading, setLoading] = useState<boolean>(true)
@@ -405,8 +404,6 @@ export function ListingsView({ listings: propListings = [] }: { listings?: any[]
   const [isSavingNote, setIsSavingNote] = useState(false)
   const [showAuthWarning, setShowAuthWarning] = useState(false)
 
-  const [displayLimit, setDisplayLimit] = useState(30)
-
   const favoritesSet = useMemo(() => new Set(favorites), [favorites])
   const userNotesMap = useMemo(() => {
     const map = new Map<string, any[]>()
@@ -423,14 +420,11 @@ export function ListingsView({ listings: propListings = [] }: { listings?: any[]
     return map
   }, [userNotes])
 
+  // Arama girdisini debounce et
   useEffect(() => {
-    const handler = setTimeout(() => setDebouncedSearch(searchQuery), 120)
+    const handler = setTimeout(() => setDebouncedSearch(searchQuery), 250)
     return () => clearTimeout(handler)
   }, [searchQuery])
-
-  useEffect(() => {
-    setDisplayLimit(30)
-  }, [debouncedSearch, selectedChip, timeFilter, onlyFavorites, onlyNotes])
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setCurrentUser(data.user ?? null))
@@ -470,22 +464,65 @@ export function ListingsView({ listings: propListings = [] }: { listings?: any[]
     }
   }, [])
 
+  // SUPABASE DİNAMİK ARAMA VE SÜZME
   const fetchListings = useCallback(async (isSilent = false) => {
     try {
-      if (!isSilent) setRefreshing(true)
+      if (!isSilent) setLoading(true)
       setErrorMsg(null)
 
-      // Veritabanında gerçek var olan sütunlar seçildi ve limit 100'e çekildi (Egress Tasarrufu)
-      const { data, error } = await supabase
+      let query = supabase
         .from('ilanlar')
-        .select('id, created_at, title, content, phone, city_from, city_to')
+        .select('id, created_at, title, content, phone')
         .order('created_at', { ascending: false })
         .limit(100)
+
+      // 1. Zaman Filtresi (Veritabanı Seviyesinde)
+      if (timeFilter === '15m') {
+        const fifteenMinsAgo = new Date(Date.now() - 15 * 60 * 1000).toISOString()
+        query = query.gte('created_at', fifteenMinsAgo)
+      } else if (timeFilter === '1h') {
+        const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString()
+        query = query.gte('created_at', oneHourAgo)
+      }
+
+      // 2. Arama Sorgusu (Veritabanının Tamamında Arar)
+      const cleanSearch = debouncedSearch.trim().replace(/[%_]/g, '')
+      if (cleanSearch) {
+        query = query.or(`content.ilike.%${cleanSearch}%,title.ilike.%${cleanSearch}%`)
+      }
+
+      // 3. Kategori / Chip Filtresi (Veritabanı Seviyesinde)
+      if (selectedChip !== 'ALL') {
+        const chipObj = CHIP_FILTERS.find(c => c.id === selectedChip)
+        if (chipObj?.keywords && chipObj.keywords.length > 0) {
+          const kwConditions = chipObj.keywords.map(k => `content.ilike.%${k}%`).join(',')
+          query = query.or(kwConditions)
+        }
+      }
+
+      // 4. Sadece Favoriler Seçildiyse
+      if (onlyFavorites) {
+        if (favorites.length === 0) {
+          setListings([])
+          setLoading(false)
+          return
+        }
+        query = query.in('id', favorites)
+      }
+
+      const { data, error } = await query
 
       if (error) throw error
 
       if (data) {
-        const processed = data.map(processListingItem).filter(Boolean)
+        let processed = data.map(processListingItem).filter(Boolean)
+
+        // 5. Notlarım Filtresi (İstemci Tarafında)
+        if (onlyNotes) {
+          const noteIds = new Set(userNotes.map(n => n.ilan_id))
+          processed = processed.filter(item => noteIds.has(item._stableKey))
+        }
+
         setListings(processed)
       }
       
@@ -497,18 +534,14 @@ export function ListingsView({ listings: propListings = [] }: { listings?: any[]
       setLoading(false)
       setRefreshing(false)
     }
-  }, [fetchListingCounts])
+  }, [debouncedSearch, selectedChip, timeFilter, onlyFavorites, favorites, onlyNotes, userNotes, fetchListingCounts])
 
+  // Filtreler veya arama terimi değiştiğinde veritabanından tekrar çek
   useEffect(() => {
-    if (propListings && propListings.length > 0) {
-      setListings(propListings.map(processListingItem).filter(Boolean))
-      setLoading(false)
-      fetchListingCounts()
-    } else {
-      fetchListings()
-    }
-  }, [propListings, fetchListings, fetchListingCounts])
+    fetchListings()
+  }, [fetchListings])
 
+  // Realtime canlı akış
   useEffect(() => {
     let channel: any
     try {
@@ -576,41 +609,11 @@ export function ListingsView({ listings: propListings = [] }: { listings?: any[]
     } catch {}
   }, [])
 
-  const filteredListings = useMemo(() => {
-    const activeChipObj = CHIP_FILTERS.find(c => c.id === selectedChip)
-    const chipKeywords = activeChipObj?.keywords ? activeChipObj.keywords.map(normalizeTR) : []
-    const searchNorm = normalizeTR(debouncedSearch)
-    const now = Date.now()
-
-    return listings.filter(ilan => {
-      if (!ilan) return false
-      if (onlyFavorites && !favoritesSet.has(ilan._stableKey)) return false
-      if (onlyNotes && !userNotesMap.has(ilan._stableKey)) return false
-
-      const dateVal = ilan?.created_at || ilan?.ilan_tarihi
-      if (timeFilter !== 'all' && dateVal) {
-        const diffMs = now - new Date(dateVal).getTime()
-        if (timeFilter === '15m' && diffMs > 15 * 60 * 1000) return false
-        if (timeFilter === '1h' && diffMs > 60 * 60 * 1000) return false
-      }
-
-      if (chipKeywords.length > 0 && !chipKeywords.some(k => ilan._searchPool.includes(k))) return false
-      if (searchNorm && !ilan._searchPool.includes(searchNorm)) return false
-
-      return true
-    })
-  }, [listings, selectedChip, timeFilter, onlyFavorites, favoritesSet, onlyNotes, userNotesMap, debouncedSearch])
-
-  const visibleListings = useMemo(() => {
-    return filteredListings.slice(0, displayLimit)
-  }, [filteredListings, displayLimit])
-
   return (
     <div className="space-y-5 max-w-7xl mx-auto px-2.5 sm:px-6 relative pb-16 font-sans w-full overflow-x-hidden">
       
-      {/* HIZLI MODÜLLER PANELİ */}
+      {/* MODÜLLER PANELİ */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        {/* İlan Pazarı Modülü */}
         <div className="relative flex flex-col justify-between p-4 rounded-2xl border border-blue-500/30 bg-blue-500/5 shadow-xs">
           <div className="space-y-3">
             <div className="size-10 rounded-xl bg-blue-500/10 text-blue-600 flex items-center justify-center">
@@ -625,7 +628,6 @@ export function ListingsView({ listings: propListings = [] }: { listings?: any[]
           </div>
         </div>
 
-        {/* Sizden Gelen İlanlar Modülü */}
         <div className="relative flex flex-col justify-between p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
           <div className="space-y-3">
             <div className="size-10 rounded-xl bg-purple-500/10 text-purple-600 flex items-center justify-center">
@@ -668,13 +670,13 @@ export function ListingsView({ listings: propListings = [] }: { listings?: any[]
         </div>
       )}
 
-      {/* FİLTRELEME VE ARAMA KONTROL PANELİ */}
+      {/* FİLTRELEME VE ARAMA PANELİ */}
       <div className="flex flex-col gap-3.5 rounded-[26px] border border-zinc-200/90 dark:border-zinc-800/90 bg-white/95 dark:bg-zinc-900/95 p-3.5 sm:p-5 shadow-sm backdrop-blur-xl">
         <div className="relative w-full">
           <Search className="absolute left-4 top-1/2 size-4 -translate-y-1/2 text-zinc-400" />
           <input
             type="text"
-            placeholder="İl, ilçe veya yük detayına göre arayın..."
+            placeholder="İl, ilçe veya yük detayına göre veritabanında arayın..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full rounded-2xl border border-zinc-200/80 dark:border-zinc-800 bg-zinc-50/70 dark:bg-zinc-950/70 py-3 pl-11 pr-9 text-xs font-semibold text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 focus:border-blue-600 focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-600/10 transition-all"
@@ -782,7 +784,7 @@ export function ListingsView({ listings: propListings = [] }: { listings?: any[]
       </div>
 
       <div className="flex items-center justify-between text-xs font-bold text-zinc-500 px-1">
-        <span>Görüntülenen İlan: <strong className="text-zinc-900 dark:text-zinc-100">{filteredListings.length}</strong></span>
+        <span>Görüntülenen İlan: <strong className="text-zinc-900 dark:text-zinc-100">{listings.length}</strong></span>
         <span className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-bold text-[11px] bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20">
           <span className="relative flex size-2">
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
@@ -795,7 +797,7 @@ export function ListingsView({ listings: propListings = [] }: { listings?: any[]
       {loading ? (
         <div className="flex flex-col items-center justify-center py-20 space-y-3">
           <Loader2 className="size-9 animate-spin text-blue-600" />
-          <p className="text-xs font-semibold text-zinc-400">İlanlar hazırlanıyor...</p>
+          <p className="text-xs font-semibold text-zinc-400">Veritabanında aranıyor...</p>
         </div>
       ) : errorMsg ? (
         <div className="flex flex-col items-center justify-center p-8 text-center rounded-3xl border border-amber-500/30 bg-amber-500/5 text-amber-700 space-y-3">
@@ -803,42 +805,28 @@ export function ListingsView({ listings: propListings = [] }: { listings?: any[]
           <p className="text-xs font-bold">{errorMsg}</p>
           <button onClick={() => fetchListings(false)} className="rounded-xl bg-amber-600 text-white px-4 py-2 text-xs font-bold">Tekrar Dene</button>
         </div>
-      ) : visibleListings.length > 0 ? (
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-stretch">
-            {visibleListings.map((ilan) => {
-              const ilanKey = ilan._stableKey
-              const isFav = favoritesSet.has(ilanKey)
-              const ilanNotes = userNotesMap.get(ilanKey) || EMPTY_ARRAY
+      ) : listings.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-stretch">
+          {listings.map((ilan) => {
+            const ilanKey = ilan._stableKey
+            const isFav = favoritesSet.has(ilanKey)
+            const ilanNotes = userNotesMap.get(ilanKey) || EMPTY_ARRAY
 
-              return (
-                <ListingCard
-                  key={ilanKey}
-                  ilan={ilan}
-                  isFav={isFav}
-                  ilanNotes={ilanNotes}
-                  copiedId={copiedId}
-                  searchQuery={searchQuery}
-                  onToggleFavorite={handleToggleFavorite}
-                  onOpenNoteModal={setNoteModalIlan}
-                  onCopyText={handleCopyText}
-                  onSelectIlan={setSelectedIlan}
-                />
-              )
-            })}
-          </div>
-
-          {filteredListings.length > displayLimit && (
-            <div className="pt-4 text-center">
-              <button
-                type="button"
-                onClick={() => setDisplayLimit(prev => prev + 30)}
-                className="rounded-2xl bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 px-6 py-3 text-xs font-extrabold hover:opacity-90 active:scale-95 transition-all shadow-md"
-              >
-                Daha Fazla İlan Yükle (+{filteredListings.length - displayLimit})
-              </button>
-            </div>
-          )}
+            return (
+              <ListingCard
+                key={ilanKey}
+                ilan={ilan}
+                isFav={isFav}
+                ilanNotes={ilanNotes}
+                copiedId={copiedId}
+                searchQuery={searchQuery}
+                onToggleFavorite={handleToggleFavorite}
+                onOpenNoteModal={setNoteModalIlan}
+                onCopyText={handleCopyText}
+                onSelectIlan={setSelectedIlan}
+              />
+            )
+          })}
         </div>
       ) : (
         <div className="flex flex-col items-center justify-center py-20 text-center rounded-3xl border border-dashed border-zinc-200 dark:border-zinc-800 space-y-2">
