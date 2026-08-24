@@ -1,11 +1,11 @@
-import React, { useMemo, useState, useEffect, useRef, useCallback } from 'react'
+import React, { useMemo, useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { timeAgo } from '@/lib/format'
 import { subscribeToPushNotifications } from '@/lib/push-client'
 import { 
   Search, X, Clock, Heart, Phone, Copy, Check, Loader2, MessageSquare, 
-  Bell, RotateCcw, Truck, AlertCircle, RefreshCw, FileText, Plus, Trash2, LogIn, Sparkles, ChevronDown,
-  Store, Users
+  Bell, RefreshCw, FileText, Plus, Trash2, LogIn, Sparkles, ChevronDown,
+  Store, Users, AlertCircle
 } from 'lucide-react'
 
 const CHIP_FILTERS = [
@@ -32,6 +32,7 @@ const DETECTABLE_BADGES = [
 ]
 
 const DEFAULT_BLOCKED_SENDERS = ['ROJHAT BAYIK', 'ROJHAT BAYİK']
+const EMPTY_ARRAY: any[] = []
 
 const SPAM_KEYWORDS = [
   'nakliye gorevi', 'nakliye görevi', 'bugunki nakliyeler', 'bugünkü nakliyeler',
@@ -222,7 +223,7 @@ FormattedListingText.displayName = 'FormattedListingText'
 const ListingCard = React.memo(({ 
   ilan, 
   isFav, 
-  ilanNotes, 
+  ilanNotes = EMPTY_ARRAY, 
   copiedId, 
   searchQuery, 
   onToggleFavorite, 
@@ -232,7 +233,7 @@ const ListingCard = React.memo(({
 }: { 
   ilan: any
   isFav: boolean
-  ilanNotes: any[]
+  ilanNotes?: any[]
   copiedId: string | null
   searchQuery: string
   onToggleFavorite: (e: React.MouseEvent, key: string) => void
@@ -382,7 +383,6 @@ export function ListingsView({ listings: propListings = [] }: { listings?: any[]
   const [refreshing, setRefreshing] = useState<boolean>(false)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   
-  // Canlı İlan ve Kullanıcı İlan Sayıları
   const [botCount, setBotCount] = useState<number>(0)
   const [userCount, setUserCount] = useState<number>(0)
   
@@ -405,6 +405,23 @@ export function ListingsView({ listings: propListings = [] }: { listings?: any[]
   const [showAuthWarning, setShowAuthWarning] = useState(false)
 
   const [displayLimit, setDisplayLimit] = useState(30)
+
+  // Map & Set Performans Hazırlığı O(1)
+  const favoritesSet = useMemo(() => new Set(favorites), [favorites])
+  const userNotesMap = useMemo(() => {
+    const map = new Map<string, any[]>()
+    for (let i = 0; i < userNotes.length; i++) {
+      const note = userNotes[i]
+      if (!note?.ilan_id) continue
+      const existing = map.get(note.ilan_id)
+      if (existing) {
+        existing.push(note)
+      } else {
+        map.set(note.ilan_id, [note])
+      }
+    }
+    return map
+  }, [userNotes])
 
   useEffect(() => {
     const handler = setTimeout(() => setDebouncedSearch(searchQuery), 120)
@@ -516,7 +533,7 @@ export function ListingsView({ listings: propListings = [] }: { listings?: any[]
     e.stopPropagation()
     if (!currentUser) { setShowAuthWarning(true); return; }
 
-    const isFav = favorites.includes(key)
+    const isFav = favoritesSet.has(key)
     setFavorites(prev => isFav ? prev.filter(k => k !== key) : [...prev, key])
 
     if (isFav) {
@@ -524,7 +541,7 @@ export function ListingsView({ listings: propListings = [] }: { listings?: any[]
     } else {
       await supabase.from('favoriler').insert([{ user_id: currentUser.id, ilan_id: key }])
     }
-  }, [currentUser, favorites])
+  }, [currentUser, favoritesSet])
 
   const handleAddNote = async () => {
     if (!currentUser) { setShowAuthWarning(true); return; }
@@ -563,12 +580,11 @@ export function ListingsView({ listings: propListings = [] }: { listings?: any[]
     const chipKeywords = activeChipObj?.keywords ? activeChipObj.keywords.map(normalizeTR) : []
     const searchNorm = normalizeTR(debouncedSearch)
     const now = Date.now()
-    const notedIlanIds = userNotes.map(n => n.ilan_id).filter(Boolean)
 
     return listings.filter(ilan => {
       if (!ilan) return false
-      if (onlyFavorites && !favorites.includes(ilan._stableKey)) return false
-      if (onlyNotes && !notedIlanIds.includes(ilan._stableKey)) return false
+      if (onlyFavorites && !favoritesSet.has(ilan._stableKey)) return false
+      if (onlyNotes && !userNotesMap.has(ilan._stableKey)) return false
 
       const dateVal = ilan?.created_at || ilan?.ilan_tarihi
       if (timeFilter !== 'all' && dateVal) {
@@ -582,7 +598,7 @@ export function ListingsView({ listings: propListings = [] }: { listings?: any[]
 
       return true
     })
-  }, [listings, selectedChip, timeFilter, onlyFavorites, favorites, onlyNotes, userNotes, debouncedSearch])
+  }, [listings, selectedChip, timeFilter, onlyFavorites, favoritesSet, onlyNotes, userNotesMap, debouncedSearch])
 
   const visibleListings = useMemo(() => {
     return filteredListings.slice(0, displayLimit)
@@ -591,7 +607,7 @@ export function ListingsView({ listings: propListings = [] }: { listings?: any[]
   return (
     <div className="space-y-5 max-w-7xl mx-auto px-2.5 sm:px-6 relative pb-16 font-sans w-full overflow-x-hidden">
       
-      {/* HIZLI MODÜLLER PANENİ (İlanlarım kaldırıldı, Mavi rozet yazısı temizlendi) */}
+      {/* HIZLI MODÜLLER PANELİ */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {/* İlan Pazarı Modülü */}
         <div className="relative flex flex-col justify-between p-4 rounded-2xl border border-blue-500/30 bg-blue-500/5 shadow-xs">
@@ -791,12 +807,15 @@ export function ListingsView({ listings: propListings = [] }: { listings?: any[]
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-stretch">
             {visibleListings.map((ilan) => {
               const ilanKey = ilan._stableKey
+              const isFav = favoritesSet.has(ilanKey)
+              const ilanNotes = userNotesMap.get(ilanKey) || EMPTY_ARRAY
+
               return (
                 <ListingCard
                   key={ilanKey}
                   ilan={ilan}
-                  isFav={favorites.includes(ilanKey)}
-                  ilanNotes={userNotes.filter(n => n.ilan_id === ilanKey)}
+                  isFav={isFav}
+                  ilanNotes={ilanNotes}
                   copiedId={copiedId}
                   searchQuery={searchQuery}
                   onToggleFavorite={handleToggleFavorite}
@@ -852,7 +871,7 @@ export function ListingsView({ listings: propListings = [] }: { listings?: any[]
               {isSavingNote ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />} Kaydet
             </button>
             <div className="space-y-2 max-h-40 overflow-y-auto">
-              {userNotes.filter(n => n.ilan_id === noteModalIlan._stableKey).map((note) => (
+              {(userNotesMap.get(noteModalIlan._stableKey) || EMPTY_ARRAY).map((note) => (
                 <div key={note.id} className="flex items-center justify-between p-3 rounded-2xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-xs">
                   <p className="text-zinc-800 dark:text-zinc-200 font-medium">{note.not_metni}</p>
                   <button onClick={() => handleDeleteNote(note.id)} className="text-zinc-400 hover:text-rose-500 p-1"><Trash2 className="size-3.5" /></button>
