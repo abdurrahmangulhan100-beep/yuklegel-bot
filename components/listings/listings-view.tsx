@@ -136,8 +136,8 @@ function normalizeTR(text: any = ''): string {
 function extractPhoneNumbers(ilan: any, text: string): string[] {
   const foundPhones: string[] = []
   try {
-    if (ilan?.telefon) foundPhones.push(String(ilan.telefon))
     if (ilan?.phone) foundPhones.push(String(ilan.phone))
+    if (ilan?.telefon) foundPhones.push(String(ilan.telefon))
 
     const rawMatches = text.match(/(?:(?:\+?90)|0)?\s*5[\d\s\-\.]{8,16}\d/g) || []
     for (const rawMatch of rawMatches) {
@@ -160,8 +160,8 @@ function extractPhoneNumbers(ilan: any, text: string): string[] {
 function processListingItem(ilan: any) {
   if (!ilan) return null
   try {
-    const raw = ilan.ham_mesaj || ilan.mesaj_metni || ilan.message || ilan.icerik || ilan.text || ilan.content || ''
-    const sender = toTitleCase(ilan?.ilan_sahibi || ilan?.username || ilan?.sender || 'Lojistik Grubu')
+    const raw = ilan.content || ilan.ham_mesaj || ilan.mesaj_metni || ilan.message || ilan.icerik || ilan.text || ''
+    const sender = toTitleCase(ilan?.title || ilan?.ilan_sahibi || ilan?.username || ilan?.sender || 'Lojistik Grubu')
     
     if (!raw || raw.trim().length < 5) return null
 
@@ -475,11 +475,12 @@ export function ListingsView({ listings: propListings = [] }: { listings?: any[]
       if (!isSilent) setRefreshing(true)
       setErrorMsg(null)
 
+      // Veritabanında gerçek var olan sütunlar seçildi ve limit 100'e çekildi (Egress Tasarrufu)
       const { data, error } = await supabase
         .from('ilanlar')
-        .select('*')
+        .select('id, created_at, title, content, phone, city_from, city_to')
         .order('created_at', { ascending: false })
-        .limit(800)
+        .limit(100)
 
       if (error) throw error
 
