@@ -492,7 +492,7 @@ export function ListingsView({ listings: propListings = [] }: { listings?: any[]
     } catch (err: any) {
       console.error('Yükleme hatası:', err)
       setErrorMsg('İlanlar yüklenirken sorun oluştu.')
-    } fontally {
+    } finally {
       setLoading(false)
       setRefreshing(false)
     }
