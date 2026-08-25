@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
+// Lazy Loading Modules
 const ListingsView = dynamic(() => import('@/components/listings/listings-view').then(m => m.ListingsView), { loading: () => <ModuleLoader /> })
 const AddListingForm = dynamic(() => import('@/components/add-listing-form').then(m => m.AddListingForm), { loading: () => <ModuleLoader /> })
 const MyListingsView = dynamic(() => import('@/components/my-listings-view').then(m => m.MyListingsView), { loading: () => <ModuleLoader /> })
@@ -70,7 +71,10 @@ function AppShellContent() {
   const [loading, setLoading] = useState(false)
   const [toast, setToast] = useState<{ type: 'error' | 'success'; text: string } | null>(null)
 
-  const [listingCount, setListingCount] = useState<number | null>(null)
+  // Modül Sayaçları State'leri
+  const [pazarCount, setPazarCount] = useState<number | null>(null)
+  const [userListingCount, setUserListingCount] = useState<number | null>(null)
+  const [loadingCounts, setLoadingCounts] = useState(true)
   const [pinnedIds, setPinnedIds] = useState<string[]>([])
 
   useEffect(() => {
@@ -80,7 +84,7 @@ function AppShellContent() {
       try { setPinnedIds(JSON.parse(savedPins)) } catch {}
     }
 
-    fetchListingCount()
+    fetchListingCounts()
   }, [])
 
   useEffect(() => {
@@ -90,17 +94,21 @@ function AppShellContent() {
     }
   }, [toast])
 
-  const fetchListingCount = async () => {
+  // İlan Sayılarını Eşzamanlı Çekme
+  const fetchListingCounts = async () => {
+    setLoadingCounts(true)
     try {
-      const { count, error } = await supabase
-        .from('user_listings')
-        .select('*', { count: 'exact', head: true })
+      const [pazarRes, userRes] = await Promise.all([
+        supabase.from('listings').select('*', { count: 'exact', head: true }),
+        supabase.from('user_listings').select('*', { count: 'exact', head: true })
+      ])
 
-      if (!error && count !== null) {
-        setListingCount(count)
-      }
+      if (!pazarRes.error && pazarRes.count !== null) setPazarCount(pazarRes.count)
+      if (!userRes.error && userRes.count !== null) setUserListingCount(userRes.count)
     } catch (err) {
-      console.error("İlan sayısı çekilemedi:", err)
+      console.error("İlan sayıları çekilemedi:", err)
+    } finally {
+      setLoadingCounts(false)
     }
   }
 
@@ -142,7 +150,7 @@ function AppShellContent() {
         setAuthMode('login')
       } else if (authMode === 'forgot') {
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
-          redirectTo: typeof window !== 'undefined' ? `${window.location.origin}/reset-password` : undefined,
+          redirectTo: `${window.location.origin}/reset-password`,
         })
         if (error) throw error
         setToast({ type: 'success', text: 'Şifre sıfırlama bağlantısı e-postanıza gönderildi.' })
@@ -156,15 +164,12 @@ function AppShellContent() {
     }
   }
 
-  // Mobile/WebView Uyumlu Google Girişi
   const handleGoogleLogin = async () => {
     try {
-      const redirectUrl = typeof window !== 'undefined' ? window.location.origin : undefined
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: redirectUrl,
-          skipBrowserRedirect: false
+          redirectTo: window.location.origin,
         },
       })
       if (error) throw error
@@ -182,8 +187,22 @@ function AppShellContent() {
     return 0
   })
 
+  const getCardDescription = (card: CardItem) => {
+    if (card.id === 'pazar') {
+      if (loadingCounts) return 'İlanlar kontrol ediliyor...'
+      if (pazarCount !== null) return `Şu an yayında ${pazarCount} aktif ilan var`
+    }
+    if (card.id === 'sizden-gelenler') {
+      if (loadingCounts) return 'İlanlar kontrol ediliyor...'
+      if (userListingCount !== null) return `Sizden gelen ${userListingCount} güncel ilan var`
+    }
+    return card.desc
+  }
+
   return (
     <div className="flex h-screen w-full overflow-hidden bg-zinc-100 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 font-sans antialiased">
+      
+      {/* TOAST BİLDİRİMİ */}
       {toast && (
         <div className={cn(
           "fixed top-4 left-1/2 -translate-x-1/2 z-[100] flex items-center gap-2 rounded-xl px-4 py-2.5 shadow-lg text-xs font-bold transition-opacity duration-150",
@@ -194,6 +213,7 @@ function AppShellContent() {
         </div>
       )}
 
+      {/* MASAÜSTÜ SIDEBAR */}
       <aside className="hidden w-64 flex-col border-r border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 lg:flex justify-between p-4 z-20">
         <div className="space-y-6">
           <div className="flex items-center gap-3 px-1">
@@ -264,7 +284,10 @@ function AppShellContent() {
         </div>
       </aside>
 
+      {/* İÇERİK ALANI */}
       <div className="flex flex-1 flex-col overflow-hidden">
+        
+        {/* HEADER */}
         <header className="flex h-14 items-center justify-between border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-4 sm:px-6 z-10">
           <div className="flex items-center gap-3">
             {activeTab !== 'dashboard' ? (
@@ -304,8 +327,10 @@ function AppShellContent() {
           </div>
         </header>
 
+        {/* GÖVDE (MAIN GRID) */}
         <main className="flex-1 overflow-y-auto p-4 sm:p-6">
           <div className="mx-auto max-w-5xl">
+            
             {activeTab === 'dashboard' && (
               <div className="space-y-4">
                 <div>
@@ -317,7 +342,6 @@ function AppShellContent() {
                   {sortedCards.map((card) => {
                     const Icon = card.icon
                     const isPinned = pinnedIds.includes(card.id)
-                    const isPazar = card.id === 'pazar'
 
                     return (
                       <div
@@ -356,7 +380,7 @@ function AppShellContent() {
                             <ChevronRight className="size-3.5 text-zinc-400 opacity-0 group-hover:opacity-100 transition-opacity" />
                           </div>
                           <p className="text-[10px] text-zinc-500 dark:text-zinc-400 mt-0.5 line-clamp-1">
-                            {isPazar && listingCount !== null ? `Şu an yayında ${listingCount} aktif yük var` : card.desc}
+                            {getCardDescription(card)}
                           </p>
                         </div>
                       </div>
@@ -366,6 +390,7 @@ function AppShellContent() {
               </div>
             )}
 
+            {/* DİNAMİK MODÜLLER */}
             <div className="transition-opacity duration-150">
               {activeTab === 'pazar' && <ListingsView />}
               {activeTab === 'ekle' && <AddListingForm onCreated={() => navigateTo('sizden-gelenler')} />}
@@ -383,10 +408,12 @@ function AppShellContent() {
         </main>
       </div>
 
+      {/* AUTH MODAL */}
       {isAuthModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div onClick={closeAuthModal} className="absolute inset-0 bg-black/60 backdrop-blur-xs" />
           <div className="relative w-full max-w-sm rounded-3xl bg-white dark:bg-zinc-900 p-6 shadow-2xl border border-zinc-200 dark:border-zinc-800">
+            
             <button type="button" onClick={closeAuthModal} className="absolute right-4 top-4 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors cursor-pointer">
               <X className="size-5"/>
             </button>
@@ -513,9 +540,11 @@ function AppShellContent() {
                 </Link>
               </div>
             </div>
+
           </div>
         </div>
       )}
+
     </div>
   )
 }
@@ -656,6 +685,8 @@ function ProfileView({ user, openAuthModal, signOut }: { user: any; openAuthModa
         <div className="space-y-3 pt-2">
           <h3 className="text-sm font-black text-zinc-900 dark:text-white">Abonelik Paketleri</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            
+            {/* Aylık Paket */}
             <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-5 flex flex-col justify-between space-y-4 hover:border-blue-500 transition-all">
               <div>
                 <div className="flex items-center justify-between">
@@ -678,6 +709,7 @@ function ProfileView({ user, openAuthModal, signOut }: { user: any; openAuthModa
               </button>
             </div>
 
+            {/* Yıllık Paket */}
             <div className="rounded-2xl border-2 border-blue-600 bg-white dark:bg-zinc-900 p-5 flex flex-col justify-between space-y-4 relative shadow-lg shadow-blue-500/10">
               <span className="absolute -top-3 right-4 rounded-full bg-blue-600 px-3 py-0.5 text-[10px] font-black text-white uppercase tracking-wider">
                 2 Ay Bedava
@@ -702,6 +734,7 @@ function ProfileView({ user, openAuthModal, signOut }: { user: any; openAuthModa
                 Yıllık Paket Seç (₺1.500)
               </button>
             </div>
+
           </div>
         </div>
       )}
