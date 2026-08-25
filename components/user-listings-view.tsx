@@ -42,7 +42,7 @@ export function UserListingsView() {
       if (data) setListings(data as UserListing[])
     } catch (err) {
       console.error('İlanlar çekilirken hata oluştu:', err)
-    } font-sans {
+    } finally {
       setLoading(false)
     }
   }
