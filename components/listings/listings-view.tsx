@@ -41,7 +41,7 @@ const SPAM_KEYWORDS = [
   'e-fatura', 'e-arsiv', 'kdv iadesi', 'bahis', 'casino',
   'isler verildi', 'işler verildi', 'is verildi', 'iş verildi',
   'yuk alindi', 'yük alındı', 'araç tutuldu', 'arac tutuldu',
-  'iptal', 'doldu', 'aranmasin', 'aranmasın', 'tamamlandi', 'tamamlandı'
+  'iptal', 'doldu', 'aranmasin', 'aranmasın', 'tamamlendi', 'tamamlandı'
 ]
 
 const safeEncode = (str: string) => {
