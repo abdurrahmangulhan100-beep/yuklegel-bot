@@ -391,8 +391,6 @@ export function ListingsView({ listings: propListings }: { listings?: any[] }) {
   const [selectedChip, setSelectedChip] = useState('ALL')
   
   const [favorites, setFavorites] = useState<string[]>([])
-  
-  // 1. ZAMAN FİLTRESİNE '5h' (SON 5 SAAT) EKLENDİ
   const [timeFilter, setTimeFilter] = useState<'all' | '15m' | '1h' | '5h'>('all')
   
   const [onlyFavorites, setOnlyFavorites] = useState(false)
@@ -423,7 +421,6 @@ export function ListingsView({ listings: propListings }: { listings?: any[] }) {
     return map
   }, [userNotes])
 
-  // Arama girdisini debounce et
   useEffect(() => {
     const handler = setTimeout(() => setDebouncedSearch(searchQuery), 250)
     return () => clearTimeout(handler)
@@ -467,7 +464,6 @@ export function ListingsView({ listings: propListings }: { listings?: any[] }) {
     }
   }, [])
 
-  // SUPABASE DİNAMİK ARAMA VE SÜZME
   const fetchListings = useCallback(async (isSilent = false) => {
     try {
       if (!isSilent) setLoading(true)
@@ -477,9 +473,8 @@ export function ListingsView({ listings: propListings }: { listings?: any[] }) {
         .from('ilanlar')
         .select('id, created_at, title, content, phone')
         .order('created_at', { ascending: false })
-        .limit(500) // 2. LİMİT 100'DEN 500'E YÜKSELTİLDİ
+        .limit(500)
 
-      // 3. Zaman Filtresi (15m, 1h ve 5h Seçenekleri)
       if (timeFilter === '15m') {
         const fifteenMinsAgo = new Date(Date.now() - 15 * 60 * 1000).toISOString()
         query = query.gte('created_at', fifteenMinsAgo)
@@ -491,13 +486,11 @@ export function ListingsView({ listings: propListings }: { listings?: any[] }) {
         query = query.gte('created_at', fiveHoursAgo)
       }
 
-      // Arama Sorgusu (Veritabanının Tamamında Arar)
       const cleanSearch = debouncedSearch.trim().replace(/[%_]/g, '')
       if (cleanSearch) {
         query = query.or(`content.ilike.%${cleanSearch}%,title.ilike.%${cleanSearch}%`)
       }
 
-      // Kategori / Chip Filtresi
       if (selectedChip !== 'ALL') {
         const chipObj = CHIP_FILTERS.find(c => c.id === selectedChip)
         if (chipObj?.keywords && chipObj.keywords.length > 0) {
@@ -506,7 +499,6 @@ export function ListingsView({ listings: propListings }: { listings?: any[] }) {
         }
       }
 
-      // Sadece Favoriler Seçildiyse
       if (onlyFavorites) {
         if (favorites.length === 0) {
           setListings([])
@@ -545,7 +537,6 @@ export function ListingsView({ listings: propListings }: { listings?: any[] }) {
     fetchListings()
   }, [fetchListings])
 
-  // Realtime canlı akış
   useEffect(() => {
     let channel: any
     try {
@@ -604,19 +595,29 @@ export function ListingsView({ listings: propListings }: { listings?: any[] }) {
     await supabase.from('notlar').delete().eq('id', noteId).eq('user_id', currentUser.id)
   }
 
+  // WebView Güvenli Pano Kopyalama
   const handleCopyText = useCallback(async (e: React.MouseEvent, text: string, id: string) => {
     e.stopPropagation()
     try {
-      await navigator.clipboard.writeText(text)
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(text)
+      } else {
+        const textarea = document.createElement('textarea')
+        textarea.value = text
+        document.body.appendChild(textarea)
+        textarea.select()
+        document.execCommand('copy')
+        document.body.removeChild(textarea)
+      }
       setCopiedId(id)
       setTimeout(() => setCopiedId(null), 2000)
-    } catch {}
+    } catch (err) {
+      console.error("Kopyalama hatası:", err)
+    }
   }, [])
 
   return (
     <div className="space-y-5 max-w-7xl mx-auto px-2.5 sm:px-6 relative pb-16 font-sans w-full overflow-x-hidden">
-      
-      {/* MODÜLLER PANELİ */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="relative flex flex-col justify-between p-4 rounded-2xl border border-blue-500/30 bg-blue-500/5 shadow-xs">
           <div className="space-y-3">
@@ -666,7 +667,7 @@ export function ListingsView({ listings: propListings }: { listings?: any[] }) {
             </div>
             <button
               onClick={() => setShowAuthWarning(false)}
-              className="w-full rounded-2xl bg-blue-600 py-3 text-xs font-bold text-white shadow-md active:scale-95"
+              className="w-full rounded-2xl bg-blue-600 py-3 text-xs font-bold text-white shadow-md active:scale-95 cursor-pointer"
             >
               Tamam
             </button>
@@ -674,7 +675,6 @@ export function ListingsView({ listings: propListings }: { listings?: any[] }) {
         </div>
       )}
 
-      {/* FİLTRELEME VE ARAMA PANELİ */}
       <div className="flex flex-col gap-3.5 rounded-[26px] border border-zinc-200/90 dark:border-zinc-800/90 bg-white/95 dark:bg-zinc-900/95 p-3.5 sm:p-5 shadow-sm backdrop-blur-xl">
         <div className="relative w-full">
           <Search className="absolute left-4 top-1/2 size-4 -translate-y-1/2 text-zinc-400" />
@@ -686,7 +686,7 @@ export function ListingsView({ listings: propListings }: { listings?: any[] }) {
             className="w-full rounded-2xl border border-zinc-200/80 dark:border-zinc-800 bg-zinc-50/70 dark:bg-zinc-950/70 py-3 pl-11 pr-9 text-xs font-semibold text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 focus:border-blue-600 focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-600/10 transition-all"
           />
           {searchQuery && (
-            <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 p-1">
+            <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 p-1 cursor-pointer">
               <X className="size-4" />
             </button>
           )}
@@ -700,7 +700,7 @@ export function ListingsView({ listings: propListings }: { listings?: any[] }) {
                 key={chip.id}
                 type="button"
                 onClick={() => setSelectedChip(chip.id)}
-                className={`rounded-2xl px-3.5 py-2 text-[11px] font-extrabold transition-all shrink-0 active:scale-95 ${
+                className={`rounded-2xl px-3.5 py-2 text-[11px] font-extrabold transition-all shrink-0 cursor-pointer active:scale-95 ${
                   isActive 
                     ? 'bg-blue-600 text-white shadow-md shadow-blue-600/25' 
                     : 'bg-zinc-100 dark:bg-zinc-800/80 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200'
@@ -713,7 +713,6 @@ export function ListingsView({ listings: propListings }: { listings?: any[] }) {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-12 gap-2.5 pt-1 border-t border-zinc-100 dark:border-zinc-800/70">
-          {/* 4. BUTONLARA SON 5 SAAT DÂHİL EDİLDİ */}
           <div className="md:col-span-5 flex items-center bg-zinc-100/90 dark:bg-zinc-800/70 p-1 rounded-2xl border border-zinc-200/50 dark:border-zinc-800/50">
             {(['all', '15m', '1h', '5h'] as const).map((t) => {
               const active = timeFilter === t
@@ -744,7 +743,7 @@ export function ListingsView({ listings: propListings }: { listings?: any[] }) {
                 const cities = searchQuery.trim() ? [searchQuery.trim()] : []
                 subscribeToPushNotifications(cities, currentUser?.id)
               }}
-              className="flex items-center justify-center gap-1.5 rounded-2xl bg-purple-500/10 hover:bg-purple-500/20 text-purple-700 dark:text-purple-300 border border-purple-500/20 py-2 px-2.5 text-[11px] font-bold transition-all active:scale-95"
+              className="flex items-center justify-center gap-1.5 rounded-2xl bg-purple-500/10 hover:bg-purple-500/20 text-purple-700 dark:text-purple-300 border border-purple-500/20 py-2 px-2.5 text-[11px] font-bold transition-all cursor-pointer active:scale-95"
             >
               <Bell className="size-3.5 text-purple-600" />
               <span>Bildirim Aç</span>
@@ -754,7 +753,7 @@ export function ListingsView({ listings: propListings }: { listings?: any[] }) {
               type="button"
               onClick={() => fetchListings(false)}
               disabled={refreshing}
-              className="flex items-center justify-center gap-1.5 rounded-2xl bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 text-zinc-700 dark:text-zinc-200 py-2 px-2.5 text-[11px] font-bold transition-all active:scale-95"
+              className="flex items-center justify-center gap-1.5 rounded-2xl bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 text-zinc-700 dark:text-zinc-200 py-2 px-2.5 text-[11px] font-bold transition-all cursor-pointer active:scale-95"
             >
               <RefreshCw className={`size-3.5 ${refreshing ? 'animate-spin text-blue-600' : ''}`} />
               <span>Yenile</span>
@@ -763,7 +762,7 @@ export function ListingsView({ listings: propListings }: { listings?: any[] }) {
             <button
               type="button"
               onClick={() => { setOnlyNotes(!onlyNotes); if (!onlyNotes) setOnlyFavorites(false); }}
-              className={`flex items-center justify-center gap-1.5 rounded-2xl py-2 px-2.5 text-[11px] font-bold transition-all active:scale-95 ${
+              className={`flex items-center justify-center gap-1.5 rounded-2xl py-2 px-2.5 text-[11px] font-bold transition-all cursor-pointer active:scale-95 ${
                 onlyNotes 
                   ? 'bg-amber-500 text-white shadow-xs' 
                   : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200'
@@ -776,7 +775,7 @@ export function ListingsView({ listings: propListings }: { listings?: any[] }) {
             <button
               type="button"
               onClick={() => { setOnlyFavorites(!onlyFavorites); if (!onlyFavorites) setOnlyNotes(false); }}
-              className={`flex items-center justify-center gap-1.5 rounded-2xl py-2 px-2.5 text-[11px] font-bold transition-all active:scale-95 ${
+              className={`flex items-center justify-center gap-1.5 rounded-2xl py-2 px-2.5 text-[11px] font-bold transition-all cursor-pointer active:scale-95 ${
                 onlyFavorites 
                   ? 'bg-rose-500 text-white shadow-xs' 
                   : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200'
@@ -809,7 +808,7 @@ export function ListingsView({ listings: propListings }: { listings?: any[] }) {
         <div className="flex flex-col items-center justify-center p-8 text-center rounded-3xl border border-amber-500/30 bg-amber-500/5 text-amber-700 space-y-3">
           <AlertCircle className="size-8" />
           <p className="text-xs font-bold">{errorMsg}</p>
-          <button onClick={() => fetchListings(false)} className="rounded-xl bg-amber-600 text-white px-4 py-2 text-xs font-bold">Tekrar Dene</button>
+          <button onClick={() => fetchListings(false)} className="rounded-xl bg-amber-600 text-white px-4 py-2 text-xs font-bold cursor-pointer">Tekrar Dene</button>
         </div>
       ) : listings.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-stretch">
@@ -849,7 +848,7 @@ export function ListingsView({ listings: propListings }: { listings?: any[] }) {
               <h3 className="text-xs font-bold flex items-center gap-1.5 text-zinc-900 dark:text-zinc-100">
                 <FileText className="size-4 text-amber-500" /> Özel Not Ekle
               </h3>
-              <button onClick={() => setNoteModalIlan(null)} className="p-1 text-zinc-400 hover:text-zinc-600"><X className="size-4" /></button>
+              <button onClick={() => setNoteModalIlan(null)} className="p-1 text-zinc-400 hover:text-zinc-600 cursor-pointer"><X className="size-4" /></button>
             </div>
             <textarea
               rows={3}
@@ -861,7 +860,7 @@ export function ListingsView({ listings: propListings }: { listings?: any[] }) {
             <button
               onClick={handleAddNote}
               disabled={isSavingNote || !newNoteText.trim()}
-              className="w-full flex items-center justify-center gap-2 rounded-2xl bg-amber-500 text-white py-2.5 text-xs font-bold disabled:opacity-50"
+              className="w-full flex items-center justify-center gap-2 rounded-2xl bg-amber-500 text-white py-2.5 text-xs font-bold disabled:opacity-50 cursor-pointer"
             >
               {isSavingNote ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />} Kaydet
             </button>
@@ -869,7 +868,7 @@ export function ListingsView({ listings: propListings }: { listings?: any[] }) {
               {(userNotesMap.get(noteModalIlan._stableKey) || EMPTY_ARRAY).map((note) => (
                 <div key={note.id} className="flex items-center justify-between p-3 rounded-2xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-xs">
                   <p className="text-zinc-800 dark:text-zinc-200 font-medium">{note.not_metni}</p>
-                  <button onClick={() => handleDeleteNote(note.id)} className="text-zinc-400 hover:text-rose-500 p-1"><Trash2 className="size-3.5" /></button>
+                  <button onClick={() => handleDeleteNote(note.id)} className="text-zinc-400 hover:text-rose-500 p-1 cursor-pointer"><Trash2 className="size-3.5" /></button>
                 </div>
               ))}
             </div>
@@ -883,7 +882,7 @@ export function ListingsView({ listings: propListings }: { listings?: any[] }) {
           <div onClick={(e) => e.stopPropagation()} className="relative w-full max-w-lg rounded-3xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-5 shadow-2xl space-y-4">
             <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800 pb-2.5">
               <h3 className="text-xs font-bold text-zinc-900 dark:text-zinc-100">{selectedIlan._sender} - İlan Detayı</h3>
-              <button onClick={() => setSelectedIlan(null)} className="p-1 text-zinc-400 hover:text-zinc-600"><X className="size-4" /></button>
+              <button onClick={() => setSelectedIlan(null)} className="p-1 text-zinc-400 hover:text-zinc-600 cursor-pointer"><X className="size-4" /></button>
             </div>
             <div className="p-3.5 rounded-2xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-xs leading-relaxed whitespace-pre-wrap font-medium">
               <FormattedListingText text={selectedIlan._originalRawText || selectedIlan._rawText} query={searchQuery} />
