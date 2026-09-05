@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, Suspense, useMemo } from 'react'
+import React, { useState, useEffect, Suspense, useMemo, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
@@ -9,9 +9,8 @@ import { supabase } from '@/lib/supabase'
 import { 
   Truck, Store, PlusCircle, Calculator, Fuel, NotebookPen, Wallet, Timer,
   LogOut, X, Loader2, Sparkles, Sun, Moon, ArrowLeft, ChevronRight, Pin, UserCheck, 
-  Users, Mail, Lock, KeyRound, ShieldCheck, User, CreditCard, Search, Bell, 
-  TrendingUp, Navigation, AlertCircle, Wrench, ArrowUpRight, Play, Pause, RefreshCw,
-  Gauge, DollarSign, Calendar, MapPin
+  Users, Mail, Lock, KeyRound, User, Search, Bell, TrendingUp, Navigation, AlertCircle, Wrench, Play, Pause, RefreshCw,
+  Gauge, Calendar, MapPin, Trash2, CheckCircle2
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -49,6 +48,28 @@ interface CardItem {
   badge?: string
 }
 
+interface DocumentItem {
+  id: string
+  title: string
+  dueDate: string
+  type: 'bakim' | 'evrak'
+}
+
+interface TripData {
+  freightFee: number
+  tripKm: number
+  fuelPrice: number
+  avgConsumption: number
+  tollCost: number
+}
+
+const STORAGE_KEYS = {
+  DOCUMENTS: 'nakliye_documents_data',
+  TRIP: 'nakliye_trip_data',
+  TACHO: 'nakliye_tacho_state',
+  PINS: 'nakliye_pinned_cards'
+}
+
 const MODULE_CARDS: CardItem[] = [
   { id: 'pazar', title: 'İlan Pazarı', desc: 'Canlı yük ve araç teklifleri', icon: Store, color: 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/50 border-blue-100 dark:border-blue-900/40', badge: 'Canlı' },
   { id: 'sizden-gelenler', title: 'Sizden Gelenler', desc: 'Sürücü topluluk ilanları', icon: Users, color: 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/50 border-indigo-100 dark:border-indigo-900/40' },
@@ -71,46 +92,108 @@ export function AppShellContent() {
   const [loading, setLoading] = useState(false)
   const [toast, setToast] = useState<{ type: 'error' | 'success'; text: string } | null>(null)
 
-  // Live Counts
+  // Live Database Counts & Pins
   const [pazarCount, setPazarCount] = useState<number | null>(null)
   const [pinnedIds, setPinnedIds] = useState<string[]>([])
 
-  // Live Tachograph Timer Logic
-  const MAX_DRIVE_SECONDS = 4.5 * 3600 // 4.5 Saat
-  const [driveSecondsLeft, setDriveSecondsLeft] = useState(MAX_DRIVE_SECONDS)
-  const [isDriving, setIsDriving] = useState(false)
+  // 1. Persistent Trip Calculator State
+  const [tripData, setTripData] = useState<TripData>({
+    freightFee: 45000,
+    tripKm: 480,
+    fuelPrice: 44.5,
+    avgConsumption: 31,
+    tollCost: 1000
+  })
 
-  // Interactive Trip & Profit State
-  const [freightFee, setFreightFee] = useState<number>(45000)
-  const [tripKm, setTripKm] = useState<number>(480)
-  const [fuelPrice, setFuelPrice] = useState<number>(44.5)
-  const [avgConsumption, setAvgConsumption] = useState<number>(31) // 31L/100km
+  // 2. Persistent Dynamic Documents & Maintenance State
+  const [documents, setDocuments] = useState<DocumentItem[]>([])
+  const [newDocTitle, setNewDocTitle] = useState('')
+  const [newDocDate, setNewDocDate] = useState('')
+  const [newDocType, setNewDocType] = useState<'bakim' | 'evrak'>('evrak')
 
+  // 3. Persistent Tachograph State (Timestamp Exactness)
+  const MAX_DRIVE_SECONDS = 4.5 * 3600
+  const [driveSecondsLeft, setDriveSecondsLeft] = useState<number>(MAX_DRIVE_SECONDS)
+  const [isDriving, setIsDriving] = useState<boolean>(false)
+
+  // Initial Load (LocalStorage Persistence)
   useEffect(() => {
     if (document.documentElement.classList.contains('dark')) setIsDarkMode(true)
-    const savedPins = localStorage.getItem('nakliye_pinned_cards')
+
+    // Pins
+    const savedPins = localStorage.getItem(STORAGE_KEYS.PINS)
     if (savedPins) {
       try { setPinnedIds(JSON.parse(savedPins)) } catch {}
     }
+
+    // Sefer Verisi
+    const savedTrip = localStorage.getItem(STORAGE_KEYS.TRIP)
+    if (savedTrip) {
+      try { setTripData(JSON.parse(savedTrip)) } catch {}
+    }
+
+    // Evrak Verisi
+    const savedDocs = localStorage.getItem(STORAGE_KEYS.DOCUMENTS)
+    if (savedDocs) {
+      try { setDocuments(JSON.parse(savedDocs)) } catch {}
+    } else {
+      const initialDocs: DocumentItem[] = [
+        { id: '1', title: 'Kasko Yenileme', dueDate: '2026-09-15', type: 'evrak' },
+        { id: '2', title: 'Periyodik Yağ Bakımı', dueDate: '2026-10-01', type: 'bakim' }
+      ]
+      setDocuments(initialDocs)
+      localStorage.setItem(STORAGE_KEYS.DOCUMENTS, JSON.stringify(initialDocs))
+    }
+
+    // Takograf Zamanlayıcısı (Arka planda sekme kapansa da doğru kalan zamanı hesaplar)
+    const savedTacho = localStorage.getItem(STORAGE_KEYS.TACHO)
+    if (savedTacho) {
+      try {
+        const { left, driving, lastTimestamp } = JSON.parse(savedTacho)
+        if (driving && lastTimestamp) {
+          const elapsed = Math.floor((Date.now() - lastTimestamp) / 1000)
+          const updatedLeft = Math.max(0, left - elapsed)
+          setDriveSecondsLeft(updatedLeft)
+          setIsDriving(updatedLeft > 0)
+        } else {
+          setDriveSecondsLeft(left)
+          setIsDriving(false)
+        }
+      } catch {}
+    }
+
     fetchCounts()
   }, [])
 
+  // Takograf Döngüsü & Veri Saklama
   useEffect(() => {
     let interval: NodeJS.Timeout
     if (isDriving && driveSecondsLeft > 0) {
       interval = setInterval(() => {
-        setDriveSecondsLeft(prev => prev - 1)
+        setDriveSecondsLeft(prev => {
+          const next = prev - 1
+          if (next <= 0) {
+            setIsDriving(false)
+            showToast('error', 'Yasal sürüş süreniz doldu! Lütfen mola verin.')
+          }
+          return Math.max(0, next)
+        })
       }, 1000)
     }
+
+    localStorage.setItem(STORAGE_KEYS.TACHO, JSON.stringify({
+      left: driveSecondsLeft,
+      driving: isDriving,
+      lastTimestamp: Date.now()
+    }))
+
     return () => clearInterval(interval)
   }, [isDriving, driveSecondsLeft])
 
-  useEffect(() => {
-    if (toast) {
-      const timer = setTimeout(() => setToast(null), 3500)
-      return () => clearTimeout(timer)
-    }
-  }, [toast])
+  const showToast = (type: 'error' | 'success', text: string) => {
+    setToast({ type, text })
+    setTimeout(() => setToast(null), 3500)
+  }
 
   const fetchCounts = async () => {
     try {
@@ -127,7 +210,41 @@ export function AppShellContent() {
       ? pinnedIds.filter(item => item !== id)
       : [...pinnedIds, id]
     setPinnedIds(updated)
-    localStorage.setItem('nakliye_pinned_cards', JSON.stringify(updated))
+    localStorage.setItem(STORAGE_KEYS.PINS, JSON.stringify(updated))
+  }
+
+  // Trip Field Updates
+  const handleTripChange = (field: keyof TripData, value: number) => {
+    const updated = { ...tripData, [field]: value }
+    setTripData(updated)
+    localStorage.setItem(STORAGE_KEYS.TRIP, JSON.stringify(updated))
+  }
+
+  // Dynamic Document Handlers
+  const handleAddDocument = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!newDocTitle || !newDocDate) return
+
+    const newDoc: DocumentItem = {
+      id: Date.now().toString(),
+      title: newDocTitle,
+      dueDate: newDocDate,
+      type: newDocType
+    }
+
+    const updated = [newDoc, ...documents]
+    setDocuments(updated)
+    localStorage.setItem(STORAGE_KEYS.DOCUMENTS, JSON.stringify(updated))
+    setNewDocTitle('')
+    setNewDocDate('')
+    showToast('success', 'Evrak/Bakım kaydı eklendi.')
+  }
+
+  const handleDeleteDocument = (id: string) => {
+    const updated = documents.filter(doc => doc.id !== id)
+    setDocuments(updated)
+    localStorage.setItem(STORAGE_KEYS.DOCUMENTS, JSON.stringify(updated))
+    showToast('success', 'Kayıt silindi.')
   }
 
   const navigateTo = (tab: ModuleId) => {
@@ -140,24 +257,22 @@ export function AppShellContent() {
     document.documentElement.classList.toggle('dark')
   }
 
-  // Calculated Trip Values
+  // Sefer Maliyeti Hesaplama
   const tripCalculations = useMemo(() => {
-    const totalFuelLiters = (tripKm * avgConsumption) / 100
-    const fuelCost = totalFuelLiters * fuelPrice
-    const estimatedTollCost = tripKm * 2.1 // Otoyol/Köprü tahmini
-    const totalCost = fuelCost + estimatedTollCost
-    const netProfit = freightFee - totalCost
-    const profitMargin = freightFee > 0 ? (netProfit / freightFee) * 100 : 0
+    const totalFuelLiters = (tripData.tripKm * tripData.avgConsumption) / 100
+    const fuelCost = totalFuelLiters * tripData.fuelPrice
+    const totalCost = fuelCost + tripData.tollCost
+    const netProfit = tripData.freightFee - totalCost
+    const profitMargin = tripData.freightFee > 0 ? (netProfit / tripData.freightFee) * 100 : 0
 
     return {
       totalFuelLiters: totalFuelLiters.toFixed(0),
       fuelCost: fuelCost.toFixed(0),
-      estimatedTollCost: estimatedTollCost.toFixed(0),
       totalCost: totalCost.toFixed(0),
       netProfit: netProfit.toFixed(0),
       profitMargin: profitMargin.toFixed(1)
     }
-  }, [freightFee, tripKm, fuelPrice, avgConsumption])
+  }, [tripData])
 
   const formatTime = (secs: number) => {
     const hrs = Math.floor(secs / 3600)
@@ -173,22 +288,22 @@ export function AppShellContent() {
       if (authMode === 'login') {
         const { error } = await supabase.auth.signInWithPassword({ email, password })
         if (error) throw error
-        setToast({ type: 'success', text: 'Giriş başarılı!' })
+        showToast('success', 'Giriş başarılı!')
         closeAuthModal()
       } else if (authMode === 'register') {
         const { error } = await supabase.auth.signUp({ email, password })
         if (error) throw error
-        setToast({ type: 'success', text: 'Kayıt oluşturuldu! E-postanızı onaylayın.' })
+        showToast('success', 'Kayıt oluşturuldu! E-postanızı onaylayın.')
         setAuthMode('login')
       } else if (authMode === 'forgot') {
         const { error } = await supabase.auth.resetPasswordForEmail(email)
         if (error) throw error
-        setToast({ type: 'success', text: 'Şifre sıfırlama e-postası gönderildi.' })
+        showToast('success', 'Şifre sıfırlama e-postası gönderildi.')
         setAuthMode('login')
       }
     } catch (err: unknown) {
       const error = err as Error
-      setToast({ type: 'error', text: error.message || 'Hata oluştu' })
+      showToast('error', error.message || 'Hata oluştu')
     } finally {
       setLoading(false)
     }
@@ -205,20 +320,20 @@ export function AppShellContent() {
   return (
     <div className="flex h-screen w-full overflow-hidden bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 font-sans antialiased">
       
-      {/* TOAST PANELİ */}
+      {/* Toast Paneli */}
       {toast && (
         <div className={cn(
-          "fixed top-4 left-1/2 -translate-x-1/2 z-[100] flex items-center gap-2 rounded-xl px-4 py-2.5 shadow-2xl text-xs font-black transition-all border",
+          "fixed top-4 left-1/2 -translate-x-1/2 z-[100] flex items-center gap-2 rounded-xl px-4 py-2.5 shadow-2xl text-xs font-black transition-all border animate-in fade-in slide-in-from-top-2",
           toast.type === 'error' 
             ? 'bg-rose-600 text-white border-rose-500' 
             : 'bg-emerald-600 text-white border-emerald-500'
         )}>
-          {toast.type === 'error' ? <X className="size-4"/> : <Sparkles className="size-4"/>}
+          {toast.type === 'error' ? <X className="size-4"/> : <CheckCircle2 className="size-4"/>}
           <span>{toast.text}</span>
         </div>
       )}
 
-      {/* SOL MENÜ (SIDEBAR) */}
+      {/* Sol Menü (Sidebar) */}
       <aside className="hidden w-64 flex-col border-r border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-900 lg:flex justify-between p-4 z-20">
         <div className="space-y-6">
           <div className="flex items-center gap-3 px-1">
@@ -350,10 +465,10 @@ export function AppShellContent() {
         </div>
       </aside>
 
-      {/* İÇERİK GOVDESİ */}
+      {/* İçerik Gövdesi */}
       <div className="flex flex-1 flex-col overflow-hidden">
         
-        {/* TOP BAR */}
+        {/* Üst Bar */}
         <header className="flex h-14 items-center justify-between border-b border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-4 sm:px-6 z-10">
           <div className="flex items-center gap-3">
             {activeTab !== 'dashboard' ? (
@@ -373,7 +488,7 @@ export function AppShellContent() {
                 <span className="font-black text-sm tracking-tight lg:hidden">Nakliye Cepte</span>
                 <div className="hidden lg:flex items-center gap-2 rounded-full bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-900/50 px-3 py-1 text-emerald-700 dark:text-emerald-400 text-xs font-bold">
                   <span className="size-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                  <span>Canlı Trafik & Güzergah Servisi Aktif</span>
+                  <span>Canlı Veri & Tarayıcı Senkronizasyonu Aktif</span>
                 </div>
               </div>
             )}
@@ -384,7 +499,7 @@ export function AppShellContent() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-zinc-400" />
               <input
                 type="text"
-                placeholder="Rotalarda İlan veya Araç Ara..."
+                placeholder="İlan veya Modül Ara..."
                 onClick={() => navigateTo('pazar')}
                 className="w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/50 py-1.5 pl-8 pr-3 text-xs text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 focus:outline-none focus:border-blue-500 transition-all cursor-pointer"
               />
@@ -401,14 +516,14 @@ export function AppShellContent() {
           </div>
         </header>
 
-        {/* ANA ARAYÜZ GOVDESİ */}
+        {/* Ana Arayüz Alanı */}
         <main className="flex-1 overflow-y-auto p-4 sm:p-6">
           <div className="mx-auto max-w-6xl">
             
             {activeTab === 'dashboard' && (
               <div className="space-y-6">
                 
-                {/* 1. ANLIK FİNANSAL METRİKLER & GÖSTERGELER */}
+                {/* 1. Anlık Finansal Metrikler */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   <div className="rounded-2xl border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-4 space-y-1 shadow-xs">
                     <div className="flex items-center justify-between text-zinc-400">
@@ -425,22 +540,22 @@ export function AppShellContent() {
 
                   <div className="rounded-2xl border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-4 space-y-1 shadow-xs">
                     <div className="flex items-center justify-between text-zinc-400">
-                      <span className="text-[10px] font-black uppercase tracking-wider">Aktif Rota</span>
-                      <Navigation className="size-4 text-amber-500" />
-                    </div>
-                    <p className="text-xl font-black text-zinc-900 dark:text-white">Gebze ➔ Ank</p>
-                    <span className="text-[10px] font-bold text-zinc-400">Kalan: 240 KM</span>
-                  </div>
-
-                  <div className="rounded-2xl border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-4 space-y-1 shadow-xs">
-                    <div className="flex items-center justify-between text-zinc-400">
-                      <span className="text-[10px] font-black uppercase tracking-wider">Mola Geri Sayım</span>
-                      <Timer className="size-4 text-indigo-500" />
+                      <span className="text-[10px] font-black uppercase tracking-wider">Takograf Sayacı</span>
+                      <Timer className="size-4 text-amber-500" />
                     </div>
                     <p className="text-xl font-black text-zinc-900 dark:text-white font-mono">
                       {formatTime(driveSecondsLeft)}
                     </p>
-                    <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400">4.5S Yasal Sınır</span>
+                    <span className="text-[10px] font-bold text-amber-600">{isDriving ? 'Sürüşte' : 'Molada'}</span>
+                  </div>
+
+                  <div className="rounded-2xl border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-4 space-y-1 shadow-xs">
+                    <div className="flex items-center justify-between text-zinc-400">
+                      <span className="text-[10px] font-black uppercase tracking-wider">Kayıtlı Evraklar</span>
+                      <NotebookPen className="size-4 text-purple-500" />
+                    </div>
+                    <p className="text-xl font-black text-zinc-900 dark:text-white">{documents.length} Adet</p>
+                    <span className="text-[10px] font-bold text-purple-600">Aktif Takip</span>
                   </div>
 
                   <div className="rounded-2xl border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-4 space-y-1 shadow-xs">
@@ -455,13 +570,13 @@ export function AppShellContent() {
                   </div>
                 </div>
 
-                {/* 2. ANA LAYOUT (2 SÜTUN HİBRİT İŞLEVSEL GRID) */}
+                {/* 2. Ana Layout (İşlevsel Modül ve Araçlar) */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                   
-                  {/* SOL TARAF: İŞLEVSEL EKLENTİLER & MODÜLLER (2/3) */}
+                  {/* Sol Taraf: İnteraktif Sefer & Evrak Yönetimi (2/3) */}
                   <div className="lg:col-span-2 space-y-6">
                     
-                    {/* EKLENTİ 1: İNTERAKTİF SEFER VE KÂR MARJI HESAPLAYICI WIDGET'I */}
+                    {/* CANLI HESAPLAYICI WIDGET'I (Kalıcı State Entegrasyonlu) */}
                     <div className="rounded-2xl border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-5 space-y-4 shadow-xs">
                       <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800 pb-3">
                         <div className="flex items-center gap-2">
@@ -470,21 +585,21 @@ export function AppShellContent() {
                           </div>
                           <div>
                             <h3 className="text-xs font-black text-zinc-900 dark:text-white">Canlı Sefer & Kâr Simülatörü</h3>
-                            <p className="text-[10px] text-zinc-500">Değerleri değiştirerek anında kârlılık durumunuzu görün.</p>
+                            <p className="text-[10px] text-zinc-500">Değerleri değiştirin; verileriniz otomatik kaydedilir.</p>
                           </div>
                         </div>
                         <span className="text-[10px] font-black uppercase bg-violet-100 dark:bg-violet-900/40 text-violet-600 dark:text-violet-300 px-2.5 py-1 rounded-lg">
-                          Aktif Araç
+                          Kalıcı Veri
                         </span>
                       </div>
 
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                         <div className="space-y-1">
                           <label className="text-[10px] font-bold text-zinc-400">Navlun Geliri (₺)</label>
                           <input 
                             type="number" 
-                            value={freightFee} 
-                            onChange={(e) => setFreightFee(Number(e.target.value))}
+                            value={tripData.freightFee} 
+                            onChange={(e) => handleTripChange('freightFee', Number(e.target.value))}
                             className="w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/50 p-2 text-xs font-black text-zinc-900 dark:text-white focus:outline-none focus:border-blue-500"
                           />
                         </div>
@@ -492,40 +607,44 @@ export function AppShellContent() {
                           <label className="text-[10px] font-bold text-zinc-400">Mesafe (KM)</label>
                           <input 
                             type="number" 
-                            value={tripKm} 
-                            onChange={(e) => setTripKm(Number(e.target.value))}
+                            value={tripData.tripKm} 
+                            onChange={(e) => handleTripChange('tripKm', Number(e.target.value))}
                             className="w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/50 p-2 text-xs font-black text-zinc-900 dark:text-white focus:outline-none focus:border-blue-500"
                           />
                         </div>
                         <div className="space-y-1">
-                          <label className="text-[10px] font-bold text-zinc-400">Motorin (₺/Lt)</label>
+                          <label className="text-[10px] font-bold text-zinc-400">Mazot (₺/Lt)</label>
                           <input 
                             type="number" 
-                            value={fuelPrice} 
-                            onChange={(e) => setFuelPrice(Number(e.target.value))}
+                            value={tripData.fuelPrice} 
+                            onChange={(e) => handleTripChange('fuelPrice', Number(e.target.value))}
                             className="w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/50 p-2 text-xs font-black text-zinc-900 dark:text-white focus:outline-none focus:border-blue-500"
                           />
                         </div>
                         <div className="space-y-1">
-                          <label className="text-[10px] font-bold text-zinc-400">Ort. Tüketim (Lt)</label>
+                          <label className="text-[10px] font-bold text-zinc-400">Ort. Tüketim (Lt/100km)</label>
                           <input 
                             type="number" 
-                            value={avgConsumption} 
-                            onChange={(e) => setAvgConsumption(Number(e.target.value))}
+                            value={tripData.avgConsumption} 
+                            onChange={(e) => handleTripChange('avgConsumption', Number(e.target.value))}
+                            className="w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/50 p-2 text-xs font-black text-zinc-900 dark:text-white focus:outline-none focus:border-blue-500"
+                          />
+                        </div>
+                        <div className="space-y-1 sm:col-span-2">
+                          <label className="text-[10px] font-bold text-zinc-400">Otoyol / Ek Gider (₺)</label>
+                          <input 
+                            type="number" 
+                            value={tripData.tollCost} 
+                            onChange={(e) => handleTripChange('tollCost', Number(e.target.value))}
                             className="w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/50 p-2 text-xs font-black text-zinc-900 dark:text-white focus:outline-none focus:border-blue-500"
                           />
                         </div>
                       </div>
 
-                      {/* HESAPLANAN ÖZET BARI */}
-                      <div className="grid grid-cols-3 gap-3 pt-2">
+                      <div className="grid grid-cols-2 gap-3 pt-2">
                         <div className="rounded-xl bg-zinc-50 dark:bg-zinc-800/40 p-3 border border-zinc-100 dark:border-zinc-800">
-                          <span className="text-[10px] text-zinc-400 font-bold block">Toplam Yakıt</span>
-                          <span className="text-xs font-black text-zinc-800 dark:text-zinc-200">{tripCalculations.totalFuelLiters} Litre (₺{Number(tripCalculations.fuelCost).toLocaleString('tr-TR')})</span>
-                        </div>
-                        <div className="rounded-xl bg-zinc-50 dark:bg-zinc-800/40 p-3 border border-zinc-100 dark:border-zinc-800">
-                          <span className="text-[10px] text-zinc-400 font-bold block">Otoyol / Köprü</span>
-                          <span className="text-xs font-black text-zinc-800 dark:text-zinc-200">₺{Number(tripCalculations.estimatedTollCost).toLocaleString('tr-TR')}</span>
+                          <span className="text-[10px] text-zinc-400 font-bold block">Toplam Yakıt Gideri</span>
+                          <span className="text-xs font-black text-rose-600 dark:text-rose-400">{tripCalculations.totalFuelLiters} Litre (₺{Number(tripCalculations.fuelCost).toLocaleString('tr-TR')})</span>
                         </div>
                         <div className="rounded-xl bg-emerald-50 dark:bg-emerald-950/40 p-3 border border-emerald-200 dark:border-emerald-800/40">
                           <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold block">Tahmini Net Kâr</span>
@@ -534,7 +653,71 @@ export function AppShellContent() {
                       </div>
                     </div>
 
-                    {/* EKLENTİ 2: HIZLI UYGULAMA MODÜL GRID'I */}
+                    {/* DİNAMİK EVRAK VE BAKIM YÖNETİMİ (Ekle / Sil / Kaydet) */}
+                    <div className="rounded-2xl border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-5 space-y-4 shadow-xs">
+                      <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800 pb-3">
+                        <div className="flex items-center gap-2">
+                          <div className="p-2 rounded-xl bg-purple-50 dark:bg-purple-950/50 text-purple-600">
+                            <Wrench className="size-4" />
+                          </div>
+                          <div>
+                            <h3 className="text-xs font-black text-zinc-900 dark:text-white">Evrak & Bakım Takip Yönetimi</h3>
+                            <p className="text-[10px] text-zinc-500">Yeni muayene veya bakım tarihi ekleyin.</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <form onSubmit={handleAddDocument} className="flex flex-col sm:flex-row gap-2">
+                        <input 
+                          type="text" 
+                          placeholder="Kayıt Adı (Örn: Araç Muayenesi)" 
+                          value={newDocTitle}
+                          onChange={(e) => setNewDocTitle(e.target.value)}
+                          className="flex-1 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/50 p-2 text-xs font-bold text-zinc-900 dark:text-white focus:outline-none focus:border-blue-500"
+                          required
+                        />
+                        <input 
+                          type="date" 
+                          value={newDocDate}
+                          onChange={(e) => setNewDocDate(e.target.value)}
+                          className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/50 p-2 text-xs font-bold text-zinc-900 dark:text-white focus:outline-none focus:border-blue-500"
+                          required
+                        />
+                        <button type="submit" className="rounded-xl bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 text-xs font-black transition-colors cursor-pointer shrink-0">
+                          Kaydet
+                        </button>
+                      </form>
+
+                      <div className="space-y-2">
+                        {documents.length === 0 ? (
+                          <div className="p-4 text-center text-xs font-medium text-zinc-400 border border-dashed border-zinc-200 dark:border-zinc-800 rounded-xl">
+                            Henüz kayıtlı evrak yok. Yukarıdaki formdan ekleyebilirsiniz.
+                          </div>
+                        ) : (
+                          documents.map(doc => (
+                            <div key={doc.id} className="flex items-center justify-between p-3 rounded-xl bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-100 dark:border-zinc-800 text-xs">
+                              <div className="flex items-center gap-2.5">
+                                <Calendar className="size-4 text-purple-600 shrink-0" />
+                                <div>
+                                  <p className="font-extrabold text-zinc-900 dark:text-white">{doc.title}</p>
+                                  <p className="text-[10px] text-zinc-400 font-bold">Son Tarih: {doc.dueDate}</p>
+                                </div>
+                              </div>
+                              <button 
+                                type="button" 
+                                onClick={() => handleDeleteDocument(doc.id)} 
+                                className="text-zinc-400 hover:text-rose-600 dark:hover:text-rose-400 p-1.5 transition-colors cursor-pointer"
+                                title="Sil"
+                              >
+                                <Trash2 className="size-4" />
+                              </button>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+
+                    {/* UYGULAMA MODÜL GRID'I */}
                     <div className="space-y-3">
                       <h3 className="text-xs font-black uppercase tracking-wider text-zinc-400 px-1">Tüm Araç & Pazar Modülleri</h3>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -597,11 +780,11 @@ export function AppShellContent() {
 
                   </div>
 
-                  {/* SAĞ TARAF: CANLI DİJİTAL SÜRÜCÜ ASİSTANI & TAKİP (1/3) */}
+                  {/* Sağ Taraf: Canlı Çalışan Takograf & Araçlar (1/3) */}
                   <div className="space-y-4">
                     
-                    {/* WIDGET 1: CANLI ÇALIŞAN TAKOGRAF MOLA SAYAÇ EKLENTİSİ */}
-                    <div className="rounded-2xl border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-4 space-y-4 shadow-xs">
+                    {/* CANLI ÇALIŞAN TAKOGRAF SAYAÇ WIDGET'I */}
+                    <div className="rounded-2xl border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-5 space-y-4 shadow-xs">
                       <div className="flex items-center justify-between pb-3 border-b border-zinc-100 dark:border-zinc-800">
                         <div className="flex items-center gap-2">
                           <Timer className="size-4 text-amber-500" />
@@ -615,73 +798,38 @@ export function AppShellContent() {
                         </span>
                       </div>
 
-                      <div className="text-center space-y-1">
+                      <div className="text-center space-y-1 py-1">
                         <p className="text-3xl font-black font-mono tracking-wider text-zinc-900 dark:text-white">
                           {formatTime(driveSecondsLeft)}
                         </p>
-                        <p className="text-[10px] font-bold text-zinc-400">Yasal Sürüş Limitine Kalan Süre</p>
+                        <p className="text-[10px] font-bold text-zinc-400">Yasal Limit (4.5 Saat)</p>
                       </div>
 
-                      <div className="flex items-center gap-2 pt-1">
+                      <div className="flex items-center gap-2">
                         <button
                           type="button"
                           onClick={() => setIsDriving(!isDriving)}
                           className={cn(
-                            "flex-1 flex items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-black text-white transition-all cursor-pointer shadow-xs",
+                            "flex-1 flex items-center justify-center gap-1.5 rounded-xl py-2.5 text-xs font-black text-white transition-all cursor-pointer shadow-xs",
                             isDriving ? "bg-amber-600 hover:bg-amber-700" : "bg-emerald-600 hover:bg-emerald-700"
                           )}
                         >
-                          {isDriving ? <Pause className="size-3.5"/> : <Play className="size-3.5"/>}
+                          {isDriving ? <Pause className="size-4"/> : <Play className="size-4"/>}
                           <span>{isDriving ? 'Molaya Geç' : 'Sürüşe Başla'}</span>
                         </button>
 
                         <button
                           type="button"
-                          onClick={() => { setDriveSecondsLeft(MAX_DRIVE_SECONDS); setIsDriving(false); }}
-                          className="p-2 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer"
+                          onClick={() => { setDriveSecondsLeft(MAX_DRIVE_SECONDS); setIsDriving(false); showToast('success', 'Takograf sıfırlandı.'); }}
+                          className="p-2.5 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer"
                           title="Süreç Sıfırla"
                         >
-                          <RefreshCw className="size-3.5" />
+                          <RefreshCw className="size-4" />
                         </button>
                       </div>
                     </div>
 
-                    {/* WIDGET 2: CANLI SÜRÜCÜ DİJİTAL EVRAK VE BAKIM TAKİBİ */}
-                    <div className="rounded-2xl border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-4 space-y-3 shadow-xs">
-                      <div className="flex items-center justify-between pb-2 border-b border-zinc-100 dark:border-zinc-800">
-                        <div className="flex items-center gap-2">
-                          <Wrench className="size-4 text-purple-500" />
-                          <h3 className="text-xs font-extrabold text-zinc-900 dark:text-white">Yaklaşan Evrak & Bakım</h3>
-                        </div>
-                        <span className="text-[10px] font-extrabold text-purple-600 bg-purple-50 dark:bg-purple-950/50 px-2 py-0.5 rounded-md">2 UYARI</span>
-                      </div>
-
-                      <div className="space-y-2">
-                        <div className="flex items-start justify-between p-2.5 rounded-xl bg-rose-50/60 dark:bg-rose-950/30 border border-rose-100 dark:border-rose-900/30 text-xs">
-                          <div className="flex items-center gap-2">
-                            <AlertCircle className="size-4 text-rose-500 shrink-0" />
-                            <div>
-                              <p className="font-extrabold text-zinc-900 dark:text-zinc-100">Kasko Yenileme</p>
-                              <p className="text-[10px] text-rose-600 dark:text-rose-400 font-bold">Son 8 Gün Kaldı</p>
-                            </div>
-                          </div>
-                          <span className="text-[10px] font-bold text-zinc-400">13 Eylül</span>
-                        </div>
-
-                        <div className="flex items-start justify-between p-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-100 dark:border-zinc-800 text-xs">
-                          <div className="flex items-center gap-2">
-                            <Calendar className="size-4 text-blue-500 shrink-0" />
-                            <div>
-                              <p className="font-extrabold text-zinc-900 dark:text-zinc-100">Periyodik Yağ Bakımı</p>
-                              <p className="text-[10px] text-zinc-400 font-bold">Kalan: 2.400 KM</p>
-                            </div>
-                          </div>
-                          <span className="text-[10px] font-bold text-zinc-400">28 Ekim</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* WIDGET 3: CANLI YÜK VE İLAN AKIŞI (MINI FEEDS) */}
+                    {/* CANLI YÜK VE İLAN AKIŞI */}
                     <div className="rounded-2xl border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-4 space-y-3 shadow-xs">
                       <div className="flex items-center justify-between pb-2 border-b border-zinc-100 dark:border-zinc-800">
                         <div className="flex items-center gap-2">
@@ -717,7 +865,7 @@ export function AppShellContent() {
               </div>
             )}
 
-            {/* DİNAMİK YÜKLENEN MODÜLLER */}
+            {/* Dinamik Yüklenen Modüller */}
             <div className="transition-all duration-200">
               {activeTab === 'pazar' && <ListingsView />}
               {activeTab === 'ekle' && <AddListingForm onCreated={() => navigateTo('sizden-gelenler')} />}
@@ -735,7 +883,7 @@ export function AppShellContent() {
         </main>
       </div>
 
-      {/* MODAL: AUTH / KAYIT EKRAMI */}
+      {/* Modal: Auth / Kayıt Ekranı */}
       {isAuthModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div onClick={closeAuthModal} className="absolute inset-0 bg-black/60 backdrop-blur-xs" />
