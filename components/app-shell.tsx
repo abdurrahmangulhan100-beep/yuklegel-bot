@@ -8,7 +8,7 @@ import { useAuth } from '@/lib/auth-context'
 import { supabase } from '@/lib/supabase'
 import { 
   Truck, Store, PlusCircle, Calculator, Fuel, NotebookPen, Wallet, Timer,
-  LogOut, X, Loader2, Sparkles, Sun, Moon, ArrowLeft, ChevronRight, Pin, UserCheck, Users, Mail, Lock, KeyRound, ShieldCheck, User, CreditCard
+  LogOut, X, Loader2, Sparkles, Sun, Moon, ArrowLeft, ChevronRight, Pin, UserCheck, Users, Mail, Lock, KeyRound, ShieldCheck, User, CreditCard, Search, Bell, AlertTriangle, TrendingUp, Navigation
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -54,7 +54,6 @@ const MODULE_CARDS: CardItem[] = [
   { id: 'sefer', title: 'Sefer Maliyeti', desc: 'Net kâr ve gider hesabı', icon: Calculator, color: 'bg-violet-500/10 text-violet-600 dark:text-violet-400 border-violet-200 dark:border-violet-800/50' },
   { id: 'yakit', title: 'Hızlı Yakıt', desc: 'Mesafe ve lt/km hesaplama', icon: Fuel, color: 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-800/50' },
   { id: 'notlar', title: 'Pratik Notlar', desc: 'Bakım, evrak ve hatırlatıcılar', icon: NotebookPen, color: 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-200 dark:border-purple-800/50' },
-  { id: 'ekle', title: 'İlan Ekle', desc: 'Hızlı yük/araç ilanı oluştur', icon: PlusCircle, color: 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-200 dark:border-cyan-800/50' },
   { id: 'profil', title: 'Profil & Abonelik', desc: 'Hesap detayları ve ayarlar', icon: User, color: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/50' },
 ]
 
@@ -94,7 +93,6 @@ function AppShellContent() {
     }
   }, [toast])
 
-  // İlan Sayılarını Eşzamanlı Çekme
   const fetchListingCounts = async () => {
     setLoadingCounts(true)
     try {
@@ -213,9 +211,10 @@ function AppShellContent() {
         </div>
       )}
 
-      {/* MASAÜSTÜ SIDEBAR */}
-      <aside className="hidden w-64 flex-col border-r border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 lg:flex justify-between p-4 z-20">
-        <div className="space-y-6">
+      {/* MASAÜSTÜ SIDEBAR (KATEGORİZE EDİLMİŞ) */}
+      <aside className="hidden w-64 flex-col border-r border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 lg:flex justify-between p-4 z-20 overflow-y-auto">
+        <div className="space-y-5">
+          {/* Logo */}
           <div className="flex items-center gap-3 px-1">
             <div className="flex size-10 items-center justify-center rounded-xl bg-blue-600 text-white shadow-md shadow-blue-500/20">
               <Truck className="size-6"/>
@@ -226,39 +225,109 @@ function AppShellContent() {
             </div>
           </div>
 
-          <nav className="space-y-1">
+          {/* Ana İlan Ekle Butonu */}
+          <button
+            type="button"
+            onClick={() => navigateTo('ekle')}
+            className="w-full flex items-center justify-center gap-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white py-2.5 px-3 text-xs font-bold shadow-md shadow-blue-600/20 transition-all active:scale-[0.98] cursor-pointer"
+          >
+            <PlusCircle className="size-4" />
+            <span>Hızlı İlan Ekle</span>
+          </button>
+
+          {/* Menü Grupları */}
+          <nav className="space-y-4">
             <button
               type="button"
               onClick={() => navigateTo('dashboard')}
               className={cn(
-                "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-xs font-bold transition-colors cursor-pointer",
+                "flex w-full items-center gap-3 rounded-xl px-3 py-2 text-xs font-bold transition-colors cursor-pointer",
                 activeTab === 'dashboard' ? "bg-zinc-100 dark:bg-zinc-800 text-blue-600" : "text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800/50"
               )}
             >
               <Truck className="size-4"/>
               <span>Ana Menü</span>
             </button>
-            <div className="my-2 border-t border-zinc-100 dark:border-zinc-800"/>
-            {MODULE_CARDS.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => navigateTo(item.id)}
-                className={cn(
-                  "flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-xs font-bold transition-colors cursor-pointer",
-                  activeTab === item.id ? "bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400" : "text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800/50"
-                )}
-              >
-                <div className="flex items-center gap-3">
-                  <item.icon className="size-4"/>
-                  <span>{item.title}</span>
-                </div>
-              </button>
-            ))}
+
+            {/* Grup 1: Pazar & İlanlar */}
+            <div>
+              <p className="px-3 text-[10px] font-extrabold uppercase tracking-wider text-zinc-400 mb-1">Pazar & İlanlar</p>
+              <div className="space-y-0.5">
+                {[
+                  { id: 'pazar', title: 'İlan Pazarı', icon: Store },
+                  { id: 'sizden-gelenler', title: 'Sizden Gelenler', icon: Users },
+                  { id: 'ilanlarim', title: 'İlanlarım', icon: UserCheck },
+                ].map(item => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => navigateTo(item.id as ModuleId)}
+                    className={cn(
+                      "flex w-full items-center gap-3 rounded-xl px-3 py-2 text-xs font-bold transition-colors cursor-pointer",
+                      activeTab === item.id ? "bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400" : "text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800/50"
+                    )}
+                  >
+                    <item.icon className="size-4"/>
+                    <span>{item.title}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Grup 2: Sürücü & Sefer Araçları */}
+            <div>
+              <p className="px-3 text-[10px] font-extrabold uppercase tracking-wider text-zinc-400 mb-1">Sürücü & Sefer</p>
+              <div className="space-y-0.5">
+                {[
+                  { id: 'takograf', title: 'Takograf Asistanı', icon: Timer },
+                  { id: 'sefer', title: 'Sefer Maliyeti', icon: Calculator },
+                  { id: 'yakit', title: 'Hızlı Yakıt', icon: Fuel },
+                ].map(item => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => navigateTo(item.id as ModuleId)}
+                    className={cn(
+                      "flex w-full items-center gap-3 rounded-xl px-3 py-2 text-xs font-bold transition-colors cursor-pointer",
+                      activeTab === item.id ? "bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400" : "text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800/50"
+                    )}
+                  >
+                    <item.icon className="size-4"/>
+                    <span>{item.title}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Grup 3: Finans & Notlar */}
+            <div>
+              <p className="px-3 text-[10px] font-extrabold uppercase tracking-wider text-zinc-400 mb-1">Muhasebe & Araçlar</p>
+              <div className="space-y-0.5">
+                {[
+                  { id: 'finans', title: 'Gider & Kazanç', icon: Wallet },
+                  { id: 'notlar', title: 'Pratik Notlar', icon: NotebookPen },
+                  { id: 'profil', title: 'Profil & Abonelik', icon: User },
+                ].map(item => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => navigateTo(item.id as ModuleId)}
+                    className={cn(
+                      "flex w-full items-center gap-3 rounded-xl px-3 py-2 text-xs font-bold transition-colors cursor-pointer",
+                      activeTab === item.id ? "bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400" : "text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800/50"
+                    )}
+                  >
+                    <item.icon className="size-4"/>
+                    <span>{item.title}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
           </nav>
         </div>
 
-        <div className="space-y-2 pt-4 border-t border-zinc-200 dark:border-zinc-800">
+        <div className="space-y-2 pt-4 border-t border-zinc-200 dark:border-zinc-800 mt-4">
           {user ? (
             <div className="space-y-1">
               <div className="flex items-center justify-between rounded-xl bg-zinc-50 dark:bg-zinc-800/50 p-2.5 text-xs font-bold">
@@ -288,7 +357,7 @@ function AppShellContent() {
       <div className="flex flex-1 flex-col overflow-hidden">
         
         {/* HEADER */}
-        <header className="flex h-14 items-center justify-between border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-4 sm:px-6 z-10">
+        <header className="flex h-14 items-center justify-between border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-4 sm:px-6 z-10 gap-4">
           <div className="flex items-center gap-3">
             {activeTab !== 'dashboard' ? (
               <button
@@ -305,12 +374,31 @@ function AppShellContent() {
                   <Truck className="size-5"/>
                 </div>
                 <span className="font-black text-sm tracking-tight lg:hidden">Nakliye Cepte</span>
-                <span className="hidden lg:inline text-xs font-bold text-zinc-400">Yolun Açık Olsun 🚛</span>
+                <div className="hidden lg:flex items-center gap-2 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/40 px-2.5 py-1 text-emerald-700 dark:text-emerald-400 text-xs font-bold">
+                  <span className="size-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                  <span>Yollarda Yoğunluk Normal • Yolun Açık Olsun 🚛</span>
+                </div>
               </div>
             )}
           </div>
 
+          {/* Arama ve Profil Aksiyonları */}
           <div className="flex items-center gap-2">
+            <div className="relative hidden md:block w-48 lg:w-64">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-zinc-400" />
+              <input
+                type="text"
+                placeholder="İlan No veya Rota Ara..."
+                onClick={() => navigateTo('pazar')}
+                className="w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/60 py-1.5 pl-8 pr-3 text-xs text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 focus:outline-none focus:border-blue-500 transition-all cursor-pointer"
+              />
+            </div>
+
+            <button type="button" onClick={() => navigateTo('pazar')} className="p-2 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:text-blue-600 transition-colors cursor-pointer relative" title="Bildirimler">
+              <Bell className="size-4"/>
+              <span className="absolute top-1.5 right-1.5 size-2 rounded-full bg-blue-600"></span>
+            </button>
+
             {user ? (
               <button type="button" onClick={() => signOut()} className="lg:hidden p-2 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 hover:bg-rose-100 transition-colors cursor-pointer">
                 <LogOut className="size-4"/>
@@ -332,12 +420,60 @@ function AppShellContent() {
           <div className="mx-auto max-w-5xl">
             
             {activeTab === 'dashboard' && (
-              <div className="space-y-4">
-                <div>
-                  <h1 className="text-lg font-black tracking-tight text-zinc-900 dark:text-white">Hızlı Modüller</h1>
-                  <p className="text-xs text-zinc-500">Sık kullandığınız modülleri iğneleyerek en üste taşıyabilirsiniz.</p>
+              <div className="space-y-6">
+                
+                {/* CANLI METRİKLER VE ÖZET KARTLAR (KPI) */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div className="rounded-2xl border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-3.5 space-y-1">
+                    <div className="flex items-center justify-between text-zinc-500">
+                      <span className="text-[10px] font-bold uppercase tracking-wider">Aktif İlanlar</span>
+                      <Store className="size-4 text-blue-600 dark:text-blue-400" />
+                    </div>
+                    <p className="text-lg font-black text-zinc-900 dark:text-white">
+                      {loadingCounts ? '...' : pazarCount ?? 0}
+                    </p>
+                    <span className="text-[10px] font-bold text-emerald-600 flex items-center gap-0.5">
+                      <TrendingUp className="size-3" /> Canlı Pazar
+                    </span>
+                  </div>
+
+                  <div className="rounded-2xl border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-3.5 space-y-1">
+                    <div className="flex items-center justify-between text-zinc-500">
+                      <span className="text-[10px] font-bold uppercase tracking-wider">Durum</span>
+                      <Navigation className="size-4 text-amber-500" />
+                    </div>
+                    <p className="text-lg font-black text-zinc-900 dark:text-white">Seferde</p>
+                    <span className="text-[10px] font-bold text-zinc-400">İstanbul ➔ Ankara</span>
+                  </div>
+
+                  <div className="rounded-2xl border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-3.5 space-y-1">
+                    <div className="flex items-center justify-between text-zinc-500">
+                      <span className="text-[10px] font-bold uppercase tracking-wider">Kalan Sürüş</span>
+                      <Timer className="size-4 text-indigo-500" />
+                    </div>
+                    <p className="text-lg font-black text-zinc-900 dark:text-white">03:45 S</p>
+                    <span className="text-[10px] font-bold text-amber-600">Yasal Limit Uyarısı</span>
+                  </div>
+
+                  <div className="rounded-2xl border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-3.5 space-y-1">
+                    <div className="flex items-center justify-between text-zinc-500">
+                      <span className="text-[10px] font-bold uppercase tracking-wider">Aylık Net</span>
+                      <Wallet className="size-4 text-emerald-500" />
+                    </div>
+                    <p className="text-lg font-black text-zinc-900 dark:text-white">₺48.500</p>
+                    <span className="text-[10px] font-bold text-emerald-600">Tahmini Kazanç</span>
+                  </div>
                 </div>
 
+                {/* MODÜL KARTLARI BAŞLIĞI */}
+                <div className="flex items-center justify-between pt-2">
+                  <div>
+                    <h1 className="text-base font-black tracking-tight text-zinc-900 dark:text-white">Hızlı Modüller</h1>
+                    <p className="text-xs text-zinc-500">Sık kullandığınız modülleri iğneleyerek en üste taşıyabilirsiniz.</p>
+                  </div>
+                </div>
+
+                {/* GRID MODÜL KARTLARI */}
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-3">
                   {sortedCards.map((card) => {
                     const Icon = card.icon
@@ -374,12 +510,12 @@ function AppShellContent() {
 
                         <div className="mt-2">
                           <div className="flex items-center justify-between">
-                            <h2 className="text-xs font-extrabold text-zinc-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                            <h2 className="text-xs font-black text-zinc-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                               {card.title}
                             </h2>
                             <ChevronRight className="size-3.5 text-zinc-400 opacity-0 group-hover:opacity-100 transition-opacity" />
                           </div>
-                          <p className="text-[10px] text-zinc-500 dark:text-zinc-400 mt-0.5 line-clamp-1">
+                          <p className="text-[10px] font-medium text-zinc-500 dark:text-zinc-400 mt-0.5 line-clamp-1">
                             {getCardDescription(card)}
                           </p>
                         </div>
@@ -685,8 +821,6 @@ function ProfileView({ user, openAuthModal, signOut }: { user: any; openAuthModa
         <div className="space-y-3 pt-2">
           <h3 className="text-sm font-black text-zinc-900 dark:text-white">Abonelik Paketleri</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            
-            {/* Aylık Paket */}
             <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-5 flex flex-col justify-between space-y-4 hover:border-blue-500 transition-all">
               <div>
                 <div className="flex items-center justify-between">
@@ -709,7 +843,6 @@ function ProfileView({ user, openAuthModal, signOut }: { user: any; openAuthModa
               </button>
             </div>
 
-            {/* Yıllık Paket */}
             <div className="rounded-2xl border-2 border-blue-600 bg-white dark:bg-zinc-900 p-5 flex flex-col justify-between space-y-4 relative shadow-lg shadow-blue-500/10">
               <span className="absolute -top-3 right-4 rounded-full bg-blue-600 px-3 py-0.5 text-[10px] font-black text-white uppercase tracking-wider">
                 2 Ay Bedava
@@ -734,7 +867,6 @@ function ProfileView({ user, openAuthModal, signOut }: { user: any; openAuthModa
                 Yıllık Paket Seç (₺1.500)
               </button>
             </div>
-
           </div>
         </div>
       )}
