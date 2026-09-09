@@ -19,16 +19,16 @@
   }
 
   body {
-    @apply bg-surface-light dark:bg-ink-950 text-zinc-900 dark:text-zinc-100 antialiased;
+    @apply bg-slate-50 dark:bg-slate-950 text-zinc-900 dark:text-zinc-100 antialiased;
   }
 
   ::selection {
-    @apply bg-accent/20 text-accent;
+    @apply bg-amber-500/20 text-amber-500;
   }
 
   /* Sürücü dokunmatik/klavye ile gezinirken net görünür odak halkası */
   :focus-visible {
-    @apply outline-none ring-2 ring-accent ring-offset-2 ring-offset-white dark:ring-offset-ink-950;
+    @apply outline-none ring-2 ring-amber-500 ring-offset-2 ring-offset-white dark:ring-offset-slate-950;
   }
 
   input,
