@@ -7,14 +7,14 @@ import { useAuth } from '@/lib/auth-context'
 import { supabase } from '@/lib/supabase'
 import {
   Truck, Store, PlusCircle, Wallet, X, Loader2,
-  ArrowLeft, Search, CheckCircle2, ShieldCheck,
-  Users, MapPin, ArrowRight,
+  ArrowLeft, CheckCircle2, ShieldCheck,
+  Users, ArrowRight,
   Calculator, Gauge, Fuel, StickyNote, FileText,
   ChevronRight
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-// Dinamik Yüklemeler
+// Dinamik Yüklemeler (Lazy Load)
 const ListingsView = dynamic(() => import('@/components/listings/listings-view').then(m => m.ListingsView), { ssr: false, loading: () => <ModuleLoader title="İlan Pazarı" /> })
 const AddListingForm = dynamic(() => import('@/components/add-listing-form').then(m => m.AddListingForm), { ssr: false, loading: () => <ModuleLoader title="İlan Formu" /> })
 const MyListingsView = dynamic(() => import('@/components/my-listings-view').then(m => m.MyListingsView), { ssr: false, loading: () => <ModuleLoader title="İlanlarım" /> })
@@ -25,12 +25,11 @@ const TachographCalculator = dynamic(() => import('@/components/tachograph-calcu
 const TripCalculator = dynamic(() => import('@/components/trip-calculator').then(m => m.TripCalculator || m.default), { ssr: false, loading: () => <ModuleLoader title="Sefer Hesabı" /> })
 const NotesView = dynamic(() => import('@/components/notes-view').then(m => m.NotesView || m.default), { ssr: false, loading: () => <ModuleLoader title="Notlar" /> })
 
-// Aydınlık Tema için Yenilenmiş Ortak Bileşenler
 function ModuleLoader({ title }: { title?: string }) {
   return (
-    <div className="flex h-56 w-full items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-white/50 backdrop-blur-sm animate-in fade-in duration-500">
+    <div className="flex h-48 w-full items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-white/60">
       <div className="flex flex-col items-center gap-2 text-xs font-bold text-slate-500">
-        <Loader2 className="size-6 animate-spin text-orange-500" />
+        <Loader2 className="size-6 animate-spin text-blue-600" />
         <span>{title ? `${title} Yükleniyor...` : 'Yükleniyor...'}</span>
       </div>
     </div>
@@ -41,8 +40,8 @@ function Card({ className, children, hoverEffect = false, ...props }: React.HTML
   return (
     <div 
       className={cn(
-        "rounded-2xl border border-slate-200 bg-white shadow-sm transition-all duration-300", 
-        hoverEffect && "hover:shadow-md hover:-translate-y-1 hover:border-orange-200 cursor-pointer",
+        "rounded-2xl border border-slate-200/80 bg-white shadow-xs transition-all duration-200 transform-gpu", 
+        hoverEffect && "hover:shadow-md hover:-translate-y-0.5 hover:border-blue-300 cursor-pointer active:scale-[0.99]",
         className
       )} 
       {...props}
@@ -53,14 +52,14 @@ function Card({ className, children, hoverEffect = false, ...props }: React.HTML
 }
 
 function Button({ className, variant = 'primary', size = 'md', children, ...props }: any) {
-  const base = "inline-flex items-center justify-center gap-2 rounded-xl font-bold transition-all active:scale-95 disabled:opacity-50 disabled:pointer-events-none cursor-pointer"
+  const base = "inline-flex items-center justify-center gap-2 rounded-xl font-bold transition-all transform-gpu active:scale-95 disabled:opacity-50 disabled:pointer-events-none cursor-pointer"
   const variants = {
-    primary: "bg-orange-500 hover:bg-orange-600 text-white shadow-sm shadow-orange-500/20",
+    primary: "bg-blue-600 hover:bg-blue-700 text-white shadow-sm shadow-blue-600/20",
     secondary: "bg-slate-100 hover:bg-slate-200 text-slate-700",
     indigo: "bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm",
     emerald: "bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm",
     outline: "border border-slate-200 hover:bg-slate-50 text-slate-700",
-    danger: "bg-red-50 hover:bg-red-100 text-red-600"
+    danger: "bg-rose-50 hover:bg-rose-100 text-rose-600"
   }
   const sizes = {
     sm: "h-8 px-3 text-xs",
@@ -74,26 +73,11 @@ function Button({ className, variant = 'primary', size = 'md', children, ...prop
   )
 }
 
-function Badge({ tone = 'orange', children, className }: any) {
-  const tones = {
-    orange: "bg-orange-100 text-orange-700 border-orange-200",
-    emerald: "bg-emerald-100 text-emerald-700 border-emerald-200",
-    indigo: "bg-indigo-100 text-indigo-700 border-indigo-200",
-    purple: "bg-purple-100 text-purple-700 border-purple-200",
-    slate: "bg-slate-100 text-slate-700 border-slate-200",
-  }
-  return (
-    <span className={cn("inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold border", tones[tone as keyof typeof tones], className)}>
-      {children}
-    </span>
-  )
-}
-
 function Input({ className, ...props }: React.InputHTMLAttributes<HTMLInputElement>) {
   return (
     <input
       className={cn(
-        "w-full h-11 px-4 rounded-xl border border-slate-200 bg-slate-50 text-slate-900 placeholder:text-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:bg-white transition-all",
+        "w-full h-11 px-4 rounded-xl border border-slate-200 bg-slate-50 text-slate-900 placeholder:text-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:bg-white transition-all",
         className
       )}
       {...props}
@@ -120,8 +104,6 @@ export function AppShellContent() {
   const [loading, setLoading] = useState(false)
   const [toast, setToast] = useState<{ type: 'error' | 'success'; text: string } | null>(null)
 
-  const [origin, setOrigin] = useState('')
-  const [destination, setDestination] = useState('')
   const [pazarCount, setPazarCount] = useState<number>(0)
   const [activeToolTab, setActiveToolTab] = useState<'fuel' | 'tacho' | 'trip'>('fuel')
 
@@ -177,14 +159,14 @@ export function AppShellContent() {
   }
 
   return (
-    <div className="flex h-dvh w-full flex-col overflow-hidden bg-slate-50 text-slate-900 font-sans antialiased selection:bg-orange-200">
+    <div className="flex h-dvh w-full flex-col overflow-hidden bg-slate-50/80 text-slate-900 font-sans antialiased selection:bg-blue-100">
       
-      {/* Bildirim Toast */}
+      {/* Toast */}
       {toast && (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[100] animate-in slide-in-from-top-4 fade-in duration-300">
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[100] transition-all transform-gpu">
           <div className={cn(
             'flex items-center gap-2.5 rounded-full px-5 py-3 shadow-lg text-sm font-bold border',
-            toast.type === 'error' ? 'bg-white border-red-200 text-red-600' : 'bg-white border-emerald-200 text-emerald-600'
+            toast.type === 'error' ? 'bg-white border-rose-200 text-rose-600' : 'bg-white border-emerald-200 text-emerald-600'
           )}>
             {toast.type === 'error' ? <X className="size-5" /> : <CheckCircle2 className="size-5" />}
             <span>{toast.text}</span>
@@ -192,8 +174,8 @@ export function AppShellContent() {
         </div>
       )}
 
-      {/* Modern, Ferah Üst Bar */}
-      <header className="flex h-16 shrink-0 items-center justify-between border-b border-slate-200 bg-white/80 backdrop-blur-xl px-4 xl:px-8 z-20 w-full">
+      {/* Modern Üst Bar */}
+      <header className="flex h-16 shrink-0 items-center justify-between border-b border-slate-200/80 bg-white/90 backdrop-blur-md px-4 xl:px-8 z-20 w-full">
         <div className="flex items-center gap-3">
           {activeTab !== 'dashboard' ? (
             <button 
@@ -204,13 +186,13 @@ export function AppShellContent() {
             </button>
           ) : (
             <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigateTo('dashboard')}>
-              <div className="flex size-10 items-center justify-center rounded-xl bg-orange-500 text-white shadow-sm shadow-orange-500/30">
+              <div className="flex size-10 items-center justify-center rounded-xl bg-blue-600 text-white shadow-sm shadow-blue-600/30">
                 <Truck className="size-5" />
               </div>
               <div>
                 <h1 className="font-black text-sm tracking-tight text-slate-900 flex items-center gap-1.5">
                   NAKLİYE CEPTE
-                  <span className="text-[9px] bg-orange-100 text-orange-600 px-1.5 py-0.5 rounded font-extrabold uppercase tracking-wider">Pro</span>
+                  <span className="text-[9px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-extrabold uppercase tracking-wider">PRO</span>
                 </h1>
                 <p className="text-[11px] font-medium text-slate-500 leading-none mt-0.5">Dijital Lojistik Ağı</p>
               </div>
@@ -222,10 +204,10 @@ export function AppShellContent() {
           {user ? (
             <button
               onClick={() => navigateTo('profil')}
-              className="relative flex size-10 items-center justify-center rounded-full bg-slate-100 border border-slate-200 text-slate-700 font-black text-sm hover:border-orange-300 hover:bg-orange-50 transition-colors"
+              className="relative flex size-10 items-center justify-center rounded-full bg-slate-100 border border-slate-200 text-slate-700 font-black text-sm hover:border-blue-400 hover:bg-blue-50 transition-colors"
             >
               {(user.email?.[0] ?? '?').toUpperCase()}
-              <span className="absolute 0 right-0 size-3 rounded-full bg-emerald-500 border-2 border-white" />
+              <span className="absolute bottom-0 right-0 size-3 rounded-full bg-emerald-500 border-2 border-white" />
             </button>
           ) : (
             <Button size="sm" onClick={() => openAuthModal()}>Giriş Yap</Button>
@@ -237,63 +219,39 @@ export function AppShellContent() {
       <main className="flex-1 overflow-y-auto scrollbar-none p-4 md:p-6 lg:p-8 pb-28 max-w-7xl w-full mx-auto space-y-6">
         
         {activeTab === 'dashboard' && (
-          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 fill-mode-forwards">
+          <div className="space-y-6">
             
-            {/* Sadeleştirilmiş Arama Modülü */}
-            <Card className="p-4 md:p-6">
-              <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-5">
-                <div className="flex items-center gap-3">
-                  <div className="p-2.5 rounded-xl bg-orange-100 text-orange-600">
-                    <MapPin className="size-5" />
-                  </div>
-                  <div>
-                    <h2 className="text-sm font-black text-slate-900 uppercase tracking-wide">Yük ve Rota Arama</h2>
-                    <p className="text-xs text-slate-500 mt-0.5">Çıkış ve varış noktasına göre anında eşleşin</p>
-                  </div>
-                </div>
-                <Badge tone="orange">
-                  <span className="size-1.5 rounded-full bg-orange-500 animate-pulse" />
-                  {pazarCount} Aktif İlan
-                </Badge>
+            {/* Üst Banner / Hoş Geldiniz Bilgisi */}
+            <div className="flex items-center justify-between p-5 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-700 text-white shadow-sm">
+              <div>
+                <h2 className="text-lg font-black tracking-tight">Lojistik Operasyon Merkezi</h2>
+                <p className="text-xs text-blue-100 mt-1">Anlık yük akışı, canlı navlun fiyatları ve sürücü araçları tek panelde.</p>
               </div>
+              <div className="hidden sm:flex items-center gap-2 bg-white/10 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/20 text-xs font-bold">
+                <span className="size-2 rounded-full bg-emerald-400 animate-pulse" />
+                {pazarCount > 0 ? `${pazarCount} İlan Yayında` : 'Canlı Veri Aktif'}
+              </div>
+            </div>
 
-              <form onSubmit={(e) => { e.preventDefault(); navigateTo('pazar'); }} className="grid grid-cols-1 md:grid-cols-12 gap-3">
-                <div className="md:col-span-5 relative">
-                  <Input value={origin} onChange={(e) => setOrigin(e.target.value)} placeholder="Çıkış: Ankara, İstanbul..." />
-                </div>
-                <div className="md:col-span-5 relative">
-                  <Input value={destination} onChange={(e) => setDestination(e.target.value)} placeholder="Varış: İzmir, Adana..." />
-                </div>
-                <div className="md:col-span-2">
-                  <Button type="submit" className="w-full h-11 text-sm">
-                    <Search className="size-4" />
-                    Bul
-                  </Button>
-                </div>
-              </form>
-            </Card>
-
-            {/* 4'lü Ana Menü Grid'i (Hover Efektli Modern Kartlar) */}
+            {/* 4'lü Ana Menü Grid'i */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               
-              {/* İlan Pazarı */}
               <Card hoverEffect className="p-5 flex flex-col justify-between" onClick={() => navigateTo('pazar')}>
                 <div>
                   <div className="flex items-center justify-between mb-4">
-                    <div className="p-3 rounded-2xl bg-orange-100 text-orange-600">
+                    <div className="p-3 rounded-2xl bg-blue-100 text-blue-600">
                       <Store className="size-6" />
                     </div>
                     <ArrowRight className="size-4 text-slate-300" />
                   </div>
                   <h3 className="text-base font-black text-slate-900">İlan Pazarı</h3>
-                  <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">Güncel navlun ve boş araç ilanlarını inceleyin, anında teklif verin.</p>
+                  <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">Güncel navlun ve boş araç ilanlarını inceleyin, doğrudan yük verenle eşleşin.</p>
                 </div>
-                <div className="mt-5 pt-4 border-t border-slate-100 flex items-center text-sm font-bold text-orange-600">
+                <div className="mt-5 pt-4 border-t border-slate-100 flex items-center text-sm font-bold text-blue-600">
                   İlanlara Git <ChevronRight className="size-4 ml-1" />
                 </div>
               </Card>
 
-              {/* Sürücü Araçları */}
               <Card hoverEffect className="p-5 flex flex-col justify-between" onClick={() => navigateTo('araclar')}>
                 <div>
                   <div className="flex items-center justify-between mb-4">
@@ -303,14 +261,13 @@ export function AppShellContent() {
                     <ArrowRight className="size-4 text-slate-300" />
                   </div>
                   <h3 className="text-base font-black text-slate-900">Araç Kutusu</h3>
-                  <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">Mazot tüketimi, takograf süreleri ve sefer maliyeti hesaplayın.</p>
+                  <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">Mazot tüketimi, takograf sürüş süreleri ve sefer maliyet hesabı yapın.</p>
                 </div>
                 <div className="mt-5 pt-4 border-t border-slate-100 flex items-center text-sm font-bold text-indigo-600">
                   Hesapla <ChevronRight className="size-4 ml-1" />
                 </div>
               </Card>
 
-              {/* Finans */}
               <Card hoverEffect className="p-5 flex flex-col justify-between" onClick={() => navigateTo('finans')}>
                 <div>
                   <div className="flex items-center justify-between mb-4">
@@ -320,14 +277,13 @@ export function AppShellContent() {
                     <ArrowRight className="size-4 text-slate-300" />
                   </div>
                   <h3 className="text-base font-black text-slate-900">Finans Yönetimi</h3>
-                  <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">Kazançlarınızı ve mazot giderlerinizi tek bir yerden takip edin.</p>
+                  <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">Kazançlarınızı, harcamalarınızı ve mazot fişlerinizi dijital cüzdanda tutun.</p>
                 </div>
                 <div className="mt-5 pt-4 border-t border-slate-100 flex items-center text-sm font-bold text-emerald-600">
                   Cüzdanı Aç <ChevronRight className="size-4 ml-1" />
                 </div>
               </Card>
 
-              {/* Topluluk & Notlar */}
               <Card hoverEffect className="p-5 flex flex-col justify-between" onClick={() => navigateTo('notlar')}>
                 <div>
                   <div className="flex items-center justify-between mb-4">
@@ -337,23 +293,23 @@ export function AppShellContent() {
                     <ArrowRight className="size-4 text-slate-300" />
                   </div>
                   <h3 className="text-base font-black text-slate-900">Notlar & Topluluk</h3>
-                  <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">Sefer notlarınızı kaydedin ve diğer sürücülerle iletişimde kalın.</p>
+                  <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">Yol notlarınızı kaydedin ve diğer sürücülerin paylaşımlarını görün.</p>
                 </div>
                 <div className="mt-5 pt-4 border-t border-slate-100 flex items-center text-sm font-bold text-purple-600">
-                  Topluluğa Katıl <ChevronRight className="size-4 ml-1" />
+                  Notlara Bak <ChevronRight className="size-4 ml-1" />
                 </div>
               </Card>
 
             </div>
 
-            {/* Güvenlik Banner (Açık Tema Uyarlaması) */}
-            <div className="rounded-2xl border border-blue-200 bg-blue-50/50 p-4 flex items-center gap-4">
-              <div className="p-2 bg-blue-100 rounded-full text-blue-600 shrink-0">
+            {/* Güvenlik Banner */}
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 flex items-center gap-4 shadow-xs">
+              <div className="p-2.5 bg-blue-50 rounded-xl text-blue-600 shrink-0">
                 <ShieldCheck className="size-6" />
               </div>
               <div>
-                <h4 className="text-sm font-black text-blue-900">Güvenli Taşımacılık Ağı</h4>
-                <p className="text-xs text-blue-700 mt-0.5">Platformumuzdaki tüm ilanlarda iletişim bilgileri şeffaf ve teyitlidir.</p>
+                <h4 className="text-sm font-black text-slate-900">Güvenli Lojistik Doğrulaması</h4>
+                <p className="text-xs text-slate-500 mt-0.5">Tüm navlun ve yük ilanlarında doğrudan yük veren ve sürücü telefonları doğrulanmaktadır.</p>
               </div>
             </div>
 
@@ -368,9 +324,9 @@ export function AppShellContent() {
         {activeTab === 'finans' && <FinanceView />}
         {activeTab === 'notlar' && <NotesView />}
 
-        {/* Araç Kutusu Alt Modülü */}
+        {/* Araç Kutusu */}
         {activeTab === 'araclar' && (
-          <div className="space-y-4 animate-in fade-in duration-300">
+          <div className="space-y-4">
             <h2 className="text-base font-black text-slate-900 uppercase tracking-wide flex items-center gap-2">
               <Calculator className="size-5 text-indigo-600" />
               Hesaplama Araçları
@@ -378,15 +334,15 @@ export function AppShellContent() {
             <Card className="p-2">
               <div className="grid grid-cols-3 gap-2">
                 {[
-                  { id: 'fuel', icon: Fuel, label: 'Mazot', color: 'text-orange-500' },
-                  { id: 'tacho', icon: Gauge, label: 'Takograf', color: 'text-indigo-500' },
-                  { id: 'trip', icon: Calculator, label: 'Sefer', color: 'text-emerald-500' },
+                  { id: 'fuel', icon: Fuel, label: 'Mazot', color: 'text-blue-600' },
+                  { id: 'tacho', icon: Gauge, label: 'Takograf', color: 'text-indigo-600' },
+                  { id: 'trip', icon: Calculator, label: 'Sefer', color: 'text-emerald-600' },
                 ].map((tab) => (
                   <button
                     key={tab.id}
                     onClick={() => setActiveToolTab(tab.id as any)}
                     className={cn(
-                      'py-2.5 px-3 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-2 cursor-pointer',
+                      'py-2.5 px-3 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-2 cursor-pointer transform-gpu',
                       activeToolTab === tab.id 
                         ? 'bg-slate-900 text-white shadow-md' 
                         : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'
@@ -409,8 +365,8 @@ export function AppShellContent() {
         {activeTab === 'profil' && <ProfileView user={user} openAuthModal={openAuthModal} signOut={signOut} navigateTo={navigateTo} />}
       </main>
 
-      {/* Sabit Alt Navigasyon Barı (Modern & Ferah) */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 shadow-[0_-4px_20px_-10px_rgba(0,0,0,0.05)] z-30 pb-safe">
+      {/* Sabit Alt Navigasyon Barı */}
+      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200/80 shadow-[0_-4px_20px_-10px_rgba(0,0,0,0.05)] z-30 pb-safe">
         <div className="flex items-center justify-around max-w-md mx-auto px-2 h-16">
           {[
             { id: 'dashboard', title: 'Ana Sayfa', icon: Truck },
@@ -427,12 +383,12 @@ export function AppShellContent() {
                 <button
                   key={item.id}
                   onClick={() => navigateTo(item.id as ModuleId)}
-                  className="flex flex-col items-center justify-center -mt-6 focus:outline-none group"
+                  className="flex flex-col items-center justify-center -mt-6 focus:outline-none group transform-gpu"
                 >
-                  <div className="flex size-14 items-center justify-center rounded-full bg-orange-500 text-white shadow-lg shadow-orange-500/40 group-active:scale-95 transition-all border-4 border-white">
+                  <div className="flex size-14 items-center justify-center rounded-full bg-blue-600 text-white shadow-lg shadow-blue-600/30 group-active:scale-95 transition-all border-4 border-white">
                     <Icon className="size-6" />
                   </div>
-                  <span className="text-[10px] font-black text-orange-600 mt-1">{item.title}</span>
+                  <span className="text-[10px] font-black text-blue-600 mt-1">{item.title}</span>
                 </button>
               )
             }
@@ -442,11 +398,11 @@ export function AppShellContent() {
                 key={item.id}
                 onClick={() => navigateTo(item.id as ModuleId)}
                 className={cn(
-                  'flex flex-col items-center justify-center w-16 h-12 rounded-xl transition-all',
-                  isActive ? 'text-orange-600' : 'text-slate-400 hover:text-slate-600'
+                  'flex flex-col items-center justify-center w-16 h-12 rounded-xl transition-all transform-gpu',
+                  isActive ? 'text-blue-600' : 'text-slate-400 hover:text-slate-600'
                 )}
               >
-                <div className={cn("p-1 rounded-full transition-all", isActive && "bg-orange-50")}>
+                <div className={cn("p-1 rounded-full transition-all", isActive && "bg-blue-50")}>
                   <Icon className={cn('size-5', isActive && 'stroke-[2.5]')} />
                 </div>
                 <span className={cn("text-[10px] font-medium mt-0.5", isActive && "font-bold")}>{item.title}</span>
@@ -456,21 +412,21 @@ export function AppShellContent() {
         </div>
       </nav>
 
-      {/* Auth Modal (Giriş/Kayıt) */}
+      {/* Auth Modal */}
       {isAuthModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div onClick={closeAuthModal} className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" />
-          <div className="relative w-full max-w-xs rounded-3xl bg-white p-6 shadow-2xl z-10 animate-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div onClick={closeAuthModal} className="absolute inset-0 bg-slate-900/40 backdrop-blur-xs" />
+          <div className="relative w-full max-w-xs rounded-3xl bg-white p-6 shadow-2xl z-10 transform-gpu">
             <button onClick={closeAuthModal} className="absolute right-4 top-4 text-slate-400 hover:text-slate-900 bg-slate-100 rounded-full p-1 transition-colors">
               <X className="size-4" />
             </button>
 
             <div className="text-center mb-6">
-              <div className="mx-auto mb-3 flex size-14 items-center justify-center rounded-2xl bg-orange-50 text-orange-600">
+              <div className="mx-auto mb-3 flex size-14 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
                 <Truck className="size-7" />
               </div>
               <h3 className="text-lg font-black text-slate-900">{authMode === 'login' ? 'Giriş Yap' : 'Kayıt Ol'}</h3>
-              <p className="text-xs text-slate-500 mt-1">Lojistik ağına katılmak için devam edin</p>
+              <p className="text-xs text-slate-500 mt-1">Sisteme devam etmek için bilgilerinizi girin</p>
             </div>
 
             <form onSubmit={handleAuthSubmit} className="space-y-4">
@@ -485,7 +441,7 @@ export function AppShellContent() {
               <button
                 type="button"
                 onClick={() => setAuthMode(authMode === 'login' ? 'register' : 'login')}
-                className="text-xs font-bold text-slate-500 hover:text-orange-600 transition-colors"
+                className="text-xs font-bold text-slate-500 hover:text-blue-600 transition-colors"
               >
                 {authMode === 'login' ? 'Hesabınız yok mu? Kayıt Olun' : 'Zaten hesabınız var mı? Giriş Yapın'}
               </button>
@@ -500,8 +456,8 @@ export function AppShellContent() {
 function ProfileView({ user, openAuthModal, signOut, navigateTo }: { user: any, openAuthModal: () => void, signOut: () => void, navigateTo: (tab: ModuleId) => void }) {
   if (!user) {
     return (
-      <Card className="flex flex-col items-center justify-center p-10 text-center space-y-4 border-dashed bg-slate-50/50">
-        <div className="p-4 rounded-full bg-orange-100 text-orange-500">
+      <Card className="flex flex-col items-center justify-center p-10 text-center space-y-4 border-dashed bg-white">
+        <div className="p-4 rounded-full bg-blue-50 text-blue-600">
           <Truck className="size-10" />
         </div>
         <div>
@@ -514,7 +470,7 @@ function ProfileView({ user, openAuthModal, signOut, navigateTo }: { user: any, 
   }
 
   return (
-    <div className="space-y-5 animate-in fade-in duration-300">
+    <div className="space-y-5">
       <h2 className="text-base font-black text-slate-900 uppercase tracking-wide">Hesabım</h2>
       <Card className="p-6">
         <div className="flex items-center gap-4 mb-6">
@@ -529,11 +485,11 @@ function ProfileView({ user, openAuthModal, signOut, navigateTo }: { user: any, 
 
         <div className="space-y-3">
           <Button variant="secondary" className="w-full justify-start h-12" onClick={() => navigateTo('ilanlarim')}>
-            <FileText className="size-5 text-orange-500" />
+            <FileText className="size-5 text-blue-600" />
             <span className="ml-1 text-sm">Verdiğim İlanları Yönet</span>
           </Button>
           <Button variant="secondary" className="w-full justify-start h-12" onClick={() => navigateTo('notlar')}>
-            <StickyNote className="size-5 text-purple-500" />
+            <StickyNote className="size-5 text-purple-600" />
             <span className="ml-1 text-sm">Sefer Notlarım</span>
           </Button>
           <div className="pt-3 mt-3 border-t border-slate-100">
