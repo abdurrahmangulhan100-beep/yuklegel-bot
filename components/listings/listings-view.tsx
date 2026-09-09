@@ -5,8 +5,20 @@ import { subscribeToPushNotifications } from '@/lib/push-client'
 import { 
   Search, X, Clock, Heart, Phone, Copy, Check, Loader2, MessageSquare, 
   Bell, RefreshCw, FileText, Plus, Trash2, LogIn, Sparkles, ChevronDown,
-  Store, Users, AlertCircle, Truck
+  Store, Users, AlertCircle, Truck, MapPin, Filter, LayoutGrid, ListTable, ChevronUp
 } from 'lucide-react'
+
+// Şehir Veri Seti (Autocomplete için)
+const TURKEY_CITIES = [
+  'Adana', 'Adıyaman', 'Afyonkarahisar', 'Ağrı', 'Aksaray', 'Amasya', 'Ankara', 'Antalya', 'Ardahan', 'Artvin', 
+  'Aydın', 'Balıkesir', 'Bartın', 'Batman', 'Bayburt', 'Bilecik', 'Bingöl', 'Bitlis', 'Bolu', 'Burdur', 
+  'Bursa', 'Çanakkale', 'Çankırı', 'Çorum', 'Denizli', 'Diyarbakır', 'Düzce', 'Edirne', 'Elazığ', 'Erzincan', 
+  'Erzurum', 'Eskişehir', 'Gaziantep', 'Giresun', 'Gümüşhane', 'Hakkari', 'Hatay', 'Iğdır', 'Isparta', 'İstanbul', 
+  'İzmir', 'Kahramanmaraş', 'Karabük', 'Karaman', 'Kars', 'Kastamonu', 'Kayseri', 'Kırıkkale', 'Kırklareli', 'Kırşehir', 
+  'Kilis', 'Kocaeli', 'Konya', 'Kütahya', 'Malatya', 'Manisa', 'Mardin', 'Mersin', 'Muğla', 'Muş', 
+  'Nevşehir', 'Niğde', 'Ordu', 'Osmaniye', 'Rize', 'Sakarya', 'Samsun', 'Siirt', 'Sinop', 'Sivas', 
+  'Şanlıurfa', 'Şırnak', 'Tekirdağ', 'Tokat', 'Trabzon', 'Tunceli', 'Uşak', 'Van', 'Yalova', 'Yozgat', 'Zonguldak'
+]
 
 const CHIP_FILTERS = [
   { id: 'ALL', label: 'TÜMÜ' },
@@ -34,8 +46,11 @@ const DETECTABLE_BADGES = [
 const DEFAULT_BLOCKED_SENDERS = ['ROJHAT BAYIK', 'ROJHAT BAYİK']
 const EMPTY_ARRAY: any[] = []
 
+// Genişletilmiş ve regex kalıplı Spam Filtresi
 const SPAM_KEYWORDS = [
   'nakliye gorevi', 'nakliye görevi', 'bugunki nakliyeler', 'bugünkü nakliyeler',
+  'bugun yükleme', 'bugün yükleme', 'bugunkü yükleme', 'bugünkü yükleme',
+  'bugunki nakliye', 'bugünkü nakliye', 'bugun nakliye', 'bugün nakliye',
   'kaliteli yuk', 'kaliteli yük', 'canli yuk akisi', 'canlı yük akışı',
   'whatsapp dan ulasin', 'telegram', 'whatsapp grubu', 'wa.me', 't.me',
   'e-fatura', 'e-arsiv', 'kdv iadesi', 'bahis', 'casino',
@@ -172,7 +187,10 @@ function processListingItem(ilan: any) {
     const fullSearchPool = `${normSender} ${normRaw}`
 
     if (DEFAULT_BLOCKED_SENDERS.some(blocked => fullSearchPool.includes(normalizeTR(blocked)))) return null
+    
+    // Gelişmiş Dinamik Spam Kontrolü (Grup başlıkları ve türev kelimeler)
     if (SPAM_KEYWORDS.some(keyword => normRaw.includes(normalizeTR(keyword)))) return null
+    if (/(bugun|bugün)\s*(nakliye|yükleme|yukleme|sevkiyat|is|iş)/i.test(normRaw)) return null
 
     const formattedFull = formatCleanText(raw)
     const phones = extractPhoneNumbers(ilan, formattedFull)
@@ -384,9 +402,13 @@ export function ListingsView({ listings: propListings }: { listings?: any[] }) {
   const [searchQuery, setSearchQuery] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [selectedChip, setSelectedChip] = useState('ALL')
+  const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid')
   
+  // Şehir Autocomplete durumları
+  const [showCityDropdown, setShowCityDropdown] = useState(false)
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false)
+
   const [favorites, setFavorites] = useState<string[]>([])
-  
   const [timeFilter, setTimeFilter] = useState<'all' | '15m' | '1h' | '5h'>('all')
   
   const [onlyFavorites, setOnlyFavorites] = useState(false)
@@ -416,6 +438,13 @@ export function ListingsView({ listings: propListings }: { listings?: any[] }) {
     }
     return map
   }, [userNotes])
+
+  const filteredCities = useMemo(() => {
+    if (!searchQuery.trim()) return []
+    return TURKEY_CITIES.filter(city => 
+      normalizeTR(city).startsWith(normalizeTR(searchQuery))
+    ).slice(0, 6)
+  }, [searchQuery])
 
   useEffect(() => {
     const handler = setTimeout(() => setDebouncedSearch(searchQuery), 250)
@@ -601,7 +630,7 @@ export function ListingsView({ listings: propListings }: { listings?: any[] }) {
   }, [])
 
   return (
-    <div className="space-y-4 max-w-7xl mx-auto px-1 sm:px-4 relative font-sans w-full">
+    <div className="space-y-4 max-w-7xl mx-auto px-1 sm:px-4 relative font-sans w-full pb-20 md:pb-6">
       
       {/* İstatistik Modülleri */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -659,22 +688,54 @@ export function ListingsView({ listings: propListings }: { listings?: any[] }) {
 
       {/* Arama & Filtre Paneli */}
       <div className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-3.5 sm:p-4 shadow-xs">
+        
+        {/* Arama Barı ve Otomatik Şehir Tamamlama */}
         <div className="relative w-full">
-          <Search className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
-          <input
-            type="text"
-            placeholder="İl, ilçe veya yük detayına göre arayın..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-10 pr-9 text-xs font-semibold text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
-          />
-          {searchQuery && (
-            <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1">
-              <X className="size-4" />
-            </button>
+          <div className="relative">
+            <Search className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+            <input
+              type="text"
+              placeholder="İl, ilçe veya yük detayına göre arayın (örn: Konya)..."
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value)
+                setShowCityDropdown(true)
+              }}
+              onFocus={() => setShowCityDropdown(true)}
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-10 pr-9 text-xs font-semibold text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
+            />
+            {searchQuery && (
+              <button 
+                onClick={() => { setSearchQuery(''); setShowCityDropdown(false); }} 
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1"
+              >
+                <X className="size-4" />
+              </button>
+            )}
+          </div>
+
+          {/* Autocomplete Şehir Önerileri Dropdown */}
+          {showCityDropdown && filteredCities.length > 0 && (
+            <div className="absolute z-30 mt-1 w-full rounded-xl border border-slate-200 bg-white shadow-xl overflow-hidden divide-y divide-slate-100">
+              {filteredCities.map((city) => (
+                <button
+                  key={city}
+                  type="button"
+                  onClick={() => {
+                    setSearchQuery(city)
+                    setShowCityDropdown(false)
+                  }}
+                  className="w-full text-left px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-blue-50 hover:text-blue-600 flex items-center gap-2 transition-colors"
+                >
+                  <MapPin className="size-3.5 text-blue-500" />
+                  <span>{city}</span>
+                </button>
+              ))}
+            </div>
           )}
         </div>
 
+        {/* Kategori Etiketleri */}
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
           {CHIP_FILTERS.map((chip) => {
             const isActive = selectedChip === chip.id
@@ -695,82 +756,124 @@ export function ListingsView({ listings: propListings }: { listings?: any[] }) {
           })}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-2 pt-2 border-t border-slate-100">
-          <div className="md:col-span-5 flex items-center bg-slate-100 p-1 rounded-xl">
-            {(['all', '15m', '1h', '5h'] as const).map((t) => {
-              const active = timeFilter === t
-              return (
+        {/* Gelişmiş Filtreler Accordion ve Aksiyon Butonları */}
+        <div className="pt-2 border-t border-slate-100 space-y-2">
+          <div className="flex items-center justify-between">
+            <button
+              type="button"
+              onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+              className="flex items-center gap-1.5 text-xs font-extrabold text-blue-600 hover:text-blue-700 transition-colors"
+            >
+              <Filter className="size-3.5" />
+              <span>{showAdvancedFilters ? 'Gelişmiş Filtreleri Gizle' : 'Gelişmiş Filtreler'}</span>
+              {showAdvancedFilters ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
+            </button>
+
+            {/* Görünüm Seçimi (Grid vs Liste) */}
+            <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
+              <button
+                type="button"
+                onClick={() => setViewMode('grid')}
+                className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all ${
+                  viewMode === 'grid' ? 'bg-white text-blue-600 shadow-xs' : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                <LayoutGrid className="size-3.5" />
+                <span className="hidden sm:inline">Kart</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('table')}
+                className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all ${
+                  viewMode === 'table' ? 'bg-white text-blue-600 shadow-xs' : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                <ListTable className="size-3.5" />
+                <span className="hidden sm:inline">Liste</span>
+              </button>
+            </div>
+          </div>
+
+          {showAdvancedFilters && (
+            <div className="pt-2 grid grid-cols-1 md:grid-cols-12 gap-2">
+              <div className="md:col-span-6 flex items-center bg-slate-100 p-1 rounded-xl">
+                {(['all', '15m', '1h', '5h'] as const).map((t) => {
+                  const active = timeFilter === t
+                  return (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => setTimeFilter(t)}
+                      className={`flex-1 py-1.5 text-[11px] font-extrabold rounded-lg transition-all text-center cursor-pointer active:scale-95 ${
+                        active 
+                          ? 'bg-white text-slate-900 shadow-xs' 
+                          : 'text-slate-500 hover:text-slate-800'
+                      }`}
+                    >
+                      {t === 'all' && 'Tümü'}
+                      {t === '15m' && '⚡ 15Dk'}
+                      {t === '1h' && '⏰ 1Saat'}
+                      {t === '5h' && '🕒 5Saat'}
+                    </button>
+                  )
+                })}
+              </div>
+
+              <div className="md:col-span-6 grid grid-cols-2 sm:grid-cols-4 gap-1.5">
                 <button
-                  key={t}
                   type="button"
-                  onClick={() => setTimeFilter(t)}
-                  className={`flex-1 py-1.5 text-[11px] font-extrabold rounded-lg transition-all text-center cursor-pointer active:scale-95 ${
-                    active 
-                      ? 'bg-white text-slate-900 shadow-xs' 
-                      : 'text-slate-500 hover:text-slate-800'
+                  onClick={() => {
+                    const cities = searchQuery.trim() ? [searchQuery.trim()] : []
+                    subscribeToPushNotifications(cities, currentUser?.id)
+                  }}
+                  className="flex items-center justify-center gap-1.5 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 py-1.5 px-2 text-[11px] font-bold transition-all active:scale-95"
+                >
+                  <Bell className="size-3.5 text-purple-600" />
+                  <span>Bildirim</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => fetchListings(false)}
+                  disabled={refreshing}
+                  className="flex items-center justify-center gap-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-2 text-[11px] font-bold transition-all active:scale-95"
+                >
+                  <RefreshCw className={`size-3.5 ${refreshing ? 'animate-spin text-blue-600' : ''}`} />
+                  <span>Yenile</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => { setOnlyNotes(!onlyNotes); if (!onlyNotes) setOnlyFavorites(false); }}
+                  className={`flex items-center justify-center gap-1.5 rounded-xl py-1.5 px-2 text-[11px] font-bold transition-all active:scale-95 ${
+                    onlyNotes 
+                      ? 'bg-amber-500 text-white shadow-xs' 
+                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                   }`}
                 >
-                  {t === 'all' && 'Tümü'}
-                  {t === '15m' && '⚡ 15Dk'}
-                  {t === '1h' && '⏰ 1Saat'}
-                  {t === '5h' && '🕒 5Saat'}
+                  <FileText className="size-3.5" />
+                  <span>Notlar ({userNotes.length})</span>
                 </button>
-              )
-            })}
-          </div>
 
-          <div className="md:col-span-7 grid grid-cols-2 sm:grid-cols-4 gap-1.5">
-            <button
-              type="button"
-              onClick={() => {
-                const cities = searchQuery.trim() ? [searchQuery.trim()] : []
-                subscribeToPushNotifications(cities, currentUser?.id)
-              }}
-              className="flex items-center justify-center gap-1.5 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 py-1.5 px-2 text-[11px] font-bold transition-all active:scale-95"
-            >
-              <Bell className="size-3.5 text-purple-600" />
-              <span>Bildirim</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => fetchListings(false)}
-              disabled={refreshing}
-              className="flex items-center justify-center gap-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-2 text-[11px] font-bold transition-all active:scale-95"
-            >
-              <RefreshCw className={`size-3.5 ${refreshing ? 'animate-spin text-blue-600' : ''}`} />
-              <span>Yenile</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => { setOnlyNotes(!onlyNotes); if (!onlyNotes) setOnlyFavorites(false); }}
-              className={`flex items-center justify-center gap-1.5 rounded-xl py-1.5 px-2 text-[11px] font-bold transition-all active:scale-95 ${
-                onlyNotes 
-                  ? 'bg-amber-500 text-white shadow-xs' 
-                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-              }`}
-            >
-              <FileText className="size-3.5" />
-              <span>Notlar ({userNotes.length})</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => { setOnlyFavorites(!onlyFavorites); if (!onlyFavorites) setOnlyNotes(false); }}
-              className={`flex items-center justify-center gap-1.5 rounded-xl py-1.5 px-2 text-[11px] font-bold transition-all active:scale-95 ${
-                onlyFavorites 
-                  ? 'bg-rose-500 text-white shadow-xs' 
-                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-              }`}
-            >
-              <Heart className={`size-3.5 ${onlyFavorites ? 'fill-white text-white' : ''}`} />
-              <span>Favoriler ({favorites.length})</span>
-            </button>
-          </div>
+                <button
+                  type="button"
+                  onClick={() => { setOnlyFavorites(!onlyFavorites); if (!onlyFavorites) setOnlyNotes(false); }}
+                  className={`flex items-center justify-center gap-1.5 rounded-xl py-1.5 px-2 text-[11px] font-bold transition-all active:scale-95 ${
+                    onlyFavorites 
+                      ? 'bg-rose-500 text-white shadow-xs' 
+                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                  }`}
+                >
+                  <Heart className={`size-3.5 ${onlyFavorites ? 'fill-white text-white' : ''}`} />
+                  <span>Favoriler ({favorites.length})</span>
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
+      {/* Akış Durumu Bilgisi */}
       <div className="flex items-center justify-between text-xs font-bold text-slate-500 px-1">
         <span>Görüntülenen İlan: <strong className="text-slate-900">{listings.length}</strong></span>
         <span className="flex items-center gap-1.5 text-emerald-700 font-bold text-[11px] bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
@@ -782,6 +885,7 @@ export function ListingsView({ listings: propListings }: { listings?: any[] }) {
         </span>
       </div>
 
+      {/* Ana Liste Alanı */}
       {loading ? (
         <div className="flex flex-col items-center justify-center py-16 space-y-3">
           <Loader2 className="size-8 animate-spin text-blue-600" />
@@ -794,28 +898,81 @@ export function ListingsView({ listings: propListings }: { listings?: any[] }) {
           <button onClick={() => fetchListings(false)} className="rounded-xl bg-rose-600 text-white px-4 py-2 text-xs font-bold">Tekrar Dene</button>
         </div>
       ) : listings.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5 items-stretch">
-          {listings.map((ilan) => {
-            const ilanKey = ilan._stableKey
-            const isFav = favoritesSet.has(ilanKey)
-            const ilanNotes = userNotesMap.get(ilanKey) || EMPTY_ARRAY
+        viewMode === 'grid' ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5 items-stretch">
+            {listings.map((ilan) => {
+              const ilanKey = ilan._stableKey
+              const isFav = favoritesSet.has(ilanKey)
+              const ilanNotes = userNotesMap.get(ilanKey) || EMPTY_ARRAY
 
-            return (
-              <ListingCard
-                key={ilanKey}
-                ilan={ilan}
-                isFav={isFav}
-                ilanNotes={ilanNotes}
-                copiedId={copiedId}
-                searchQuery={searchQuery}
-                onToggleFavorite={handleToggleFavorite}
-                onOpenNoteModal={setNoteModalIlan}
-                onCopyText={handleCopyText}
-                onSelectIlan={setSelectedIlan}
-              />
-            )
-          })}
-        </div>
+              return (
+                <ListingCard
+                  key={ilanKey}
+                  ilan={ilan}
+                  isFav={isFav}
+                  ilanNotes={ilanNotes}
+                  copiedId={copiedId}
+                  searchQuery={searchQuery}
+                  onToggleFavorite={handleToggleFavorite}
+                  onOpenNoteModal={setNoteModalIlan}
+                  onCopyText={handleCopyText}
+                  onSelectIlan={setSelectedIlan}
+                />
+              )
+            })}
+          </div>
+        ) : (
+          /* Liste / Table Görünümü (Profesyoneller İçin Hızlı İnceleme) */
+          <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-xs">
+            <table className="w-full text-left text-xs border-collapse">
+              <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-extrabold uppercase text-[10px] tracking-wider">
+                <tr>
+                  <th className="p-3">Zaman</th>
+                  <th className="p-3">Gönderen</th>
+                  <th className="p-3">İlan Detayı</th>
+                  <th className="p-3 text-right">İletişim</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 font-medium text-slate-800">
+                {listings.map((ilan) => {
+                  const phones = ilan._phones || []
+                  return (
+                    <tr 
+                      key={ilan._stableKey} 
+                      onClick={() => setSelectedIlan(ilan)} 
+                      className="hover:bg-blue-50/50 transition-colors cursor-pointer"
+                    >
+                      <td className="p-3 whitespace-nowrap text-slate-400 font-bold text-[11px]">
+                        {ilan.created_at ? timeAgo(ilan.created_at) : 'Az önce'}
+                      </td>
+                      <td className="p-3 whitespace-nowrap font-extrabold text-slate-900">
+                        {ilan._sender}
+                      </td>
+                      <td className="p-3 min-w-[280px]">
+                        <p className="line-clamp-1">{ilan._rawText}</p>
+                      </td>
+                      <td className="p-3 text-right whitespace-nowrap">
+                        {phones.length > 0 ? (
+                          <div className="flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
+                            <a 
+                              href={`tel:${phones[0]}`}
+                              className="inline-flex items-center gap-1 rounded-lg bg-blue-50 text-blue-600 px-2.5 py-1 text-[11px] font-bold hover:bg-blue-100"
+                            >
+                              <Phone className="size-3" />
+                              <span>{phones[0]}</span>
+                            </a>
+                          </div>
+                        ) : (
+                          <span className="text-slate-400 text-[10px] italic">Yok</span>
+                        )}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        )
       ) : (
         <div className="flex flex-col items-center justify-center py-16 text-center rounded-2xl border border-dashed border-slate-200 space-y-2">
           <MessageSquare className="size-8 text-slate-300" />
