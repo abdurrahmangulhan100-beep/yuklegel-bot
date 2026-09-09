@@ -46,7 +46,6 @@ const DETECTABLE_BADGES = [
 const DEFAULT_BLOCKED_SENDERS = ['ROJHAT BAYIK', 'ROJHAT BAYİK']
 const EMPTY_ARRAY: any[] = []
 
-// Genişletilmiş Spam Filtresi
 const SPAM_KEYWORDS = [
   'nakliye gorevi', 'nakliye görevi', 'bugunki nakliyeler', 'bugünkü nakliyeler',
   'bugun yükleme', 'bugün yükleme', 'bugunkü yükleme', 'bugünkü yükleme',
@@ -218,13 +217,13 @@ const FormattedListingText = React.memo(({ text, query }: { text: string; query:
   const q = query ? query.trim() : ''
 
   if (!q) {
-    return <p className="text-sm font-semibold text-slate-800 leading-relaxed break-words">{formatted}</p>
+    return <span>{formatted}</span>
   }
 
   const escapedQ = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
   const parts = formatted.split(new RegExp(`(${escapedQ})`, 'gi'))
   return (
-    <p className="text-sm font-semibold text-slate-800 leading-relaxed break-words">
+    <span>
       {parts.map((part, pIdx) => 
         normalizeTR(part) === normalizeTR(q) ? (
           <mark key={pIdx} className="bg-blue-100 text-blue-900 px-1 py-0.5 rounded font-bold">
@@ -232,81 +231,44 @@ const FormattedListingText = React.memo(({ text, query }: { text: string; query:
           </mark>
         ) : part
       )}
-    </p>
+    </span>
   )
 })
 FormattedListingText.displayName = 'FormattedListingText'
 
+// Kart Görünümü Bileşeni
 const ListingCard = React.memo(({ 
-  ilan, 
-  isFav, 
-  ilanNotes = EMPTY_ARRAY, 
-  copiedId, 
-  searchQuery, 
-  onToggleFavorite, 
-  onOpenNoteModal, 
-  onCopyText, 
-  onSelectIlan 
+  ilan, isFav, ilanNotes = EMPTY_ARRAY, copiedId, searchQuery, 
+  onToggleFavorite, onOpenNoteModal, onCopyText, onSelectIlan 
 }: { 
-  ilan: any
-  isFav: boolean
-  ilanNotes?: any[]
-  copiedId: string | null
-  searchQuery: string
-  onToggleFavorite: (e: React.MouseEvent, key: string) => void
-  onOpenNoteModal: (ilan: any) => void
-  onCopyText: (e: React.MouseEvent, text: string, id: string) => void
-  onSelectIlan: (ilan: any) => void
+  ilan: any, isFav: boolean, ilanNotes?: any[], copiedId: string | null, searchQuery: string,
+  onToggleFavorite: (e: React.MouseEvent, key: string) => void, onOpenNoteModal: (ilan: any) => void, 
+  onCopyText: (e: React.MouseEvent, text: string, id: string) => void, onSelectIlan: (ilan: any) => void
 }) => {
   const [expanded, setExpanded] = useState(false)
-
   const ilanKey = ilan._stableKey
   const displayContent = ilan._rawText
   const phones = ilan._phones || []
-  const dateVal = ilan?.created_at
   const isLongText = displayContent.length > 140
 
   return (
-    <div 
-      onClick={() => onSelectIlan(ilan)}
-      className="group relative flex flex-col justify-between rounded-2xl border border-slate-200/80 bg-white p-4 sm:p-5 shadow-xs hover:shadow-md hover:border-blue-300 transition-all duration-200 transform-gpu cursor-pointer"
-    >
+    <div onClick={() => onSelectIlan(ilan)} className="group relative flex flex-col justify-between rounded-2xl border border-slate-200/80 bg-white p-4 sm:p-5 shadow-xs hover:shadow-md hover:border-blue-300 transition-all duration-200 cursor-pointer">
       <div className="space-y-3">
         <div className="flex items-center justify-between border-b border-slate-100 pb-3">
           <div className="flex items-center gap-2 max-w-[60%] truncate">
             <div className="size-8 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 shrink-0">
               <Truck className="size-4" />
             </div>
-            <span className="font-extrabold text-slate-900 truncate text-xs tracking-wide">
-              {ilan._sender}
-            </span>
+            <span className="font-extrabold text-slate-900 truncate text-xs tracking-wide">{ilan._sender}</span>
           </div>
-
           <div className="flex items-center gap-1.5 shrink-0">
             <span className="flex items-center gap-1 rounded-lg bg-slate-100 px-2 py-1 text-[10px] font-bold text-slate-500">
-              <Clock className="size-3 text-slate-400" />
-              {dateVal ? timeAgo(dateVal) : 'az önce'}
+              <Clock className="size-3 text-slate-400" /> {ilan.created_at ? timeAgo(ilan.created_at) : 'az önce'}
             </span>
-
-            <button
-              type="button"
-              onClick={(e) => { e.stopPropagation(); onOpenNoteModal(ilan); }}
-              className={`rounded-lg p-1.5 transition-all cursor-pointer active:scale-95 ${
-                ilanNotes.length > 0 
-                  ? 'bg-amber-50 text-amber-600' 
-                  : 'bg-slate-100 text-slate-400 hover:text-amber-500'
-              }`}
-            >
+            <button onClick={(e) => { e.stopPropagation(); onOpenNoteModal(ilan); }} className={`rounded-lg p-1.5 transition-all cursor-pointer ${ilanNotes.length > 0 ? 'bg-amber-50 text-amber-600' : 'bg-slate-100 text-slate-400 hover:text-amber-500'}`}>
               <FileText className="size-3.5" />
             </button>
-
-            <button
-              type="button"
-              onClick={(e) => onToggleFavorite(e, ilanKey)}
-              className={`rounded-lg p-1.5 transition-all cursor-pointer active:scale-95 ${
-                isFav ? 'bg-rose-50 text-rose-500' : 'bg-slate-100 text-slate-400 hover:text-rose-500'
-              }`}
-            >
+            <button onClick={(e) => onToggleFavorite(e, ilanKey)} className={`rounded-lg p-1.5 transition-all cursor-pointer ${isFav ? 'bg-rose-50 text-rose-500' : 'bg-slate-100 text-slate-400 hover:text-rose-500'}`}>
               <Heart className={`size-3.5 ${isFav ? 'fill-rose-500 text-rose-500' : ''}`} />
             </button>
           </div>
@@ -323,60 +285,31 @@ const ListingCard = React.memo(({
         )}
 
         <div>
-          <div className={`transition-all duration-200 overflow-hidden ${!expanded && isLongText ? 'line-clamp-3' : ''}`}>
+          <p className={`text-sm font-semibold text-slate-800 leading-relaxed break-words ${!expanded && isLongText ? 'line-clamp-3' : ''}`}>
             <FormattedListingText text={displayContent} query={searchQuery} />
-          </div>
-
+          </p>
           {isLongText && (
-            <button
-              type="button"
-              onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }}
-              className="mt-2 text-xs font-bold text-blue-600 inline-flex items-center gap-1 hover:underline cursor-pointer"
-            >
+            <button onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }} className="mt-2 text-xs font-bold text-blue-600 inline-flex items-center gap-1 hover:underline cursor-pointer">
               <span>{expanded ? 'Daha Az Göster' : 'Tümünü Gör'}</span>
               <ChevronDown className={`size-3.5 transition-transform ${expanded ? 'rotate-180' : ''}`} />
             </button>
           )}
         </div>
-
-        {ilanNotes.length > 0 && (
-          <div className="rounded-xl bg-amber-50 border border-amber-200 p-2.5 text-[11px] text-amber-900">
-            <span className="font-extrabold block text-[9px] uppercase text-amber-700">Notunuz:</span>
-            <p className="line-clamp-2 italic font-medium">{ilanNotes[0].not_metni}</p>
-          </div>
-        )}
       </div>
 
       <div className="mt-4 border-t border-slate-100 pt-3 flex items-center justify-between gap-2">
-        <button
-          type="button"
-          onClick={(e) => onCopyText(e, displayContent, ilanKey)}
-          className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-slate-100 px-3 py-2 text-[11px] font-bold text-slate-700 hover:bg-slate-200 transition-all cursor-pointer active:scale-95"
-        >
+        <button onClick={(e) => onCopyText(e, displayContent, ilanKey)} className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-slate-100 px-3 py-2 text-[11px] font-bold text-slate-700 hover:bg-slate-200 transition-all cursor-pointer">
           {copiedId === ilanKey ? <Check className="size-3.5 text-emerald-600" /> : <Copy className="size-3.5 text-slate-400" />}
           <span>{copiedId === ilanKey ? 'KOPYALANDI' : 'KOPYALA'}</span>
         </button>
 
         {phones.length > 0 ? (
           <div className="flex items-center gap-1.5">
-            <a
-              href={`https://wa.me/90${phones[0].replace(/^0/, '')}?text=${ilan._waMessage}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={(e) => e.stopPropagation()}
-              className="flex items-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 text-[11px] font-extrabold transition-all shadow-xs active:scale-95"
-            >
-              <MessageSquare className="size-3.5" />
-              <span>WP</span>
+            <a href={`https://wa.me/90${phones[0].replace(/^0/, '')}?text=${ilan._waMessage}`} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="flex items-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 text-[11px] font-extrabold transition-all shadow-xs">
+              <MessageSquare className="size-3.5" /> <span>WP</span>
             </a>
-
-            <a
-              href={`tel:${phones[0]}`}
-              onClick={(e) => e.stopPropagation()}
-              className="flex items-center gap-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 text-[11px] font-extrabold transition-all shadow-xs active:scale-95"
-            >
-              <Phone className="size-3.5" />
-              <span>ARA</span>
+            <a href={`tel:${phones[0]}`} onClick={(e) => e.stopPropagation()} className="flex items-center gap-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 text-[11px] font-extrabold transition-all shadow-xs">
+              <Phone className="size-3.5" /> <span>ARA</span>
             </a>
           </div>
         ) : (
@@ -401,7 +334,7 @@ export function ListingsView({ listings: propListings }: { listings?: any[] }) {
   const [searchQuery, setSearchQuery] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [selectedChip, setSelectedChip] = useState('ALL')
-  const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid')
+  const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid') // 'table' is now Modern List
   
   const [showCityDropdown, setShowCityDropdown] = useState(false)
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false)
@@ -479,7 +412,6 @@ export function ListingsView({ listings: propListings }: { listings?: any[] }) {
         supabase.from('ilanlar').select('*', { count: 'exact', head: true }),
         supabase.from('user_listings').select('*', { count: 'exact', head: true })
       ])
-
       if (botRes.count !== null) setBotCount(botRes.count)
       if (userRes.count !== null) setUserCount(userRes.count)
     } catch (err) {
@@ -523,26 +455,19 @@ export function ListingsView({ listings: propListings }: { listings?: any[] }) {
       }
 
       if (onlyFavorites) {
-        if (favorites.length === 0) {
-          setListings([])
-          setLoading(false)
-          return
-        }
+        if (favorites.length === 0) { setListings([]); setLoading(false); return; }
         query = query.in('id', favorites)
       }
 
       const { data, error } = await query
-
       if (error) throw error
 
       if (data) {
         let processed = data.map(processListingItem).filter(Boolean)
-
         if (onlyNotes) {
           const noteIds = new Set(userNotes.map(n => n.ilan_id))
           processed = processed.filter(item => noteIds.has(item._stableKey))
         }
-
         setListings(processed)
       }
       
@@ -664,26 +589,6 @@ export function ListingsView({ listings: propListings }: { listings?: any[] }) {
         </div>
       )}
 
-      {showAuthWarning && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
-          <div className="relative w-full max-w-sm rounded-3xl bg-white border border-slate-200 p-6 shadow-2xl text-center space-y-4">
-            <div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
-              <LogIn className="size-6" />
-            </div>
-            <div className="space-y-1">
-              <h3 className="text-sm font-bold text-slate-900">Giriş Yapmalısınız</h3>
-              <p className="text-xs text-slate-500 leading-relaxed">Favori ve Not özelliklerini kullanabilmek için hesabınıza giriş yapın.</p>
-            </div>
-            <button
-              onClick={() => setShowAuthWarning(false)}
-              className="w-full rounded-xl bg-blue-600 py-3 text-xs font-bold text-white shadow-sm active:scale-95"
-            >
-              Tamam
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* Arama & Filtre Paneli */}
       <div className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-3.5 sm:p-4 shadow-xs">
         
@@ -712,7 +617,6 @@ export function ListingsView({ listings: propListings }: { listings?: any[] }) {
             )}
           </div>
 
-          {/* Autocomplete Şehir Önerileri Dropdown */}
           {showCityDropdown && filteredCities.length > 0 && (
             <div className="absolute z-30 mt-1 w-full rounded-xl border border-slate-200 bg-white shadow-xl overflow-hidden divide-y divide-slate-100">
               {filteredCities.map((city) => (
@@ -733,7 +637,7 @@ export function ListingsView({ listings: propListings }: { listings?: any[] }) {
           )}
         </div>
 
-        {/* Kategori Etiketleri */}
+        {/* Kategori Etiketleri - MOBİL İÇİN KÜÇÜLTÜLDÜ */}
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
           {CHIP_FILTERS.map((chip) => {
             const isActive = selectedChip === chip.id
@@ -742,7 +646,7 @@ export function ListingsView({ listings: propListings }: { listings?: any[] }) {
                 key={chip.id}
                 type="button"
                 onClick={() => setSelectedChip(chip.id)}
-                className={`rounded-xl px-3 py-1.5 text-[11px] font-extrabold transition-all shrink-0 active:scale-95 cursor-pointer ${
+                className={`rounded-xl px-2.5 py-1 sm:px-3 sm:py-1.5 text-[10px] sm:text-[11px] font-extrabold transition-all shrink-0 active:scale-95 cursor-pointer ${
                   isActive 
                     ? 'bg-blue-600 text-white shadow-xs' 
                     : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
@@ -754,121 +658,120 @@ export function ListingsView({ listings: propListings }: { listings?: any[] }) {
           })}
         </div>
 
-        {/* Gelişmiş Filtreler Accordion ve Aksiyon Butonları */}
-        <div className="pt-2 border-t border-slate-100 space-y-2">
-          <div className="flex items-center justify-between">
+        {/* Aksiyon Çubuğu (Favoriler, Notlar ve Gelişmiş Filtreler Dışarı Alındı) */}
+        <div className="pt-2 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          
+          <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
               onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-              className="flex items-center gap-1.5 text-xs font-extrabold text-blue-600 hover:text-blue-700 transition-colors"
+              className="flex items-center gap-1.5 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 py-1.5 px-2.5 text-[11px] font-extrabold text-slate-600 transition-all active:scale-95"
             >
               <Filter className="size-3.5" />
-              <span>{showAdvancedFilters ? 'Gelişmiş Filtreleri Gizle' : 'Gelişmiş Filtreler'}</span>
+              <span>Gelişmiş Filtreler</span>
               {showAdvancedFilters ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
             </button>
 
-            {/* Görünüm Seçimi (Grid vs Liste) */}
-            <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
+            {/* Favoriler ve Notlar Artık Dışarıda Ana Ekranda */}
+            <button
+              type="button"
+              onClick={() => { setOnlyNotes(!onlyNotes); if (!onlyNotes) setOnlyFavorites(false); }}
+              className={`flex items-center gap-1.5 rounded-xl border py-1.5 px-2.5 text-[11px] font-bold transition-all active:scale-95 ${
+                onlyNotes 
+                  ? 'bg-amber-500 border-amber-600 text-white shadow-xs' 
+                  : 'bg-amber-50 border-amber-100 text-amber-700 hover:bg-amber-100'
+              }`}
+            >
+              <FileText className="size-3.5" />
+              <span>Notlar ({userNotes.length})</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => { setOnlyFavorites(!onlyFavorites); if (!onlyFavorites) setOnlyNotes(false); }}
+              className={`flex items-center gap-1.5 rounded-xl border py-1.5 px-2.5 text-[11px] font-bold transition-all active:scale-95 ${
+                onlyFavorites 
+                  ? 'bg-rose-500 border-rose-600 text-white shadow-xs' 
+                  : 'bg-rose-50 border-rose-100 text-rose-600 hover:bg-rose-100'
+              }`}
+            >
+              <Heart className={`size-3.5 ${onlyFavorites ? 'fill-white text-white' : ''}`} />
+              <span>Favoriler ({favorites.length})</span>
+            </button>
+          </div>
+
+          {/* Görünüm Seçimi (Kart vs Liste) */}
+          <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl self-start sm:self-auto shrink-0">
+            <button
+              type="button"
+              onClick={() => setViewMode('grid')}
+              className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all ${
+                viewMode === 'grid' ? 'bg-white text-blue-600 shadow-xs' : 'text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              <LayoutGrid className="size-3.5" />
+              <span className="hidden sm:inline">Kart</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('table')}
+              className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all ${
+                viewMode === 'table' ? 'bg-white text-blue-600 shadow-xs' : 'text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              <Table className="size-3.5" />
+              <span className="hidden sm:inline">Liste</span>
+            </button>
+          </div>
+
+        </div>
+
+        {/* Gelişmiş Filtreler İçeriği */}
+        {showAdvancedFilters && (
+          <div className="pt-2 mt-2 border-t border-slate-50 grid grid-cols-1 md:grid-cols-12 gap-2">
+            <div className="md:col-span-6 flex items-center bg-slate-100 p-1 rounded-xl">
+              {(['all', '15m', '1h', '5h'] as const).map((t) => {
+                const active = timeFilter === t
+                return (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setTimeFilter(t)}
+                    className={`flex-1 py-1.5 text-[11px] font-extrabold rounded-lg transition-all text-center cursor-pointer active:scale-95 ${
+                      active ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-800'
+                    }`}
+                  >
+                    {t === 'all' && 'Tümü'}
+                    {t === '15m' && '⚡ 15Dk'}
+                    {t === '1h' && '⏰ 1Saat'}
+                    {t === '5h' && '🕒 5Saat'}
+                  </button>
+                )
+              })}
+            </div>
+            <div className="md:col-span-6 flex items-center justify-end gap-2">
               <button
                 type="button"
-                onClick={() => setViewMode('grid')}
-                className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all ${
-                  viewMode === 'grid' ? 'bg-white text-blue-600 shadow-xs' : 'text-slate-500 hover:text-slate-800'
-                }`}
+                onClick={() => {
+                  const cities = searchQuery.trim() ? [searchQuery.trim()] : []
+                  subscribeToPushNotifications(cities, currentUser?.id)
+                }}
+                className="flex items-center justify-center gap-1.5 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-700 py-1.5 px-3 text-[11px] font-bold transition-all"
               >
-                <LayoutGrid className="size-3.5" />
-                <span className="hidden sm:inline">Kart</span>
+                <Bell className="size-3.5" /> <span>Bu Aramaya Bildirim Kur</span>
               </button>
               <button
                 type="button"
-                onClick={() => setViewMode('table')}
-                className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all ${
-                  viewMode === 'table' ? 'bg-white text-blue-600 shadow-xs' : 'text-slate-500 hover:text-slate-800'
-                }`}
+                onClick={() => fetchListings(false)}
+                disabled={refreshing}
+                className="flex items-center justify-center gap-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 text-[11px] font-bold transition-all"
               >
-                <Table className="size-3.5" />
-                <span className="hidden sm:inline">Liste</span>
+                <RefreshCw className={`size-3.5 ${refreshing ? 'animate-spin text-blue-600' : ''}`} />
+                <span>Yenile</span>
               </button>
             </div>
           </div>
-
-          {showAdvancedFilters && (
-            <div className="pt-2 grid grid-cols-1 md:grid-cols-12 gap-2">
-              <div className="md:col-span-6 flex items-center bg-slate-100 p-1 rounded-xl">
-                {(['all', '15m', '1h', '5h'] as const).map((t) => {
-                  const active = timeFilter === t
-                  return (
-                    <button
-                      key={t}
-                      type="button"
-                      onClick={() => setTimeFilter(t)}
-                      className={`flex-1 py-1.5 text-[11px] font-extrabold rounded-lg transition-all text-center cursor-pointer active:scale-95 ${
-                        active 
-                          ? 'bg-white text-slate-900 shadow-xs' 
-                          : 'text-slate-500 hover:text-slate-800'
-                      }`}
-                    >
-                      {t === 'all' && 'Tümü'}
-                      {t === '15m' && '⚡ 15Dk'}
-                      {t === '1h' && '⏰ 1Saat'}
-                      {t === '5h' && '🕒 5Saat'}
-                    </button>
-                  )
-                })}
-              </div>
-
-              <div className="md:col-span-6 grid grid-cols-2 sm:grid-cols-4 gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => {
-                    const cities = searchQuery.trim() ? [searchQuery.trim()] : []
-                    subscribeToPushNotifications(cities, currentUser?.id)
-                  }}
-                  className="flex items-center justify-center gap-1.5 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 py-1.5 px-2 text-[11px] font-bold transition-all active:scale-95"
-                >
-                  <Bell className="size-3.5 text-purple-600" />
-                  <span>Bildirim</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => fetchListings(false)}
-                  disabled={refreshing}
-                  className="flex items-center justify-center gap-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-2 text-[11px] font-bold transition-all active:scale-95"
-                >
-                  <RefreshCw className={`size-3.5 ${refreshing ? 'animate-spin text-blue-600' : ''}`} />
-                  <span>Yenile</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => { setOnlyNotes(!onlyNotes); if (!onlyNotes) setOnlyFavorites(false); }}
-                  className={`flex items-center justify-center gap-1.5 rounded-xl py-1.5 px-2 text-[11px] font-bold transition-all active:scale-95 ${
-                    onlyNotes 
-                      ? 'bg-amber-500 text-white shadow-xs' 
-                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                  }`}
-                >
-                  <FileText className="size-3.5" />
-                  <span>Notlar ({userNotes.length})</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => { setOnlyFavorites(!onlyFavorites); if (!onlyFavorites) setOnlyNotes(false); }}
-                  className={`flex items-center justify-center gap-1.5 rounded-xl py-1.5 px-2 text-[11px] font-bold transition-all active:scale-95 ${
-                    onlyFavorites 
-                      ? 'bg-rose-500 text-white shadow-xs' 
-                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                  }`}
-                >
-                  <Heart className={`size-3.5 ${onlyFavorites ? 'fill-white text-white' : ''}`} />
-                  <span>Favoriler ({favorites.length})</span>
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
+        )}
       </div>
 
       {/* Akış Durumu Bilgisi */}
@@ -890,161 +793,242 @@ export function ListingsView({ listings: propListings }: { listings?: any[] }) {
           <p className="text-xs font-semibold text-slate-400">Veriler yükleniyor...</p>
         </div>
       ) : errorMsg ? (
-        <div className="flex flex-col items-center justify-center p-8 text-center rounded-2xl border border-rose-200 bg-rose-50 text-rose-700 space-y-3">
-          <AlertCircle className="size-8" />
-          <p className="text-xs font-bold">{errorMsg}</p>
-          <button onClick={() => fetchListings(false)} className="rounded-xl bg-rose-600 text-white px-4 py-2 text-xs font-bold">Tekrar Dene</button>
+        <div className="flex flex-col items-center justify-center p-8 text-center rounded-2xl border border-rose-200 bg-rose-50">
+          <AlertCircle className="size-10 text-rose-500 mb-2" />
+          <p className="text-sm font-bold text-rose-700">{errorMsg}</p>
         </div>
-      ) : listings.length > 0 ? (
-        viewMode === 'grid' ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5 items-stretch">
-            {listings.map((ilan) => {
-              const ilanKey = ilan._stableKey
-              const isFav = favoritesSet.has(ilanKey)
-              const ilanNotes = userNotesMap.get(ilanKey) || EMPTY_ARRAY
-
-              return (
-                <ListingCard
-                  key={ilanKey}
-                  ilan={ilan}
-                  isFav={isFav}
-                  ilanNotes={ilanNotes}
-                  copiedId={copiedId}
-                  searchQuery={searchQuery}
-                  onToggleFavorite={handleToggleFavorite}
-                  onOpenNoteModal={setNoteModalIlan}
-                  onCopyText={handleCopyText}
-                  onSelectIlan={setSelectedIlan}
-                />
-              )
-            })}
-          </div>
-        ) : (
-          <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-xs">
-            <table className="w-full text-left text-xs border-collapse">
-              <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-extrabold uppercase text-[10px] tracking-wider">
-                <tr>
-                  <th className="p-3">Zaman</th>
-                  <th className="p-3">Gönderen</th>
-                  <th className="p-3">İlan Detayı</th>
-                  <th className="p-3 text-right">İletişim</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 font-medium text-slate-800">
-                {listings.map((ilan) => {
-                  const phones = ilan._phones || []
-                  return (
-                    <tr 
-                      key={ilan._stableKey} 
-                      onClick={() => setSelectedIlan(ilan)} 
-                      className="hover:bg-blue-50/50 transition-colors cursor-pointer"
-                    >
-                      <td className="p-3 whitespace-nowrap text-slate-400 font-bold text-[11px]">
-                        {ilan.created_at ? timeAgo(ilan.created_at) : 'Az önce'}
-                      </td>
-                      <td className="p-3 whitespace-nowrap font-extrabold text-slate-900">
-                        {ilan._sender}
-                      </td>
-                      <td className="p-3 min-w-[280px]">
-                        <p className="line-clamp-1">{ilan._rawText}</p>
-                      </td>
-                      <td className="p-3 text-right whitespace-nowrap">
-                        {phones.length > 0 ? (
-                          <div className="flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
-                            <a 
-                              href={`tel:${phones[0]}`}
-                              className="inline-flex items-center gap-1 rounded-lg bg-blue-50 text-blue-600 px-2.5 py-1 text-[11px] font-bold hover:bg-blue-100"
-                            >
-                              <Phone className="size-3" />
-                              <span>{phones[0]}</span>
-                            </a>
-                          </div>
-                        ) : (
-                          <span className="text-slate-400 text-[10px] italic">Yok</span>
-                        )}
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-        )
-      ) : (
-        <div className="flex flex-col items-center justify-center py-16 text-center rounded-2xl border border-dashed border-slate-200 space-y-2">
-          <MessageSquare className="size-8 text-slate-300" />
-          <h3 className="text-xs font-bold text-slate-500">Uygun İlan Bulunamadı</h3>
+      ) : listings.length === 0 ? (
+        <div className="flex flex-col items-center justify-center p-12 text-center rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50">
+          <Search className="size-10 text-slate-300 mb-3" />
+          <p className="text-sm font-bold text-slate-600 mb-1">
+            {onlyFavorites ? 'Favori ilanınız bulunmuyor.' :
+             onlyNotes ? 'Not eklediğiniz ilan bulunmuyor.' :
+             'Aradığınız kriterlere uygun ilan bulunamadı.'}
+          </p>
+          <p className="text-xs text-slate-400">Filtreleri veya arama kelimesini değiştirerek tekrar deneyin.</p>
         </div>
-      )}
+      ) : viewMode === 'table' ? (
+        
+        // MODERN LİSTE (AKIS) GÖRÜNÜMÜ - TABLO YERİNE
+        <div className="flex flex-col gap-2">
+          {listings.map((ilan) => {
+            const isFav = favoritesSet.has(ilan._stableKey)
+            const ilanNotes = userNotesMap.get(ilan._stableKey) || []
+            const phones = ilan._phones || []
 
-      {/* Modal - Not Ekleme */}
-      {noteModalIlan && (
-        <div onClick={() => setNoteModalIlan(null)} className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
-          <div onClick={(e) => e.stopPropagation()} className="relative w-full max-w-md rounded-3xl bg-white border border-slate-200 p-5 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
-              <h3 className="text-xs font-bold flex items-center gap-1.5 text-slate-900">
-                <FileText className="size-4 text-amber-500" /> Özel Not Ekle
-              </h3>
-              <button onClick={() => setNoteModalIlan(null)} className="p-1 text-slate-400 hover:text-slate-600"><X className="size-4" /></button>
-            </div>
-            <textarea
-              rows={3}
-              value={newNoteText}
-              onChange={(e) => setNewNoteText(e.target.value)}
-              placeholder="Notunuzu buraya yazın..."
-              className="w-full rounded-2xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-900 focus:outline-none focus:border-amber-500"
-            />
-            <button
-              onClick={handleAddNote}
-              disabled={isSavingNote || !newNoteText.trim()}
-              className="w-full flex items-center justify-center gap-2 rounded-xl bg-amber-500 text-white py-2.5 text-xs font-bold disabled:opacity-50"
-            >
-              {isSavingNote ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />} Kaydet
-            </button>
-            <div className="space-y-2 max-h-40 overflow-y-auto">
-              {(userNotesMap.get(noteModalIlan._stableKey) || EMPTY_ARRAY).map((note) => (
-                <div key={note.id} className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs">
-                  <p className="text-slate-800 font-medium">{note.not_metni}</p>
-                  <button onClick={() => handleDeleteNote(note.id)} className="text-slate-400 hover:text-rose-500 p-1"><Trash2 className="size-3.5" /></button>
+            return (
+              <div 
+                key={ilan._stableKey} 
+                onClick={() => setSelectedIlan(ilan)}
+                className="group flex flex-col sm:flex-row sm:items-center justify-between bg-white border border-slate-200 rounded-xl p-3 sm:px-4 hover:border-blue-300 hover:shadow-sm cursor-pointer transition-all gap-3"
+              >
+                
+                {/* Meta Bilgileri (Gönderen ve Zaman) */}
+                <div className="flex items-center sm:w-1/4 min-w-[180px] gap-2.5">
+                  <div className="size-8 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
+                    <Truck className="size-4 text-blue-600" />
+                  </div>
+                  <div className="flex flex-col truncate">
+                    <span className="text-[11px] font-extrabold text-slate-900 truncate">{ilan._sender}</span>
+                    <span className="text-[10px] font-bold text-slate-400">
+                      {ilan.created_at ? timeAgo(ilan.created_at) : 'az önce'}
+                    </span>
+                  </div>
                 </div>
-              ))}
+
+                {/* İçerik */}
+                <div className="flex-1 w-full text-xs sm:text-sm font-semibold text-slate-800 line-clamp-2 sm:line-clamp-1">
+                  <FormattedListingText text={ilan._rawText} query={searchQuery} />
+                </div>
+
+                {/* Sağ Taraf - Aksiyonlar ve İletişim */}
+                <div className="flex items-center justify-between sm:justify-end sm:w-auto w-full border-t border-slate-100 sm:border-none pt-2 sm:pt-0 shrink-0 gap-2">
+                  <div className="flex items-center gap-1">
+                    <button onClick={(e) => { e.stopPropagation(); setNoteModalIlan(ilan); }} className={`p-1.5 rounded-lg transition-colors ${ilanNotes.length > 0 ? 'bg-amber-50 text-amber-600' : 'bg-slate-50 text-slate-400 hover:text-amber-500 hover:bg-amber-50'}`}>
+                      <FileText className="size-3.5" />
+                    </button>
+                    <button onClick={(e) => handleToggleFavorite(e, ilan._stableKey)} className={`p-1.5 rounded-lg transition-colors ${isFav ? 'bg-rose-50 text-rose-500' : 'bg-slate-50 text-slate-400 hover:text-rose-500 hover:bg-rose-50'}`}>
+                      <Heart className={`size-3.5 ${isFav ? 'fill-rose-500' : ''}`} />
+                    </button>
+                    <button onClick={(e) => handleCopyText(e, ilan._rawText, ilan._stableKey)} className="p-1.5 rounded-lg bg-slate-50 hover:bg-blue-50 text-slate-400 hover:text-blue-500 transition-colors">
+                      {copiedId === ilan._stableKey ? <Check className="size-3.5 text-emerald-600" /> : <Copy className="size-3.5" />}
+                    </button>
+                  </div>
+                  
+                  {phones.length > 0 ? (
+                    <a 
+                      href={`tel:${phones[0]}`} 
+                      onClick={(e) => e.stopPropagation()} 
+                      className="flex items-center gap-1.5 bg-blue-50 hover:bg-blue-100 text-blue-600 px-3 py-1.5 rounded-lg text-[11px] font-extrabold transition-colors shadow-xs"
+                    >
+                      <Phone className="size-3.5" />
+                      <span>{phones[0]}</span>
+                    </a>
+                  ) : (
+                    <span className="text-[10px] text-slate-400 italic px-2">Numara Yok</span>
+                  )}
+                </div>
+
+              </div>
+            )
+          })}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+          {listings.map((ilan) => (
+            <ListingCard
+              key={ilan._stableKey}
+              ilan={ilan}
+              isFav={favoritesSet.has(ilan._stableKey)}
+              ilanNotes={userNotesMap.get(ilan._stableKey) || []}
+              copiedId={copiedId}
+              searchQuery={searchQuery}
+              onToggleFavorite={handleToggleFavorite}
+              onOpenNoteModal={setNoteModalIlan}
+              onCopyText={handleCopyText}
+              onSelectIlan={setSelectedIlan}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* İlan Detay Modalı */}
+      {selectedIlan && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="w-full max-w-lg bg-white rounded-3xl shadow-2xl flex flex-col overflow-hidden max-h-[90vh]">
+            <div className="flex items-center justify-between p-4 border-b border-slate-100">
+              <h2 className="text-sm font-extrabold text-slate-800">İlan Detayı</h2>
+              <button onClick={() => setSelectedIlan(null)} className="p-2 rounded-xl hover:bg-slate-100 text-slate-400 transition-colors">
+                <X className="size-5" />
+              </button>
+            </div>
+            <div className="p-5 overflow-y-auto space-y-5">
+              <div className="flex items-center gap-3">
+                <div className="size-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                  <Truck className="size-5" />
+                </div>
+                <div>
+                  <div className="text-sm font-extrabold text-slate-900">{selectedIlan._sender}</div>
+                  <div className="text-[11px] font-bold text-slate-400">
+                    {selectedIlan.created_at ? new Date(selectedIlan.created_at).toLocaleString('tr-TR') : 'Bilinmeyen Tarih'}
+                  </div>
+                </div>
+              </div>
+
+              {selectedIlan._badges && selectedIlan._badges.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {selectedIlan._badges.map((b: any, i: number) => (
+                    <span key={i} className={`inline-flex items-center rounded-lg border px-2 py-1 text-[10px] font-extrabold tracking-wider uppercase ${b.color}`}>
+                      {b.label}
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              <div className="p-4 rounded-xl bg-slate-50 border border-slate-100">
+                <p className="text-sm font-semibold text-slate-800 leading-relaxed whitespace-pre-wrap break-words">
+                  {selectedIlan._originalRawText || selectedIlan._rawText}
+                </p>
+              </div>
+            </div>
+            <div className="p-4 border-t border-slate-100 bg-slate-50 flex gap-2">
+              <button onClick={(e) => handleCopyText(e, selectedIlan._originalRawText || selectedIlan._rawText, selectedIlan._stableKey)} className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-white border border-slate-200 px-4 py-3 text-xs font-extrabold text-slate-700 hover:bg-slate-50 transition-all shadow-xs">
+                {copiedId === selectedIlan._stableKey ? <Check className="size-4 text-emerald-600" /> : <Copy className="size-4" />} Kopyala
+              </button>
+              {(selectedIlan._phones || []).length > 0 && (
+                <a href={`tel:${selectedIlan._phones[0]}`} className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-blue-600 hover:bg-blue-700 px-4 py-3 text-xs font-extrabold text-white transition-all shadow-xs">
+                  <Phone className="size-4" /> Ara
+                </a>
+              )}
             </div>
           </div>
         </div>
       )}
 
-      {/* Modal - İlan Detay */}
-      {selectedIlan && (
-        <div onClick={() => setSelectedIlan(null)} className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
-          <div onClick={(e) => e.stopPropagation()} className="relative w-full max-w-lg rounded-3xl bg-white border border-slate-200 p-5 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
-              <h3 className="text-xs font-bold text-slate-900">{selectedIlan._sender} - İlan Detayı</h3>
-              <button onClick={() => setSelectedIlan(null)} className="p-1 text-slate-400 hover:text-slate-600"><X className="size-4" /></button>
+      {/* Not Ekleme Modalı */}
+      {noteModalIlan && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 animate-in fade-in">
+          <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl flex flex-col overflow-hidden">
+            <div className="flex items-center justify-between p-4 border-b border-slate-100 bg-amber-50/50">
+              <h2 className="text-sm font-extrabold text-amber-900 flex items-center gap-2">
+                <FileText className="size-4 text-amber-600" /> İlana Not Ekle
+              </h2>
+              <button onClick={() => { setNoteModalIlan(null); setNewNoteText(''); }} className="p-2 rounded-xl hover:bg-amber-100 text-amber-600 transition-colors">
+                <X className="size-5" />
+              </button>
             </div>
-            <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 text-xs leading-relaxed whitespace-pre-wrap font-medium">
-              <FormattedListingText text={selectedIlan._originalRawText || selectedIlan._rawText} query={searchQuery} />
-            </div>
-            {selectedIlan._phones && selectedIlan._phones.length > 0 && (
-              <div className="flex items-center gap-2 pt-1">
-                <a
-                  href={`https://wa.me/90${selectedIlan._phones[0].replace(/^0/, '')}?text=${selectedIlan._waMessage}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-emerald-600 text-white py-2.5 text-xs font-bold shadow-xs"
-                >
-                  <MessageSquare className="size-4" /> WHATSAPP
-                </a>
-                <a
-                  href={`tel:${selectedIlan._phones[0]}`}
-                  className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-blue-600 text-white py-2.5 text-xs font-bold shadow-xs"
-                >
-                  <Phone className="size-4" /> TELEFONLA ARA
-                </a>
+            <div className="p-5 flex flex-col gap-4">
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 max-h-24 overflow-y-auto text-xs font-semibold text-slate-600">
+                {noteModalIlan._rawText}
               </div>
-            )}
+              
+              <div className="space-y-2">
+                <textarea
+                  value={newNoteText}
+                  onChange={(e) => setNewNoteText(e.target.value)}
+                  placeholder="Bu ilanla ilgili notunuzu yazın (örn: Aradım fiyatta anlaşamadık...)"
+                  className="w-full min-h-[100px] p-3 text-sm font-medium rounded-xl border border-slate-200 bg-white focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 outline-none resize-none transition-all placeholder:text-slate-400"
+                />
+                <div className="flex justify-end">
+                  <button
+                    onClick={handleAddNote}
+                    disabled={!newNoteText.trim() || isSavingNote}
+                    className="flex items-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white text-xs font-extrabold rounded-xl transition-colors"
+                  >
+                    {isSavingNote ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />}
+                    Kaydet
+                  </button>
+                </div>
+              </div>
+
+              {(userNotesMap.get(noteModalIlan._stableKey) || []).length > 0 && (
+                <div className="mt-2 space-y-2">
+                  <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Mevcut Notlarınız</h3>
+                  <div className="space-y-2">
+                    {(userNotesMap.get(noteModalIlan._stableKey) || []).map((note) => (
+                      <div key={note.id} className="group flex items-start justify-between gap-3 p-3 bg-amber-50 border border-amber-100 rounded-xl">
+                        <div>
+                          <p className="text-xs font-semibold text-amber-900">{note.not_metni}</p>
+                          <span className="text-[10px] text-amber-600/70 font-bold mt-1 block">
+                            {new Date(note.created_at).toLocaleDateString('tr-TR')}
+                          </span>
+                        </div>
+                        <button onClick={() => handleDeleteNote(note.id)} className="p-1.5 text-amber-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100 shrink-0">
+                          <Trash2 className="size-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
+
+      {/* Auth Uyarısı Modalı */}
+      {showAuthWarning && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 animate-in fade-in">
+          <div className="w-full max-w-sm bg-white rounded-3xl shadow-2xl p-6 text-center space-y-4">
+            <div className="size-16 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-2">
+              <LogIn className="size-8" />
+            </div>
+            <h2 className="text-lg font-extrabold text-slate-900">Giriş Yapmanız Gerekiyor</h2>
+            <p className="text-sm font-medium text-slate-500">
+              Favorilere ekleme yapmak ve not tutmak için hesabınıza giriş yapmalısınız.
+            </p>
+            <div className="flex items-center gap-3 pt-2">
+              <button onClick={() => setShowAuthWarning(false)} className="flex-1 py-3 text-xs font-extrabold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors">
+                İptal
+              </button>
+              <button onClick={() => { window.location.href = '/auth'; }} className="flex-1 py-3 text-xs font-extrabold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-colors shadow-lg shadow-blue-600/20">
+                Giriş Yap
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   )
 }
