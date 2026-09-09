@@ -7,30 +7,29 @@ import { useAuth } from '@/lib/auth-context'
 import { supabase } from '@/lib/supabase'
 import {
   Truck, Store, PlusCircle, Wallet, X, Loader2,
-  Sun, Moon, ArrowLeft, Search, CheckCircle2, ShieldCheck,
-  Users, MapPin, Navigation, Radio, Compass, ArrowRight,
-  Calculator, Gauge, Fuel, StickyNote, FileText, Sparkles,
-  ChevronRight, Layers, Bell, Wrench
+  ArrowLeft, Search, CheckCircle2, ShieldCheck,
+  Users, MapPin, ArrowRight,
+  Calculator, Gauge, Fuel, StickyNote, FileText,
+  ChevronRight
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-// Dosya Ağacındaki Tüm Modüllerin Dinamik Yüklenmesi
+// Dinamik Yüklemeler
 const ListingsView = dynamic(() => import('@/components/listings/listings-view').then(m => m.ListingsView), { ssr: false, loading: () => <ModuleLoader title="İlan Pazarı" /> })
 const AddListingForm = dynamic(() => import('@/components/add-listing-form').then(m => m.AddListingForm), { ssr: false, loading: () => <ModuleLoader title="İlan Formu" /> })
 const MyListingsView = dynamic(() => import('@/components/my-listings-view').then(m => m.MyListingsView), { ssr: false, loading: () => <ModuleLoader title="İlanlarım" /> })
 const UserListingsView = dynamic(() => import('@/components/user-listings-view').then(m => m.UserListingsView), { ssr: false, loading: () => <ModuleLoader title="Sürücüler" /> })
-const FinanceView = dynamic(() => import('@/components/finance-view').then(m => m.FinanceView), { ssr: false, loading: () => <ModuleLoader title="Finans & Cüzdan" /> })
-
-// Kamyoncu Araçları Modülleri
+const FinanceView = dynamic(() => import('@/components/finance-view').then(m => m.FinanceView), { ssr: false, loading: () => <ModuleLoader title="Finans" /> })
 const FuelCalculator = dynamic(() => import('@/components/fuel-calculator').then(m => m.FuelCalculator || m.default), { ssr: false, loading: () => <ModuleLoader title="Mazot Hesabı" /> })
 const TachographCalculator = dynamic(() => import('@/components/tachograph-calculator').then(m => m.TachographCalculator || m.default), { ssr: false, loading: () => <ModuleLoader title="Takograf" /> })
 const TripCalculator = dynamic(() => import('@/components/trip-calculator').then(m => m.TripCalculator || m.default), { ssr: false, loading: () => <ModuleLoader title="Sefer Hesabı" /> })
 const NotesView = dynamic(() => import('@/components/notes-view').then(m => m.NotesView || m.default), { ssr: false, loading: () => <ModuleLoader title="Notlar" /> })
 
+// Aydınlık Tema için Yenilenmiş Ortak Bileşenler
 function ModuleLoader({ title }: { title?: string }) {
   return (
-    <div className="flex h-56 w-full items-center justify-center rounded-2xl border border-dashed border-slate-800 bg-slate-900/50 backdrop-blur-sm">
-      <div className="flex flex-col items-center gap-2 text-xs font-bold text-slate-400">
+    <div className="flex h-56 w-full items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-white/50 backdrop-blur-sm animate-in fade-in duration-500">
+      <div className="flex flex-col items-center gap-2 text-xs font-bold text-slate-500">
         <Loader2 className="size-6 animate-spin text-orange-500" />
         <span>{title ? `${title} Yükleniyor...` : 'Yükleniyor...'}</span>
       </div>
@@ -38,28 +37,35 @@ function ModuleLoader({ title }: { title?: string }) {
   )
 }
 
-function Card({ className, children, ...props }: React.HTMLAttributes<HTMLDivElement>) {
+function Card({ className, children, hoverEffect = false, ...props }: React.HTMLAttributes<HTMLDivElement> & { hoverEffect?: boolean }) {
   return (
-    <div className={cn("rounded-2xl border border-slate-800/80 bg-slate-900/90 shadow-lg backdrop-blur-md transition-all duration-200", className)} {...props}>
+    <div 
+      className={cn(
+        "rounded-2xl border border-slate-200 bg-white shadow-sm transition-all duration-300", 
+        hoverEffect && "hover:shadow-md hover:-translate-y-1 hover:border-orange-200 cursor-pointer",
+        className
+      )} 
+      {...props}
+    >
       {children}
     </div>
   )
 }
 
 function Button({ className, variant = 'primary', size = 'md', children, ...props }: any) {
-  const base = "inline-flex items-center justify-center gap-2 rounded-xl font-bold text-xs transition-all active:scale-95 disabled:opacity-50 disabled:pointer-events-none cursor-pointer"
+  const base = "inline-flex items-center justify-center gap-2 rounded-xl font-bold transition-all active:scale-95 disabled:opacity-50 disabled:pointer-events-none cursor-pointer"
   const variants = {
-    primary: "bg-gradient-to-r from-orange-500 to-amber-600 hover:from-orange-600 hover:to-amber-700 text-white shadow-md shadow-orange-500/20",
-    secondary: "bg-slate-800/90 hover:bg-slate-700 text-slate-100 border border-slate-700/80",
-    indigo: "bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-600/20",
-    emerald: "bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-600/20",
-    outline: "border border-slate-700 hover:bg-slate-800 text-slate-300",
-    danger: "bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20"
+    primary: "bg-orange-500 hover:bg-orange-600 text-white shadow-sm shadow-orange-500/20",
+    secondary: "bg-slate-100 hover:bg-slate-200 text-slate-700",
+    indigo: "bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm",
+    emerald: "bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm",
+    outline: "border border-slate-200 hover:bg-slate-50 text-slate-700",
+    danger: "bg-red-50 hover:bg-red-100 text-red-600"
   }
   const sizes = {
     sm: "h-8 px-3 text-xs",
-    md: "h-10 px-4 text-xs",
-    lg: "h-11 px-5 text-sm"
+    md: "h-10 px-4 text-sm",
+    lg: "h-12 px-6 text-sm"
   }
   return (
     <button className={cn(base, variants[variant as keyof typeof variants], sizes[size as keyof typeof sizes], className)} {...props}>
@@ -70,14 +76,14 @@ function Button({ className, variant = 'primary', size = 'md', children, ...prop
 
 function Badge({ tone = 'orange', children, className }: any) {
   const tones = {
-    orange: "bg-orange-500/15 text-orange-400 border-orange-500/30",
-    emerald: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
-    indigo: "bg-indigo-500/15 text-indigo-400 border-indigo-500/30",
-    purple: "bg-purple-500/15 text-purple-400 border-purple-500/30",
-    slate: "bg-slate-800 text-slate-400 border-slate-700",
+    orange: "bg-orange-100 text-orange-700 border-orange-200",
+    emerald: "bg-emerald-100 text-emerald-700 border-emerald-200",
+    indigo: "bg-indigo-100 text-indigo-700 border-indigo-200",
+    purple: "bg-purple-100 text-purple-700 border-purple-200",
+    slate: "bg-slate-100 text-slate-700 border-slate-200",
   }
   return (
-    <span className={cn("inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold border", tones[tone as keyof typeof tones], className)}>
+    <span className={cn("inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold border", tones[tone as keyof typeof tones], className)}>
       {children}
     </span>
   )
@@ -87,7 +93,7 @@ function Input({ className, ...props }: React.InputHTMLAttributes<HTMLInputEleme
   return (
     <input
       className={cn(
-        "w-full h-10 px-3.5 rounded-xl border border-slate-700/80 bg-slate-950/80 text-white placeholder:text-slate-500 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-orange-500/50 transition-all",
+        "w-full h-11 px-4 rounded-xl border border-slate-200 bg-slate-50 text-slate-900 placeholder:text-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:bg-white transition-all",
         className
       )}
       {...props}
@@ -96,15 +102,7 @@ function Input({ className, ...props }: React.InputHTMLAttributes<HTMLInputEleme
 }
 
 type ModuleId = 'dashboard' | 'pazar' | 'ekle' | 'ilanlarim' | 'sizden-gelenler' | 'araclar' | 'finans' | 'notlar' | 'profil'
-type DriverStatus = 'garajda' | 'yuk-ariyor' | 'yolda'
-
 const VALID_TABS: ModuleId[] = ['dashboard', 'pazar', 'ekle', 'ilanlarim', 'sizden-gelenler', 'araclar', 'finans', 'notlar', 'profil']
-
-const DRIVER_STATUS_OPTIONS: { id: DriverStatus; label: string; icon: typeof Compass; dot: string }[] = [
-  { id: 'garajda', label: 'Garajda', icon: Compass, dot: 'bg-slate-400' },
-  { id: 'yuk-ariyor', label: 'Yük Arıyor', icon: Radio, dot: 'bg-orange-500' },
-  { id: 'yolda', label: 'Yolda', icon: Navigation, dot: 'bg-emerald-500' },
-]
 
 export function AppShellContent() {
   const router = useRouter()
@@ -122,11 +120,9 @@ export function AppShellContent() {
   const [loading, setLoading] = useState(false)
   const [toast, setToast] = useState<{ type: 'error' | 'success'; text: string } | null>(null)
 
-  // Durumlar ve Arama
   const [origin, setOrigin] = useState('')
   const [destination, setDestination] = useState('')
   const [pazarCount, setPazarCount] = useState<number>(0)
-  const [driverStatus, setDriverStatus] = useState<DriverStatus>('yuk-ariyor')
   const [activeToolTab, setActiveToolTab] = useState<'fuel' | 'tacho' | 'trip'>('fuel')
 
   const didInit = useRef(false)
@@ -180,45 +176,43 @@ export function AppShellContent() {
     }
   }
 
-  const statusMeta = DRIVER_STATUS_OPTIONS.find(s => s.id === driverStatus)!
-
   return (
-    <div className="flex h-dvh w-full flex-col overflow-hidden bg-slate-950 text-slate-100 font-sans antialiased">
+    <div className="flex h-dvh w-full flex-col overflow-hidden bg-slate-50 text-slate-900 font-sans antialiased selection:bg-orange-200">
+      
+      {/* Bildirim Toast */}
       {toast && (
-        <div
-          role="status"
-          className={cn(
-            'fixed top-4 left-1/2 -translate-x-1/2 z-[100] flex items-center gap-2 rounded-2xl px-4 py-2.5 shadow-2xl text-xs font-bold border',
-            toast.type === 'error' ? 'bg-red-600 text-white border-red-500' : 'bg-emerald-600 text-white border-emerald-500'
-          )}
-        >
-          {toast.type === 'error' ? <X className="size-4" /> : <CheckCircle2 className="size-4" />}
-          <span>{toast.text}</span>
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[100] animate-in slide-in-from-top-4 fade-in duration-300">
+          <div className={cn(
+            'flex items-center gap-2.5 rounded-full px-5 py-3 shadow-lg text-sm font-bold border',
+            toast.type === 'error' ? 'bg-white border-red-200 text-red-600' : 'bg-white border-emerald-200 text-emerald-600'
+          )}>
+            {toast.type === 'error' ? <X className="size-5" /> : <CheckCircle2 className="size-5" />}
+            <span>{toast.text}</span>
+          </div>
         </div>
       )}
 
-      {/* Modern Üst Bar */}
-      <header className="flex h-16 shrink-0 items-center justify-between border-b border-slate-800/80 bg-slate-900/80 backdrop-blur-md px-4 z-20 max-w-6xl w-full mx-auto">
+      {/* Modern, Ferah Üst Bar */}
+      <header className="flex h-16 shrink-0 items-center justify-between border-b border-slate-200 bg-white/80 backdrop-blur-xl px-4 xl:px-8 z-20 w-full">
         <div className="flex items-center gap-3">
           {activeTab !== 'dashboard' ? (
-            <Button variant="secondary" size="sm" onClick={() => navigateTo('dashboard')}>
-              <ArrowLeft className="size-4 text-orange-400" />
-              <span>Ana Panel</span>
-            </Button>
+            <button 
+              onClick={() => navigateTo('dashboard')}
+              className="flex items-center justify-center size-9 rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-900 transition-colors"
+            >
+              <ArrowLeft className="size-5" />
+            </button>
           ) : (
-            <div className="flex items-center gap-3">
-              <div className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-orange-500 to-amber-600 text-white shadow-lg shadow-orange-500/20">
+            <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigateTo('dashboard')}>
+              <div className="flex size-10 items-center justify-center rounded-xl bg-orange-500 text-white shadow-sm shadow-orange-500/30">
                 <Truck className="size-5" />
               </div>
               <div>
-                <h1 className="font-black text-sm tracking-tight text-white flex items-center gap-1.5">
+                <h1 className="font-black text-sm tracking-tight text-slate-900 flex items-center gap-1.5">
                   NAKLİYE CEPTE
-                  <span className="text-[9px] bg-orange-500/20 text-orange-400 border border-orange-500/30 px-1.5 py-0.2 rounded-md font-bold">LOJİSTİK</span>
+                  <span className="text-[9px] bg-orange-100 text-orange-600 px-1.5 py-0.5 rounded font-extrabold uppercase tracking-wider">Pro</span>
                 </h1>
-                <div className="flex items-center gap-1.5 mt-0.5">
-                  <span className={cn('size-2 rounded-full animate-pulse', statusMeta.dot)} />
-                  <p className="text-[10px] font-bold text-slate-400 leading-none">{statusMeta.label}</p>
-                </div>
+                <p className="text-[11px] font-medium text-slate-500 leading-none mt-0.5">Dijital Lojistik Ağı</p>
               </div>
             </div>
           )}
@@ -227,12 +221,11 @@ export function AppShellContent() {
         <div className="flex items-center gap-2">
           {user ? (
             <button
-              type="button"
               onClick={() => navigateTo('profil')}
-              className="relative flex size-9 items-center justify-center rounded-xl bg-slate-800 border border-slate-700 text-orange-400 font-black text-xs hover:border-orange-500/50 transition-colors"
+              className="relative flex size-10 items-center justify-center rounded-full bg-slate-100 border border-slate-200 text-slate-700 font-black text-sm hover:border-orange-300 hover:bg-orange-50 transition-colors"
             >
               {(user.email?.[0] ?? '?').toUpperCase()}
-              <span className="absolute -top-0.5 -right-0.5 size-2.5 rounded-full bg-emerald-500 ring-2 ring-slate-900" />
+              <span className="absolute 0 right-0 size-3 rounded-full bg-emerald-500 border-2 border-white" />
             </button>
           ) : (
             <Button size="sm" onClick={() => openAuthModal()}>Giriş Yap</Button>
@@ -240,202 +233,127 @@ export function AppShellContent() {
         </div>
       </header>
 
-      {/* Ana İçerik */}
-      <main className="flex-1 overflow-y-auto scrollbar-thin p-4 pb-28 max-w-6xl w-full mx-auto space-y-5">
+      {/* Ana İçerik Alanı */}
+      <main className="flex-1 overflow-y-auto scrollbar-none p-4 md:p-6 lg:p-8 pb-28 max-w-7xl w-full mx-auto space-y-6">
+        
         {activeTab === 'dashboard' && (
-          <div className="space-y-5">
-
-            {/* 1. Sürücü Durum Seçim Barı */}
-            <Card className="p-1.5 bg-slate-900/90 border-slate-800">
-              <div className="grid grid-cols-3 gap-1.5">
-                {DRIVER_STATUS_OPTIONS.map((st) => {
-                  const Icon = st.icon
-                  const isActive = driverStatus === st.id
-                  return (
-                    <button
-                      key={st.id}
-                      type="button"
-                      onClick={() => setDriverStatus(st.id)}
-                      className={cn(
-                        'flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer',
-                        isActive
-                          ? 'bg-gradient-to-r from-orange-500 to-amber-600 text-white shadow-md shadow-orange-500/20'
-                          : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
-                      )}
-                    >
-                      <Icon className="size-4 shrink-0" />
-                      <span className="truncate">{st.label}</span>
-                    </button>
-                  )
-                })}
-              </div>
-            </Card>
-
-            {/* 2. Akıllı Rota Arama Modülü */}
-            <Card className="p-4 md:p-5 bg-gradient-to-br from-slate-900 via-slate-900/90 to-slate-950 border-slate-800 shadow-xl">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <div className="p-2 rounded-xl bg-orange-500/10 text-orange-400 border border-orange-500/20">
-                    <MapPin className="size-4" />
+          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 fill-mode-forwards">
+            
+            {/* Sadeleştirilmiş Arama Modülü */}
+            <Card className="p-4 md:p-6">
+              <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-5">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 rounded-xl bg-orange-100 text-orange-600">
+                    <MapPin className="size-5" />
                   </div>
                   <div>
-                    <h2 className="text-xs font-black text-slate-100 uppercase tracking-wide">Yük ve Rota Arama</h2>
-                    <p className="text-[10px] text-slate-400">Çıkış ve varış noktasına göre anında eşleşin</p>
+                    <h2 className="text-sm font-black text-slate-900 uppercase tracking-wide">Yük ve Rota Arama</h2>
+                    <p className="text-xs text-slate-500 mt-0.5">Çıkış ve varış noktasına göre anında eşleşin</p>
                   </div>
                 </div>
                 <Badge tone="orange">
-                  <span className="size-1.5 rounded-full bg-orange-400 animate-ping" />
-                  {pazarCount} Aktif Yük
+                  <span className="size-1.5 rounded-full bg-orange-500 animate-pulse" />
+                  {pazarCount} Aktif İlan
                 </Badge>
               </div>
 
-              <form onSubmit={(e) => { e.preventDefault(); navigateTo('pazar'); }} className="grid grid-cols-1 md:grid-cols-12 gap-2.5">
+              <form onSubmit={(e) => { e.preventDefault(); navigateTo('pazar'); }} className="grid grid-cols-1 md:grid-cols-12 gap-3">
                 <div className="md:col-span-5 relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-500 uppercase">Çıkış:</span>
-                  <Input
-                    value={origin}
-                    onChange={(e) => setOrigin(e.target.value)}
-                    placeholder="Ankara, İstanbul, Mersin..."
-                    className="pl-14 bg-slate-950/90 border-slate-800 h-11 text-xs"
-                  />
+                  <Input value={origin} onChange={(e) => setOrigin(e.target.value)} placeholder="Çıkış: Ankara, İstanbul..." />
                 </div>
                 <div className="md:col-span-5 relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-500 uppercase">Varış:</span>
-                  <Input
-                    value={destination}
-                    onChange={(e) => setDestination(e.target.value)}
-                    placeholder="İzmir, Adana, Tüm Türkiye..."
-                    className="pl-14 bg-slate-950/90 border-slate-800 h-11 text-xs"
-                  />
+                  <Input value={destination} onChange={(e) => setDestination(e.target.value)} placeholder="Varış: İzmir, Adana..." />
                 </div>
                 <div className="md:col-span-2">
-                  <Button type="submit" className="w-full h-11">
+                  <Button type="submit" className="w-full h-11 text-sm">
                     <Search className="size-4" />
-                    <span>Yük Bul</span>
+                    Bul
                   </Button>
                 </div>
               </form>
             </Card>
 
-            {/* 3. Ana Sistem Modülleri (4'lü Grid Hub) */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-
-              {/* Hub 1: Yük & İlan Pazarı */}
-              <Card className="p-4 border-slate-800 hover:border-orange-500/40 transition-all bg-gradient-to-b from-slate-900 to-slate-900/60 flex flex-col justify-between">
+            {/* 4'lü Ana Menü Grid'i (Hover Efektli Modern Kartlar) */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              
+              {/* İlan Pazarı */}
+              <Card hoverEffect className="p-5 flex flex-col justify-between" onClick={() => navigateTo('pazar')}>
                 <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="p-2.5 rounded-xl bg-orange-500/10 border border-orange-500/20 text-orange-400">
-                      <Store className="size-5" />
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="p-3 rounded-2xl bg-orange-100 text-orange-600">
+                      <Store className="size-6" />
                     </div>
-                    <Badge tone="orange">İlan Pazarı</Badge>
+                    <ArrowRight className="size-4 text-slate-300" />
                   </div>
-                  <h3 className="text-sm font-black text-white">Yük & Araç İlanları</h3>
-                  <p className="text-[11px] text-slate-400 mt-1">Yayınlanan güncel navlun ve boş araç ilanlarını inceleyin veya ilan açın.</p>
+                  <h3 className="text-base font-black text-slate-900">İlan Pazarı</h3>
+                  <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">Güncel navlun ve boş araç ilanlarını inceleyin, anında teklif verin.</p>
                 </div>
-                <div className="mt-4 pt-3 border-t border-slate-800/80 space-y-1.5">
-                  <Button variant="primary" className="w-full justify-between" onClick={() => navigateTo('pazar')}>
-                    <span>İlan Pazarına Git</span>
-                    <ArrowRight className="size-3.5" />
-                  </Button>
-                  <Button variant="secondary" className="w-full justify-between text-slate-300" onClick={() => navigateTo('ekle')}>
-                    <span className="flex items-center gap-1.5">
-                      <PlusCircle className="size-3.5 text-orange-400" />
-                      İlan Oluştur
-                    </span>
-                    <ChevronRight className="size-3 text-slate-500" />
-                  </Button>
+                <div className="mt-5 pt-4 border-t border-slate-100 flex items-center text-sm font-bold text-orange-600">
+                  İlanlara Git <ChevronRight className="size-4 ml-1" />
                 </div>
               </Card>
 
-              {/* Hub 2: Sürücü Araçları (Mazot, Takograf, Sefer) */}
-              <Card className="p-4 border-slate-800 hover:border-indigo-500/40 transition-all bg-gradient-to-b from-slate-900 to-slate-900/60 flex flex-col justify-between">
+              {/* Sürücü Araçları */}
+              <Card hoverEffect className="p-5 flex flex-col justify-between" onClick={() => navigateTo('araclar')}>
                 <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="p-2.5 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400">
-                      <Calculator className="size-5" />
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="p-3 rounded-2xl bg-indigo-100 text-indigo-600">
+                      <Calculator className="size-6" />
                     </div>
-                    <Badge tone="indigo">Kamyoncu Aletleri</Badge>
+                    <ArrowRight className="size-4 text-slate-300" />
                   </div>
-                  <h3 className="text-sm font-black text-white">Hesaplama Araçları</h3>
-                  <p className="text-[11px] text-slate-400 mt-1">Mazot tüketimi, takograf sürüş süreleri ve sefer maliyeti hesaplayın.</p>
+                  <h3 className="text-base font-black text-slate-900">Araç Kutusu</h3>
+                  <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">Mazot tüketimi, takograf süreleri ve sefer maliyeti hesaplayın.</p>
                 </div>
-                <div className="mt-4 pt-3 border-t border-slate-800/80 space-y-1.5">
-                  <Button variant="indigo" className="w-full justify-between" onClick={() => navigateTo('araclar')}>
-                    <span>Araç Kutusu</span>
-                    <Wrench className="size-3.5" />
-                  </Button>
-                  <div className="grid grid-cols-3 gap-1 pt-1">
-                    <button onClick={() => { setActiveToolTab('fuel'); navigateTo('araclar'); }} className="p-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-[10px] font-bold text-slate-300 flex items-center justify-center gap-1">
-                      <Fuel className="size-3 text-amber-400" /> Mazot
-                    </button>
-                    <button onClick={() => { setActiveToolTab('tacho'); navigateTo('araclar'); }} className="p-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-[10px] font-bold text-slate-300 flex items-center justify-center gap-1">
-                      <Gauge className="size-3 text-indigo-400" /> Takograf
-                    </button>
-                    <button onClick={() => { setActiveToolTab('trip'); navigateTo('araclar'); }} className="p-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-[10px] font-bold text-slate-300 flex items-center justify-center gap-1">
-                      <Calculator className="size-3 text-emerald-400" /> Sefer
-                    </button>
-                  </div>
+                <div className="mt-5 pt-4 border-t border-slate-100 flex items-center text-sm font-bold text-indigo-600">
+                  Hesapla <ChevronRight className="size-4 ml-1" />
                 </div>
               </Card>
 
-              {/* Hub 3: Finans & Cüzdan */}
-              <Card className="p-4 border-slate-800 hover:border-emerald-500/40 transition-all bg-gradient-to-b from-slate-900 to-slate-900/60 flex flex-col justify-between">
+              {/* Finans */}
+              <Card hoverEffect className="p-5 flex flex-col justify-between" onClick={() => navigateTo('finans')}>
                 <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
-                      <Wallet className="size-5" />
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="p-3 rounded-2xl bg-emerald-100 text-emerald-600">
+                      <Wallet className="size-6" />
                     </div>
-                    <Badge tone="emerald">Bakiye & Gider</Badge>
+                    <ArrowRight className="size-4 text-slate-300" />
                   </div>
-                  <h3 className="text-sm font-black text-white">Finans Yönetimi</h3>
-                  <p className="text-[11px] text-slate-400 mt-1">Sefer başı kazançlarınızı, mazot harcamalarınızı ve giderlerinizi tutun.</p>
+                  <h3 className="text-base font-black text-slate-900">Finans Yönetimi</h3>
+                  <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">Kazançlarınızı ve mazot giderlerinizi tek bir yerden takip edin.</p>
                 </div>
-                <div className="mt-4 pt-3 border-t border-slate-800/80">
-                  <Button variant="emerald" className="w-full justify-between" onClick={() => navigateTo('finans')}>
-                    <span>Finans Cüzdanım</span>
-                    <ArrowRight className="size-3.5" />
-                  </Button>
+                <div className="mt-5 pt-4 border-t border-slate-100 flex items-center text-sm font-bold text-emerald-600">
+                  Cüzdanı Aç <ChevronRight className="size-4 ml-1" />
                 </div>
               </Card>
 
-              {/* Hub 4: Sefer Notları & Sürücü Vitrini */}
-              <Card className="p-4 border-slate-800 hover:border-purple-500/40 transition-all bg-gradient-to-b from-slate-900 to-slate-900/60 flex flex-col justify-between">
+              {/* Topluluk & Notlar */}
+              <Card hoverEffect className="p-5 flex flex-col justify-between" onClick={() => navigateTo('notlar')}>
                 <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="p-2.5 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-400">
-                      <StickyNote className="size-5" />
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="p-3 rounded-2xl bg-purple-100 text-purple-600">
+                      <Users className="size-6" />
                     </div>
-                    <Badge tone="purple">Notlar & Topluluk</Badge>
+                    <ArrowRight className="size-4 text-slate-300" />
                   </div>
-                  <h3 className="text-sm font-black text-white">Notlar & Sürücüler</h3>
-                  <p className="text-[11px] text-slate-400 mt-1">Önemli yük notlarınızı kaydedin ve yoldaki diğer meslektaşlarınızı görün.</p>
+                  <h3 className="text-base font-black text-slate-900">Notlar & Topluluk</h3>
+                  <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">Sefer notlarınızı kaydedin ve diğer sürücülerle iletişimde kalın.</p>
                 </div>
-                <div className="mt-4 pt-3 border-t border-slate-800/80 space-y-1.5">
-                  <Button variant="secondary" className="w-full justify-between text-slate-200" onClick={() => navigateTo('notlar')}>
-                    <span className="flex items-center gap-1.5">
-                      <StickyNote className="size-3.5 text-purple-400" />
-                      Sefer Notlarım
-                    </span>
-                    <ChevronRight className="size-3 text-slate-500" />
-                  </Button>
-                  <Button variant="secondary" className="w-full justify-between text-slate-200" onClick={() => navigateTo('sizden-gelenler')}>
-                    <span className="flex items-center gap-1.5">
-                      <Users className="size-3.5 text-blue-400" />
-                      Sürücü İlanları
-                    </span>
-                    <ChevronRight className="size-3 text-slate-500" />
-                  </Button>
+                <div className="mt-5 pt-4 border-t border-slate-100 flex items-center text-sm font-bold text-purple-600">
+                  Topluluğa Katıl <ChevronRight className="size-4 ml-1" />
                 </div>
               </Card>
 
             </div>
 
-            {/* Güvenlik Banner */}
-            <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-3.5 flex items-center gap-3">
-              <ShieldCheck className="size-7 text-orange-400 shrink-0" />
+            {/* Güvenlik Banner (Açık Tema Uyarlaması) */}
+            <div className="rounded-2xl border border-blue-200 bg-blue-50/50 p-4 flex items-center gap-4">
+              <div className="p-2 bg-blue-100 rounded-full text-blue-600 shrink-0">
+                <ShieldCheck className="size-6" />
+              </div>
               <div>
-                <h4 className="text-xs font-bold text-slate-200">Dijital Lojistik Güvenliği</h4>
-                <p className="text-[10px] text-slate-400">Tüm navlun ve yük ilanlarında doğrudan yük veren ve sürücü iletişim bilgileri teyit edilir.</p>
+                <h4 className="text-sm font-black text-blue-900">Güvenli Taşımacılık Ağı</h4>
+                <p className="text-xs text-blue-700 mt-0.5">Platformumuzdaki tüm ilanlarda iletişim bilgileri şeffaf ve teyitlidir.</p>
               </div>
             </div>
 
@@ -450,54 +368,36 @@ export function AppShellContent() {
         {activeTab === 'finans' && <FinanceView />}
         {activeTab === 'notlar' && <NotesView />}
 
-        {/* Kamyoncu Alet Kutusu Modülü */}
+        {/* Araç Kutusu Alt Modülü */}
         {activeTab === 'araclar' && (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
-                <Calculator className="size-4 text-indigo-400" />
-                Sürücü Hesaplama Araçları
-              </h2>
-            </div>
-
-            <Card className="p-1.5 bg-slate-900 border-slate-800">
-              <div className="grid grid-cols-3 gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => setActiveToolTab('fuel')}
-                  className={cn(
-                    'py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer',
-                    activeToolTab === 'fuel' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-800'
-                  )}
-                >
-                  <Fuel className="size-4 text-amber-400" />
-                  <span>Mazot Hesabı</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveToolTab('tacho')}
-                  className={cn(
-                    'py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer',
-                    activeToolTab === 'tacho' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-800'
-                  )}
-                >
-                  <Gauge className="size-4 text-indigo-300" />
-                  <span>Takograf</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveToolTab('trip')}
-                  className={cn(
-                    'py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer',
-                    activeToolTab === 'trip' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-800'
-                  )}
-                >
-                  <Calculator className="size-4 text-emerald-400" />
-                  <span>Sefer Hesabı</span>
-                </button>
+          <div className="space-y-4 animate-in fade-in duration-300">
+            <h2 className="text-base font-black text-slate-900 uppercase tracking-wide flex items-center gap-2">
+              <Calculator className="size-5 text-indigo-600" />
+              Hesaplama Araçları
+            </h2>
+            <Card className="p-2">
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { id: 'fuel', icon: Fuel, label: 'Mazot', color: 'text-orange-500' },
+                  { id: 'tacho', icon: Gauge, label: 'Takograf', color: 'text-indigo-500' },
+                  { id: 'trip', icon: Calculator, label: 'Sefer', color: 'text-emerald-500' },
+                ].map((tab) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveToolTab(tab.id as any)}
+                    className={cn(
+                      'py-2.5 px-3 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-2 cursor-pointer',
+                      activeToolTab === tab.id 
+                        ? 'bg-slate-900 text-white shadow-md' 
+                        : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'
+                    )}
+                  >
+                    <tab.icon className={cn("size-4", activeToolTab !== tab.id && tab.color)} />
+                    <span>{tab.label}</span>
+                  </button>
+                ))}
               </div>
             </Card>
-
             <div>
               {activeToolTab === 'fuel' && <FuelCalculator />}
               {activeToolTab === 'tacho' && <TachographCalculator />}
@@ -506,19 +406,18 @@ export function AppShellContent() {
           </div>
         )}
 
-        {/* Profil Modülü */}
         {activeTab === 'profil' && <ProfileView user={user} openAuthModal={openAuthModal} signOut={signOut} navigateTo={navigateTo} />}
       </main>
 
-      {/* Sabit Alt Navigasyon Barı */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-slate-900/95 backdrop-blur-xl border-t border-slate-800/90 z-30 pb-safe">
-        <div className="flex items-center justify-around max-w-6xl mx-auto px-2 h-16">
+      {/* Sabit Alt Navigasyon Barı (Modern & Ferah) */}
+      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 shadow-[0_-4px_20px_-10px_rgba(0,0,0,0.05)] z-30 pb-safe">
+        <div className="flex items-center justify-around max-w-md mx-auto px-2 h-16">
           {[
-            { id: 'dashboard', title: 'Ana Panel', icon: Truck },
-            { id: 'pazar', title: 'İlan Pazarı', icon: Store },
+            { id: 'dashboard', title: 'Ana Sayfa', icon: Truck },
+            { id: 'pazar', title: 'İlanlar', icon: Store },
             { id: 'ekle', title: 'İlan Ver', icon: PlusCircle, highlight: true },
-            { id: 'araclar', title: 'Araç Kutusu', icon: Calculator },
-            { id: 'finans', title: 'Finans', icon: Wallet },
+            { id: 'araclar', title: 'Araçlar', icon: Calculator },
+            { id: 'finans', title: 'Cüzdan', icon: Wallet },
           ].map((item) => {
             const Icon = item.icon
             const isActive = activeTab === item.id
@@ -527,14 +426,13 @@ export function AppShellContent() {
               return (
                 <button
                   key={item.id}
-                  type="button"
                   onClick={() => navigateTo(item.id as ModuleId)}
-                  className="flex flex-col items-center justify-center -mt-5 focus:outline-none cursor-pointer group"
+                  className="flex flex-col items-center justify-center -mt-6 focus:outline-none group"
                 >
-                  <div className="flex size-13 items-center justify-center rounded-2xl bg-gradient-to-br from-orange-500 to-amber-600 text-white shadow-lg shadow-orange-500/30 group-active:scale-90 transition-transform">
+                  <div className="flex size-14 items-center justify-center rounded-full bg-orange-500 text-white shadow-lg shadow-orange-500/40 group-active:scale-95 transition-all border-4 border-white">
                     <Icon className="size-6" />
                   </div>
-                  <span className="text-[10px] font-black text-orange-400 mt-1">{item.title}</span>
+                  <span className="text-[10px] font-black text-orange-600 mt-1">{item.title}</span>
                 </button>
               )
             }
@@ -542,52 +440,52 @@ export function AppShellContent() {
             return (
               <button
                 key={item.id}
-                type="button"
                 onClick={() => navigateTo(item.id as ModuleId)}
                 className={cn(
-                  'flex flex-col items-center justify-center w-16 h-12 rounded-xl transition-colors cursor-pointer',
-                  isActive
-                    ? 'text-orange-400 font-black'
-                    : 'text-slate-400 font-medium hover:text-slate-200'
+                  'flex flex-col items-center justify-center w-16 h-12 rounded-xl transition-all',
+                  isActive ? 'text-orange-600' : 'text-slate-400 hover:text-slate-600'
                 )}
               >
-                <Icon className={cn('size-5 mb-0.5', isActive && 'stroke-[2.5]')} />
-                <span className="text-[10px] tracking-tight">{item.title}</span>
+                <div className={cn("p-1 rounded-full transition-all", isActive && "bg-orange-50")}>
+                  <Icon className={cn('size-5', isActive && 'stroke-[2.5]')} />
+                </div>
+                <span className={cn("text-[10px] font-medium mt-0.5", isActive && "font-bold")}>{item.title}</span>
               </button>
             )
           })}
         </div>
       </nav>
 
-      {/* Auth Modal */}
+      {/* Auth Modal (Giriş/Kayıt) */}
       {isAuthModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div onClick={closeAuthModal} className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm" />
-          <div className="relative w-full max-w-xs rounded-3xl bg-slate-900 p-6 shadow-2xl border border-slate-800 z-10">
-            <button onClick={closeAuthModal} className="absolute right-4 top-4 text-slate-400 hover:text-white">
-              <X className="size-5" />
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div onClick={closeAuthModal} className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" />
+          <div className="relative w-full max-w-xs rounded-3xl bg-white p-6 shadow-2xl z-10 animate-in zoom-in-95 duration-200">
+            <button onClick={closeAuthModal} className="absolute right-4 top-4 text-slate-400 hover:text-slate-900 bg-slate-100 rounded-full p-1 transition-colors">
+              <X className="size-4" />
             </button>
 
-            <div className="text-center mb-5">
-              <div className="mx-auto mb-2 flex size-12 items-center justify-center rounded-2xl bg-orange-500/10 text-orange-400">
-                <Truck className="size-6" />
+            <div className="text-center mb-6">
+              <div className="mx-auto mb-3 flex size-14 items-center justify-center rounded-2xl bg-orange-50 text-orange-600">
+                <Truck className="size-7" />
               </div>
-              <h3 className="text-base font-black text-white">{authMode === 'login' ? 'Giriş Yap' : 'Kayıt Ol'}</h3>
+              <h3 className="text-lg font-black text-slate-900">{authMode === 'login' ? 'Giriş Yap' : 'Kayıt Ol'}</h3>
+              <p className="text-xs text-slate-500 mt-1">Lojistik ağına katılmak için devam edin</p>
             </div>
 
-            <form onSubmit={handleAuthSubmit} className="space-y-3">
-              <Input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="E-posta" />
-              <Input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Şifre" />
-              <Button type="submit" disabled={loading} className="w-full h-11">
-                {loading ? <Loader2 className="size-4 animate-spin" /> : (authMode === 'login' ? 'Giriş Yap' : 'Kayıt Ol')}
+            <form onSubmit={handleAuthSubmit} className="space-y-4">
+              <Input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="E-posta adresiniz" />
+              <Input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Şifreniz" />
+              <Button type="submit" disabled={loading} className="w-full h-12 text-base">
+                {loading ? <Loader2 className="size-5 animate-spin" /> : (authMode === 'login' ? 'Giriş Yap' : 'Kayıt Ol')}
               </Button>
             </form>
 
-            <div className="mt-4 text-center">
+            <div className="mt-5 text-center">
               <button
                 type="button"
                 onClick={() => setAuthMode(authMode === 'login' ? 'register' : 'login')}
-                className="text-xs font-bold text-orange-400 hover:underline cursor-pointer"
+                className="text-xs font-bold text-slate-500 hover:text-orange-600 transition-colors"
               >
                 {authMode === 'login' ? 'Hesabınız yok mu? Kayıt Olun' : 'Zaten hesabınız var mı? Giriş Yapın'}
               </button>
@@ -599,51 +497,50 @@ export function AppShellContent() {
   )
 }
 
-interface ProfileViewProps {
-  user: any
-  openAuthModal: () => void
-  signOut: () => void
-  navigateTo: (tab: ModuleId) => void
-}
-
-function ProfileView({ user, openAuthModal, signOut, navigateTo }: ProfileViewProps) {
+function ProfileView({ user, openAuthModal, signOut, navigateTo }: { user: any, openAuthModal: () => void, signOut: () => void, navigateTo: (tab: ModuleId) => void }) {
   if (!user) {
     return (
-      <Card className="flex flex-col items-center justify-center border-dashed p-8 text-center space-y-4 border-slate-800 bg-slate-900/50">
-        <Truck className="size-10 text-orange-400" />
-        <h3 className="text-sm font-black text-white">Profil Yönetimi</h3>
-        <p className="text-xs text-slate-400">İlan vermek ve kayıtlı verilerinize ulaşmak için oturum açın.</p>
-        <Button onClick={() => openAuthModal()}>Giriş Yap / Kayıt Ol</Button>
+      <Card className="flex flex-col items-center justify-center p-10 text-center space-y-4 border-dashed bg-slate-50/50">
+        <div className="p-4 rounded-full bg-orange-100 text-orange-500">
+          <Truck className="size-10" />
+        </div>
+        <div>
+          <h3 className="text-base font-black text-slate-900">Profil Yönetimi</h3>
+          <p className="text-sm text-slate-500 mt-1 max-w-[250px]">İlan vermek ve kayıtlı verilerinize ulaşmak için oturum açın.</p>
+        </div>
+        <Button onClick={() => openAuthModal()} className="mt-2">Giriş Yap / Kayıt Ol</Button>
       </Card>
     )
   }
 
   return (
-    <div className="space-y-4">
-      <h2 className="text-sm font-black text-white uppercase tracking-wider">Hesap Profili</h2>
-      <Card className="p-5 space-y-4 border-slate-800 bg-slate-900/90">
-        <div className="flex items-center gap-3">
-          <div className="size-12 rounded-2xl bg-orange-500/10 text-orange-400 font-black text-lg border border-orange-500/20 flex items-center justify-center">
+    <div className="space-y-5 animate-in fade-in duration-300">
+      <h2 className="text-base font-black text-slate-900 uppercase tracking-wide">Hesabım</h2>
+      <Card className="p-6">
+        <div className="flex items-center gap-4 mb-6">
+          <div className="size-14 rounded-full bg-slate-100 text-slate-700 font-black text-xl border-2 border-white shadow-sm flex items-center justify-center">
             {(user.email?.[0] ?? '?').toUpperCase()}
           </div>
           <div>
-            <p className="text-[10px] font-bold text-slate-400 uppercase">Kullanıcı Hesabı</p>
-            <p className="text-xs font-black text-white">{user.email}</p>
+            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Aktif Kullanıcı</p>
+            <p className="text-sm font-black text-slate-900">{user.email}</p>
           </div>
         </div>
 
-        <div className="pt-2 border-t border-slate-800 space-y-2">
-          <Button variant="secondary" className="w-full justify-start" onClick={() => navigateTo('ilanlarim')}>
-            <FileText className="size-4 text-orange-400" />
-            <span>Verdiğim İlanları Yönet</span>
+        <div className="space-y-3">
+          <Button variant="secondary" className="w-full justify-start h-12" onClick={() => navigateTo('ilanlarim')}>
+            <FileText className="size-5 text-orange-500" />
+            <span className="ml-1 text-sm">Verdiğim İlanları Yönet</span>
           </Button>
-          <Button variant="secondary" className="w-full justify-start" onClick={() => navigateTo('notlar')}>
-            <StickyNote className="size-4 text-purple-400" />
-            <span>Sefer Notlarım</span>
+          <Button variant="secondary" className="w-full justify-start h-12" onClick={() => navigateTo('notlar')}>
+            <StickyNote className="size-5 text-purple-500" />
+            <span className="ml-1 text-sm">Sefer Notlarım</span>
           </Button>
-          <Button variant="danger" className="w-full" onClick={() => signOut()}>
-            Oturumu Kapat
-          </Button>
+          <div className="pt-3 mt-3 border-t border-slate-100">
+            <Button variant="danger" className="w-full h-12" onClick={() => signOut()}>
+              Oturumu Kapat
+            </Button>
+          </div>
         </div>
       </Card>
     </div>
