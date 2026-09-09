@@ -3,9 +3,9 @@ import { supabase } from '@/lib/supabase'
 import { timeAgo } from '@/lib/format'
 import { subscribeToPushNotifications } from '@/lib/push-client'
 import { 
-  Search, X, Clock, Heart, Phone, Copy, Check, Loader2, MessageSquare, 
+  Search, X, Clock, Heart, Phone, Copy, Check, MessageSquare, 
   Bell, RefreshCw, FileText, Plus, Trash2, LogIn, Sparkles, ChevronDown,
-  Store, Users, AlertCircle, Truck, MapPin, Filter, LayoutGrid, Table, ChevronUp
+  Store, Users, AlertCircle, Truck, MapPin, Filter, ChevronUp
 } from 'lucide-react'
 
 // Şehir Veri Seti (Autocomplete için)
@@ -216,9 +216,7 @@ const FormattedListingText = React.memo(({ text, query }: { text: string; query:
   const formatted = toTitleCase(text.trim())
   const q = query ? query.trim() : ''
 
-  if (!q) {
-    return <span>{formatted}</span>
-  }
+  if (!q) return <span>{formatted}</span>
 
   const escapedQ = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
   const parts = formatted.split(new RegExp(`(${escapedQ})`, 'gi'))
@@ -236,42 +234,69 @@ const FormattedListingText = React.memo(({ text, query }: { text: string; query:
 })
 FormattedListingText.displayName = 'FormattedListingText'
 
-// Kart Görünümü Bileşeni
+// SKELETON LOADER (İskelet Yükleyici) - Performans algısını artırmak için
+const SkeletonCard = () => (
+  <div className="bg-white border-b border-slate-200 sm:border sm:rounded-2xl p-4 sm:p-5 animate-pulse">
+    <div className="flex items-center justify-between pb-3">
+      <div className="flex items-center gap-3 w-1/2">
+        <div className="size-8 rounded-xl bg-slate-100 shrink-0"></div>
+        <div className="h-4 bg-slate-100 rounded-md w-full"></div>
+      </div>
+      <div className="h-4 bg-slate-100 rounded-md w-16"></div>
+    </div>
+    <div className="space-y-2.5 mt-2">
+      <div className="h-3.5 bg-slate-100 rounded-md w-full"></div>
+      <div className="h-3.5 bg-slate-100 rounded-md w-5/6"></div>
+      <div className="h-3.5 bg-slate-100 rounded-md w-4/6"></div>
+    </div>
+    <div className="mt-4 pt-3 flex items-center justify-between border-t border-slate-100">
+      <div className="flex gap-2">
+        <div className="size-9 w-12 bg-slate-100 rounded-xl"></div>
+        <div className="size-9 w-12 bg-slate-100 rounded-xl"></div>
+        <div className="size-9 w-12 bg-slate-100 rounded-xl"></div>
+      </div>
+      <div className="flex gap-2 w-1/2">
+        <div className="h-9 bg-slate-100 rounded-xl flex-1"></div>
+        <div className="h-9 bg-slate-100 rounded-xl flex-1"></div>
+      </div>
+    </div>
+  </div>
+)
+
+// KART GÖRÜNÜMÜ - MODALSIZ, HIZLI VE MOBİL ODAKLI
 const ListingCard = React.memo(({ 
   ilan, isFav, ilanNotes = EMPTY_ARRAY, copiedId, searchQuery, 
-  onToggleFavorite, onOpenNoteModal, onCopyText, onSelectIlan 
+  onToggleFavorite, onOpenNoteModal, onCopyText
 }: { 
   ilan: any, isFav: boolean, ilanNotes?: any[], copiedId: string | null, searchQuery: string,
   onToggleFavorite: (e: React.MouseEvent, key: string) => void, onOpenNoteModal: (ilan: any) => void, 
-  onCopyText: (e: React.MouseEvent, text: string, id: string) => void, onSelectIlan: (ilan: any) => void
+  onCopyText: (e: React.MouseEvent, text: string, id: string) => void
 }) => {
   const [expanded, setExpanded] = useState(false)
   const ilanKey = ilan._stableKey
   const displayContent = ilan._rawText
   const phones = ilan._phones || []
-  const isLongText = displayContent.length > 140
+  const isLongText = displayContent.length > 130
 
   return (
-    <div onClick={() => onSelectIlan(ilan)} className="group relative flex flex-col justify-between rounded-2xl border border-slate-200/80 bg-white p-4 sm:p-5 shadow-xs hover:shadow-md hover:border-blue-300 transition-all duration-200 cursor-pointer">
-      <div className="space-y-3">
-        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-          <div className="flex items-center gap-2 max-w-[60%] truncate">
+    // Mobil: Tam genişlik (Edge-to-Edge) | Masaüstü: Yuvarlak hatlar
+    <div className="group flex flex-col justify-between bg-white border-b border-slate-200 sm:border sm:rounded-2xl p-4 sm:p-5 hover:shadow-md hover:border-blue-300 transition-all duration-150 relative">
+      
+      {/* Tıklanabilir İçerik Alanı (Hızlı Genişletme) */}
+      <div 
+        className="space-y-2.5 cursor-pointer"
+        onClick={() => setExpanded(!expanded)}
+      >
+        <div className="flex items-center justify-between pb-1">
+          <div className="flex items-center gap-2 max-w-[70%] truncate">
             <div className="size-8 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 shrink-0">
               <Truck className="size-4" />
             </div>
-            <span className="font-extrabold text-slate-900 truncate text-xs tracking-wide">{ilan._sender}</span>
+            <span className="font-extrabold text-slate-900 truncate text-[13px] sm:text-sm tracking-wide">{ilan._sender}</span>
           </div>
-          <div className="flex items-center gap-1.5 shrink-0">
-            <span className="flex items-center gap-1 rounded-lg bg-slate-100 px-2 py-1 text-[10px] font-bold text-slate-500">
-              <Clock className="size-3 text-slate-400" /> {ilan.created_at ? timeAgo(ilan.created_at) : 'az önce'}
-            </span>
-            <button onClick={(e) => { e.stopPropagation(); onOpenNoteModal(ilan); }} className={`rounded-lg p-1.5 transition-all cursor-pointer ${ilanNotes.length > 0 ? 'bg-amber-50 text-amber-600' : 'bg-slate-100 text-slate-400 hover:text-amber-500'}`}>
-              <FileText className="size-3.5" />
-            </button>
-            <button onClick={(e) => onToggleFavorite(e, ilanKey)} className={`rounded-lg p-1.5 transition-all cursor-pointer ${isFav ? 'bg-rose-50 text-rose-500' : 'bg-slate-100 text-slate-400 hover:text-rose-500'}`}>
-              <Heart className={`size-3.5 ${isFav ? 'fill-rose-500 text-rose-500' : ''}`} />
-            </button>
-          </div>
+          <span className="flex items-center gap-1 rounded-lg bg-slate-50 px-2 py-1 text-[10px] font-bold text-slate-500 shrink-0">
+            <Clock className="size-3 text-slate-400" /> {ilan.created_at ? timeAgo(ilan.created_at) : 'az önce'}
+          </span>
         </div>
 
         {ilan._badges && ilan._badges.length > 0 && (
@@ -284,32 +309,42 @@ const ListingCard = React.memo(({
           </div>
         )}
 
-        <div>
-          <p className={`text-sm font-semibold text-slate-800 leading-relaxed break-words ${!expanded && isLongText ? 'line-clamp-3' : ''}`}>
+        <div className="relative">
+          {/* Sıkı satır aralığı (leading-snug) ve performanslı animasyon */}
+          <p className={`text-[13px] sm:text-sm font-semibold text-slate-800 leading-snug break-words transition-all duration-150 ${!expanded && isLongText ? 'line-clamp-3' : ''}`}>
             <FormattedListingText text={displayContent} query={searchQuery} />
           </p>
-          {isLongText && (
-            <button onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }} className="mt-2 text-xs font-bold text-blue-600 inline-flex items-center gap-1 hover:underline cursor-pointer">
-              <span>{expanded ? 'Daha Az Göster' : 'Tümünü Gör'}</span>
-              <ChevronDown className={`size-3.5 transition-transform ${expanded ? 'rotate-180' : ''}`} />
-            </button>
+          {!expanded && isLongText && (
+            <span className="text-[11px] font-extrabold text-blue-600 mt-1 inline-block hover:underline">Devamını Oku...</span>
           )}
         </div>
       </div>
 
-      <div className="mt-4 border-t border-slate-100 pt-3 flex items-center justify-between gap-2">
-        <button onClick={(e) => onCopyText(e, displayContent, ilanKey)} className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-slate-100 px-3 py-2 text-[11px] font-bold text-slate-700 hover:bg-slate-200 transition-all cursor-pointer">
-          {copiedId === ilanKey ? <Check className="size-3.5 text-emerald-600" /> : <Copy className="size-3.5 text-slate-400" />}
-          <span>{copiedId === ilanKey ? 'KOPYALANDI' : 'KOPYALA'}</span>
-        </button>
+      {/* İletişim Öncelikli Aksiyon Alanı - Başparmak Ergonomisi */}
+      <div className="mt-3.5 pt-3 flex items-center justify-between gap-2 border-t border-slate-100">
+        
+        {/* Kompakt Yardımcı Butonlar Grubu */}
+        <div className="flex items-center gap-1.5 shrink-0">
+          <button onClick={(e) => onCopyText(e, displayContent, ilanKey)} className="p-2 sm:px-3 sm:py-2 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-500 transition-colors flex items-center gap-1.5">
+            {copiedId === ilanKey ? <Check className="size-4 text-emerald-600" /> : <Copy className="size-4" />}
+            <span className="hidden sm:inline text-[11px] font-bold text-slate-600">{copiedId === ilanKey ? 'Kopyalandı' : 'Kopyala'}</span>
+          </button>
+          <button onClick={(e) => { e.stopPropagation(); onOpenNoteModal(ilan); }} className={`p-2 rounded-xl transition-colors ${ilanNotes.length > 0 ? 'bg-amber-50 text-amber-600' : 'bg-slate-50 text-slate-500 hover:text-amber-500 hover:bg-amber-50'}`}>
+            <FileText className="size-4" />
+          </button>
+          <button onClick={(e) => onToggleFavorite(e, ilanKey)} className={`p-2 rounded-xl transition-colors ${isFav ? 'bg-rose-50 text-rose-500' : 'bg-slate-50 text-slate-500 hover:text-rose-500 hover:bg-rose-50'}`}>
+            <Heart className={`size-4 ${isFav ? 'fill-rose-500 text-rose-500' : ''}`} />
+          </button>
+        </div>
 
+        {/* Ana İletişim Butonları (ARA & WP) */}
         {phones.length > 0 ? (
-          <div className="flex items-center gap-1.5">
-            <a href={`https://wa.me/90${phones[0].replace(/^0/, '')}?text=${ilan._waMessage}`} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="flex items-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 text-[11px] font-extrabold transition-all shadow-xs">
-              <MessageSquare className="size-3.5" /> <span>WP</span>
+          <div className="flex items-center gap-2 flex-1 justify-end max-w-[220px]">
+            <a href={`https://wa.me/90${phones[0].replace(/^0/, '')}?text=${ilan._waMessage}`} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white py-2.5 px-2 text-xs font-extrabold transition-all shadow-sm active:scale-95">
+              <MessageSquare className="size-4" /> <span>WP</span>
             </a>
-            <a href={`tel:${phones[0]}`} onClick={(e) => e.stopPropagation()} className="flex items-center gap-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 text-[11px] font-extrabold transition-all shadow-xs">
-              <Phone className="size-3.5" /> <span>ARA</span>
+            <a href={`tel:${phones[0]}`} onClick={(e) => e.stopPropagation()} className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white py-2.5 px-2 text-xs font-extrabold transition-all shadow-sm active:scale-95">
+              <Phone className="size-4" /> <span>ARA</span>
             </a>
           </div>
         ) : (
@@ -320,6 +355,7 @@ const ListingCard = React.memo(({
   )
 })
 ListingCard.displayName = 'ListingCard'
+
 
 export function ListingsView({ listings: propListings }: { listings?: any[] }) {
   const [currentUser, setCurrentUser] = useState<any>(null)
@@ -334,7 +370,6 @@ export function ListingsView({ listings: propListings }: { listings?: any[] }) {
   const [searchQuery, setSearchQuery] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [selectedChip, setSelectedChip] = useState('ALL')
-  const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid') // 'table' is now Modern List
   
   const [showCityDropdown, setShowCityDropdown] = useState(false)
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false)
@@ -346,7 +381,6 @@ export function ListingsView({ listings: propListings }: { listings?: any[] }) {
   const [onlyNotes, setOnlyNotes] = useState(false)
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [newToast, setNewToast] = useState(false)
-  const [selectedIlan, setSelectedIlan] = useState<any | null>(null)
 
   const [userNotes, setUserNotes] = useState<any[]>([])
   const [noteModalIlan, setNoteModalIlan] = useState<any | null>(null)
@@ -553,115 +587,112 @@ export function ListingsView({ listings: propListings }: { listings?: any[] }) {
   }, [])
 
   return (
-    <div className="space-y-4 max-w-7xl mx-auto px-1 sm:px-4 relative font-sans w-full pb-20 md:pb-6">
+    <div className="space-y-4 max-w-7xl mx-auto relative font-sans w-full pb-20 md:pb-6">
       
-      {/* İstatistik Modülleri */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div className="p-4 rounded-2xl border border-slate-200 bg-white shadow-xs flex items-center gap-3">
-          <div className="size-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
-            <Store className="size-5" />
+      {/* Üst Kısım: Sadece Header bileşenleri mobil için padding alır */}
+      <div className="px-2 sm:px-4 space-y-4">
+        {/* İstatistik Modülleri */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="p-4 rounded-2xl border border-slate-200 bg-white shadow-xs flex items-center gap-3">
+            <div className="size-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+              <Store className="size-5" />
+            </div>
+            <div>
+              <h3 className="font-extrabold text-sm text-slate-900">İlan Pazarı</h3>
+              <p className="text-xs text-slate-500 mt-0.5">
+                {loading ? 'Yükleniyor...' : `Şu an yayında ${botCount} aktif yük var`}
+              </p>
+            </div>
           </div>
-          <div>
-            <h3 className="font-extrabold text-sm text-slate-900">İlan Pazarı</h3>
-            <p className="text-xs text-slate-500 mt-0.5">
-              {loading ? 'Yükleniyor...' : `Şu an yayında ${botCount} aktif yük var`}
-            </p>
+
+          <div className="p-4 rounded-2xl border border-slate-200 bg-white shadow-xs flex items-center gap-3">
+            <div className="size-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
+              <Users className="size-5" />
+            </div>
+            <div>
+              <h3 className="font-extrabold text-sm text-slate-900">Sürücü İlanları</h3>
+              <p className="text-xs text-slate-500 mt-0.5">
+                {loading ? 'Yükleniyor...' : userCount > 0 ? `${userCount} güncel sürücü ilanı` : 'Henüz özel ilan yok'}
+              </p>
+            </div>
           </div>
         </div>
 
-        <div className="p-4 rounded-2xl border border-slate-200 bg-white shadow-xs flex items-center gap-3">
-          <div className="size-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
-            <Users className="size-5" />
+        {newToast && (
+          <div className="fixed bottom-20 right-6 z-50 flex items-center gap-2.5 rounded-2xl bg-emerald-600 px-4 py-3 text-white shadow-xl">
+            <Sparkles className="size-4 text-emerald-200 animate-bounce" />
+            <span className="text-xs font-bold">Yeni İlan Düştü!</span>
           </div>
-          <div>
-            <h3 className="font-extrabold text-sm text-slate-900">Sürücü İlanları</h3>
-            <p className="text-xs text-slate-500 mt-0.5">
-              {loading ? 'Yükleniyor...' : userCount > 0 ? `${userCount} güncel sürücü ilanı` : 'Henüz özel ilan yok'}
-            </p>
-          </div>
-        </div>
-      </div>
+        )}
 
-      {newToast && (
-        <div className="fixed bottom-20 right-6 z-50 flex items-center gap-2.5 rounded-2xl bg-emerald-600 px-4 py-3 text-white shadow-xl">
-          <Sparkles className="size-4 text-emerald-200 animate-bounce" />
-          <span className="text-xs font-bold">Yeni İlan Düştü!</span>
-        </div>
-      )}
+        {/* Arama & Filtre Paneli */}
+        <div className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-3.5 sm:p-4 shadow-xs">
+          
+          <div className="relative w-full">
+            <div className="relative">
+              <Search className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                placeholder="İl, ilçe veya yük detayına göre arayın (örn: Konya)..."
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value)
+                  setShowCityDropdown(true)
+                }}
+                onFocus={() => setShowCityDropdown(true)}
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-10 pr-9 text-xs font-semibold text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
+              />
+              {searchQuery && (
+                <button 
+                  onClick={() => { setSearchQuery(''); setShowCityDropdown(false); }} 
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1"
+                >
+                  <X className="size-4" />
+                </button>
+              )}
+            </div>
 
-      {/* Arama & Filtre Paneli */}
-      <div className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-3.5 sm:p-4 shadow-xs">
-        
-        {/* Arama Barı ve Otomatik Şehir Tamamlama */}
-        <div className="relative w-full">
-          <div className="relative">
-            <Search className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
-            <input
-              type="text"
-              placeholder="İl, ilçe veya yük detayına göre arayın (örn: Konya)..."
-              value={searchQuery}
-              onChange={(e) => {
-                setSearchQuery(e.target.value)
-                setShowCityDropdown(true)
-              }}
-              onFocus={() => setShowCityDropdown(true)}
-              className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-10 pr-9 text-xs font-semibold text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
-            />
-            {searchQuery && (
-              <button 
-                onClick={() => { setSearchQuery(''); setShowCityDropdown(false); }} 
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1"
-              >
-                <X className="size-4" />
-              </button>
+            {showCityDropdown && filteredCities.length > 0 && (
+              <div className="absolute z-30 mt-1 w-full rounded-xl border border-slate-200 bg-white shadow-xl overflow-hidden divide-y divide-slate-100">
+                {filteredCities.map((city) => (
+                  <button
+                    key={city}
+                    type="button"
+                    onClick={() => {
+                      setSearchQuery(city)
+                      setShowCityDropdown(false)
+                    }}
+                    className="w-full text-left px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-blue-50 hover:text-blue-600 flex items-center gap-2 transition-colors"
+                  >
+                    <MapPin className="size-3.5 text-blue-500" />
+                    <span>{city}</span>
+                  </button>
+                ))}
+              </div>
             )}
           </div>
 
-          {showCityDropdown && filteredCities.length > 0 && (
-            <div className="absolute z-30 mt-1 w-full rounded-xl border border-slate-200 bg-white shadow-xl overflow-hidden divide-y divide-slate-100">
-              {filteredCities.map((city) => (
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+            {CHIP_FILTERS.map((chip) => {
+              const isActive = selectedChip === chip.id
+              return (
                 <button
-                  key={city}
+                  key={chip.id}
                   type="button"
-                  onClick={() => {
-                    setSearchQuery(city)
-                    setShowCityDropdown(false)
-                  }}
-                  className="w-full text-left px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-blue-50 hover:text-blue-600 flex items-center gap-2 transition-colors"
+                  onClick={() => setSelectedChip(chip.id)}
+                  className={`rounded-xl px-2.5 py-1 sm:px-3 sm:py-1.5 text-[10px] sm:text-[11px] font-extrabold transition-all shrink-0 active:scale-95 cursor-pointer ${
+                    isActive 
+                      ? 'bg-blue-600 text-white shadow-xs' 
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
                 >
-                  <MapPin className="size-3.5 text-blue-500" />
-                  <span>{city}</span>
+                  {chip.label}
                 </button>
-              ))}
-            </div>
-          )}
-        </div>
+              )
+            })}
+          </div>
 
-        {/* Kategori Etiketleri - MOBİL İÇİN KÜÇÜLTÜLDÜ */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
-          {CHIP_FILTERS.map((chip) => {
-            const isActive = selectedChip === chip.id
-            return (
-              <button
-                key={chip.id}
-                type="button"
-                onClick={() => setSelectedChip(chip.id)}
-                className={`rounded-xl px-2.5 py-1 sm:px-3 sm:py-1.5 text-[10px] sm:text-[11px] font-extrabold transition-all shrink-0 active:scale-95 cursor-pointer ${
-                  isActive 
-                    ? 'bg-blue-600 text-white shadow-xs' 
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                }`}
-              >
-                {chip.label}
-              </button>
-            )
-          })}
-        </div>
-
-        {/* Aksiyon Çubuğu (Favoriler, Notlar ve Gelişmiş Filtreler Dışarı Alındı) */}
-        <div className="pt-2 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="pt-2 border-t border-slate-100 flex flex-wrap items-center gap-2">
             <button
               type="button"
               onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
@@ -672,7 +703,6 @@ export function ListingsView({ listings: propListings }: { listings?: any[] }) {
               {showAdvancedFilters ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
             </button>
 
-            {/* Favoriler ve Notlar Artık Dışarıda Ana Ekranda */}
             <button
               type="button"
               onClick={() => { setOnlyNotes(!onlyNotes); if (!onlyNotes) setOnlyFavorites(false); }}
@@ -700,105 +730,77 @@ export function ListingsView({ listings: propListings }: { listings?: any[] }) {
             </button>
           </div>
 
-          {/* Görünüm Seçimi (Kart vs Liste) */}
-          <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl self-start sm:self-auto shrink-0">
-            <button
-              type="button"
-              onClick={() => setViewMode('grid')}
-              className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all ${
-                viewMode === 'grid' ? 'bg-white text-blue-600 shadow-xs' : 'text-slate-500 hover:text-slate-800'
-              }`}
-            >
-              <LayoutGrid className="size-3.5" />
-              <span className="hidden sm:inline">Kart</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode('table')}
-              className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all ${
-                viewMode === 'table' ? 'bg-white text-blue-600 shadow-xs' : 'text-slate-500 hover:text-slate-800'
-              }`}
-            >
-              <Table className="size-3.5" />
-              <span className="hidden sm:inline">Liste</span>
-            </button>
-          </div>
-
+          {showAdvancedFilters && (
+            <div className="pt-2 mt-2 border-t border-slate-50 grid grid-cols-1 md:grid-cols-12 gap-2">
+              <div className="md:col-span-6 flex items-center bg-slate-100 p-1 rounded-xl">
+                {(['all', '15m', '1h', '5h'] as const).map((t) => {
+                  const active = timeFilter === t
+                  return (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => setTimeFilter(t)}
+                      className={`flex-1 py-1.5 text-[11px] font-extrabold rounded-lg transition-all text-center cursor-pointer active:scale-95 ${
+                        active ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-800'
+                      }`}
+                    >
+                      {t === 'all' && 'Tümü'}
+                      {t === '15m' && '⚡ 15Dk'}
+                      {t === '1h' && '⏰ 1Saat'}
+                      {t === '5h' && '🕒 5Saat'}
+                    </button>
+                  )
+                })}
+              </div>
+              <div className="md:col-span-6 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const cities = searchQuery.trim() ? [searchQuery.trim()] : []
+                    subscribeToPushNotifications(cities, currentUser?.id)
+                  }}
+                  className="flex items-center justify-center gap-1.5 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-700 py-1.5 px-3 text-[11px] font-bold transition-all"
+                >
+                  <Bell className="size-3.5" /> <span>Bildirim Kur</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => fetchListings(false)}
+                  disabled={refreshing}
+                  className="flex items-center justify-center gap-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 text-[11px] font-bold transition-all"
+                >
+                  <RefreshCw className={`size-3.5 ${refreshing ? 'animate-spin text-blue-600' : ''}`} />
+                  <span>Yenile</span>
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* Gelişmiş Filtreler İçeriği */}
-        {showAdvancedFilters && (
-          <div className="pt-2 mt-2 border-t border-slate-50 grid grid-cols-1 md:grid-cols-12 gap-2">
-            <div className="md:col-span-6 flex items-center bg-slate-100 p-1 rounded-xl">
-              {(['all', '15m', '1h', '5h'] as const).map((t) => {
-                const active = timeFilter === t
-                return (
-                  <button
-                    key={t}
-                    type="button"
-                    onClick={() => setTimeFilter(t)}
-                    className={`flex-1 py-1.5 text-[11px] font-extrabold rounded-lg transition-all text-center cursor-pointer active:scale-95 ${
-                      active ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-800'
-                    }`}
-                  >
-                    {t === 'all' && 'Tümü'}
-                    {t === '15m' && '⚡ 15Dk'}
-                    {t === '1h' && '⏰ 1Saat'}
-                    {t === '5h' && '🕒 5Saat'}
-                  </button>
-                )
-              })}
-            </div>
-            <div className="md:col-span-6 flex items-center justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  const cities = searchQuery.trim() ? [searchQuery.trim()] : []
-                  subscribeToPushNotifications(cities, currentUser?.id)
-                }}
-                className="flex items-center justify-center gap-1.5 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-700 py-1.5 px-3 text-[11px] font-bold transition-all"
-              >
-                <Bell className="size-3.5" /> <span>Bu Aramaya Bildirim Kur</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => fetchListings(false)}
-                disabled={refreshing}
-                className="flex items-center justify-center gap-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 text-[11px] font-bold transition-all"
-              >
-                <RefreshCw className={`size-3.5 ${refreshing ? 'animate-spin text-blue-600' : ''}`} />
-                <span>Yenile</span>
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Akış Durumu Bilgisi */}
-      <div className="flex items-center justify-between text-xs font-bold text-slate-500 px-1">
-        <span>Görüntülenen İlan: <strong className="text-slate-900">{listings.length}</strong></span>
-        <span className="flex items-center gap-1.5 text-emerald-700 font-bold text-[11px] bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
-          <span className="relative flex size-2">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
-            <span className="relative inline-flex size-2 rounded-full bg-emerald-500"></span>
+        <div className="flex items-center justify-between text-xs font-bold text-slate-500 px-1">
+          <span>Görüntülenen İlan: <strong className="text-slate-900">{loading ? '...' : listings.length}</strong></span>
+          <span className="flex items-center gap-1.5 text-emerald-700 font-bold text-[11px] bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+            <span className="relative flex size-2">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex size-2 rounded-full bg-emerald-500"></span>
+            </span>
+            Canlı Akış
           </span>
-          Canlı Akış
-        </span>
+        </div>
       </div>
 
-      {/* Ana Liste Alanı */}
+      {/* Ana Liste Alanı: Mobil Edge-to-Edge tasarımı burada başlıyor (-mx ile sınırları kaldırır) */}
       {loading ? (
-        <div className="flex flex-col items-center justify-center py-16 space-y-3">
-          <Loader2 className="size-8 animate-spin text-blue-600" />
-          <p className="text-xs font-semibold text-slate-400">Veriler yükleniyor...</p>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-0 sm:gap-4 sm:px-4">
+          {[...Array(6)].map((_, i) => <SkeletonCard key={i} />)}
         </div>
       ) : errorMsg ? (
-        <div className="flex flex-col items-center justify-center p-8 text-center rounded-2xl border border-rose-200 bg-rose-50">
+        <div className="mx-2 sm:mx-4 flex flex-col items-center justify-center p-8 text-center rounded-2xl border border-rose-200 bg-rose-50">
           <AlertCircle className="size-10 text-rose-500 mb-2" />
           <p className="text-sm font-bold text-rose-700">{errorMsg}</p>
         </div>
       ) : listings.length === 0 ? (
-        <div className="flex flex-col items-center justify-center p-12 text-center rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50">
+        <div className="mx-2 sm:mx-4 flex flex-col items-center justify-center p-12 text-center rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50">
           <Search className="size-10 text-slate-300 mb-3" />
           <p className="text-sm font-bold text-slate-600 mb-1">
             {onlyFavorites ? 'Favori ilanınız bulunmuyor.' :
@@ -807,74 +809,8 @@ export function ListingsView({ listings: propListings }: { listings?: any[] }) {
           </p>
           <p className="text-xs text-slate-400">Filtreleri veya arama kelimesini değiştirerek tekrar deneyin.</p>
         </div>
-      ) : viewMode === 'table' ? (
-        
-        // MODERN LİSTE (AKIS) GÖRÜNÜMÜ - TABLO YERİNE
-        <div className="flex flex-col gap-2">
-          {listings.map((ilan) => {
-            const isFav = favoritesSet.has(ilan._stableKey)
-            const ilanNotes = userNotesMap.get(ilan._stableKey) || []
-            const phones = ilan._phones || []
-
-            return (
-              <div 
-                key={ilan._stableKey} 
-                onClick={() => setSelectedIlan(ilan)}
-                className="group flex flex-col sm:flex-row sm:items-center justify-between bg-white border border-slate-200 rounded-xl p-3 sm:px-4 hover:border-blue-300 hover:shadow-sm cursor-pointer transition-all gap-3"
-              >
-                
-                {/* Meta Bilgileri (Gönderen ve Zaman) */}
-                <div className="flex items-center sm:w-1/4 min-w-[180px] gap-2.5">
-                  <div className="size-8 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
-                    <Truck className="size-4 text-blue-600" />
-                  </div>
-                  <div className="flex flex-col truncate">
-                    <span className="text-[11px] font-extrabold text-slate-900 truncate">{ilan._sender}</span>
-                    <span className="text-[10px] font-bold text-slate-400">
-                      {ilan.created_at ? timeAgo(ilan.created_at) : 'az önce'}
-                    </span>
-                  </div>
-                </div>
-
-                {/* İçerik */}
-                <div className="flex-1 w-full text-xs sm:text-sm font-semibold text-slate-800 line-clamp-2 sm:line-clamp-1">
-                  <FormattedListingText text={ilan._rawText} query={searchQuery} />
-                </div>
-
-                {/* Sağ Taraf - Aksiyonlar ve İletişim */}
-                <div className="flex items-center justify-between sm:justify-end sm:w-auto w-full border-t border-slate-100 sm:border-none pt-2 sm:pt-0 shrink-0 gap-2">
-                  <div className="flex items-center gap-1">
-                    <button onClick={(e) => { e.stopPropagation(); setNoteModalIlan(ilan); }} className={`p-1.5 rounded-lg transition-colors ${ilanNotes.length > 0 ? 'bg-amber-50 text-amber-600' : 'bg-slate-50 text-slate-400 hover:text-amber-500 hover:bg-amber-50'}`}>
-                      <FileText className="size-3.5" />
-                    </button>
-                    <button onClick={(e) => handleToggleFavorite(e, ilan._stableKey)} className={`p-1.5 rounded-lg transition-colors ${isFav ? 'bg-rose-50 text-rose-500' : 'bg-slate-50 text-slate-400 hover:text-rose-500 hover:bg-rose-50'}`}>
-                      <Heart className={`size-3.5 ${isFav ? 'fill-rose-500' : ''}`} />
-                    </button>
-                    <button onClick={(e) => handleCopyText(e, ilan._rawText, ilan._stableKey)} className="p-1.5 rounded-lg bg-slate-50 hover:bg-blue-50 text-slate-400 hover:text-blue-500 transition-colors">
-                      {copiedId === ilan._stableKey ? <Check className="size-3.5 text-emerald-600" /> : <Copy className="size-3.5" />}
-                    </button>
-                  </div>
-                  
-                  {phones.length > 0 ? (
-                    <a 
-                      href={`tel:${phones[0]}`} 
-                      onClick={(e) => e.stopPropagation()} 
-                      className="flex items-center gap-1.5 bg-blue-50 hover:bg-blue-100 text-blue-600 px-3 py-1.5 rounded-lg text-[11px] font-extrabold transition-colors shadow-xs"
-                    >
-                      <Phone className="size-3.5" />
-                      <span>{phones[0]}</span>
-                    </a>
-                  ) : (
-                    <span className="text-[10px] text-slate-400 italic px-2">Numara Yok</span>
-                  )}
-                </div>
-
-              </div>
-            )
-          })}
-        </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-0 sm:gap-4 sm:px-4 bg-slate-50 sm:bg-transparent">
           {listings.map((ilan) => (
             <ListingCard
               key={ilan._stableKey}
@@ -886,62 +822,8 @@ export function ListingsView({ listings: propListings }: { listings?: any[] }) {
               onToggleFavorite={handleToggleFavorite}
               onOpenNoteModal={setNoteModalIlan}
               onCopyText={handleCopyText}
-              onSelectIlan={setSelectedIlan}
             />
           ))}
-        </div>
-      )}
-
-      {/* İlan Detay Modalı */}
-      {selectedIlan && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className="w-full max-w-lg bg-white rounded-3xl shadow-2xl flex flex-col overflow-hidden max-h-[90vh]">
-            <div className="flex items-center justify-between p-4 border-b border-slate-100">
-              <h2 className="text-sm font-extrabold text-slate-800">İlan Detayı</h2>
-              <button onClick={() => setSelectedIlan(null)} className="p-2 rounded-xl hover:bg-slate-100 text-slate-400 transition-colors">
-                <X className="size-5" />
-              </button>
-            </div>
-            <div className="p-5 overflow-y-auto space-y-5">
-              <div className="flex items-center gap-3">
-                <div className="size-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
-                  <Truck className="size-5" />
-                </div>
-                <div>
-                  <div className="text-sm font-extrabold text-slate-900">{selectedIlan._sender}</div>
-                  <div className="text-[11px] font-bold text-slate-400">
-                    {selectedIlan.created_at ? new Date(selectedIlan.created_at).toLocaleString('tr-TR') : 'Bilinmeyen Tarih'}
-                  </div>
-                </div>
-              </div>
-
-              {selectedIlan._badges && selectedIlan._badges.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  {selectedIlan._badges.map((b: any, i: number) => (
-                    <span key={i} className={`inline-flex items-center rounded-lg border px-2 py-1 text-[10px] font-extrabold tracking-wider uppercase ${b.color}`}>
-                      {b.label}
-                    </span>
-                  ))}
-                </div>
-              )}
-
-              <div className="p-4 rounded-xl bg-slate-50 border border-slate-100">
-                <p className="text-sm font-semibold text-slate-800 leading-relaxed whitespace-pre-wrap break-words">
-                  {selectedIlan._originalRawText || selectedIlan._rawText}
-                </p>
-              </div>
-            </div>
-            <div className="p-4 border-t border-slate-100 bg-slate-50 flex gap-2">
-              <button onClick={(e) => handleCopyText(e, selectedIlan._originalRawText || selectedIlan._rawText, selectedIlan._stableKey)} className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-white border border-slate-200 px-4 py-3 text-xs font-extrabold text-slate-700 hover:bg-slate-50 transition-all shadow-xs">
-                {copiedId === selectedIlan._stableKey ? <Check className="size-4 text-emerald-600" /> : <Copy className="size-4" />} Kopyala
-              </button>
-              {(selectedIlan._phones || []).length > 0 && (
-                <a href={`tel:${selectedIlan._phones[0]}`} className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-blue-600 hover:bg-blue-700 px-4 py-3 text-xs font-extrabold text-white transition-all shadow-xs">
-                  <Phone className="size-4" /> Ara
-                </a>
-              )}
-            </div>
-          </div>
         </div>
       )}
 
@@ -958,7 +840,7 @@ export function ListingsView({ listings: propListings }: { listings?: any[] }) {
               </button>
             </div>
             <div className="p-5 flex flex-col gap-4">
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 max-h-24 overflow-y-auto text-xs font-semibold text-slate-600">
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 max-h-24 overflow-y-auto text-xs font-semibold text-slate-600 leading-snug">
                 {noteModalIlan._rawText}
               </div>
               
