@@ -21,14 +21,14 @@ const CHIP_FILTERS = [
 ]
 
 const DETECTABLE_BADGES = [
-  { keys: ['acil'], label: '⚡ ACİL YÜK', color: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20' },
-  { keys: ['frigo', 'soguk', 'soğuk'], label: '❄️ FRİGO', color: 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/20' },
-  { keys: ['damper'], label: 'DAMPER', color: 'bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20' },
-  { keys: ['tenteli', 'tente'], label: '📦 TENTELİ', color: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20' },
-  { keys: ['13.60', '1360', '13/60'], label: '🚛 13.60', color: 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20' },
-  { keys: ['kirkayak'], label: '🚚 KIRKAYAK', color: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' },
-  { keys: ['10 teker', '10teker', 'onteker'], label: '🚚 10 TEKER', color: 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20' },
-  { keys: ['tir'], label: '🚛 TIR', color: 'bg-slate-500/10 text-slate-700 dark:text-slate-300 border-slate-500/20' }
+  { keys: ['acil'], label: '⚡ ACİL YÜK', color: 'bg-rose-50 text-rose-600 border-rose-200' },
+  { keys: ['frigo', 'soguk', 'soğuk'], label: '❄️ FRİGO', color: 'bg-cyan-50 text-cyan-700 border-cyan-200' },
+  { keys: ['damper'], label: 'DAMPER', color: 'bg-slate-100 text-slate-700 border-slate-200' },
+  { keys: ['tenteli', 'tente'], label: '📦 TENTELİ', color: 'bg-blue-50 text-blue-700 border-blue-200' },
+  { keys: ['13.60', '1360', '13/60'], label: '🚛 13.60', color: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
+  { keys: ['kirkayak'], label: '🚚 KIRKAYAK', color: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+  { keys: ['10 teker', '10teker', 'onteker'], label: '🚚 10 TEKER', color: 'bg-purple-50 text-purple-700 border-purple-200' },
+  { keys: ['tir'], label: '🚛 TIR', color: 'bg-slate-100 text-slate-700 border-slate-200' }
 ]
 
 const DEFAULT_BLOCKED_SENDERS = ['ROJHAT BAYIK', 'ROJHAT BAYİK']
@@ -201,16 +201,16 @@ const FormattedListingText = React.memo(({ text, query }: { text: string; query:
   const q = query ? query.trim() : ''
 
   if (!q) {
-    return <p className="text-sm font-semibold text-zinc-800 dark:text-zinc-100 leading-relaxed break-words">{formatted}</p>
+    return <p className="text-sm font-semibold text-slate-800 leading-relaxed break-words">{formatted}</p>
   }
 
   const escapedQ = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
   const parts = formatted.split(new RegExp(`(${escapedQ})`, 'gi'))
   return (
-    <p className="text-sm font-semibold text-zinc-800 dark:text-zinc-100 leading-relaxed break-words">
+    <p className="text-sm font-semibold text-slate-800 leading-relaxed break-words">
       {parts.map((part, pIdx) => 
         normalizeTR(part) === normalizeTR(q) ? (
-          <mark key={pIdx} className="bg-amber-500/20 text-amber-900 dark:text-amber-300 px-1 py-0.5 rounded font-bold">
+          <mark key={pIdx} className="bg-blue-100 text-blue-900 px-1 py-0.5 rounded font-bold">
             {part}
           </mark>
         ) : part
@@ -252,47 +252,42 @@ const ListingCard = React.memo(({
   return (
     <div 
       onClick={() => onSelectIlan(ilan)}
-      className="group relative flex flex-col justify-between rounded-3xl border border-zinc-200/80 dark:border-zinc-800/80 bg-white dark:bg-zinc-900/90 p-4 sm:p-5 shadow-xs hover:shadow-xl hover:-translate-y-0.5 hover:border-blue-500/50 transition-all duration-300 cursor-pointer overflow-hidden backdrop-blur-xl"
+      className="group relative flex flex-col justify-between rounded-2xl border border-slate-200/80 bg-white p-4 sm:p-5 shadow-xs hover:shadow-md hover:border-blue-300 transition-all duration-200 transform-gpu cursor-pointer"
     >
-      <div className="space-y-3.5">
-        <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800/80 pb-3">
+      <div className="space-y-3">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
           <div className="flex items-center gap-2 max-w-[60%] truncate">
-            <div className="size-8 rounded-2xl bg-blue-500/10 flex items-center justify-center text-blue-600 shrink-0 shadow-xs">
+            <div className="size-8 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 shrink-0">
               <Truck className="size-4" />
             </div>
-            <span className="font-extrabold text-zinc-900 dark:text-zinc-100 truncate text-xs tracking-wide">
+            <span className="font-extrabold text-slate-900 truncate text-xs tracking-wide">
               {ilan._sender}
             </span>
           </div>
 
           <div className="flex items-center gap-1.5 shrink-0">
-            <span className="flex items-center gap-1 rounded-xl bg-zinc-100 dark:bg-zinc-800/80 px-2.5 py-1 text-[10px] font-bold text-zinc-500 dark:text-zinc-400">
-              <Clock className="size-3 text-zinc-400" />
+            <span className="flex items-center gap-1 rounded-lg bg-slate-100 px-2 py-1 text-[10px] font-bold text-slate-500">
+              <Clock className="size-3 text-slate-400" />
               {dateVal ? timeAgo(dateVal) : 'az önce'}
             </span>
 
             <button
               type="button"
               onClick={(e) => { e.stopPropagation(); onOpenNoteModal(ilan); }}
-              className={`rounded-xl p-2 transition-all relative cursor-pointer active:scale-90 ${
+              className={`rounded-lg p-1.5 transition-all cursor-pointer active:scale-95 ${
                 ilanNotes.length > 0 
-                  ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20' 
-                  : 'bg-zinc-100 dark:bg-zinc-800/80 text-zinc-500 hover:text-amber-500'
+                  ? 'bg-amber-50 text-amber-600' 
+                  : 'bg-slate-100 text-slate-400 hover:text-amber-500'
               }`}
             >
               <FileText className="size-3.5" />
-              {ilanNotes.length > 0 && (
-                <span className="absolute -top-1 -right-1 flex size-4 items-center justify-center rounded-full bg-amber-500 text-[9px] font-black text-white shadow-md">
-                  {ilanNotes.length}
-                </span>
-              )}
             </button>
 
             <button
               type="button"
               onClick={(e) => onToggleFavorite(e, ilanKey)}
-              className={`rounded-xl p-2 transition-all cursor-pointer active:scale-90 ${
-                isFav ? 'bg-rose-500/10 text-rose-500' : 'bg-zinc-100 dark:bg-zinc-800/80 text-zinc-500 hover:text-rose-500'
+              className={`rounded-lg p-1.5 transition-all cursor-pointer active:scale-95 ${
+                isFav ? 'bg-rose-50 text-rose-500' : 'bg-slate-100 text-slate-400 hover:text-rose-500'
               }`}
             >
               <Heart className={`size-3.5 ${isFav ? 'fill-rose-500 text-rose-500' : ''}`} />
@@ -303,7 +298,7 @@ const ListingCard = React.memo(({
         {ilan._badges && ilan._badges.length > 0 && (
           <div className="flex flex-wrap gap-1.5">
             {ilan._badges.map((badge: any, idx: number) => (
-              <span key={idx} className={`inline-flex items-center rounded-xl border px-2.5 py-0.5 text-[10px] font-extrabold tracking-wider uppercase ${badge.color}`}>
+              <span key={idx} className={`inline-flex items-center rounded-lg border px-2 py-0.5 text-[10px] font-extrabold tracking-wider uppercase ${badge.color}`}>
                 {badge.label}
               </span>
             ))}
@@ -311,7 +306,7 @@ const ListingCard = React.memo(({
         )}
 
         <div>
-          <div className={`transition-all duration-300 overflow-hidden ${!expanded && isLongText ? 'line-clamp-3' : ''}`}>
+          <div className={`transition-all duration-200 overflow-hidden ${!expanded && isLongText ? 'line-clamp-3' : ''}`}>
             <FormattedListingText text={displayContent} query={searchQuery} />
           </div>
 
@@ -322,26 +317,26 @@ const ListingCard = React.memo(({
               className="mt-2 text-xs font-bold text-blue-600 inline-flex items-center gap-1 hover:underline cursor-pointer"
             >
               <span>{expanded ? 'Daha Az Göster' : 'Tümünü Gör'}</span>
-              <ChevronDown className={`size-3.5 transition-transform duration-300 ${expanded ? 'rotate-180' : ''}`} />
+              <ChevronDown className={`size-3.5 transition-transform ${expanded ? 'rotate-180' : ''}`} />
             </button>
           )}
         </div>
 
         {ilanNotes.length > 0 && (
-          <div className="rounded-2xl bg-amber-500/10 dark:bg-amber-500/15 border border-amber-500/20 p-2.5 text-[11px] text-amber-900 dark:text-amber-200">
-            <span className="font-extrabold block text-[9px] uppercase text-amber-700 dark:text-amber-400">Notunuz:</span>
+          <div className="rounded-xl bg-amber-50 border border-amber-200 p-2.5 text-[11px] text-amber-900">
+            <span className="font-extrabold block text-[9px] uppercase text-amber-700">Notunuz:</span>
             <p className="line-clamp-2 italic font-medium">{ilanNotes[0].not_metni}</p>
           </div>
         )}
       </div>
 
-      <div className="mt-4 border-t border-zinc-100 dark:border-zinc-800/80 pt-3 flex items-center justify-between gap-2">
+      <div className="mt-4 border-t border-slate-100 pt-3 flex items-center justify-between gap-2">
         <button
           type="button"
           onClick={(e) => onCopyText(e, displayContent, ilanKey)}
-          className="flex flex-1 items-center justify-center gap-1.5 rounded-2xl bg-zinc-100 dark:bg-zinc-800 px-3 py-2.5 text-[11px] font-bold text-zinc-700 dark:text-zinc-200 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-all cursor-pointer active:scale-95"
+          className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-slate-100 px-3 py-2 text-[11px] font-bold text-slate-700 hover:bg-slate-200 transition-all cursor-pointer active:scale-95"
         >
-          {copiedId === ilanKey ? <Check className="size-3.5 text-emerald-500" /> : <Copy className="size-3.5 text-zinc-400" />}
+          {copiedId === ilanKey ? <Check className="size-3.5 text-emerald-600" /> : <Copy className="size-3.5 text-slate-400" />}
           <span>{copiedId === ilanKey ? 'KOPYALANDI' : 'KOPYALA'}</span>
         </button>
 
@@ -352,7 +347,7 @@ const ListingCard = React.memo(({
               target="_blank"
               rel="noopener noreferrer"
               onClick={(e) => e.stopPropagation()}
-              className="flex items-center gap-1.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2.5 text-[11px] font-extrabold transition-all shadow-md shadow-emerald-600/20 active:scale-95"
+              className="flex items-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 text-[11px] font-extrabold transition-all shadow-xs active:scale-95"
             >
               <MessageSquare className="size-3.5" />
               <span>WP</span>
@@ -361,14 +356,14 @@ const ListingCard = React.memo(({
             <a
               href={`tel:${phones[0]}`}
               onClick={(e) => e.stopPropagation()}
-              className="flex items-center gap-1.5 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white px-3.5 py-2.5 text-[11px] font-extrabold transition-all shadow-md shadow-blue-600/20 active:scale-95"
+              className="flex items-center gap-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 text-[11px] font-extrabold transition-all shadow-xs active:scale-95"
             >
               <Phone className="size-3.5" />
               <span>ARA</span>
             </a>
           </div>
         ) : (
-          <span className="text-[10px] text-zinc-400 italic px-2">Numara Yok</span>
+          <span className="text-[10px] text-slate-400 italic px-2">Numara Yok</span>
         )}
       </div>
     </div>
@@ -422,7 +417,6 @@ export function ListingsView({ listings: propListings }: { listings?: any[] }) {
     return map
   }, [userNotes])
 
-  // Arama girdisini debounce et
   useEffect(() => {
     const handler = setTimeout(() => setDebouncedSearch(searchQuery), 250)
     return () => clearTimeout(handler)
@@ -466,7 +460,6 @@ export function ListingsView({ listings: propListings }: { listings?: any[] }) {
     }
   }, [])
 
-  // SUPABASE DİNAMİK ARAMA VE SÜZME
   const fetchListings = useCallback(async (isSilent = false) => {
     try {
       if (!isSilent) setLoading(true)
@@ -476,9 +469,8 @@ export function ListingsView({ listings: propListings }: { listings?: any[] }) {
         .from('ilanlar')
         .select('id, created_at, title, content, phone')
         .order('created_at', { ascending: false })
-        .limit(500)
+        .limit(200)
 
-      // Zaman Filtresi (15m, 1h ve 5h Seçenekleri)
       if (timeFilter === '15m') {
         const fifteenMinsAgo = new Date(Date.now() - 15 * 60 * 1000).toISOString()
         query = query.gte('created_at', fifteenMinsAgo)
@@ -490,13 +482,11 @@ export function ListingsView({ listings: propListings }: { listings?: any[] }) {
         query = query.gte('created_at', fiveHoursAgo)
       }
 
-      // Arama Sorgusu
       const cleanSearch = debouncedSearch.trim().replace(/[%_]/g, '')
       if (cleanSearch) {
         query = query.or(`content.ilike.%${cleanSearch}%,title.ilike.%${cleanSearch}%`)
       }
 
-      // Kategori / Chip Filtresi
       if (selectedChip !== 'ALL') {
         const chipObj = CHIP_FILTERS.find(c => c.id === selectedChip)
         if (chipObj?.keywords && chipObj.keywords.length > 0) {
@@ -505,7 +495,6 @@ export function ListingsView({ listings: propListings }: { listings?: any[] }) {
         }
       }
 
-      // Sadece Favoriler Seçildiyse
       if (onlyFavorites) {
         if (favorites.length === 0) {
           setListings([])
@@ -544,7 +533,6 @@ export function ListingsView({ listings: propListings }: { listings?: any[] }) {
     fetchListings()
   }, [fetchListings])
 
-  // Realtime canlı akış
   useEffect(() => {
     let channel: any
     try {
@@ -613,59 +601,55 @@ export function ListingsView({ listings: propListings }: { listings?: any[] }) {
   }, [])
 
   return (
-    <div className="space-y-5 max-w-7xl mx-auto px-2.5 sm:px-6 relative pb-16 font-sans w-full overflow-x-hidden">
+    <div className="space-y-4 max-w-7xl mx-auto px-1 sm:px-4 relative font-sans w-full">
       
-      {/* MODÜLLER PANELİ */}
+      {/* İstatistik Modülleri */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div className="relative flex flex-col justify-between p-4 rounded-2xl border border-blue-500/30 bg-blue-500/5 shadow-xs">
-          <div className="space-y-3">
-            <div className="size-10 rounded-xl bg-blue-500/10 text-blue-600 flex items-center justify-center">
-              <Store className="size-5" />
-            </div>
-            <div>
-              <h3 className="font-extrabold text-sm text-zinc-900 dark:text-zinc-100">İlan Pazarı</h3>
-              <p className="text-xs text-zinc-500 mt-0.5">
-                {loading ? 'Sayılar yükleniyor...' : `Şu an yayında ${botCount} aktif yük var`}
-              </p>
-            </div>
+        <div className="p-4 rounded-2xl border border-slate-200 bg-white shadow-xs flex items-center gap-3">
+          <div className="size-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+            <Store className="size-5" />
+          </div>
+          <div>
+            <h3 className="font-extrabold text-sm text-slate-900">İlan Pazarı</h3>
+            <p className="text-xs text-slate-500 mt-0.5">
+              {loading ? 'Yükleniyor...' : `Şu an yayında ${botCount} aktif yük var`}
+            </p>
           </div>
         </div>
 
-        <div className="relative flex flex-col justify-between p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
-          <div className="space-y-3">
-            <div className="size-10 rounded-xl bg-purple-500/10 text-purple-600 flex items-center justify-center">
-              <Users className="size-5" />
-            </div>
-            <div>
-              <h3 className="font-extrabold text-sm text-zinc-900 dark:text-zinc-100">Sizden Gelen İlanlar</h3>
-              <p className="text-xs text-zinc-500 mt-0.5">
-                {loading ? 'Sayılar yükleniyor...' : userCount > 0 ? `Kullanıcıların eklediği ${userCount} güncel ilan` : 'Henüz kullanıcı ilanı yok'}
-              </p>
-            </div>
+        <div className="p-4 rounded-2xl border border-slate-200 bg-white shadow-xs flex items-center gap-3">
+          <div className="size-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
+            <Users className="size-5" />
+          </div>
+          <div>
+            <h3 className="font-extrabold text-sm text-slate-900">Sürücü İlanları</h3>
+            <p className="text-xs text-slate-500 mt-0.5">
+              {loading ? 'Yükleniyor...' : userCount > 0 ? `${userCount} güncel sürücü ilanı` : 'Henüz özel ilan yok'}
+            </p>
           </div>
         </div>
       </div>
 
       {newToast && (
-        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2.5 rounded-2xl bg-emerald-600 px-4 py-3 text-white shadow-2xl border border-emerald-500/40">
+        <div className="fixed bottom-20 right-6 z-50 flex items-center gap-2.5 rounded-2xl bg-emerald-600 px-4 py-3 text-white shadow-xl">
           <Sparkles className="size-4 text-emerald-200 animate-bounce" />
           <span className="text-xs font-bold">Yeni İlan Düştü!</span>
         </div>
       )}
 
       {showAuthWarning && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-md">
-          <div className="relative w-full max-w-sm rounded-3xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-6 shadow-2xl text-center space-y-4">
-            <div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-blue-500/10 text-blue-600">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
+          <div className="relative w-full max-w-sm rounded-3xl bg-white border border-slate-200 p-6 shadow-2xl text-center space-y-4">
+            <div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
               <LogIn className="size-6" />
             </div>
             <div className="space-y-1">
-              <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">Giriş Yapmalısınız</h3>
-              <p className="text-xs text-zinc-500 leading-relaxed">Favori ve Not özelliklerini kullanabilmek için hesabınıza giriş yapın.</p>
+              <h3 className="text-sm font-bold text-slate-900">Giriş Yapmalısınız</h3>
+              <p className="text-xs text-slate-500 leading-relaxed">Favori ve Not özelliklerini kullanabilmek için hesabınıza giriş yapın.</p>
             </div>
             <button
               onClick={() => setShowAuthWarning(false)}
-              className="w-full rounded-2xl bg-blue-600 py-3 text-xs font-bold text-white shadow-md active:scale-95"
+              className="w-full rounded-xl bg-blue-600 py-3 text-xs font-bold text-white shadow-sm active:scale-95"
             >
               Tamam
             </button>
@@ -673,25 +657,25 @@ export function ListingsView({ listings: propListings }: { listings?: any[] }) {
         </div>
       )}
 
-      {/* FİLTRELEME VE ARAMA PANELİ */}
-      <div className="flex flex-col gap-3.5 rounded-[26px] border border-zinc-200/90 dark:border-zinc-800/90 bg-white/95 dark:bg-zinc-900/95 p-3.5 sm:p-5 shadow-sm backdrop-blur-xl">
+      {/* Arama & Filtre Paneli */}
+      <div className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-3.5 sm:p-4 shadow-xs">
         <div className="relative w-full">
-          <Search className="absolute left-4 top-1/2 size-4 -translate-y-1/2 text-zinc-400" />
+          <Search className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
-            placeholder="İl, ilçe veya yük detayına göre veritabanında arayın..."
+            placeholder="İl, ilçe veya yük detayına göre arayın..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full rounded-2xl border border-zinc-200/80 dark:border-zinc-800 bg-zinc-50/70 dark:bg-zinc-950/70 py-3 pl-11 pr-9 text-xs font-semibold text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 focus:border-blue-600 focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-600/10 transition-all"
+            className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-10 pr-9 text-xs font-semibold text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
           />
           {searchQuery && (
-            <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 p-1">
+            <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1">
               <X className="size-4" />
             </button>
           )}
         </div>
 
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar -mx-1 px-1">
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
           {CHIP_FILTERS.map((chip) => {
             const isActive = selectedChip === chip.id
             return (
@@ -699,10 +683,10 @@ export function ListingsView({ listings: propListings }: { listings?: any[] }) {
                 key={chip.id}
                 type="button"
                 onClick={() => setSelectedChip(chip.id)}
-                className={`rounded-2xl px-3.5 py-2 text-[11px] font-extrabold transition-all shrink-0 active:scale-95 ${
+                className={`rounded-xl px-3 py-1.5 text-[11px] font-extrabold transition-all shrink-0 active:scale-95 cursor-pointer ${
                   isActive 
-                    ? 'bg-blue-600 text-white shadow-md shadow-blue-600/25' 
-                    : 'bg-zinc-100 dark:bg-zinc-800/80 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200'
+                    ? 'bg-blue-600 text-white shadow-xs' 
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                 }`}
               >
                 {chip.label}
@@ -711,8 +695,8 @@ export function ListingsView({ listings: propListings }: { listings?: any[] }) {
           })}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-2.5 pt-1 border-t border-zinc-100 dark:border-zinc-800/70">
-          <div className="md:col-span-5 flex items-center bg-zinc-100/90 dark:bg-zinc-800/70 p-1 rounded-2xl border border-zinc-200/50 dark:border-zinc-800/50">
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-2 pt-2 border-t border-slate-100">
+          <div className="md:col-span-5 flex items-center bg-slate-100 p-1 rounded-xl">
             {(['all', '15m', '1h', '5h'] as const).map((t) => {
               const active = timeFilter === t
               return (
@@ -720,16 +704,16 @@ export function ListingsView({ listings: propListings }: { listings?: any[] }) {
                   key={t}
                   type="button"
                   onClick={() => setTimeFilter(t)}
-                  className={`flex-1 py-1.5 text-[11px] font-extrabold rounded-xl transition-all text-center cursor-pointer active:scale-95 ${
+                  className={`flex-1 py-1.5 text-[11px] font-extrabold rounded-lg transition-all text-center cursor-pointer active:scale-95 ${
                     active 
-                      ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-sm' 
-                      : 'text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'
+                      ? 'bg-white text-slate-900 shadow-xs' 
+                      : 'text-slate-500 hover:text-slate-800'
                   }`}
                 >
-                  {t === 'all' && 'Tüm Zamanlar'}
-                  {t === '15m' && '⚡ 15 Dk'}
-                  {t === '1h' && '⏰ 1 Saat'}
-                  {t === '5h' && '🕒 5 Saat'}
+                  {t === 'all' && 'Tümü'}
+                  {t === '15m' && '⚡ 15Dk'}
+                  {t === '1h' && '⏰ 1Saat'}
+                  {t === '5h' && '🕒 5Saat'}
                 </button>
               )
             })}
@@ -742,17 +726,17 @@ export function ListingsView({ listings: propListings }: { listings?: any[] }) {
                 const cities = searchQuery.trim() ? [searchQuery.trim()] : []
                 subscribeToPushNotifications(cities, currentUser?.id)
               }}
-              className="flex items-center justify-center gap-1.5 rounded-2xl bg-purple-500/10 hover:bg-purple-500/20 text-purple-700 dark:text-purple-300 border border-purple-500/20 py-2 px-2.5 text-[11px] font-bold transition-all active:scale-95"
+              className="flex items-center justify-center gap-1.5 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 py-1.5 px-2 text-[11px] font-bold transition-all active:scale-95"
             >
               <Bell className="size-3.5 text-purple-600" />
-              <span>Bildirim Aç</span>
+              <span>Bildirim</span>
             </button>
 
             <button
               type="button"
               onClick={() => fetchListings(false)}
               disabled={refreshing}
-              className="flex items-center justify-center gap-1.5 rounded-2xl bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 text-zinc-700 dark:text-zinc-200 py-2 px-2.5 text-[11px] font-bold transition-all active:scale-95"
+              className="flex items-center justify-center gap-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-2 text-[11px] font-bold transition-all active:scale-95"
             >
               <RefreshCw className={`size-3.5 ${refreshing ? 'animate-spin text-blue-600' : ''}`} />
               <span>Yenile</span>
@@ -761,23 +745,23 @@ export function ListingsView({ listings: propListings }: { listings?: any[] }) {
             <button
               type="button"
               onClick={() => { setOnlyNotes(!onlyNotes); if (!onlyNotes) setOnlyFavorites(false); }}
-              className={`flex items-center justify-center gap-1.5 rounded-2xl py-2 px-2.5 text-[11px] font-bold transition-all active:scale-95 ${
+              className={`flex items-center justify-center gap-1.5 rounded-xl py-1.5 px-2 text-[11px] font-bold transition-all active:scale-95 ${
                 onlyNotes 
                   ? 'bg-amber-500 text-white shadow-xs' 
-                  : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200'
+                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
               }`}
             >
               <FileText className="size-3.5" />
-              <span>Notlarım ({userNotes.length})</span>
+              <span>Notlar ({userNotes.length})</span>
             </button>
 
             <button
               type="button"
               onClick={() => { setOnlyFavorites(!onlyFavorites); if (!onlyFavorites) setOnlyNotes(false); }}
-              className={`flex items-center justify-center gap-1.5 rounded-2xl py-2 px-2.5 text-[11px] font-bold transition-all active:scale-95 ${
+              className={`flex items-center justify-center gap-1.5 rounded-xl py-1.5 px-2 text-[11px] font-bold transition-all active:scale-95 ${
                 onlyFavorites 
                   ? 'bg-rose-500 text-white shadow-xs' 
-                  : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200'
+                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
               }`}
             >
               <Heart className={`size-3.5 ${onlyFavorites ? 'fill-white text-white' : ''}`} />
@@ -787,30 +771,30 @@ export function ListingsView({ listings: propListings }: { listings?: any[] }) {
         </div>
       </div>
 
-      <div className="flex items-center justify-between text-xs font-bold text-zinc-500 px-1">
-        <span>Görüntülenen İlan: <strong className="text-zinc-900 dark:text-zinc-100">{listings.length}</strong></span>
-        <span className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-bold text-[11px] bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20">
+      <div className="flex items-center justify-between text-xs font-bold text-slate-500 px-1">
+        <span>Görüntülenen İlan: <strong className="text-slate-900">{listings.length}</strong></span>
+        <span className="flex items-center gap-1.5 text-emerald-700 font-bold text-[11px] bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
           <span className="relative flex size-2">
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
             <span className="relative inline-flex size-2 rounded-full bg-emerald-500"></span>
           </span>
-          Canlı Akış Aktif
+          Canlı Akış
         </span>
       </div>
 
       {loading ? (
-        <div className="flex flex-col items-center justify-center py-20 space-y-3">
-          <Loader2 className="size-9 animate-spin text-blue-600" />
-          <p className="text-xs font-semibold text-zinc-400">Veritabanında aranıyor...</p>
+        <div className="flex flex-col items-center justify-center py-16 space-y-3">
+          <Loader2 className="size-8 animate-spin text-blue-600" />
+          <p className="text-xs font-semibold text-slate-400">Veriler yükleniyor...</p>
         </div>
       ) : errorMsg ? (
-        <div className="flex flex-col items-center justify-center p-8 text-center rounded-3xl border border-amber-500/30 bg-amber-500/5 text-amber-700 space-y-3">
+        <div className="flex flex-col items-center justify-center p-8 text-center rounded-2xl border border-rose-200 bg-rose-50 text-rose-700 space-y-3">
           <AlertCircle className="size-8" />
           <p className="text-xs font-bold">{errorMsg}</p>
-          <button onClick={() => fetchListings(false)} className="rounded-xl bg-amber-600 text-white px-4 py-2 text-xs font-bold">Tekrar Dene</button>
+          <button onClick={() => fetchListings(false)} className="rounded-xl bg-rose-600 text-white px-4 py-2 text-xs font-bold">Tekrar Dene</button>
         </div>
       ) : listings.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-stretch">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5 items-stretch">
           {listings.map((ilan) => {
             const ilanKey = ilan._stableKey
             const isFav = favoritesSet.has(ilanKey)
@@ -833,41 +817,41 @@ export function ListingsView({ listings: propListings }: { listings?: any[] }) {
           })}
         </div>
       ) : (
-        <div className="flex flex-col items-center justify-center py-20 text-center rounded-3xl border border-dashed border-zinc-200 dark:border-zinc-800 space-y-2">
-          <MessageSquare className="size-8 text-zinc-400" />
-          <h3 className="text-xs font-bold text-zinc-700 dark:text-zinc-300">Uygun İlan Bulunamadı</h3>
+        <div className="flex flex-col items-center justify-center py-16 text-center rounded-2xl border border-dashed border-slate-200 space-y-2">
+          <MessageSquare className="size-8 text-slate-300" />
+          <h3 className="text-xs font-bold text-slate-500">Uygun İlan Bulunamadı</h3>
         </div>
       )}
 
       {/* Modal - Not Ekleme */}
       {noteModalIlan && (
-        <div onClick={() => setNoteModalIlan(null)} className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-md">
-          <div onClick={(e) => e.stopPropagation()} className="relative w-full max-w-md rounded-3xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-5 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800 pb-2.5">
-              <h3 className="text-xs font-bold flex items-center gap-1.5 text-zinc-900 dark:text-zinc-100">
+        <div onClick={() => setNoteModalIlan(null)} className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
+          <div onClick={(e) => e.stopPropagation()} className="relative w-full max-w-md rounded-3xl bg-white border border-slate-200 p-5 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+              <h3 className="text-xs font-bold flex items-center gap-1.5 text-slate-900">
                 <FileText className="size-4 text-amber-500" /> Özel Not Ekle
               </h3>
-              <button onClick={() => setNoteModalIlan(null)} className="p-1 text-zinc-400 hover:text-zinc-600"><X className="size-4" /></button>
+              <button onClick={() => setNoteModalIlan(null)} className="p-1 text-slate-400 hover:text-slate-600"><X className="size-4" /></button>
             </div>
             <textarea
               rows={3}
               value={newNoteText}
               onChange={(e) => setNewNoteText(e.target.value)}
               placeholder="Notunuzu buraya yazın..."
-              className="w-full rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 p-3 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-amber-500"
+              className="w-full rounded-2xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-900 focus:outline-none focus:border-amber-500"
             />
             <button
               onClick={handleAddNote}
               disabled={isSavingNote || !newNoteText.trim()}
-              className="w-full flex items-center justify-center gap-2 rounded-2xl bg-amber-500 text-white py-2.5 text-xs font-bold disabled:opacity-50"
+              className="w-full flex items-center justify-center gap-2 rounded-xl bg-amber-500 text-white py-2.5 text-xs font-bold disabled:opacity-50"
             >
               {isSavingNote ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />} Kaydet
             </button>
             <div className="space-y-2 max-h-40 overflow-y-auto">
               {(userNotesMap.get(noteModalIlan._stableKey) || EMPTY_ARRAY).map((note) => (
-                <div key={note.id} className="flex items-center justify-between p-3 rounded-2xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-xs">
-                  <p className="text-zinc-800 dark:text-zinc-200 font-medium">{note.not_metni}</p>
-                  <button onClick={() => handleDeleteNote(note.id)} className="text-zinc-400 hover:text-rose-500 p-1"><Trash2 className="size-3.5" /></button>
+                <div key={note.id} className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs">
+                  <p className="text-slate-800 font-medium">{note.not_metni}</p>
+                  <button onClick={() => handleDeleteNote(note.id)} className="text-slate-400 hover:text-rose-500 p-1"><Trash2 className="size-3.5" /></button>
                 </div>
               ))}
             </div>
@@ -877,13 +861,13 @@ export function ListingsView({ listings: propListings }: { listings?: any[] }) {
 
       {/* Modal - İlan Detay */}
       {selectedIlan && (
-        <div onClick={() => setSelectedIlan(null)} className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-md">
-          <div onClick={(e) => e.stopPropagation()} className="relative w-full max-w-lg rounded-3xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-5 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800 pb-2.5">
-              <h3 className="text-xs font-bold text-zinc-900 dark:text-zinc-100">{selectedIlan._sender} - İlan Detayı</h3>
-              <button onClick={() => setSelectedIlan(null)} className="p-1 text-zinc-400 hover:text-zinc-600"><X className="size-4" /></button>
+        <div onClick={() => setSelectedIlan(null)} className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
+          <div onClick={(e) => e.stopPropagation()} className="relative w-full max-w-lg rounded-3xl bg-white border border-slate-200 p-5 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+              <h3 className="text-xs font-bold text-slate-900">{selectedIlan._sender} - İlan Detayı</h3>
+              <button onClick={() => setSelectedIlan(null)} className="p-1 text-slate-400 hover:text-slate-600"><X className="size-4" /></button>
             </div>
-            <div className="p-3.5 rounded-2xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-xs leading-relaxed whitespace-pre-wrap font-medium">
+            <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 text-xs leading-relaxed whitespace-pre-wrap font-medium">
               <FormattedListingText text={selectedIlan._originalRawText || selectedIlan._rawText} query={searchQuery} />
             </div>
             {selectedIlan._phones && selectedIlan._phones.length > 0 && (
@@ -892,13 +876,13 @@ export function ListingsView({ listings: propListings }: { listings?: any[] }) {
                   href={`https://wa.me/90${selectedIlan._phones[0].replace(/^0/, '')}?text=${selectedIlan._waMessage}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex-1 flex items-center justify-center gap-2 rounded-2xl bg-emerald-600 text-white py-2.5 text-xs font-bold shadow-md"
+                  className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-emerald-600 text-white py-2.5 text-xs font-bold shadow-xs"
                 >
                   <MessageSquare className="size-4" /> WHATSAPP
                 </a>
                 <a
                   href={`tel:${selectedIlan._phones[0]}`}
-                  className="flex-1 flex items-center justify-center gap-2 rounded-2xl bg-blue-600 text-white py-2.5 text-xs font-bold shadow-md"
+                  className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-blue-600 text-white py-2.5 text-xs font-bold shadow-xs"
                 >
                   <Phone className="size-4" /> TELEFONLA ARA
                 </a>
