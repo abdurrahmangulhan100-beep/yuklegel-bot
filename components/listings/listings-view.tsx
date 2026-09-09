@@ -5,7 +5,7 @@ import { subscribeToPushNotifications } from '@/lib/push-client'
 import { 
   Search, X, Clock, Heart, Phone, Copy, Check, MessageSquare, 
   Bell, RefreshCw, FileText, Plus, Trash2, LogIn, Sparkles, ChevronDown,
-  Store, Users, AlertCircle, Truck, MapPin, Filter, ChevronUp
+  Store, Users, AlertCircle, Truck, MapPin, Filter, ChevronUp, Loader2, ZoomIn
 } from 'lucide-react'
 
 // Şehir Veri Seti (Autocomplete için)
@@ -33,7 +33,7 @@ const CHIP_FILTERS = [
 ]
 
 const DETECTABLE_BADGES = [
-  { keys: ['acil'], label: '⚡ ACİL YÜK', color: 'bg-rose-50 text-rose-600 border-rose-200' },
+  { keys: ['acil'], label: '⚡ ACİL', color: 'bg-rose-50 text-rose-600 border-rose-200' },
   { keys: ['frigo', 'soguk', 'soğuk'], label: '❄️ FRİGO', color: 'bg-cyan-50 text-cyan-700 border-cyan-200' },
   { keys: ['damper'], label: 'DAMPER', color: 'bg-slate-100 text-slate-700 border-slate-200' },
   { keys: ['tenteli', 'tente'], label: '📦 TENTELİ', color: 'bg-blue-50 text-blue-700 border-blue-200' },
@@ -234,60 +234,58 @@ const FormattedListingText = React.memo(({ text, query }: { text: string; query:
 })
 FormattedListingText.displayName = 'FormattedListingText'
 
-// SKELETON LOADER (İskelet Yükleyici) - Performans algısını artırmak için
+// SKELETON LOADER - Aynı boyutta nizami yükleme iskeleti
 const SkeletonCard = () => (
-  <div className="bg-white border-b border-slate-200 sm:border sm:rounded-2xl p-4 sm:p-5 animate-pulse">
-    <div className="flex items-center justify-between pb-3">
-      <div className="flex items-center gap-3 w-1/2">
-        <div className="size-8 rounded-xl bg-slate-100 shrink-0"></div>
-        <div className="h-4 bg-slate-100 rounded-md w-full"></div>
+  <div className="bg-white border-b border-slate-200 sm:border sm:rounded-2xl p-4 sm:p-5 animate-pulse h-[160px] flex flex-col justify-between">
+    <div>
+      <div className="flex items-center justify-between pb-3">
+        <div className="flex items-center gap-3 w-2/3">
+          <div className="size-8 rounded-xl bg-slate-100 shrink-0"></div>
+          <div className="h-4 bg-slate-100 rounded-md w-full"></div>
+        </div>
+        <div className="h-4 bg-slate-100 rounded-md w-16 shrink-0"></div>
       </div>
-      <div className="h-4 bg-slate-100 rounded-md w-16"></div>
-    </div>
-    <div className="space-y-2.5 mt-2">
-      <div className="h-3.5 bg-slate-100 rounded-md w-full"></div>
-      <div className="h-3.5 bg-slate-100 rounded-md w-5/6"></div>
-      <div className="h-3.5 bg-slate-100 rounded-md w-4/6"></div>
-    </div>
-    <div className="mt-4 pt-3 flex items-center justify-between border-t border-slate-100">
-      <div className="flex gap-2">
-        <div className="size-9 w-12 bg-slate-100 rounded-xl"></div>
-        <div className="size-9 w-12 bg-slate-100 rounded-xl"></div>
-        <div className="size-9 w-12 bg-slate-100 rounded-xl"></div>
+      <div className="space-y-2 mt-1">
+        <div className="h-3.5 bg-slate-100 rounded-md w-full"></div>
+        <div className="h-3.5 bg-slate-100 rounded-md w-5/6"></div>
       </div>
-      <div className="flex gap-2 w-1/2">
-        <div className="h-9 bg-slate-100 rounded-xl flex-1"></div>
-        <div className="h-9 bg-slate-100 rounded-xl flex-1"></div>
+    </div>
+    <div className="mt-3 flex items-center justify-between pt-3 border-t border-slate-50">
+      <div className="flex gap-1.5">
+        <div className="size-8 bg-slate-100 rounded-xl"></div>
+        <div className="size-8 bg-slate-100 rounded-xl"></div>
+        <div className="size-8 bg-slate-100 rounded-xl"></div>
+      </div>
+      <div className="flex gap-1.5 w-[140px]">
+        <div className="h-8 bg-slate-100 rounded-xl flex-1"></div>
+        <div className="h-8 bg-slate-100 rounded-xl flex-1"></div>
       </div>
     </div>
   </div>
 )
 
-// KART GÖRÜNÜMÜ - MODALSIZ, HIZLI VE MOBİL ODAKLI
+// MODERN & NİZAMİ KART GÖRÜNÜMÜ - Sabit Yükseklik ve Tıklanabilir Yapı
 const ListingCard = React.memo(({ 
   ilan, isFav, ilanNotes = EMPTY_ARRAY, copiedId, searchQuery, 
-  onToggleFavorite, onOpenNoteModal, onCopyText
+  onToggleFavorite, onOpenNoteModal, onCopyText, onSelectIlan
 }: { 
   ilan: any, isFav: boolean, ilanNotes?: any[], copiedId: string | null, searchQuery: string,
   onToggleFavorite: (e: React.MouseEvent, key: string) => void, onOpenNoteModal: (ilan: any) => void, 
-  onCopyText: (e: React.MouseEvent, text: string, id: string) => void
+  onCopyText: (e: React.MouseEvent, text: string, id: string) => void, onSelectIlan: (ilan: any) => void
 }) => {
-  const [expanded, setExpanded] = useState(false)
   const ilanKey = ilan._stableKey
   const displayContent = ilan._rawText
   const phones = ilan._phones || []
-  const isLongText = displayContent.length > 130
 
   return (
-    // Mobil: Tam genişlik (Edge-to-Edge) | Masaüstü: Yuvarlak hatlar
-    <div className="group flex flex-col justify-between bg-white border-b border-slate-200 sm:border sm:rounded-2xl p-4 sm:p-5 hover:shadow-md hover:border-blue-300 transition-all duration-150 relative">
+    <div 
+      onClick={() => onSelectIlan(ilan)}
+      className="group flex flex-col justify-between bg-white border-b border-slate-200 sm:border sm:rounded-2xl p-4 sm:p-5 hover:shadow-lg hover:border-blue-300 active:bg-slate-50 transition-all duration-200 cursor-pointer relative h-auto min-h-[160px]"
+    >
       
-      {/* Tıklanabilir İçerik Alanı (Hızlı Genişletme) */}
-      <div 
-        className="space-y-2.5 cursor-pointer"
-        onClick={() => setExpanded(!expanded)}
-      >
-        <div className="flex items-center justify-between pb-1">
+      {/* Tıklanabilir İçerik Alanı - Sabit Satır Sayısı */}
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 max-w-[70%] truncate">
             <div className="size-8 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 shrink-0">
               <Truck className="size-4" />
@@ -300,50 +298,51 @@ const ListingCard = React.memo(({
         </div>
 
         {ilan._badges && ilan._badges.length > 0 && (
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex flex-wrap gap-1">
             {ilan._badges.map((badge: any, idx: number) => (
-              <span key={idx} className={`inline-flex items-center rounded-lg border px-2 py-0.5 text-[10px] font-extrabold tracking-wider uppercase ${badge.color}`}>
+              <span key={idx} className={`inline-flex items-center rounded-md border px-1.5 py-0.5 text-[9px] font-extrabold tracking-wider uppercase ${badge.color}`}>
                 {badge.label}
               </span>
             ))}
           </div>
         )}
 
-        <div className="relative">
-          {/* Sıkı satır aralığı (leading-snug) ve performanslı animasyon */}
-          <p className={`text-[13px] sm:text-sm font-semibold text-slate-800 leading-snug break-words transition-all duration-150 ${!expanded && isLongText ? 'line-clamp-3' : ''}`}>
-            <FormattedListingText text={displayContent} query={searchQuery} />
-          </p>
-          {!expanded && isLongText && (
-            <span className="text-[11px] font-extrabold text-blue-600 mt-1 inline-block hover:underline">Devamını Oku...</span>
-          )}
+        {/* NİZAMİ GÖRÜNÜM: Her ilan en fazla 2 satır görünür */}
+        <p className="text-[13px] sm:text-sm font-semibold text-slate-700 leading-snug break-words line-clamp-2 pr-4">
+          <FormattedListingText text={displayContent} query={searchQuery} />
+        </p>
+        
+        {/* Zoom İkonu (Kullanıcıya tıklanabilir olduğunu hissettirir) */}
+        <div className="absolute right-4 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className="bg-blue-100 p-1.5 rounded-full text-blue-600 shadow-sm">
+            <ZoomIn className="size-4" />
+          </div>
         </div>
       </div>
 
-      {/* İletişim Öncelikli Aksiyon Alanı - Başparmak Ergonomisi */}
-      <div className="mt-3.5 pt-3 flex items-center justify-between gap-2 border-t border-slate-100">
+      {/* Aksiyon Alanı - Başparmak Ergonomisi */}
+      <div className="mt-3 pt-3 flex items-center justify-between gap-2 border-t border-slate-100/80">
         
-        {/* Kompakt Yardımcı Butonlar Grubu */}
-        <div className="flex items-center gap-1.5 shrink-0">
-          <button onClick={(e) => onCopyText(e, displayContent, ilanKey)} className="p-2 sm:px-3 sm:py-2 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-500 transition-colors flex items-center gap-1.5">
+        {/* Yardımcı Butonlar Grubu */}
+        <div className="flex items-center gap-1 shrink-0">
+          <button onClick={(e) => { e.stopPropagation(); onCopyText(e, displayContent, ilanKey); }} className="p-2 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-500 transition-colors flex items-center gap-1.5">
             {copiedId === ilanKey ? <Check className="size-4 text-emerald-600" /> : <Copy className="size-4" />}
-            <span className="hidden sm:inline text-[11px] font-bold text-slate-600">{copiedId === ilanKey ? 'Kopyalandı' : 'Kopyala'}</span>
           </button>
           <button onClick={(e) => { e.stopPropagation(); onOpenNoteModal(ilan); }} className={`p-2 rounded-xl transition-colors ${ilanNotes.length > 0 ? 'bg-amber-50 text-amber-600' : 'bg-slate-50 text-slate-500 hover:text-amber-500 hover:bg-amber-50'}`}>
             <FileText className="size-4" />
           </button>
-          <button onClick={(e) => onToggleFavorite(e, ilanKey)} className={`p-2 rounded-xl transition-colors ${isFav ? 'bg-rose-50 text-rose-500' : 'bg-slate-50 text-slate-500 hover:text-rose-500 hover:bg-rose-50'}`}>
+          <button onClick={(e) => { e.stopPropagation(); onToggleFavorite(e, ilanKey); }} className={`p-2 rounded-xl transition-colors ${isFav ? 'bg-rose-50 text-rose-500' : 'bg-slate-50 text-slate-500 hover:text-rose-500 hover:bg-rose-50'}`}>
             <Heart className={`size-4 ${isFav ? 'fill-rose-500 text-rose-500' : ''}`} />
           </button>
         </div>
 
-        {/* Ana İletişim Butonları (ARA & WP) */}
+        {/* Ana İletişim Butonları */}
         {phones.length > 0 ? (
-          <div className="flex items-center gap-2 flex-1 justify-end max-w-[220px]">
-            <a href={`https://wa.me/90${phones[0].replace(/^0/, '')}?text=${ilan._waMessage}`} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white py-2.5 px-2 text-xs font-extrabold transition-all shadow-sm active:scale-95">
+          <div className="flex items-center gap-1.5 flex-1 justify-end max-w-[200px]">
+            <a href={`https://wa.me/90${phones[0].replace(/^0/, '')}?text=${ilan._waMessage}`} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="flex flex-1 items-center justify-center gap-1 rounded-xl bg-[#25D366] hover:bg-[#1ebd5a] text-white py-2 px-1 text-[11px] font-extrabold transition-all shadow-sm active:scale-95">
               <MessageSquare className="size-4" /> <span>WP</span>
             </a>
-            <a href={`tel:${phones[0]}`} onClick={(e) => e.stopPropagation()} className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white py-2.5 px-2 text-xs font-extrabold transition-all shadow-sm active:scale-95">
+            <a href={`tel:${phones[0]}`} onClick={(e) => e.stopPropagation()} className="flex flex-1 items-center justify-center gap-1 rounded-xl bg-blue-600 hover:bg-blue-700 text-white py-2 px-1 text-[11px] font-extrabold transition-all shadow-sm active:scale-95">
               <Phone className="size-4" /> <span>ARA</span>
             </a>
           </div>
@@ -357,7 +356,7 @@ const ListingCard = React.memo(({
 ListingCard.displayName = 'ListingCard'
 
 
-export function ListingsView({ listings: propListings }: { listings?: any[] }) {
+export function ListingsView() {
   const [currentUser, setCurrentUser] = useState<any>(null)
   const [listings, setListings] = useState<any[]>([])
   const [loading, setLoading] = useState<boolean>(true)
@@ -383,6 +382,7 @@ export function ListingsView({ listings: propListings }: { listings?: any[] }) {
   const [newToast, setNewToast] = useState(false)
 
   const [userNotes, setUserNotes] = useState<any[]>([])
+  const [selectedIlan, setSelectedIlan] = useState<any | null>(null)
   const [noteModalIlan, setNoteModalIlan] = useState<any | null>(null)
   const [newNoteText, setNewNoteText] = useState('')
   const [isSavingNote, setIsSavingNote] = useState(false)
@@ -589,7 +589,7 @@ export function ListingsView({ listings: propListings }: { listings?: any[] }) {
   return (
     <div className="space-y-4 max-w-7xl mx-auto relative font-sans w-full pb-20 md:pb-6">
       
-      {/* Üst Kısım: Sadece Header bileşenleri mobil için padding alır */}
+      {/* Üst Kısım Header Alanı */}
       <div className="px-2 sm:px-4 space-y-4">
         {/* İstatistik Modülleri */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -619,7 +619,7 @@ export function ListingsView({ listings: propListings }: { listings?: any[] }) {
         </div>
 
         {newToast && (
-          <div className="fixed bottom-20 right-6 z-50 flex items-center gap-2.5 rounded-2xl bg-emerald-600 px-4 py-3 text-white shadow-xl">
+          <div className="fixed bottom-20 right-6 z-50 flex items-center gap-2.5 rounded-2xl bg-emerald-600 px-4 py-3 text-white shadow-xl animate-in slide-in-from-bottom-5">
             <Sparkles className="size-4 text-emerald-200 animate-bounce" />
             <span className="text-xs font-bold">Yeni İlan Düştü!</span>
           </div>
@@ -645,7 +645,7 @@ export function ListingsView({ listings: propListings }: { listings?: any[] }) {
               {searchQuery && (
                 <button 
                   onClick={() => { setSearchQuery(''); setShowCityDropdown(false); }} 
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 transition-colors"
                 >
                   <X className="size-4" />
                 </button>
@@ -680,7 +680,7 @@ export function ListingsView({ listings: propListings }: { listings?: any[] }) {
                   key={chip.id}
                   type="button"
                   onClick={() => setSelectedChip(chip.id)}
-                  className={`rounded-xl px-2.5 py-1 sm:px-3 sm:py-1.5 text-[10px] sm:text-[11px] font-extrabold transition-all shrink-0 active:scale-95 cursor-pointer ${
+                  className={`rounded-xl px-2.5 py-1.5 text-[10px] sm:text-[11px] font-extrabold transition-all shrink-0 active:scale-95 cursor-pointer ${
                     isActive 
                       ? 'bg-blue-600 text-white shadow-xs' 
                       : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
@@ -692,46 +692,47 @@ export function ListingsView({ listings: propListings }: { listings?: any[] }) {
             })}
           </div>
 
-          <div className="pt-2 border-t border-slate-100 flex flex-wrap items-center gap-2">
+          {/* NİZAMİ HİZALAMA: Grid yapısı kullanılarak butonlar tamamen eşit ve simetrik hale getirildi */}
+          <div className="grid grid-cols-3 gap-2 pt-2 border-t border-slate-100 w-full">
             <button
               type="button"
               onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-              className="flex items-center gap-1.5 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 py-1.5 px-2.5 text-[11px] font-extrabold text-slate-600 transition-all active:scale-95"
+              className="flex items-center justify-center gap-1.5 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 py-2 text-[10px] sm:text-[11px] font-extrabold text-slate-600 transition-all active:scale-95 w-full"
             >
               <Filter className="size-3.5" />
-              <span>Gelişmiş Filtreler</span>
+              <span className="truncate">Filtreler</span>
               {showAdvancedFilters ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
             </button>
 
             <button
               type="button"
               onClick={() => { setOnlyNotes(!onlyNotes); if (!onlyNotes) setOnlyFavorites(false); }}
-              className={`flex items-center gap-1.5 rounded-xl border py-1.5 px-2.5 text-[11px] font-bold transition-all active:scale-95 ${
+              className={`flex items-center justify-center gap-1.5 rounded-xl border py-2 text-[10px] sm:text-[11px] font-bold transition-all active:scale-95 w-full ${
                 onlyNotes 
                   ? 'bg-amber-500 border-amber-600 text-white shadow-xs' 
                   : 'bg-amber-50 border-amber-100 text-amber-700 hover:bg-amber-100'
               }`}
             >
               <FileText className="size-3.5" />
-              <span>Notlar ({userNotes.length})</span>
+              <span className="truncate">Notlar ({userNotes.length})</span>
             </button>
 
             <button
               type="button"
               onClick={() => { setOnlyFavorites(!onlyFavorites); if (!onlyFavorites) setOnlyNotes(false); }}
-              className={`flex items-center gap-1.5 rounded-xl border py-1.5 px-2.5 text-[11px] font-bold transition-all active:scale-95 ${
+              className={`flex items-center justify-center gap-1.5 rounded-xl border py-2 text-[10px] sm:text-[11px] font-bold transition-all active:scale-95 w-full ${
                 onlyFavorites 
                   ? 'bg-rose-500 border-rose-600 text-white shadow-xs' 
                   : 'bg-rose-50 border-rose-100 text-rose-600 hover:bg-rose-100'
               }`}
             >
               <Heart className={`size-3.5 ${onlyFavorites ? 'fill-white text-white' : ''}`} />
-              <span>Favoriler ({favorites.length})</span>
+              <span className="truncate">Favoriler ({favorites.length})</span>
             </button>
           </div>
 
           {showAdvancedFilters && (
-            <div className="pt-2 mt-2 border-t border-slate-50 grid grid-cols-1 md:grid-cols-12 gap-2">
+            <div className="pt-2 mt-2 border-t border-slate-50 grid grid-cols-1 md:grid-cols-12 gap-2 animate-in slide-in-from-top-2">
               <div className="md:col-span-6 flex items-center bg-slate-100 p-1 rounded-xl">
                 {(['all', '15m', '1h', '5h'] as const).map((t) => {
                   const active = timeFilter === t
@@ -759,7 +760,7 @@ export function ListingsView({ listings: propListings }: { listings?: any[] }) {
                     const cities = searchQuery.trim() ? [searchQuery.trim()] : []
                     subscribeToPushNotifications(cities, currentUser?.id)
                   }}
-                  className="flex items-center justify-center gap-1.5 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-700 py-1.5 px-3 text-[11px] font-bold transition-all"
+                  className="flex items-center justify-center gap-1.5 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-700 py-1.5 px-3 text-[11px] font-bold transition-all w-full md:w-auto"
                 >
                   <Bell className="size-3.5" /> <span>Bildirim Kur</span>
                 </button>
@@ -767,7 +768,7 @@ export function ListingsView({ listings: propListings }: { listings?: any[] }) {
                   type="button"
                   onClick={() => fetchListings(false)}
                   disabled={refreshing}
-                  className="flex items-center justify-center gap-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 text-[11px] font-bold transition-all"
+                  className="flex items-center justify-center gap-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 text-[11px] font-bold transition-all w-full md:w-auto"
                 >
                   <RefreshCw className={`size-3.5 ${refreshing ? 'animate-spin text-blue-600' : ''}`} />
                   <span>Yenile</span>
@@ -789,7 +790,7 @@ export function ListingsView({ listings: propListings }: { listings?: any[] }) {
         </div>
       </div>
 
-      {/* Ana Liste Alanı: Mobil Edge-to-Edge tasarımı burada başlıyor (-mx ile sınırları kaldırır) */}
+      {/* Ana Liste Alanı */}
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-0 sm:gap-4 sm:px-4">
           {[...Array(6)].map((_, i) => <SkeletonCard key={i} />)}
@@ -822,15 +823,79 @@ export function ListingsView({ listings: propListings }: { listings?: any[] }) {
               onToggleFavorite={handleToggleFavorite}
               onOpenNoteModal={setNoteModalIlan}
               onCopyText={handleCopyText}
+              onSelectIlan={setSelectedIlan}
             />
           ))}
         </div>
       )}
 
+      {/* DETAY (ZOOM) MODALI - Karta tıklanınca hızlıca tüm içeriğe odaklanmayı sağlar */}
+      {selectedIlan && (
+        <div 
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-150"
+          onClick={() => setSelectedIlan(null)}
+        >
+          <div 
+            className="w-full max-w-lg bg-white rounded-3xl shadow-2xl flex flex-col overflow-hidden max-h-[90vh] animate-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between p-4 border-b border-slate-100">
+              <h2 className="text-sm font-extrabold text-slate-800 flex items-center gap-2">
+                <ZoomIn className="size-4 text-blue-600" /> İlan Detayı
+              </h2>
+              <button onClick={() => setSelectedIlan(null)} className="p-2 rounded-xl hover:bg-slate-100 text-slate-400 transition-colors">
+                <X className="size-5" />
+              </button>
+            </div>
+            
+            <div className="p-5 overflow-y-auto space-y-5">
+              <div className="flex items-center gap-3">
+                <div className="size-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 border border-blue-100">
+                  <Truck className="size-6" />
+                </div>
+                <div>
+                  <div className="text-base font-extrabold text-slate-900">{selectedIlan._sender}</div>
+                  <div className="text-xs font-bold text-slate-400">
+                    {selectedIlan.created_at ? new Date(selectedIlan.created_at).toLocaleString('tr-TR') : 'Bilinmeyen Tarih'}
+                  </div>
+                </div>
+              </div>
+
+              {selectedIlan._badges && selectedIlan._badges.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {selectedIlan._badges.map((b: any, i: number) => (
+                    <span key={i} className={`inline-flex items-center rounded-lg border px-2.5 py-1 text-[10px] font-extrabold tracking-wider uppercase shadow-sm ${b.color}`}>
+                      {b.label}
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              <div className="p-4 rounded-xl bg-slate-50 border border-slate-100">
+                <p className="text-sm font-semibold text-slate-800 leading-relaxed whitespace-pre-wrap break-words">
+                  {selectedIlan._originalRawText || selectedIlan._rawText}
+                </p>
+              </div>
+            </div>
+
+            <div className="p-4 border-t border-slate-100 bg-white flex gap-2">
+              <button onClick={(e) => handleCopyText(e, selectedIlan._originalRawText || selectedIlan._rawText, selectedIlan._stableKey)} className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-slate-50 border border-slate-200 px-4 py-3 text-xs font-extrabold text-slate-700 hover:bg-slate-100 transition-all active:scale-95 shadow-sm">
+                {copiedId === selectedIlan._stableKey ? <Check className="size-4 text-emerald-600" /> : <Copy className="size-4" />} Kopyala
+              </button>
+              {(selectedIlan._phones || []).length > 0 && (
+                <a href={`tel:${selectedIlan._phones[0]}`} className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-blue-600 hover:bg-blue-700 px-4 py-3 text-xs font-extrabold text-white transition-all active:scale-95 shadow-sm shadow-blue-600/20">
+                  <Phone className="size-4" /> Ara
+                </a>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Not Ekleme Modalı */}
       {noteModalIlan && (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 animate-in fade-in">
-          <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl flex flex-col overflow-hidden">
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-150">
+          <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
             <div className="flex items-center justify-between p-4 border-b border-slate-100 bg-amber-50/50">
               <h2 className="text-sm font-extrabold text-amber-900 flex items-center gap-2">
                 <FileText className="size-4 text-amber-600" /> İlana Not Ekle
@@ -855,7 +920,7 @@ export function ListingsView({ listings: propListings }: { listings?: any[] }) {
                   <button
                     onClick={handleAddNote}
                     disabled={!newNoteText.trim() || isSavingNote}
-                    className="flex items-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white text-xs font-extrabold rounded-xl transition-colors"
+                    className="flex items-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white text-xs font-extrabold rounded-xl transition-colors active:scale-95 shadow-sm"
                   >
                     {isSavingNote ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />}
                     Kaydet
@@ -864,9 +929,9 @@ export function ListingsView({ listings: propListings }: { listings?: any[] }) {
               </div>
 
               {(userNotesMap.get(noteModalIlan._stableKey) || []).length > 0 && (
-                <div className="mt-2 space-y-2">
+                <div className="mt-2 space-y-2 border-t border-slate-100 pt-3">
                   <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Mevcut Notlarınız</h3>
-                  <div className="space-y-2">
+                  <div className="space-y-2 max-h-[150px] overflow-y-auto pr-1">
                     {(userNotesMap.get(noteModalIlan._stableKey) || []).map((note) => (
                       <div key={note.id} className="group flex items-start justify-between gap-3 p-3 bg-amber-50 border border-amber-100 rounded-xl">
                         <div>
@@ -890,8 +955,8 @@ export function ListingsView({ listings: propListings }: { listings?: any[] }) {
 
       {/* Auth Uyarısı Modalı */}
       {showAuthWarning && (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 animate-in fade-in">
-          <div className="w-full max-w-sm bg-white rounded-3xl shadow-2xl p-6 text-center space-y-4">
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-150">
+          <div className="w-full max-w-sm bg-white rounded-3xl shadow-2xl p-6 text-center space-y-4 animate-in zoom-in-95 duration-200">
             <div className="size-16 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-2">
               <LogIn className="size-8" />
             </div>
@@ -900,10 +965,10 @@ export function ListingsView({ listings: propListings }: { listings?: any[] }) {
               Favorilere ekleme yapmak ve not tutmak için hesabınıza giriş yapmalısınız.
             </p>
             <div className="flex items-center gap-3 pt-2">
-              <button onClick={() => setShowAuthWarning(false)} className="flex-1 py-3 text-xs font-extrabold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors">
+              <button onClick={() => setShowAuthWarning(false)} className="flex-1 py-3 text-xs font-extrabold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors active:scale-95">
                 İptal
               </button>
-              <button onClick={() => { window.location.href = '/auth'; }} className="flex-1 py-3 text-xs font-extrabold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-colors shadow-lg shadow-blue-600/20">
+              <button onClick={() => { window.location.href = '/auth'; }} className="flex-1 py-3 text-xs font-extrabold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-colors active:scale-95 shadow-md shadow-blue-600/20">
                 Giriş Yap
               </button>
             </div>
