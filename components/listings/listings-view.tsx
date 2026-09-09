@@ -5,7 +5,7 @@ import { subscribeToPushNotifications } from '@/lib/push-client'
 import { 
   Search, X, Clock, Heart, Phone, Copy, Check, Loader2, MessageSquare, 
   Bell, RefreshCw, FileText, Plus, Trash2, LogIn, Sparkles, ChevronDown,
-  Store, Users, AlertCircle, Truck, MapPin, Filter, LayoutGrid, ListTable, ChevronUp
+  Store, Users, AlertCircle, Truck, MapPin, Filter, LayoutGrid, Table, ChevronUp
 } from 'lucide-react'
 
 // Şehir Veri Seti (Autocomplete için)
@@ -46,7 +46,7 @@ const DETECTABLE_BADGES = [
 const DEFAULT_BLOCKED_SENDERS = ['ROJHAT BAYIK', 'ROJHAT BAYİK']
 const EMPTY_ARRAY: any[] = []
 
-// Genişletilmiş ve regex kalıplı Spam Filtresi
+// Genişletilmiş Spam Filtresi
 const SPAM_KEYWORDS = [
   'nakliye gorevi', 'nakliye görevi', 'bugunki nakliyeler', 'bugünkü nakliyeler',
   'bugun yükleme', 'bugün yükleme', 'bugunkü yükleme', 'bugünkü yükleme',
@@ -188,7 +188,6 @@ function processListingItem(ilan: any) {
 
     if (DEFAULT_BLOCKED_SENDERS.some(blocked => fullSearchPool.includes(normalizeTR(blocked)))) return null
     
-    // Gelişmiş Dinamik Spam Kontrolü (Grup başlıkları ve türev kelimeler)
     if (SPAM_KEYWORDS.some(keyword => normRaw.includes(normalizeTR(keyword)))) return null
     if (/(bugun|bugün)\s*(nakliye|yükleme|yukleme|sevkiyat|is|iş)/i.test(normRaw)) return null
 
@@ -404,7 +403,6 @@ export function ListingsView({ listings: propListings }: { listings?: any[] }) {
   const [selectedChip, setSelectedChip] = useState('ALL')
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid')
   
-  // Şehir Autocomplete durumları
   const [showCityDropdown, setShowCityDropdown] = useState(false)
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false)
 
@@ -788,7 +786,7 @@ export function ListingsView({ listings: propListings }: { listings?: any[] }) {
                   viewMode === 'table' ? 'bg-white text-blue-600 shadow-xs' : 'text-slate-500 hover:text-slate-800'
                 }`}
               >
-                <ListTable className="size-3.5" />
+                <Table className="size-3.5" />
                 <span className="hidden sm:inline">Liste</span>
               </button>
             </div>
@@ -922,7 +920,6 @@ export function ListingsView({ listings: propListings }: { listings?: any[] }) {
             })}
           </div>
         ) : (
-          /* Liste / Table Görünümü (Profesyoneller İçin Hızlı İnceleme) */
           <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-xs">
             <table className="w-full text-left text-xs border-collapse">
               <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-extrabold uppercase text-[10px] tracking-wider">
