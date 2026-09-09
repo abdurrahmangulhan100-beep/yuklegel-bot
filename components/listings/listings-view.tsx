@@ -37,7 +37,7 @@ const DETECTABLE_BADGES = [
   { keys: ['frigo', 'soguk', 'soğuk'], label: '❄️ FRİGO', color: 'bg-cyan-50 text-cyan-700 border-cyan-200' },
   { keys: ['damper'], label: 'DAMPER', color: 'bg-slate-100 text-slate-700 border-slate-200' },
   { keys: ['tenteli', 'tente'], label: '📦 TENTELİ', color: 'bg-blue-50 text-blue-700 border-blue-200' },
-  { keys: ['13.60', '1360', '13/60'], label: '🚛 13.60', color: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
+  { keys: ['13.60', '1360', '13/60', '13 60', '13,60'], label: '🚛 13.60', color: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
   { keys: ['kirkayak'], label: '🚚 KIRKAYAK', color: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
   { keys: ['10 teker', '10teker', 'onteker'], label: '🚚 10 TEKER', color: 'bg-purple-50 text-purple-700 border-purple-200' },
   { keys: ['tir'], label: '🚛 TIR', color: 'bg-slate-100 text-slate-700 border-slate-200' }
@@ -46,13 +46,16 @@ const DETECTABLE_BADGES = [
 const DEFAULT_BLOCKED_SENDERS = ['ROJHAT BAYIK', 'ROJHAT BAYİK']
 const EMPTY_ARRAY: any[] = []
 
+// GELİŞMİŞ SPAM VE Fatura ENGELEME LİSTESİ
 const SPAM_KEYWORDS = [
+  'qmove', 'q-move', 'q move',
+  'e-fatura', 'e fatura', 'efatura', 'e-arsiv', 'e arsiv', 'earsiv', 'kdv iadesi', 'fatura', 'gib',
   'nakliye gorevi', 'nakliye görevi', 'bugunki nakliyeler', 'bugünkü nakliyeler',
   'bugun yükleme', 'bugün yükleme', 'bugunkü yükleme', 'bugünkü yükleme',
   'bugunki nakliye', 'bugünkü nakliye', 'bugun nakliye', 'bugün nakliye',
   'kaliteli yuk', 'kaliteli yük', 'canli yuk akisi', 'canlı yük akışı',
   'whatsapp dan ulasin', 'telegram', 'whatsapp grubu', 'wa.me', 't.me',
-  'e-fatura', 'e-arsiv', 'kdv iadesi', 'bahis', 'casino',
+  'bahis', 'casino', 'slot', 'deneme bonusu',
   'isler verildi', 'işler verildi', 'is verildi', 'iş verildi',
   'yuk alindi', 'yük alındı', 'araç tutuldu', 'arac tutuldu',
   'iptal', 'doldu', 'aranmasin', 'aranmasın', 'tamamlendi', 'tamamlandı'
@@ -187,7 +190,8 @@ function processListingItem(ilan: any) {
 
     if (DEFAULT_BLOCKED_SENDERS.some(blocked => fullSearchPool.includes(normalizeTR(blocked)))) return null
     
-    if (SPAM_KEYWORDS.some(keyword => normRaw.includes(normalizeTR(keyword)))) return null
+    // SPAM VE e-FATURA KONTROLÜ
+    if (SPAM_KEYWORDS.some(keyword => normRaw.includes(normalizeTR(keyword)) || normSender.includes(normalizeTR(keyword)))) return null
     if (/(bugun|bugün)\s*(nakliye|yükleme|yukleme|sevkiyat|is|iş)/i.test(normRaw)) return null
 
     const formattedFull = formatCleanText(raw)
@@ -234,7 +238,7 @@ const FormattedListingText = React.memo(({ text, query }: { text: string; query:
 })
 FormattedListingText.displayName = 'FormattedListingText'
 
-// SKELETON LOADER - Aynı boyutta nizami yükleme iskeleti
+// SKELETON LOADER
 const SkeletonCard = () => (
   <div className="bg-white border-b border-slate-200 sm:border sm:rounded-2xl p-4 sm:p-5 animate-pulse h-[160px] flex flex-col justify-between">
     <div>
@@ -264,7 +268,7 @@ const SkeletonCard = () => (
   </div>
 )
 
-// MODERN & NİZAMİ KART GÖRÜNÜMÜ - Sabit Yükseklik ve Tıklanabilir Yapı
+// MOBİLLEŞTİRİLMİŞ KART GÖRÜNÜMÜ
 const ListingCard = React.memo(({ 
   ilan, isFav, ilanNotes = EMPTY_ARRAY, copiedId, searchQuery, 
   onToggleFavorite, onOpenNoteModal, onCopyText, onSelectIlan
@@ -280,10 +284,8 @@ const ListingCard = React.memo(({
   return (
     <div 
       onClick={() => onSelectIlan(ilan)}
-      className="group flex flex-col justify-between bg-white border-b border-slate-200 sm:border sm:rounded-2xl p-4 sm:p-5 hover:shadow-lg hover:border-blue-300 active:bg-slate-50 transition-all duration-200 cursor-pointer relative h-auto min-h-[160px]"
+      className="group flex flex-col justify-between bg-white border-b border-slate-200 sm:border sm:rounded-2xl p-4 sm:p-5 hover:shadow-lg hover:border-blue-300 active:bg-slate-50 transition-all duration-200 cursor-pointer relative min-h-[160px]"
     >
-      
-      {/* Tıklanabilir İçerik Alanı - Sabit Satır Sayısı */}
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 max-w-[70%] truncate">
@@ -307,23 +309,12 @@ const ListingCard = React.memo(({
           </div>
         )}
 
-        {/* NİZAMİ GÖRÜNÜM: Her ilan en fazla 2 satır görünür */}
         <p className="text-[13px] sm:text-sm font-semibold text-slate-700 leading-snug break-words line-clamp-2 pr-4">
           <FormattedListingText text={displayContent} query={searchQuery} />
         </p>
-        
-        {/* Zoom İkonu (Kullanıcıya tıklanabilir olduğunu hissettirir) */}
-        <div className="absolute right-4 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
-          <div className="bg-blue-100 p-1.5 rounded-full text-blue-600 shadow-sm">
-            <ZoomIn className="size-4" />
-          </div>
-        </div>
       </div>
 
-      {/* Aksiyon Alanı - Başparmak Ergonomisi */}
-      <div className="mt-3 pt-3 flex items-center justify-between gap-2 border-t border-slate-100/80">
-        
-        {/* Yardımcı Butonlar Grubu */}
+      <div className="mt-3 pt-3 flex items-center justify-between gap-2 border-t border-slate-100">
         <div className="flex items-center gap-1 shrink-0">
           <button onClick={(e) => { e.stopPropagation(); onCopyText(e, displayContent, ilanKey); }} className="p-2 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-500 transition-colors flex items-center gap-1.5">
             {copiedId === ilanKey ? <Check className="size-4 text-emerald-600" /> : <Copy className="size-4" />}
@@ -336,13 +327,12 @@ const ListingCard = React.memo(({
           </button>
         </div>
 
-        {/* Ana İletişim Butonları */}
         {phones.length > 0 ? (
           <div className="flex items-center gap-1.5 flex-1 justify-end max-w-[200px]">
-            <a href={`https://wa.me/90${phones[0].replace(/^0/, '')}?text=${ilan._waMessage}`} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="flex flex-1 items-center justify-center gap-1 rounded-xl bg-[#25D366] hover:bg-[#1ebd5a] text-white py-2 px-1 text-[11px] font-extrabold transition-all shadow-sm active:scale-95">
+            <a href={`https://wa.me/90${phones[0].replace(/^0/, '')}?text=${ilan._waMessage}`} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="flex flex-1 items-center justify-center gap-1 rounded-xl bg-[#25D366] hover:bg-[#1ebd5a] text-white py-2 px-1 text-[11px] font-extrabold transition-all shadow-xs active:scale-95">
               <MessageSquare className="size-4" /> <span>WP</span>
             </a>
-            <a href={`tel:${phones[0]}`} onClick={(e) => e.stopPropagation()} className="flex flex-1 items-center justify-center gap-1 rounded-xl bg-blue-600 hover:bg-blue-700 text-white py-2 px-1 text-[11px] font-extrabold transition-all shadow-sm active:scale-95">
+            <a href={`tel:${phones[0]}`} onClick={(e) => e.stopPropagation()} className="flex flex-1 items-center justify-center gap-1 rounded-xl bg-blue-600 hover:bg-blue-700 text-white py-2 px-1 text-[11px] font-extrabold transition-all shadow-xs active:scale-95">
               <Phone className="size-4" /> <span>ARA</span>
             </a>
           </div>
@@ -354,7 +344,6 @@ const ListingCard = React.memo(({
   )
 })
 ListingCard.displayName = 'ListingCard'
-
 
 export function ListingsView() {
   const [currentUser, setCurrentUser] = useState<any>(null)
@@ -475,6 +464,7 @@ export function ListingsView() {
         query = query.gte('created_at', fiveHoursAgo)
       }
 
+      // NOŞLUK VEYA NOKTALARIN VERİTABANI İSTEĞİNİ BOZMASINI ENGELLEYEN TEMİZLİK
       const cleanSearch = debouncedSearch.trim().replace(/[%_]/g, '')
       if (cleanSearch) {
         query = query.or(`content.ilike.%${cleanSearch}%,title.ilike.%${cleanSearch}%`)
@@ -589,9 +579,7 @@ export function ListingsView() {
   return (
     <div className="space-y-4 max-w-7xl mx-auto relative font-sans w-full pb-20 md:pb-6">
       
-      {/* Üst Kısım Header Alanı */}
       <div className="px-2 sm:px-4 space-y-4">
-        {/* İstatistik Modülleri */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="p-4 rounded-2xl border border-slate-200 bg-white shadow-xs flex items-center gap-3">
             <div className="size-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
@@ -625,9 +613,7 @@ export function ListingsView() {
           </div>
         )}
 
-        {/* Arama & Filtre Paneli */}
         <div className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-3.5 sm:p-4 shadow-xs">
-          
           <div className="relative w-full">
             <div className="relative">
               <Search className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
@@ -692,7 +678,6 @@ export function ListingsView() {
             })}
           </div>
 
-          {/* NİZAMİ HİZALAMA: Grid yapısı kullanılarak butonlar tamamen eşit ve simetrik hale getirildi */}
           <div className="grid grid-cols-3 gap-2 pt-2 border-t border-slate-100 w-full">
             <button
               type="button"
@@ -790,7 +775,6 @@ export function ListingsView() {
         </div>
       </div>
 
-      {/* Ana Liste Alanı */}
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-0 sm:gap-4 sm:px-4">
           {[...Array(6)].map((_, i) => <SkeletonCard key={i} />)}
@@ -829,7 +813,6 @@ export function ListingsView() {
         </div>
       )}
 
-      {/* DETAY (ZOOM) MODALI - Karta tıklanınca hızlıca tüm içeriğe odaklanmayı sağlar */}
       {selectedIlan && (
         <div 
           className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-150"
@@ -864,7 +847,7 @@ export function ListingsView() {
               {selectedIlan._badges && selectedIlan._badges.length > 0 && (
                 <div className="flex flex-wrap gap-2">
                   {selectedIlan._badges.map((b: any, i: number) => (
-                    <span key={i} className={`inline-flex items-center rounded-lg border px-2.5 py-1 text-[10px] font-extrabold tracking-wider uppercase shadow-sm ${b.color}`}>
+                    <span key={i} className={`inline-flex items-center rounded-lg border px-2.5 py-1 text-[10px] font-extrabold tracking-wider uppercase shadow-xs ${b.color}`}>
                       {b.label}
                     </span>
                   ))}
@@ -879,11 +862,11 @@ export function ListingsView() {
             </div>
 
             <div className="p-4 border-t border-slate-100 bg-white flex gap-2">
-              <button onClick={(e) => handleCopyText(e, selectedIlan._originalRawText || selectedIlan._rawText, selectedIlan._stableKey)} className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-slate-50 border border-slate-200 px-4 py-3 text-xs font-extrabold text-slate-700 hover:bg-slate-100 transition-all active:scale-95 shadow-sm">
+              <button onClick={(e) => handleCopyText(e, selectedIlan._originalRawText || selectedIlan._rawText, selectedIlan._stableKey)} className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-slate-50 border border-slate-200 px-4 py-3 text-xs font-extrabold text-slate-700 hover:bg-slate-100 transition-all active:scale-95 shadow-xs">
                 {copiedId === selectedIlan._stableKey ? <Check className="size-4 text-emerald-600" /> : <Copy className="size-4" />} Kopyala
               </button>
               {(selectedIlan._phones || []).length > 0 && (
-                <a href={`tel:${selectedIlan._phones[0]}`} className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-blue-600 hover:bg-blue-700 px-4 py-3 text-xs font-extrabold text-white transition-all active:scale-95 shadow-sm shadow-blue-600/20">
+                <a href={`tel:${selectedIlan._phones[0]}`} className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-blue-600 hover:bg-blue-700 px-4 py-3 text-xs font-extrabold text-white transition-all active:scale-95 shadow-xs shadow-blue-600/20">
                   <Phone className="size-4" /> Ara
                 </a>
               )}
@@ -892,7 +875,6 @@ export function ListingsView() {
         </div>
       )}
 
-      {/* Not Ekleme Modalı */}
       {noteModalIlan && (
         <div className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-150">
           <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
@@ -920,7 +902,7 @@ export function ListingsView() {
                   <button
                     onClick={handleAddNote}
                     disabled={!newNoteText.trim() || isSavingNote}
-                    className="flex items-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white text-xs font-extrabold rounded-xl transition-colors active:scale-95 shadow-sm"
+                    className="flex items-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white text-xs font-extrabold rounded-xl transition-colors active:scale-95 shadow-xs"
                   >
                     {isSavingNote ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />}
                     Kaydet
@@ -953,7 +935,6 @@ export function ListingsView() {
         </div>
       )}
 
-      {/* Auth Uyarısı Modalı */}
       {showAuthWarning && (
         <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-150">
           <div className="w-full max-w-sm bg-white rounded-3xl shadow-2xl p-6 text-center space-y-4 animate-in zoom-in-95 duration-200">
