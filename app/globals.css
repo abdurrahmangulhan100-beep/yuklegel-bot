@@ -1,6 +1,4 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
 :root {
   --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
@@ -12,56 +10,67 @@
   color-scheme: dark;
 }
 
-@layer base {
-  html {
-    -webkit-text-size-adjust: 100%;
-    text-size-adjust: 100%;
-  }
-
-  body {
-    @apply bg-slate-50 dark:bg-slate-950 text-zinc-900 dark:text-zinc-100 antialiased;
-  }
-
-  ::selection {
-    @apply bg-amber-500/20 text-amber-500;
-  }
-
-  /* Sürücü dokunmatik/klavye ile gezinirken net görünür odak halkası */
-  :focus-visible {
-    @apply outline-none ring-2 ring-amber-500 ring-offset-2 ring-offset-white dark:ring-offset-slate-950;
-  }
-
-  input,
-  button,
-  select,
-  textarea {
-    font: inherit;
-  }
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
-@layer utilities {
-  /* PWA: alt bottom-nav'ın notch / home-indicator ile çakışmaması için */
-  .pb-safe {
-    padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
-  }
+body {
+  background-color: #f8fafc;
+  color: #18181b;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
 
-  .pt-safe {
-    padding-top: env(safe-area-inset-top);
-  }
+.dark body {
+  background-color: #020617;
+  color: #f4f4f5;
+}
 
-  /* İnce, dikkat dağıtmayan scrollbar */
-  .scrollbar-thin {
-    scrollbar-width: thin;
-    scrollbar-color: rgb(161 161 170 / 0.4) transparent;
-  }
+::selection {
+  background-color: rgba(245, 158, 11, 0.2);
+  color: #d97706;
+}
 
-  .scrollbar-thin::-webkit-scrollbar {
-    width: 4px;
-  }
+:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px #f59e0b;
+}
 
-  .scrollbar-thin::-webkit-scrollbar-thumb {
-    @apply bg-zinc-300 dark:bg-zinc-700 rounded-full;
-  }
+input,
+button,
+select,
+textarea {
+  font: inherit;
+}
+
+/* PWA safe area yardımcı sınıfları */
+.pb-safe {
+  padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+}
+
+.pt-safe {
+  padding-top: env(safe-area-inset-top);
+}
+
+/* İnce kaydırma çubuğu */
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(161, 161, 170, 0.4) transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 4px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background-color: #d4d4d8;
+  border-radius: 9999px;
+}
+
+.dark .scrollbar-thin::-webkit-scrollbar-thumb {
+  background-color: #3f3f46;
 }
 
 @media (prefers-reduced-motion: reduce) {
