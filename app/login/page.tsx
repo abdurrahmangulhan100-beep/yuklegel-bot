@@ -22,11 +22,7 @@ export default function LoginPage() {
     if (!supabase) return
 
     if (isSignUp) {
-      // Kayıt Olma İşlemi
-      const { error } = await supabase.auth.signUp({
-        email,
-        password,
-      })
+      const { error } = await supabase.auth.signUp({ email, password })
       if (error) {
         setErrorMsg("Kayıt olunamadı: " + error.message)
       } else {
@@ -34,11 +30,7 @@ export default function LoginPage() {
         setIsSignUp(false)
       }
     } else {
-      // Giriş Yapma İşlemi
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      })
+      const { error } = await supabase.auth.signInWithPassword({ email, password })
       if (error) {
         setErrorMsg("Giriş başarısız: " + error.message)
       } else {
@@ -48,22 +40,11 @@ export default function LoginPage() {
     setLoading(false)
   }
 
-  // Hızlı test girişi için pratik buton
-  const handleQuickDemoLogin = async () => {
-    if (!supabase) return
-    setLoading(true)
-    // Supabase projenizde daha önce açtığınız bir test hesabını buraya yazabilirsiniz veya otomatik doldururuz
-    const { error } = await supabase.auth.signInWithPassword({
-      email: "abdurrahmangulhan100@gmail.com.org", // Supabase'deki tablonuzda görünen e-posta veya test e-postanız
-      password: "123456"
-    })
-    if (error) {
-      // Eğer test hesabı yoksa hızlıca oluştursun veya hata versin
-      setErrorMsg("Hızlı giriş için önce alt kısımdan kayıt olunuz.")
-      setLoading(false)
-    } else {
-      window.location.replace("/")
-    }
+  // Misafir Modu: Oturum açmadan direkt panele geçiş izni verir
+  const handleGuestLogin = () => {
+    // Tarayıcı hafızasında misafir olduğunu işaretle
+    localStorage.setItem("is_guest", "true")
+    window.location.replace("/")
   }
 
   return (
@@ -121,10 +102,10 @@ export default function LoginPage() {
         <div className="mt-6 border-t border-[#e4e9ef] pt-4 text-center">
           <button
             type="button"
-            onClick={handleQuickDemoLogin}
+            onClick={handleGuestLogin}
             className="w-full h-10 bg-gray-100 hover:bg-gray-200 text-[#122c4a] text-xs font-semibold rounded-xl transition-colors cursor-pointer"
           >
-            ⚡ Hızlı Test Hesabı ile Giriş Yap
+            👀 Misafir Modu ile Hemen İncele
           </button>
         </div>
       </div>
