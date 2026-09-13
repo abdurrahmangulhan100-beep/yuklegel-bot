@@ -33,8 +33,6 @@ const extractPhone = (text: string) => {
 }
 
 export default function Page() {
-  const [sessionChecked, setSessionChecked] = useState(false)
-  const [isAuthenticated, setIsAuthenticated] = useState(true)
   const [loads, setLoads] = useState<Load[]>([])
   const [activeFilter, setActiveFilter] = useState("Tümü")
   const [sourceFilter, setSourceFilter] = useState<"all" | "user" | "bot">("all")
@@ -50,30 +48,6 @@ export default function Page() {
     authorized_person: "Misafir",
     initials: "MK"
   })
-
-  useEffect(() => {
-    const checkUserSession = async () => {
-      if (!supabase) return
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) {
-        setIsAuthenticated(false)
-      }
-      setSessionChecked(true)
-    }
-
-    checkUserSession()
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!session) {
-        setIsAuthenticated(false)
-        window.location.replace("/")
-      }
-    })
-
-    return () => {
-      subscription.unsubscribe()
-    }
-  }, [])
 
   const fetchProfile = async () => {
     if (!supabase) return
@@ -148,7 +122,6 @@ export default function Page() {
   }
 
   useEffect(() => {
-    if (!isAuthenticated) return
     fetchListings()
     fetchProfile()
 
@@ -162,7 +135,7 @@ export default function Page() {
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [isAuthenticated])
+  }, [])
 
   const filteredLoads = useMemo(() => loads.filter((load) => {
     const filterMatch = activeFilter === "Tümü" || (activeFilter === "Acil" ? load.urgent : load.vehicle.toLowerCase().includes(activeFilter.toLowerCase()))
@@ -190,25 +163,8 @@ export default function Page() {
   const handleLogout = async () => {
     if (!supabase) return
     await supabase.auth.signOut()
+    // Çıkış yapıldığında tarayıcı önbelleğini ve çerezleri temizleyerek ana sayfaya yönlendir
     window.location.replace("/")
-  }
-
-  if (sessionChecked && !isAuthenticated) {
-    return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-[#f5f7fa] text-[#122c4a]">
-        <div className="text-center p-8 bg-white rounded-2xl shadow-sm border border-gray-200 max-w-md w-full">
-          <div className="size-12 rounded-xl bg-[#d64526] text-white flex items-center justify-center text-2xl font-bold mx-auto mb-4">Y</div>
-          <h1 className="text-xl font-bold mb-2">Oturumunuz Kapatıldı</h1>
-          <p className="text-sm text-gray-500 mb-6">Güvenliğiniz için hesabınızdan çıkış yapıldı.</p>
-          <button 
-            onClick={() => window.location.reload()}
-            className="w-full bg-[#122c4a] text-white py-2.5 rounded-xl font-medium hover:bg-[#1a3d68] transition-colors cursor-pointer"
-          >
-            Giriş Ekranına Dön
-          </button>
-        </div>
-      </div>
-    )
   }
 
   return (
