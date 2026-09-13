@@ -21,7 +21,6 @@ export function CreateListingModal({ isOpen, setIsOpen, onAddLoad }: CreateModal
     phone: ""
   })
 
-  // Modal açıldığında kullanıcının Şirket Profili bilgilerini çek
   useEffect(() => {
     async function fetchUserProfile() {
       if (!supabase) return
@@ -50,14 +49,12 @@ export function CreateListingModal({ isOpen, setIsOpen, onAddLoad }: CreateModal
     const price = Number(formData.get("price")) || 0
     const urgent = formData.get("urgent") === "on"
 
-    // Şirket Profili eksikse kullanıcıyı uyar
     if (!profile.company_name || profile.company_name === "YükleGel Kullanıcısı") {
       alert("Lütfen önce sol menüden 'Şirket Profili' sayfasına giderek firma adınızı ve telefon numaranızı kaydedin!")
       setIsSubmitting(false)
       return
     }
 
-    // Supabase listings tablosuna ekleme
     const { data, error } = await supabase.from("listings").insert([
       { 
         company_name: profile.company_name, 
@@ -100,10 +97,8 @@ export function CreateListingModal({ isOpen, setIsOpen, onAddLoad }: CreateModal
     }
   }
 
- return (
-    <Dialog open={isOpen} onOpenChange={(open) => {
-      if (!open) setIsOpen(false);
-    }}>
+  return (
+    <Dialog open={isOpen} onOpenChange={(open) => setIsOpen(open)}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[560px]">
         <DialogHeader>
           <DialogTitle className="text-xl font-bold text-[#122c4a]">Yeni İlan Oluştur</DialogTitle>
@@ -147,8 +142,8 @@ export function CreateListingModal({ isOpen, setIsOpen, onAddLoad }: CreateModal
               variant="outline" 
               className="cursor-pointer" 
               onClick={(e) => {
-                e.preventDefault();
-                setIsOpen(false);
+                e.preventDefault()
+                setIsOpen(false)
               }}
             >
               İptal
@@ -161,3 +156,4 @@ export function CreateListingModal({ isOpen, setIsOpen, onAddLoad }: CreateModal
       </DialogContent>
     </Dialog>
   )
+}
