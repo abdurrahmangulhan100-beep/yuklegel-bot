@@ -16,14 +16,13 @@ export function TripsView({ loads }: { loads: Load[] }) {
   const [isEditOpen, setIsEditOpen] = useState(false)
   const [loading, setLoading] = useState(false)
 
-  // Silme İşlemi
   const handleDelete = async (id: string | number) => {
     if (!confirm("Bu seferi/ilanı silmek istediğinize emin misiniz?")) return
     
     const realId = String(id).replace("user-", "")
     
     if (!supabase) {
-      alert("Supabase bağlantısı bulunamadı!")
+      alert("Supabase bağlantısı kurulamadı!")
       return
     }
 
@@ -36,13 +35,11 @@ export function TripsView({ loads }: { loads: Load[] }) {
     }
   }
 
-  // Düzenleme Modalını Aç
   const handleOpenEdit = (load: Load) => {
     setEditingLoad(load)
     setIsEditOpen(true)
   }
 
-  // Güncellemeyi Kaydet
   const handleUpdate = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     if (!editingLoad) return
@@ -85,7 +82,7 @@ export function TripsView({ loads }: { loads: Load[] }) {
 
       <div className="grid gap-4">
         {userLoads.length > 0 ? (
-          userLoads.main ? null : userLoads.map((load) => (
+          userLoads.map((load) => (
             <div key={load.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-xl border border-[#e4e9ef] bg-white p-5 shadow-sm">
               <div className="flex items-center gap-4">
                 <div className="grid size-12 shrink-0 place-items-center rounded-xl bg-[#dbe8f2] text-[#315d83]">
@@ -110,10 +107,10 @@ export function TripsView({ loads }: { loads: Load[] }) {
                 </div>
 
                 <div className="flex items-center gap-1">
-                  <Button variant="outline" size="sm" onClick={() => handleOpenEdit(load)} className="cursor-pointer gap-1 text-[#315d83]">
+                  <Button type="button" variant="outline" size="sm" onClick={() => handleOpenEdit(load)} className="cursor-pointer gap-1 text-[#315d83]">
                     <Edit3 className="size-4" /> Düzenle
                   </Button>
-                  <Button variant="outline" size="sm" onClick={() => handleDelete(load.id)} className="cursor-pointer gap-1 text-[#d64526] hover:bg-[#fff0ec]">
+                  <Button type="button" variant="outline" size="sm" onClick={() => handleDelete(load.id)} className="cursor-pointer gap-1 text-[#d64526] hover:bg-[#fff0ec]">
                     <Trash2 className="size-4" /> Sil
                   </Button>
                 </div>
@@ -127,7 +124,6 @@ export function TripsView({ loads }: { loads: Load[] }) {
         )}
       </div>
 
-      {/* Düzenleme Modalı */}
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
         <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[560px]">
           <DialogHeader>
