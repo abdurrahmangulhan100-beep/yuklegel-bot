@@ -1,6 +1,6 @@
 "use client"
 
-import { Phone, MessageSquare, Star, ArrowRight, Building2 } from "lucide-react"
+import { Phone, MessageSquare, Star, Building2 } from "lucide-react"
 
 export type Load = {
   id: string
@@ -24,23 +24,21 @@ type LoadCardProps = {
   searchQuery?: string
 }
 
-// Türkçe karakter ve büyük/küçük harf duyarlı kusursuz vurgulama fonksiyonu
+// Modern ve şık vurgulama fonksiyonu (Sarı yerine yumuşak kurumsal mavi tonu)
 const highlightMatch = (text: string, query: string) => {
   if (!query || !text) return text
   
-  // Türkçe karakterleri ve büyük/küçük harfleri güvenle eşlemek için regex
   const escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
   const regex = new RegExp(`(${escapedQuery})`, "gi")
   const parts = text.split(regex)
 
   return parts.map((part, i) => {
-    // Eşleşen kelime kontrolü (büyük/küçük harf duyarsız)
     const isMatch = part.toLocaleLowerCase('tr-TR') === query.toLocaleLowerCase('tr-TR')
     
     return isMatch ? (
-      <mark key={i} className="bg-amber-300 text-amber-950 font-bold px-1 rounded mx-0.5 shadow-sm">
+      <span key={i} className="bg-[#eef4f8] text-[#122c4a] border border-[#cbd5e1] font-semibold px-1.5 py-0.5 rounded-md mx-0.5 inline-block text-xs shadow-2xs">
         {part}
-      </mark>
+      </span>
     ) : (
       part
     )
@@ -90,38 +88,21 @@ export function LoadCard({ load, searchQuery = "" }: LoadCardProps) {
           </div>
         </div>
 
-        {/* Güzergah Bilgisi */}
-        <div className="my-4 flex items-center justify-between bg-[#f8fafc] p-3 rounded-lg border border-[#edf2f7]">
-          <div className="flex-1 text-center sm:text-left">
-            <span className="text-[11px] uppercase tracking-wider text-[#8da0b2] block font-medium">Çıkış</span>
-            <span className="font-bold text-[#122c4a] text-sm">
-              {highlightMatch(load.from || "-", cleanQuery)}
-            </span>
-          </div>
-          <div className="px-3 text-[#8da0b2]">
-            <ArrowRight className="size-4" />
-          </div>
-          <div className="flex-1 text-center sm:text-right">
-            <span className="text-[11px] uppercase tracking-wider text-[#8da0b2] block font-medium">Varış</span>
-            <span className="font-bold text-[#122c4a] text-sm">
-              {highlightMatch(load.to || "-", cleanQuery)}
-            </span>
-          </div>
-        </div>
-
-        {/* Yük Detayı */}
-        <div className="mb-4">
-          <span className="text-[11px] uppercase tracking-wider text-[#8da0b2] block font-medium mb-1">Yük ve Araç Detayı</span>
-          <p className="text-sm text-[#334e68] bg-[#f8fafc] p-2.5 rounded-lg border border-[#edf2f7] leading-relaxed">
+        {/* Yük Detayı (Çıkış/Varış kutusu kaldırıldı, doğrudan içerik gösteriliyor) */}
+        <div className="my-4">
+          <span className="text-[11px] uppercase tracking-wider text-[#8da0b2] block font-medium mb-1.5">İlan İçeriği / Yük Detayı</span>
+          <p className="text-sm text-[#334e68] bg-[#f8fafc] p-3.5 rounded-lg border border-[#edf2f7] leading-relaxed font-normal">
             {highlightMatch(load.cargo, cleanQuery)}
           </p>
         </div>
 
         {/* Araç ve Fiyat Bilgisi */}
-        <div className="flex flex-wrap items-center gap-2 mb-4">
-          <span className="text-xs bg-[#eef4f8] text-[#315d83] font-medium px-3 py-1 rounded-md">
-            {highlightMatch(load.vehicle, cleanQuery)}
-          </span>
+        <div className="flex flex-wrap items-center gap-2 mb-2">
+          {load.vehicle && load.vehicle !== "-" && (
+            <span className="text-xs bg-[#eef4f8] text-[#315d83] font-medium px-3 py-1 rounded-md">
+              {highlightMatch(load.vehicle, cleanQuery)}
+            </span>
+          )}
           {load.price && (
             <span className="text-xs bg-emerald-50 text-emerald-700 font-bold px-3 py-1 rounded-md ml-auto border border-emerald-200">
               {load.price}
@@ -131,7 +112,7 @@ export function LoadCard({ load, searchQuery = "" }: LoadCardProps) {
       </div>
 
       {/* Alt Butonlar (İletişim) */}
-      <div className="flex items-center justify-between pt-3 border-b-0 border-t border-[#f0f4f8] mt-1">
+      <div className="flex items-center justify-between pt-3 border-t border-[#f0f4f8] mt-3">
         <div className="text-xs text-[#8da0b2]">
           İletişim: <span className="font-semibold text-[#122c4a]">{load.phone}</span>
         </div>
