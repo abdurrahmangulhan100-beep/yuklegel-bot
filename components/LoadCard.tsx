@@ -24,13 +24,13 @@ type LoadCardProps = {
   searchQuery?: string
 }
 
-// Metin içinde aranan kelimeyi sarı fosforlu yapan fonksiyon
+// Sadece eşleşen kelimeyi sarı fosforlu yapan fonksiyon
 const highlightMatch = (text: string, query: string) => {
   if (!query || !text) return text
   const parts = text.split(new RegExp(`(${query})`, "gi"))
   return parts.map((part, i) => 
     part.toLowerCase() === query.toLowerCase() ? (
-      <mark key={i} className="bg-amber-300 text-amber-950 font-semibold px-0.5 rounded">
+      <mark key={i} className="bg-amber-300 text-amber-950 font-bold px-1 rounded">
         {part}
       </mark>
     ) : (
@@ -53,6 +53,7 @@ export function LoadCard({ load, searchQuery = "" }: LoadCardProps) {
   }
 
   return (
+    // Kartın kendisi sade ve normal bırakıldı, sadece aranan kelime boyanacak
     <div className="relative flex flex-col justify-between rounded-xl border border-[#e4e9ef] bg-white p-5 shadow-sm transition-all hover:shadow-md">
       <div>
         {/* Üst Kısım: Firma ve Zaman */}
@@ -104,7 +105,7 @@ export function LoadCard({ load, searchQuery = "" }: LoadCardProps) {
         {/* Yük Detayı */}
         <div className="mb-4">
           <span className="text-[11px] uppercase tracking-wider text-[#8da0b2] block font-medium mb-1">Yük ve Araç Detayı</span>
-          <p className="text-sm text-[#334e68] bg-amber-50/40 p-2.5 rounded-lg border border-amber-100/60 leading-relaxed">
+          <p className="text-sm text-[#334e68] bg-[#f8fafc] p-2.5 rounded-lg border border-[#edf2f7] leading-relaxed">
             {highlightMatch(load.cargo, cleanQuery)}
           </p>
         </div>
