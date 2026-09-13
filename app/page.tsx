@@ -42,7 +42,6 @@ export default function Page() {
   const [isLoading, setIsLoading] = useState(true)
   const [activeTab, setActiveTab] = useState("overview")
 
-  // Kullanıcı profil bilgileri (Sağ üst köşe için)
   const [profile, setProfile] = useState({
     company_name: "YükleGel Kullanıcısı",
     authorized_person: "Misafir",
@@ -180,7 +179,18 @@ export default function Page() {
             <button aria-label="Menüyü aç" className="cursor-pointer rounded-lg p-2 hover:bg-white lg:hidden" onClick={() => setIsSidebarOpen(true)}><Menu /></button>
             <div className="relative hidden w-[320px] sm:block">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8da0b2]" />
-              <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="İlan, firma veya şehir ara..." className="h-10 border-[#e0e6ed] bg-white pl-10 text-sm shadow-none" />
+              {/* ARAMA YAPILDIĞINDA OTOMATİK "İlanlar" SEKMESİNE GEÇMESİ SAĞLANDI */}
+              <Input 
+                value={query} 
+                onChange={(e) => {
+                  setQuery(e.target.value)
+                  if (e.target.value.trim().length > 0) {
+                    setActiveTab("İlanlar")
+                  }
+                }} 
+                placeholder="İlan, firma veya şehir ara..." 
+                className="h-10 border-[#e0e6ed] bg-white pl-10 text-sm shadow-none" 
+              />
             </div>
           </div>
           <div className="flex items-center gap-3 sm:gap-5">
@@ -215,6 +225,7 @@ export default function Page() {
               sourceFilter={sourceFilter} 
               setSourceFilter={setSourceFilter} 
               setIsCreateOpen={setIsCreateOpen} 
+              searchQuery={query}
             />
           )}
           {activeTab === "Seferlerim" && <TripsView loads={loads} />}
@@ -224,7 +235,6 @@ export default function Page() {
         </main>
       </div>
 
-      {/* DÜZELTME BURADA: setIsOpen={isCreateOpen} yerine setIsOpen={setIsCreateOpen} yapıldı */}
       <CreateListingModal 
         isOpen={isCreateOpen} 
         setIsOpen={setIsCreateOpen} 
