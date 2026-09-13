@@ -56,7 +56,6 @@ export function ListingsView({
         </Button>
       </div>
 
-      {/* DİNAMİK ARAMA BİLDİRİMİ: Hangi kelime yazılırsa yazılsın burada görünür */}
       {hasActiveSearch && (
         <div className="mb-6 flex items-center gap-3 rounded-xl border border-amber-300 bg-amber-50/80 px-4 py-3 text-amber-800 shadow-sm animate-pulse">
           <Sparkles className="size-5 shrink-0 text-amber-600 animate-spin" />
@@ -107,14 +106,8 @@ export function ListingsView({
           <div className="col-span-full py-12 text-center text-sm text-[#718397]">Yükleniyor...</div>
         ) : loads.length ? (
           loads.map((load) => (
-            <div 
-              key={load.id} 
-              className={cn(
-                "transition-all duration-300 rounded-xl",
-                hasActiveSearch && "ring-2 ring-amber-400 ring-offset-2 bg-amber-50/20 shadow-md"
-              )}
-            >
-              <LoadCard load={load} />
+            <div key={load.id} className="transition-all duration-300 rounded-xl">
+              <LoadCard load={load} searchQuery={searchQuery} />
             </div>
           ))
         ) : (
