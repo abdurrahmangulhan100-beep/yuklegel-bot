@@ -1,6 +1,6 @@
 "use client"
 
-import { MapPin, Package, Plus, Truck } from "lucide-react"
+import { MapPin, Package, Plus, Truck, Sparkles } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { LoadCard, Load } from "@/components/LoadCard"
 import { cn } from "@/lib/utils"
@@ -26,6 +26,7 @@ type ListingsViewProps = {
   sourceFilter: typeof sourceTabs[number]["value"];
   setSourceFilter: (source: typeof sourceTabs[number]["value"]) => void;
   setIsCreateOpen: (open: boolean) => void;
+  searchQuery?: string;
 }
 
 export function ListingsView({ 
@@ -36,8 +37,11 @@ export function ListingsView({
   setActiveFilter, 
   sourceFilter, 
   setSourceFilter, 
-  setIsCreateOpen 
+  setIsCreateOpen,
+  searchQuery = ""
 }: ListingsViewProps) { 
+  const isKonyaSearch = searchQuery.toLowerCase().includes("konya")
+
   return (
     <>
       <div className="mb-8 flex flex-col justify-between gap-5 md:flex-row md:items-end">
@@ -50,6 +54,15 @@ export function ListingsView({
           <Plus /> İlan oluştur
         </Button>
       </div>
+
+      {isKonyaSearch && (
+        <div className="mb-6 flex items-center gap-3 rounded-xl border border-amber-300 bg-amber-50/80 px-4 py-3 text-amber-800 shadow-sm animate-pulse">
+          <Sparkles className="size-5 shrink-0 text-amber-600 animate-spin" />
+          <div className="text-sm font-medium">
+            <span className="font-bold">Konya</span> araması için filtrelenen ilanlar listeleniyor. Toplam <span className="font-bold">{loads.length}</span> sonuç bulundu.
+          </div>
+        </div>
+      )}
 
       <section className="mb-7 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Stat icon={Package} label="Aktif ilanlar (Tümü)" value={stats.activeTotal.toString()} />
@@ -91,9 +104,21 @@ export function ListingsView({
         {loading ? (
           <div className="col-span-full py-12 text-center text-sm text-[#718397]">Yükleniyor...</div>
         ) : loads.length ? (
-          loads.map((load) => <LoadCard key={load.id} load={load} />)
+          loads.map((load) => (
+            <div 
+              key={load.id} 
+              className={cn(
+                "transition-all duration-300 rounded-xl",
+                isKonyaSearch && "ring-2 ring-amber-400 ring-offset-2 bg-amber-50/20 shadow-md"
+              )}
+            >
+              <LoadCard load={load} />
+            </div>
+          ))
         ) : (
-          <div className="col-span-full rounded-xl border border-dashed border-[#ccd6e0] bg-white py-16 text-center text-sm text-[#718397]">Henüz ilan bulunamadı.</div>
+          <div className="col-span-full rounded-xl border border-dashed border-[#ccd6e0] bg-white py-16 text-center text-sm text-[#718397]">
+            {isKonyaSearch ? "Konya ile eşleşen herhangi bir ilan bulunamadı." : "Henüz ilan bulunamadı."}
+          </div>
         )}
       </div>
     </>
