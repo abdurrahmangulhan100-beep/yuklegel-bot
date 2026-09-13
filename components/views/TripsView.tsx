@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Trash2, Edit3, CheckCircle2, X } from "lucide-react"
+import { Trash2, Edit3, CheckCircle2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -10,7 +10,6 @@ import { supabase } from "@/lib/supabase"
 import { Load } from "@/components/LoadCard"
 
 export function TripsView({ loads }: { loads: Load[] }) {
-  // Sadece kullanıcının kendi oluşturduğu ilanları "Seferlerim" altında gösterelim
   const userLoads = loads.filter(l => l.source === "user")
   
   const [editingLoad, setEditingLoad] = useState<Load | null>(null)
@@ -22,6 +21,12 @@ export function TripsView({ loads }: { loads: Load[] }) {
     if (!confirm("Bu seferi/ilanı silmek istediğinize emin misiniz?")) return
     
     const realId = String(id).replace("user-", "")
+    
+    if (!supabase) {
+      alert("Supabase bağlantısı bulunamadı!")
+      return
+    }
+
     const { error } = await supabase.from("listings").delete().eq("id", realId)
 
     if (error) {
@@ -47,11 +52,16 @@ export function TripsView({ loads }: { loads: Load[] }) {
     const formData = new FormData(e.currentTarget)
     
     const updatedData = {
-      from_city: formData.get("from"),
-      to_city: formData.get("to"),
-      cargo_detail: formData.get("cargo"),
-      vehicle_type: formData.get("vehicle"),
+      from_city: formData.get("from") as string,
+      to_city: formData.get("to") as string,
+      cargo_detail: formData.get("cargo") as string,
+      vehicle_type: formData.get("vehicle") as string,
       price: Number(formData.get("price")) || 0,
+    }
+
+    if (!supabase) {
+      setLoading(false)
+      return
     }
 
     const { error } = await supabase.from("listings").update(updatedData).eq("id", realId)
@@ -75,7 +85,7 @@ export function TripsView({ loads }: { loads: Load[] }) {
 
       <div className="grid gap-4">
         {userLoads.length > 0 ? (
-          userLoads.map((load) => (
+          userLoads.main ? null : userLoads.map((load) => (
             <div key={load.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-xl border border-[#e4e9ef] bg-white p-5 shadow-sm">
               <div className="flex items-center gap-4">
                 <div className="grid size-12 shrink-0 place-items-center rounded-xl bg-[#dbe8f2] text-[#315d83]">
@@ -83,10 +93,10 @@ export function TripsView({ loads }: { loads: Load[] }) {
                 </div>
                 <div>
                   <div className="text-base font-bold text-[#122c4a]">
-                    {load.from} $\rightarrow$ {load.to}
+                    {load.from} → {load.to}
                   </div>
                   <div className="mt-1 text-xs text-[#718397]">
-                    {load.cargo} $\cdot$ {load.vehicle}
+                    {load.cargo} • {load.vehicle}
                   </div>
                 </div>
               </div>
