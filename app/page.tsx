@@ -224,7 +224,12 @@ export default function Page() {
         </main>
       </div>
 
-      <CreateListingModal isOpen={isCreateOpen} setIsOpen={isCreateOpen} onAddLoad={handleAddLoad} />
+      {/* DÜZELTME BURADA: setIsOpen={isCreateOpen} yerine setIsOpen={setIsCreateOpen} yapıldı */}
+      <CreateListingModal 
+        isOpen={isCreateOpen} 
+        setIsOpen={setIsCreateOpen} 
+        onAddLoad={handleAddLoad} 
+      />
     </div>
   )
 }
