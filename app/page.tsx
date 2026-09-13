@@ -33,6 +33,7 @@ const extractPhone = (text: string) => {
 }
 
 export default function Page() {
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true)
   const [loads, setLoads] = useState<Load[]>([])
   const [activeFilter, setActiveFilter] = useState("Tümü")
   const [sourceFilter, setSourceFilter] = useState<"all" | "user" | "bot">("all")
@@ -48,6 +49,20 @@ export default function Page() {
     authorized_person: "Misafir",
     initials: "MK"
   })
+
+  // Oturum Kontrolü (Giriş yapılmamışsa /login sayfasına fırlat)
+  useEffect(() => {
+    const verifySession = async () => {
+      if (!supabase) return
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) {
+        window.location.replace("/login")
+      } else {
+        setIsCheckingAuth(false)
+      }
+    }
+    verifySession()
+  }, [])
 
   const fetchProfile = async () => {
     if (!supabase) return
@@ -122,6 +137,7 @@ export default function Page() {
   }
 
   useEffect(() => {
+    if (isCheckingAuth) return
     fetchListings()
     fetchProfile()
 
@@ -135,7 +151,7 @@ export default function Page() {
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [])
+  }, [isCheckingAuth])
 
   const filteredLoads = useMemo(() => loads.filter((load) => {
     const filterMatch = activeFilter === "Tümü" || (activeFilter === "Acil" ? load.urgent : load.vehicle.toLowerCase().includes(activeFilter.toLowerCase()))
@@ -160,11 +176,15 @@ export default function Page() {
     setLoads(prev => [newLoad, ...prev])
   }
 
+  // Çıkış yap fonksiyonu - oturumu kapatır ve direkt login sayfasına yollar
   const handleLogout = async () => {
     if (!supabase) return
     await supabase.auth.signOut()
-    // Çıkış yapıldığında tarayıcı önbelleğini ve çerezleri temizleyerek ana sayfaya yönlendir
-    window.location.replace("/")
+    window.location.replace("/login")
+  }
+
+  if (isCheckingAuth) {
+    return <div className="flex h-screen items-center justify-center bg-[#f5f7fa] text-[#122c4a]">Oturum kontrol ediliyor...</div>
   }
 
   return (
