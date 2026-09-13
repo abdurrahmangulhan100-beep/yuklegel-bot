@@ -101,7 +101,7 @@ export function CreateListingModal({ isOpen, setIsOpen, onAddLoad }: CreateModal
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+    <Dialog open={isOpen} onOpenChange={(open) => setIsOpen(open)}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[560px]">
         <DialogHeader>
           <DialogTitle className="text-xl font-bold text-[#122c4a]">Yeni İlan Oluştur</DialogTitle>
