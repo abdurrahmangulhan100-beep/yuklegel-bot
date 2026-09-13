@@ -13,6 +13,7 @@ import { CalculatorView } from "@/components/views/CalculatorView"
 import { CompaniesView } from "@/components/views/CompaniesView"
 import { CompanyProfileView } from "@/components/views/CompanyProfileView"
 import { OverviewView } from "@/components/views/OverviewView"
+import { FinanceView } from "@/components/views/FinanceView"
 import { CreateListingModal } from "@/components/CreateListingModal"
 import { Sidebar } from "@/components/Sidebar"
 
@@ -228,6 +229,7 @@ export default function Page() {
             />
           )}
           {activeTab === "Seferlerim" && <TripsView loads={loads} />}
+          {activeTab === "Gelir Gider" && <FinanceView />}
           {activeTab === "Firmalar" && <CompaniesView loads={loads} />}
           {activeTab === "Şirket Profili" && <CompanyProfileView onProfileUpdated={fetchProfile} />}
           {activeTab === "Sefer Hesapla" && <CalculatorView />}
