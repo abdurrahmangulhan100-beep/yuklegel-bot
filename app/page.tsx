@@ -50,9 +50,15 @@ export default function Page() {
     initials: "MK"
   })
 
-  // Oturum Kontrolü (Giriş yapılmamışsa /login sayfasına fırlat)
+  // Oturum ve Misafir Modu Kontrolü
   useEffect(() => {
     const verifySession = async () => {
+      const isGuest = localStorage.getItem("is_guest")
+      if (isGuest === "true") {
+        setIsCheckingAuth(false)
+        return
+      }
+
       if (!supabase) return
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) {
@@ -82,8 +88,8 @@ export default function Page() {
   const fetchListings = async () => {
     setIsLoading(true)
     try {
-      const userReq = supabase.from("listings").select("*").order("created_at", { ascending: false })
-      const botReq = supabase.from("bot_listings").select("*").order("created_at", { ascending: false })
+      const userReq = supabase ? supabase.from("listings").select("*").order("created_at", { ascending: false }) : Promise.resolve({ data: [] })
+      const botReq = supabase ? supabase.from("bot_listings").select("*").order("created_at", { ascending: false }) : Promise.resolve({ data: [] })
 
       const [{ data: userData }, { data: botData }] = await Promise.all([userReq, botReq])
 
@@ -141,6 +147,7 @@ export default function Page() {
     fetchListings()
     fetchProfile()
 
+    if (!supabase) return
     const channel = supabase
       .channel("realtime-all")
       .on("postgres_changes", { event: "*", schema: "public", table: "listings" }, () => fetchListings())
@@ -176,10 +183,12 @@ export default function Page() {
     setLoads(prev => [newLoad, ...prev])
   }
 
-  // Çıkış yap fonksiyonu - oturumu kapatır ve direkt login sayfasına yollar
+  // Çıkış yap ve misafir oturumunu temizle
   const handleLogout = async () => {
-    if (!supabase) return
-    await supabase.auth.signOut()
+    localStorage.removeItem("is_guest")
+    if (supabase) {
+      await supabase.auth.signOut()
+    }
     window.location.replace("/login")
   }
 
