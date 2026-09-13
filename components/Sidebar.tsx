@@ -32,7 +32,7 @@ export function Sidebar({
   const handleLogout = async () => {
     if (!supabase) return
     await supabase.auth.signOut()
-    window.location.href = "/"
+    window.location.replace("/")
   }
 
   return (
@@ -71,7 +71,7 @@ export function Sidebar({
         <NavItem icon={Settings} label="Ayarlar" active={activeTab === "Ayarlar"} collapsed={isCollapsed} onClick={() => go("Ayarlar")} />
         <NavItem icon={CircleHelp} label="Yardım Merkezi" active={activeTab === "Yardım Merkezi"} collapsed={isCollapsed} onClick={() => go("Yardım Merkezi")} />
 
-        {/* Çıkış Yap Butonu - Sol Menünün Alt Kısmına Eklendi */}
+        {/* Çıkış Yap Butonu */}
         <div className="mt-auto pt-4">
           <button
             type="button"
