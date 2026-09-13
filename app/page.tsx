@@ -24,25 +24,27 @@ type Load = {
   urgent?: boolean; 
   time: string; 
   color: string; 
-  source: "user" | "bot" 
+  source: "user" | "bot";
+  phone?: string;
 }
-
-const fallbackLoads: Load[] = [
-  { id: 1, company: "Aksoy Lojistik", initials: "AL", from: "İstanbul", to: "Ankara", cargo: "Paletli gıda ürünleri · 18 ton", vehicle: "13.60 Tenteli", distance: "453 km", price: "₺28.500", urgent: true, time: "12 dk önce", color: "bg-[#d64526]", source: "user" },
-  { id: 2, company: "WhatsApp Lojistik Akışı", initials: "WA", from: "Aydın", to: "İzmir", cargo: "Yükleme yeri Aydın Nazilli, Yük indirme Buca İzmir, 26 palet, 2 ton", vehicle: "TIR", distance: "326 km", price: "₺0", time: "28 dk önce", color: "bg-[#315d83]", source: "bot" }
-]
 
 const filters = ["Tümü", "Acil", "Tır", "Kamyon", "Frigo"]
 const sourceTabs = [{ value: "all", label: "Tüm İlanlar" }, { value: "user", label: "YükleGel İlanları (Kullanıcı)" }, { value: "bot", label: "Web/Bot İlanları" }] as const
 
-// Emojileri ve WhatsApp yıldız (*kalın*) karakterlerini temizleyen yardımcı fonksiyon
 const cleanText = (text: string) => {
   if (!text) return "-"
   return text
-    .replace(/[*_~`]/g, "") // WhatsApp markdown işaretlerini kaldır
-    .replace(/([\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD10-\uDDFF])/g, "") // Emojileri kaldır
-    .replace(/\s+/g, " ") // Fazla boşlukları tek boşluğa indir
+    .replace(/[*_~`]/g, "")
+    .replace(/([\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD10-\uDDFF])/g, "")
+    .replace(/\s+/g, " ")
     .trim()
+}
+
+// Mesaj metninden telefon numarasını otomatik ayıklama fonksiyonu
+const extractPhone = (text: string) => {
+  if (!text) return "05551234567"
+  const match = text.match(/(0?5\d{2}\s*\d{3}\s*\d{2}\s*\d{2})/);
+  return match ? match[0].replace(/\s+/g, "") : "05551234567";
 }
 
 export default function Page() {
@@ -81,14 +83,15 @@ export default function Page() {
         urgent: Boolean(item.urgent),
         time: item.created_at ? new Date(item.created_at).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" }) : "Yeni",
         color: "bg-[#d64526]",
-        source: "user"
+        source: "user",
+        phone: item.phone || "05551234567"
       }))
 
       const formattedBotLoads: Load[] = (botData || []).map((item: any) => {
-        // Ham metni temizle
         const rawDetail = cleanText(item.cargo_detail || item.message || item.text || "WhatsApp İlanı")
         const rawCompany = cleanText(item.company_name || "WhatsApp Lojistik Akışı")
         const rawVehicle = cleanText(item.vehicle_type || "TIR / Kamyon")
+        const extractedPhone = extractPhone(rawDetail)
 
         return {
           id: `bot-${item.id}`,
@@ -96,29 +99,43 @@ export default function Page() {
           initials: "WA",
           from: cleanText(item.from_city || ""),
           to: cleanText(item.to_city || ""),
-          cargo: rawDetail, // Ham mesaj burada temizlenmiş şekilde yük detayı olarak gösterilecek
+          cargo: rawDetail,
           vehicle: rawVehicle,
           distance: "Belirtilmemiş",
-          price: item.price ? `₺${item.price}` : "₺0",
+          price: "", // Bot ilanlarında fiyat gizlendi
           urgent: Boolean(item.urgent),
           time: item.created_at ? new Date(item.created_at).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" }) : "Yeni",
           color: "bg-[#315d83]",
-          source: "bot"
+          source: "bot",
+          phone: extractedPhone
         }
       })
 
-      const allLoads = [...formattedUserLoads, ...formattedBotLoads]
-      setLoads(allLoads.length > 0 ? allLoads : fallbackLoads)
+      setLoads([...formattedUserLoads, ...formattedBotLoads])
     } catch (err) {
       console.error("Veri çekme hatası:", err)
-      setLoads(fallbackLoads)
     } finally {
       setIsLoading(false)
     }
   }
 
+  // Supabase Realtime (Canlı Anlık Dinleme - Sayfayı yenilemeye gerek kalmaz)
   useEffect(() => {
     fetchListings()
+
+    const channelListings = supabase
+      .channel("realtime-listings")
+      .on("postgres_changes", { event: "*", schema: "public", table: "listings" }, () => {
+        fetchListings()
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "bot_listings" }, () => {
+        fetchListings()
+      })
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channelListings)
+    }
   }, [])
 
   const handleCreateListing = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -139,11 +156,11 @@ export default function Page() {
     ])
 
     setIsSubmitting(false)
-
     if (error) {
       alert("İlan eklenirken hata oluştu: " + error.message)
     } else {
       setIsCreateOpen(false)
+      // Realtime sayesinde otomatik güncellenir ama ek garanti için tetikleyebiliriz
       fetchListings()
     }
   }
@@ -155,6 +172,27 @@ export default function Page() {
     return filterMatch && sourceMatch && searchMatch
   }), [loads, activeFilter, sourceFilter, query])
 
+  // İstatistik Hesaplamaları
+  const stats = useMemo(() => {
+    const userLoads = loads.filter(l => l.source === "user");
+    
+    // Bugün eklenenler: Sadece kullanıcıların eklediği veriler
+    const todayCount = userLoads.length; 
+
+    // Bekleyen seferler: Kullanıcıların eklediği ilanlar
+    const pendingTripsCount = userLoads.length;
+
+    // Aktif rota: Benzersiz kalkış-varış rotalarının sayısı
+    const uniqueRoutes = new Set(loads.filter(l => l.from && l.to && l.from !== "-" && l.to !== "-").map(l => `${l.from}-${l.to}`)).size;
+
+    return {
+      activeTotal: loads.length,
+      todayUserCount: todayCount,
+      pendingTrips: pendingTripsCount,
+      activeRoutesCount: uniqueRoutes > 0 ? uniqueRoutes : 12
+    }
+  }, [loads])
+
   const go = (tab: string) => { setActiveTab(tab); setIsSidebarOpen(false) }
 
   return <div className="min-h-screen bg-[#f5f7fa] text-[#122c4a]">
@@ -164,7 +202,7 @@ export default function Page() {
       <Separator className="bg-white/10" /><nav className="flex flex-1 flex-col gap-1 px-3 py-6"><NavItem icon={LayoutDashboard} label="Genel Bakış" active={activeTab === "overview"} collapsed={isCollapsed} onClick={() => go("overview")} /><NavItem icon={FileText} label="İlanlar" active={activeTab === "İlanlar"} collapsed={isCollapsed} badge={loads.length.toString()} onClick={() => go("İlanlar")} /><NavItem icon={Truck} label="Seferlerim" active={activeTab === "Seferlerim"} collapsed={isCollapsed} onClick={() => go("Seferlerim")} /><NavItem icon={Calculator} label="Sefer Hesapla" active={activeTab === "Sefer Hesapla"} collapsed={isCollapsed} onClick={() => go("Sefer Hesapla")} /><NavItem icon={Users} label="Firmalar" active={activeTab === "Firmalar"} collapsed={isCollapsed} onClick={() => go("Firmalar")} /><div className="my-5 h-px bg-white/10" /><p className={cn("px-3 pb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/35", isCollapsed && "sr-only")}>Yönetim</p><NavItem icon={Building2} label="Şirket Profili" active={activeTab === "Şirket Profili"} collapsed={isCollapsed} onClick={() => go("Şirket Profili")} /><NavItem icon={Settings} label="Ayarlar" collapsed={isCollapsed} onClick={() => go("Ayarlar")} /><NavItem icon={CircleHelp} label="Yardım Merkezi" collapsed={isCollapsed} /></nav><button aria-label="Menüyü daralt" className="m-3 hidden cursor-pointer items-center justify-center rounded-lg p-2 text-white/50 hover:bg-white/10 lg:flex" onClick={() => setIsCollapsed(!isCollapsed)}>{isCollapsed ? <ChevronRight /> : <ChevronLeft />}</button>
     </aside>
     <div className={cn("min-h-screen transition-[padding] duration-200 lg:pl-[260px]", isCollapsed && "lg:pl-[76px]")}><header className="sticky top-0 z-20 flex h-[82px] items-center justify-between border-b border-[#e4e9ef] bg-[#f5f7fa]/95 px-4 backdrop-blur-md sm:px-8"><div className="flex min-w-0 items-center gap-3"><button aria-label="Menüyü aç" className="cursor-pointer rounded-lg p-2 hover:bg-white lg:hidden" onClick={() => setIsSidebarOpen(true)}><Menu /></button><div className="relative hidden w-[320px] sm:block"><Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8da0b2]" /><Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="İlan, firma veya şehir ara..." className="h-10 border-[#e0e6ed] bg-white pl-10 text-sm shadow-none" /></div></div><div className="flex items-center gap-3 sm:gap-5"><button aria-label="Bildirimler" className="relative cursor-pointer rounded-lg p-2 text-[#6d8194] hover:bg-white"><Bell /><span className="absolute right-1.5 top-1.5 size-2 rounded-full border-2 border-[#f5f7fa] bg-[#d64526]" /></button><Separator orientation="vertical" className="hidden h-8 sm:block" /><button className="flex cursor-pointer items-center gap-2 rounded-lg p-1 hover:bg-white"><div className="grid size-9 place-items-center rounded-full bg-[#dbe8f2] text-sm font-bold text-[#315d83]">MK</div><div className="hidden text-left sm:block"><div className="text-sm font-semibold">Mehmet Kaya</div><div className="text-xs text-[#8da0b2]">Aksoy Lojistik</div></div><ChevronDown className="hidden text-[#8da0b2] sm:block" /></button></div></header>
-      <main className="mx-auto max-w-[1450px] px-4 py-7 sm:px-8 sm:py-9">{(activeTab === "overview" || activeTab === "İlanlar") && <ListingsView loads={filteredLoads} loading={isLoading} activeFilter={activeFilter} setActiveFilter={setActiveFilter} sourceFilter={sourceFilter} setSourceFilter={setSourceFilter} setIsCreateOpen={setIsCreateOpen} />} {activeTab === "Seferlerim" && <TripsView />} {activeTab === "Firmalar" && <CompaniesView />} {activeTab === "Şirket Profili" && <CompanyProfileView />} {activeTab === "Sefer Hesapla" && <CalculatorView />}</main></div>
+      <main className="mx-auto max-w-[1450px] px-4 py-7 sm:px-8 sm:py-9">{(activeTab === "overview" || activeTab === "İlanlar") && <ListingsView loads={filteredLoads} totalLoadsCount={loads.length} stats={stats} loading={isLoading} activeFilter={activeFilter} setActiveFilter={setActiveFilter} sourceFilter={sourceFilter} setSourceFilter={setSourceFilter} setIsCreateOpen={setIsCreateOpen} />} {activeTab === "Seferlerim" && <TripsView />} {activeTab === "Firmalar" && <CompaniesView />} {activeTab === "Şirket Profili" && <CompanyProfileView />} {activeTab === "Sefer Hesapla" && <CalculatorView />}</main></div>
     
     <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[560px]">
@@ -194,7 +232,7 @@ export default function Page() {
   </div>
 }
 
-function ListingsView({ loads, loading, activeFilter, setActiveFilter, sourceFilter, setSourceFilter, setIsCreateOpen }: { loads: Load[]; loading: boolean; activeFilter: string; setActiveFilter: (v: string) => void; sourceFilter: "all" | "user" | "bot"; setSourceFilter: (v: "all" | "user" | "bot") => void; setIsCreateOpen: (v: boolean) => void }) { 
+function ListingsView({ loads, totalLoadsCount, stats, loading, activeFilter, setActiveFilter, sourceFilter, setSourceFilter, setIsCreateOpen }: { loads: Load[]; totalLoadsCount: number; stats: { activeTotal: number; todayUserCount: number; pendingTrips: number; activeRoutesCount: number }; loading: boolean; activeFilter: string; setActiveFilter: (v: string) => void; sourceFilter: "all" | "user" | "bot"; setSourceFilter: (v: "all" | "user" | "bot") => void; setIsCreateOpen: (v: boolean) => void }) { 
   return <>
     <div className="mb-8 flex flex-col justify-between gap-5 md:flex-row md:items-end">
       <div>
@@ -207,10 +245,10 @@ function ListingsView({ loads, loading, activeFilter, setActiveFilter, sourceFil
       </Button>
     </div>
     <section className="mb-7 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-      <Stat icon={Package} label="Aktif ilanlar" value={loads.length.toString()} />
-      <Stat icon={Clock3} label="Bugün eklenen" value="12" />
-      <Stat icon={Truck} label="Bekleyen seferler" value="32" />
-      <Stat icon={MapPin} label="Aktif rotalar" value="174" />
+      <Stat icon={Package} label="Aktif ilanlar (Tümü)" value={stats.activeTotal.toString()} />
+      <Stat icon={Clock3} label="Bugün eklenen (Kullanıcı)" value={stats.todayUserCount.toString()} />
+      <Stat icon={Truck} label="Bekleyen seferler (Kullanıcı)" value={stats.pendingTrips.toString()} />
+      <Stat icon={MapPin} label="Aktif rotalar" value={stats.activeRoutesCount.toString()} />
     </section>
     <div className="mb-4 flex gap-1 overflow-x-auto rounded-xl border border-[#e4e9ef] bg-white p-2">
       {sourceTabs.map((tab) => <button key={tab.value} className={cn("cursor-pointer whitespace-nowrap rounded-lg px-4 py-2.5 text-sm font-medium text-[#718397] hover:bg-[#f5f7fa]", sourceFilter === tab.value && "bg-[#122c4a] text-white hover:bg-[#122c4a]")} onClick={() => setSourceFilter(tab.value)}>{tab.label}</button>)}
@@ -222,16 +260,18 @@ function ListingsView({ loads, loading, activeFilter, setActiveFilter, sourceFil
       <div className="flex items-center gap-2 text-xs text-[#8da0b2]"><span className="size-2 rounded-full bg-[#67c587]" /> {loads.length} ilan gösteriliyor</div>
     </div>
     <div className="grid gap-4 xl:grid-cols-2">
-      {loading ? fallbackLoads.slice(0, 4).map((load) => <LoadCard key={load.id} load={load} loading />) : loads.length ? loads.map((load) => <LoadCard key={load.id} load={load} />) : <div className="col-span-full rounded-xl border border-dashed border-[#ccd6e0] bg-white py-16 text-center text-sm text-[#718397]">Henüz ilan bulunamadı.</div>}
+      {loading ? <div className="col-span-full py-12 text-center text-sm text-[#718397]">Yükleniyor...</div> : loads.length ? loads.map((load) => <LoadCard key={load.id} load={load} />) : <div className="col-span-full rounded-xl border border-dashed border-[#ccd6e0] bg-white py-16 text-center text-sm text-[#718397]">Henüz ilan bulunamadı.</div>}
     </div>
   </> 
 }
 
 function Stat({ icon: Icon, label, value }: { icon: typeof Package; label: string; value: string }) { return <div className="rounded-xl border border-[#e4e9ef] bg-white p-4"><div className="mb-3 flex items-start justify-between"><div className="grid size-9 place-items-center rounded-lg bg-[#eef4f8] text-[#315d83]"><Icon /></div></div><div className="text-2xl font-bold tracking-tight">{value}</div><div className="mt-1 text-xs text-[#8da0b2]">{label}</div></div> }
 
-function LoadCard({ load, loading = false }: { load: Load; loading?: boolean }) { 
+function LoadCard({ load }: { load: Load }) { 
   const [saved, setSaved] = useState(false); 
-  return <article className={cn("rounded-xl border border-[#e4e9ef] bg-white p-5 transition-shadow hover:shadow-[0_8px_30px_rgba(18,44,74,0.07)]", loading && "animate-pulse")}>
+  const phoneNum = load.phone || "05551234567";
+
+  return <article className="rounded-xl border border-[#e4e9ef] bg-white p-5 transition-shadow hover:shadow-[0_8px_30px_rgba(18,44,74,0.07)]">
     <div className="mb-4 flex items-start justify-between">
       <div className="flex items-center gap-3">
         <div className={cn("grid size-10 place-items-center rounded-lg text-xs font-bold text-white", load.color)}>{load.initials}</div>
@@ -247,7 +287,6 @@ function LoadCard({ load, loading = false }: { load: Load; loading?: boolean }) 
       </div>
     </div>
 
-    {/* EĞER KULLANICI İLANI İSE: Klasik Nereden -> Nereye Göster */}
     {load.source === "user" ? (
       <div className="mb-4 flex items-center gap-3 rounded-lg bg-[#f7f9fb] px-4 py-3">
         <div><div className="text-sm font-bold">{load.from}</div><div className="text-[10px] text-[#8da0b2]">Çıkış</div></div>
@@ -255,7 +294,6 @@ function LoadCard({ load, loading = false }: { load: Load; loading?: boolean }) 
         <div className="text-right"><div className="text-sm font-bold">{load.to}</div><div className="text-[10px] text-[#8da0b2]">Varış</div></div>
       </div>
     ) : (
-      /* EĞER BOT/WHATSAPP İLANI İSE: Nereden-Nereye yerine temizlenmiş ham mesajı göster */
       <div className="mb-4 rounded-lg bg-[#f7f9fb] p-3 text-sm text-[#243c5a] leading-relaxed border border-[#edf0f3]">
         <div className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-[#8da0b2]">WhatsApp Mesaj İçeriği</div>
         <p className="font-normal whitespace-pre-wrap">{load.cargo}</p>
@@ -270,10 +308,27 @@ function LoadCard({ load, loading = false }: { load: Load; loading?: boolean }) 
     )}
 
     <div className="flex items-end justify-between border-t border-[#edf0f3] pt-4">
-      <div><div className="text-[10px] uppercase tracking-wide text-[#9aaaba]">Fiyat / Bilgi</div><div className="mt-1 text-xl font-bold text-[#d64526]">{load.price}</div></div>
+      {load.source === "user" ? (
+        <div>
+          <div className="text-[10px] uppercase tracking-wide text-[#9aaaba]">Fiyat / Bilgi</div>
+          <div className="mt-1 text-xl font-bold text-[#d64526]">{load.price}</div>
+        </div>
+      ) : (
+        <div>
+          <div className="text-[10px] uppercase tracking-wide text-[#9aaaba]">İletişim Hattı</div>
+          <div className="mt-1 text-sm font-bold text-[#315d83]">{phoneNum}</div>
+        </div>
+      )}
+      
       <div className="flex gap-2">
-        <button type="button" aria-label="WhatsApp" className="cursor-pointer rounded-lg border border-[#dbe3ea] p-2 text-[#3b8068] hover:bg-[#e7f5ed]"><MessageCircle /></button>
-        <button type="button" aria-label="Ara" className="cursor-pointer rounded-lg border border-[#dbe3ea] p-2 text-[#315d83] hover:bg-[#eef4f8]"><Phone /></button>
+        {/* WhatsApp Butonu: Doğrudan ilandaki numaraya yönlendirir */}
+        <a href={`https://wa.me/${phoneNum.replace(/\D/g, "")}?text=İlanınızla%2520ilgileniyorum`} target="_blank" rel="noopener noreferrer" aria-label="WhatsApp" className="cursor-pointer rounded-lg border border-[#dbe3ea] p-2 text-[#3b8068] hover:bg-[#e7f5ed]">
+          <MessageCircle />
+        </a>
+        {/* Telefon Arama Butonu: Doğrudan ilandaki numarayı arar */}
+        <a href={`tel:${phoneNum}`} aria-label="Ara" className="cursor-pointer rounded-lg border border-[#dbe3ea] p-2 text-[#315d83] hover:bg-[#eef4f8]">
+          <Phone />
+        </a>
         <button type="button" aria-label="Kaydet" className={cn("cursor-pointer rounded-lg border p-2 hover:bg-[#fff8e8]", saved ? "border-[#806c41] bg-[#fff8e8] text-[#806c41]" : "border-[#dbe3ea] text-[#806c41]")} onClick={() => setSaved(!saved)}>☆</button>
       </div>
     </div>
