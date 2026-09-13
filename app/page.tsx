@@ -1,245 +1,144 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
-import { Bell, ChevronDown, Menu, Search } from "lucide-react"
-import { Input } from "@/components/ui/input"
-import { Separator } from "@/components/ui/separator"
-import { cn } from "@/lib/utils"
-import { supabase } from "@/lib/supabase"
-import { Load } from "@/components/LoadCard"
-import { ListingsView } from "@/components/views/ListingsView"
-import { TripsView } from "@/components/views/TripsView"
-import { CalculatorView } from "@/components/views/CalculatorView"
-import { CompaniesView } from "@/components/views/CompaniesView"
-import { CompanyProfileView } from "@/components/views/CompanyProfileView"
-import { OverviewView } from "@/components/views/OverviewView"
-import { CreateListingModal } from "@/components/CreateListingModal"
-import { Sidebar } from "@/components/Sidebar"
+import { Phone, MessageSquare, Star, Building2 } from "lucide-react"
 
-const cleanText = (text: string) => {
-  if (!text) return "-"
-  return text
-    .replace(/[*_~`]/g, "")
-    .replace(/([\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD10-\uDDFF])/g, "")
-    .replace(/\s+/g, " ")
-    .trim()
+export type Load = {
+  id: string
+  company: string
+  initials: string
+  from: string
+  to: string
+  cargo: string
+  vehicle: string
+  distance: string
+  price: string
+  urgent: boolean
+  time: string
+  color: string
+  source: "user" | "bot"
+  phone: string
 }
 
-const extractPhone = (text: string) => {
-  if (!text) return "05551234567"
-  const match = text.match(/(0?5\d{2}\s*\d{3}\s*\d{2}\s*\d{2})/);
-  return match ? match[0].replace(/\s+/g, "") : "05551234567";
+type LoadCardProps = {
+  load: Load
+  searchQuery?: string
 }
 
-export default function Page() {
-  const [loads, setLoads] = useState<Load[]>([])
-  const [activeFilter, setActiveFilter] = useState("Tümü")
-  const [sourceFilter, setSourceFilter] = useState<"all" | "user" | "bot">("all")
-  const [query, setQuery] = useState("")
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false)
-  const [isCollapsed, setIsCollapsed] = useState(false)
-  const [isCreateOpen, setIsCreateOpen] = useState(false)
-  const [isLoading, setIsLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState("overview")
+// Modern ve şık vurgulama fonksiyonu (Sarı yerine yumuşak kurumsal mavi tonu)
+const highlightMatch = (text: string, query: string) => {
+  if (!query || !text) return text
+  
+  const escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const regex = new RegExp(`(${escapedQuery})`, "gi")
+  const parts = text.split(regex)
 
-  const [profile, setProfile] = useState({
-    company_name: "YükleGel Kullanıcısı",
-    authorized_person: "Misafir",
-    initials: "MK"
+  return parts.map((part, i) => {
+    const isMatch = part.toLocaleLowerCase('tr-TR') === query.toLocaleLowerCase('tr-TR')
+    
+    return isMatch ? (
+      <span key={i} className="bg-[#eef4f8] text-[#122c4a] border border-[#cbd5e1] font-semibold px-1.5 py-0.5 rounded-md mx-0.5 inline-block text-xs shadow-2xs">
+        {part}
+      </span>
+    ) : (
+      part
+    )
   })
+}
 
-  const fetchProfile = async () => {
-    if (!supabase) return
-    const { data } = await supabase.from("profiles").select("*").limit(1).single()
-    if (data) {
-      const cName = data.company_name || "YükleGel Kullanıcısı"
-      const aPerson = data.authorized_person || "Kullanıcı"
-      const initials = aPerson.split(" ").map((n: string) => n[0]).join("").toUpperCase().substring(0, 2)
-      setProfile({
-        company_name: cName,
-        authorized_person: aPerson,
-        initials: initials || "MK"
-      })
-    }
+export function LoadCard({ load, searchQuery = "" }: LoadCardProps) {
+  const cleanQuery = searchQuery.trim()
+
+  const handleWhatsApp = () => {
+    const cleanPhone = load.phone.replace(/\D/g, "")
+    const message = `Merhaba, ${load.from} - ${load.to} güzergahındaki ilanınız için yazıyorum.`
+    window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`, "_blank")
   }
 
-  const fetchListings = async () => {
-    setIsLoading(true)
-    try {
-      const userReq = supabase.from("listings").select("*").order("created_at", { ascending: false })
-      const botReq = supabase.from("bot_listings").select("*").order("created_at", { ascending: false })
-
-      const [{ data: userData }, { data: botData }] = await Promise.all([userReq, botReq])
-
-      const formattedUserLoads: Load[] = (userData || []).map((item: any) => ({
-        id: `user-${item.id}`,
-        company: item.company_name || "İsimsiz Firma",
-        initials: (item.company_name || "İF").substring(0, 2).toUpperCase(),
-        from: cleanText(item.from_city),
-        to: cleanText(item.to_city),
-        cargo: cleanText(item.cargo_detail),
-        vehicle: cleanText(item.vehicle_type || "13.60 Tenteli"),
-        distance: "450 km",
-        price: typeof item.price === "number" ? `₺${item.price.toLocaleString("tr-TR")}` : (item.price || "₺0"),
-        urgent: Boolean(item.urgent),
-        time: item.created_at ? new Date(item.created_at).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" }) : "Yeni",
-        color: "bg-[#d64526]",
-        source: "user",
-        phone: item.phone || "05551234567"
-      }))
-
-      const formattedBotLoads: Load[] = (botData || []).map((item: any) => {
-        const rawDetail = cleanText(item.cargo_detail || item.message || item.text || "WhatsApp İlanı")
-        const rawCompany = cleanText(item.company_name || "WhatsApp Lojistik Akışı")
-        const rawVehicle = cleanText(item.vehicle_type || "TIR / Kamyon")
-        const extractedPhone = extractPhone(rawDetail)
-
-        return {
-          id: `bot-${item.id}`,
-          company: rawCompany,
-          initials: "WA",
-          from: cleanText(item.from_city || ""),
-          to: cleanText(item.to_city || ""),
-          cargo: rawDetail,
-          vehicle: rawVehicle,
-          distance: "Belirtilmemiş",
-          price: "",
-          urgent: Boolean(item.urgent),
-          time: item.created_at ? new Date(item.created_at).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" }) : "Yeni",
-          color: "bg-[#315d83]",
-          source: "bot",
-          phone: extractedPhone
-        }
-      })
-
-      setLoads([...formattedUserLoads, ...formattedBotLoads])
-    } catch (err) {
-      console.error("Veri çekme hatası:", err)
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    fetchListings()
-    fetchProfile()
-
-    const channel = supabase
-      .channel("realtime-all")
-      .on("postgres_changes", { event: "*", schema: "public", table: "listings" }, () => fetchListings())
-      .on("postgres_changes", { event: "*", schema: "public", table: "bot_listings" }, () => fetchListings())
-      .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, () => fetchProfile())
-      .subscribe()
-
-    return () => {
-      supabase.removeChannel(channel)
-    }
-  }, [])
-
-  const filteredLoads = useMemo(() => loads.filter((load) => {
-    const filterMatch = activeFilter === "Tümü" || (activeFilter === "Acil" ? load.urgent : load.vehicle.toLowerCase().includes(activeFilter.toLowerCase()))
-    const sourceMatch = sourceFilter === "all" || load.source === sourceFilter
-    const searchMatch = `${load.company} ${load.from} ${load.to} ${load.cargo}`.toLowerCase().includes(query.toLowerCase())
-    return filterMatch && sourceMatch && searchMatch
-  }), [loads, activeFilter, sourceFilter, query])
-
-  const stats = useMemo(() => {
-    const userLoads = loads.filter(l => l.source === "user")
-    const uniqueRoutes = new Set(loads.filter(l => l.from && l.to && l.from !== "-" && l.to !== "-").map(l => `${l.from}-${l.to}`)).size
-
-    return {
-      activeTotal: loads.length,
-      todayUserCount: userLoads.length,
-      pendingTrips: userLoads.length,
-      activeRoutesCount: uniqueRoutes > 0 ? uniqueRoutes : 12
-    }
-  }, [loads])
-
-  const handleAddLoad = (newLoad: Load) => {
-    setLoads(prev => [newLoad, ...prev])
+  const handleCall = () => {
+    window.location.href = `tel:${load.phone}`
   }
 
   return (
-    <div className="min-h-screen bg-[#f5f7fa] text-[#122c4a]">
-      {isSidebarOpen && <button aria-label="Menüyü kapat" className="fixed inset-0 z-30 cursor-pointer bg-[#122c4a]/35 lg:hidden" onClick={() => setIsSidebarOpen(false)} />}
-      
-      <Sidebar 
-        activeTab={activeTab} 
-        setActiveTab={setActiveTab} 
-        loadsCount={loads.length} 
-        isCollapsed={isCollapsed} 
-        setIsCollapsed={setIsCollapsed} 
-        isSidebarOpen={isSidebarOpen} 
-        setIsSidebarOpen={setIsSidebarOpen} 
-      />
-
-      <div className={cn("min-h-screen transition-[padding] duration-200 lg:pl-[260px]", isCollapsed && "lg:pl-[76px]")}>
-        <header className="sticky top-0 z-20 flex h-[82px] items-center justify-between border-b border-[#e4e9ef] bg-[#f5f7fa]/95 px-4 backdrop-blur-md sm:px-8">
-          <div className="flex min-w-0 items-center gap-3">
-            <button aria-label="Menüyü aç" className="cursor-pointer rounded-lg p-2 hover:bg-white lg:hidden" onClick={() => setIsSidebarOpen(true)}><Menu /></button>
-            <div className="relative hidden w-[320px] sm:block">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8da0b2]" />
-              {/* ARAMA YAPILDIĞINDA OTOMATİK "İlanlar" SEKMESİNE GEÇMESİ SAĞLANDI */}
-              <Input 
-                value={query} 
-                onChange={(e) => {
-                  setQuery(e.target.value)
-                  if (e.target.value.trim().length > 0) {
-                    setActiveTab("İlanlar")
-                  }
-                }} 
-                placeholder="İlan, firma veya şehir ara..." 
-                className="h-10 border-[#e0e6ed] bg-white pl-10 text-sm shadow-none" 
-              />
+    <div className="relative flex flex-col justify-between rounded-xl border border-[#e4e9ef] bg-white p-5 shadow-sm transition-all hover:shadow-md">
+      <div>
+        {/* Üst Kısım: Firma ve Zaman */}
+        <div className="flex items-center justify-between pb-3 border-b border-[#f0f4f8]">
+          <div className="flex items-center gap-3">
+            <div className={`grid size-10 place-items-center rounded-lg text-white font-bold text-sm ${load.color}`}>
+              {load.initials}
+            </div>
+            <div>
+              <div className="font-semibold text-sm text-[#122c4a]">
+                {highlightMatch(load.company, cleanQuery)}
+              </div>
+              <div className="text-xs text-[#8da0b2] flex items-center gap-1">
+                <Building2 className="size-3" /> {load.source === "bot" ? "WhatsApp Bot İlanı" : "YükleGel Kullanıcısı"}
+              </div>
             </div>
           </div>
-          <div className="flex items-center gap-3 sm:gap-5">
-            <button aria-label="Bildirimler" className="relative cursor-pointer rounded-lg p-2 text-[#6d8194] hover:bg-white"><Bell /><span className="absolute right-1.5 top-1.5 size-2 rounded-full border-2 border-[#f5f7fa] bg-[#d64526]" /></button>
-            <Separator orientation="vertical" className="hidden h-8 sm:block" />
-            <button onClick={() => setActiveTab("Şirket Profili")} className="flex cursor-pointer items-center gap-2 rounded-lg p-1 hover:bg-white">
-              <div className="grid size-9 place-items-center rounded-full bg-[#dbe8f2] text-sm font-bold text-[#315d83]">{profile.initials}</div>
-              <div className="hidden text-left sm:block">
-                <div className="text-sm font-semibold">{profile.authorized_person}</div>
-                <div className="text-xs text-[#8da0b2]">{profile.company_name}</div>
-              </div>
-              <ChevronDown className="hidden text-[#8da0b2] sm:block" />
-            </button>
+          <div className="flex items-center gap-2">
+            {load.urgent && (
+              <span className="rounded-full bg-red-50 px-2.5 py-0.5 text-xs font-semibold text-red-600 border border-red-200">
+                Acil
+              </span>
+            )}
+            <span className="text-xs font-medium text-[#8da0b2] bg-[#f5f7fa] px-2.5 py-1 rounded-md">
+              {load.time}
+            </span>
           </div>
-        </header>
+        </div>
 
-        <main className="mx-auto max-w-[1450px] px-4 py-7 sm:px-8 sm:py-9">
-          {activeTab === "overview" && (
-            <OverviewView 
-              loads={loads} 
-              onOpenCreate={() => setIsCreateOpen(true)} 
-              setActiveTab={setActiveTab} 
-            />
+        {/* Yük Detayı (Çıkış/Varış kutusu kaldırıldı, doğrudan içerik gösteriliyor) */}
+        <div className="my-4">
+          <span className="text-[11px] uppercase tracking-wider text-[#8da0b2] block font-medium mb-1.5">İlan İçeriği / Yük Detayı</span>
+          <p className="text-sm text-[#334e68] bg-[#f8fafc] p-3.5 rounded-lg border border-[#edf2f7] leading-relaxed font-normal">
+            {highlightMatch(load.cargo, cleanQuery)}
+          </p>
+        </div>
+
+        {/* Araç ve Fiyat Bilgisi */}
+        <div className="flex flex-wrap items-center gap-2 mb-2">
+          {load.vehicle && load.vehicle !== "-" && (
+            <span className="text-xs bg-[#eef4f8] text-[#315d83] font-medium px-3 py-1 rounded-md">
+              {highlightMatch(load.vehicle, cleanQuery)}
+            </span>
           )}
-          {activeTab === "İlanlar" && (
-            <ListingsView 
-              loads={filteredLoads} 
-              stats={stats} 
-              loading={isLoading} 
-              activeFilter={activeFilter} 
-              setActiveFilter={setActiveFilter} 
-              sourceFilter={sourceFilter} 
-              setSourceFilter={setSourceFilter} 
-              setIsCreateOpen={setIsCreateOpen} 
-              searchQuery={query}
-            />
+          {load.price && (
+            <span className="text-xs bg-emerald-50 text-emerald-700 font-bold px-3 py-1 rounded-md ml-auto border border-emerald-200">
+              {load.price}
+            </span>
           )}
-          {activeTab === "Seferlerim" && <TripsView loads={loads} />}
-          {activeTab === "Firmalar" && <CompaniesView loads={loads} />}
-          {activeTab === "Şirket Profili" && <CompanyProfileView onProfileUpdated={fetchProfile} />}
-          {activeTab === "Sefer Hesapla" && <CalculatorView />}
-        </main>
+        </div>
       </div>
 
-      <CreateListingModal 
-        isOpen={isCreateOpen} 
-        setIsOpen={setIsCreateOpen} 
-        onAddLoad={handleAddLoad} 
-      />
+      {/* Alt Butonlar (İletişim) */}
+      <div className="flex items-center justify-between pt-3 border-t border-[#f0f4f8] mt-3">
+        <div className="text-xs text-[#8da0b2]">
+          İletişim: <span className="font-semibold text-[#122c4a]">{load.phone}</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <button 
+            onClick={handleWhatsApp} 
+            title="WhatsApp ile yaz" 
+            className="grid size-9 place-items-center rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100 transition-colors cursor-pointer"
+          >
+            <MessageSquare className="size-4" />
+          </button>
+          <button 
+            onClick={handleCall} 
+            title="Hemen Ara" 
+            className="grid size-9 place-items-center rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors cursor-pointer"
+          >
+            <Phone className="size-4" />
+          </button>
+          <button 
+            title="Favorilere Ekle" 
+            className="grid size-9 place-items-center rounded-lg bg-gray-50 text-gray-400 hover:bg-gray-100 hover:text-amber-500 transition-colors cursor-pointer"
+          >
+            <Star className="size-4" />
+          </button>
+        </div>
+      </div>
     </div>
   )
 }
