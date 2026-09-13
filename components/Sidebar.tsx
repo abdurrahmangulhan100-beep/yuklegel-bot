@@ -1,6 +1,6 @@
 "use client"
 
-import { Building2, Calculator, ChevronLeft, ChevronRight, CircleHelp, FileText, LayoutDashboard, Settings, Truck, Users, X } from "lucide-react"
+import { Building2, Calculator, ChevronLeft, ChevronRight, CircleHelp, FileText, LayoutDashboard, Settings, Truck, Users, WalletCards, X } from "lucide-react"
 import { Separator } from "@/components/ui/separator"
 import { cn } from "@/lib/utils"
 
@@ -53,6 +53,7 @@ export function Sidebar({
         <NavItem icon={LayoutDashboard} label="Genel Bakış" active={activeTab === "overview"} collapsed={isCollapsed} onClick={() => go("overview")} />
         <NavItem icon={FileText} label="İlanlar" active={activeTab === "İlanlar"} collapsed={isCollapsed} badge={loadsCount.toString()} onClick={() => go("İlanlar")} />
         <NavItem icon={Truck} label="Seferlerim" active={activeTab === "Seferlerim"} collapsed={isCollapsed} onClick={() => go("Seferlerim")} />
+        <NavItem icon={WalletCards} label="Gelir & Gider" active={activeTab === "Gelir Gider"} collapsed={isCollapsed} onClick={() => go("Gelir Gider")} />
         <NavItem icon={Calculator} label="Sefer Hesapla" active={activeTab === "Sefer Hesapla"} collapsed={isCollapsed} onClick={() => go("Sefer Hesapla")} />
         <NavItem icon={Users} label="Firmalar" active={activeTab === "Firmalar"} collapsed={isCollapsed} onClick={() => go("Firmalar")} />
 
