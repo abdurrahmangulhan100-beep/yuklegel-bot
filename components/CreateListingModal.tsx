@@ -1,142 +1,148 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Load } from "@/components/LoadCard"
 import { supabase } from "@/lib/supabase"
+import { Load } from "@/components/LoadCard"
 
-type CreateListingModalProps = {
+type CreateModalProps = {
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
-  onAddLoad: (newLoad: Load) => void;
+  onAddLoad: (load: Load) => void;
 }
 
-export function CreateListingModal({ isOpen, setIsOpen, onAddLoad }: CreateListingModalProps) {
-  const [form, setForm] = useState({
-    company: "",
-    from: "",
-    to: "",
-    cargo: "",
-    vehicle: "Tır",
-    distance: "500 km",
-    price: "15.000 ₺",
-    phone: "05551234567",
-    urgent: false
-  });
-  const [loading, setLoading] = useState(false);
+export function CreateListingModal({ isOpen, setIsOpen, onAddLoad }: CreateModalProps) {
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [profile, setProfile] = useState({
+    company_name: "",
+    phone: ""
+  })
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!form.company || !form.from || !form.to) return;
-    
-    setLoading(true);
-    const initials = form.company.substring(0, 2).toUpperCase();
-    const colors = ["bg-[#315d83]", "bg-[#d64526]", "bg-[#67c587]", "bg-[#806c41]"];
-    const randomColor = colors[Math.floor(Math.random() * colors.length)];
-
-    try {
-      if (supabase) {
-        await supabase.from("loads").insert([{
-          company: form.company,
-          initials,
-          from_city: form.from,
-          to_city: form.to,
-          cargo: form.cargo,
-          vehicle: form.vehicle,
-          distance: form.distance,
-          price: form.price,
-          phone: form.phone,
-          urgent: form.urgent,
-          source: "user",
-          color: randomColor,
-          time: "Şimdi"
-        }]);
+  // Modal açıldığında kullanıcının Şirket Profili bilgilerini çek
+  useEffect(() => {
+    async function fetchUserProfile() {
+      if (!supabase) return
+      const { data } = await supabase.from("profiles").select("company_name, phone").limit(1).single()
+      if (data) {
+        setProfile({
+          company_name: data.company_name || "YükleGel Kullanıcısı",
+          phone: data.phone || "05551234567"
+        })
       }
-    } catch (err) {
-      console.error("Supabase ekleme hatası:", err);
+    }
+    if (isOpen) {
+      fetchUserProfile()
+    }
+  }, [isOpen])
+
+  const handleCreateListing = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    setIsSubmitting(true)
+
+    const formData = new FormData(e.currentTarget)
+    const from_city = formData.get("from") as string
+    const to_city = formData.get("to") as string
+    const cargo_detail = formData.get("cargo") as string
+    const vehicle_type = (formData.get("vehicle") as string) || "13.60 Tenteli"
+    const price = Number(formData.get("price")) || 0
+    const urgent = formData.get("urgent") === "on"
+
+    // Şirket Profili eksikse kullanıcıyı uyar
+    if (!profile.company_name || profile.company_name === "YükleGel Kullanıcısı") {
+      alert("Lütfen önce sol menüden 'Şirket Profili' sayfasına giderek firma adınızı ve telefon numaranızı kaydedin!")
+      setIsSubmitting(false)
+      return
     }
 
-    const newLoad: Load = {
-      id: Date.now(),
-      company: form.company,
-      initials,
-      from: form.from,
-      to: form.to,
-      cargo: form.cargo,
-      vehicle: form.vehicle,
-      distance: form.distance,
-      price: form.price,
-      urgent: form.urgent,
-      time: "Şimdi",
-      color: randomColor,
-      source: "user",
-      phone: form.phone
-    };
+    // Supabase listings tablosuna ekleme
+    const { data, error } = await supabase.from("listings").insert([
+      { 
+        company_name: profile.company_name, 
+        phone: profile.phone, 
+        from_city, 
+        to_city, 
+        cargo_detail, 
+        vehicle_type, 
+        price, 
+        urgent,
+        is_bot: false 
+      }
+    ]).select().single()
 
-    onAddLoad(newLoad);
-    setLoading(false);
-    setIsOpen(false);
-    setForm({ company: "", from: "", to: "", cargo: "", vehicle: "Tır", distance: "500 km", price: "15.000 ₺", phone: "05551234567", urgent: false });
-  };
+    setIsSubmitting(false)
+
+    if (error) {
+      alert("İlan eklenirken hata oluştu: " + error.message)
+    } else {
+      setIsOpen(false)
+      if (data && onAddLoad) {
+        const newLoad: Load = {
+          id: `user-${data.id}`,
+          company: data.company_name,
+          initials: data.company_name.substring(0, 2).toUpperCase(),
+          from: data.from_city,
+          to: data.to_city,
+          cargo: data.cargo_detail,
+          vehicle: data.vehicle_type,
+          distance: "450 km",
+          price: `₺${Number(data.price).toLocaleString("tr-TR")}`,
+          urgent: Boolean(data.urgent),
+          time: "Şimdi",
+          color: "bg-[#d64526]",
+          source: "user",
+          phone: data.phone
+        }
+        onAddLoad(newLoad)
+      }
+    }
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[560px]">
         <DialogHeader>
-          <DialogTitle>Yeni İlan Oluştur</DialogTitle>
+          <DialogTitle className="text-xl font-bold text-[#122c4a]">Yeni İlan Oluştur</DialogTitle>
+          <DialogDescription>Firma ve iletişim bilgileriniz profilinizden otomatik olarak eklenir.</DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4 py-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Firma Adı</Label>
-              <Input placeholder="Örn: YükleGel Nakliyat" value={form.company} onChange={e => setForm({...form, company: e.target.value})} required />
+        <form className="grid gap-4" onSubmit={handleCreateListing}>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="grid gap-2">
+              <Label>Firma Adı (Profilinizden)</Label>
+              <Input value={profile.company_name} disabled className="bg-gray-100 text-gray-700 font-semibold cursor-not-allowed" />
             </div>
-            <div className="space-y-2">
-              <Label>Telefon Numarası</Label>
-              <Input placeholder="05xx xxx xx xx" value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} required />
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Çıkış Şehri</Label>
-              <Input placeholder="İstanbul" value={form.from} onChange={e => setForm({...form, from: e.target.value})} required />
-            </div>
-            <div className="space-y-2">
-              <Label>Varış Şehri</Label>
-              <Input placeholder="Ankara" value={form.to} onChange={e => setForm({...form, to: e.target.value})} required />
+            <div className="grid gap-2">
+              <Label>Telefon Numarası (Profilinizden)</Label>
+              <Input value={profile.phone} disabled className="bg-gray-100 text-gray-700 font-semibold cursor-not-allowed" />
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Yük Cinsi</Label>
-              <Input placeholder="Paletli Malzeme" value={form.cargo} onChange={e => setForm({...form, cargo: e.target.value})} required />
-            </div>
-            <div className="space-y-2">
-              <Label>Araç Tipi</Label>
-              <Input placeholder="Tır / Kamyon" value={form.vehicle} onChange={e => setForm({...form, vehicle: e.target.value})} required />
-            </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="grid gap-2"><Label htmlFor="from">Çıkış Şehri</Label><Input id="from" name="from" placeholder="İstanbul" required /></div>
+            <div className="grid gap-2"><Label htmlFor="to">Varış Şehri</Label><Input id="to" name="to" placeholder="Ankara" required /></div>
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Tahmini Fiyat</Label>
-              <Input placeholder="15.000 ₺" value={form.price} onChange={e => setForm({...form, price: e.target.value})} required />
-            </div>
-            <div className="space-y-2">
-              <Label>Mesafe</Label>
-              <Input placeholder="500 km" value={form.distance} onChange={e => setForm({...form, distance: e.target.value})} required />
-            </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="grid gap-2"><Label htmlFor="cargo">Yük Cinsi / Detayı</Label><Input id="cargo" name="cargo" placeholder="Paletli Malzeme" required /></div>
+            <div className="grid gap-2"><Label htmlFor="vehicle">Araç Tipi</Label><Input id="vehicle" name="vehicle" placeholder="Tır / Frigo" defaultValue="Tır" required /></div>
           </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="grid gap-2"><Label htmlFor="price">Tahmini Fiyat (TL)</Label><Input id="price" name="price" type="number" placeholder="15000" required /></div>
+            <div className="grid gap-2"><Label htmlFor="distance">Mesafe</Label><Input id="distance" name="distance" placeholder="500 km" defaultValue="500 km" /></div>
+          </div>
+
           <div className="flex items-center gap-2 pt-2">
-            <input type="checkbox" id="urgent" checked={form.urgent} onChange={e => setForm({...form, urgent: e.target.checked})} className="size-4 rounded border-gray-300 text-[#d64526]" />
-            <Label htmlFor="urgent" className="cursor-pointer text-sm font-medium">Acil İlan Olarak İşaretle</Label>
+            <input type="checkbox" id="urgent" name="urgent" className="size-4 accent-[#d64526]" />
+            <Label htmlFor="urgent" className="cursor-pointer font-medium text-sm text-[#122c4a]">Acil İlan Olarak İşaretle</Label>
           </div>
+
           <DialogFooter className="pt-4">
-            <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>İptal</Button>
-            <Button type="submit" disabled={loading} className="bg-[#d64526] text-white hover:bg-[#b93820]">
-              {loading ? "Ekleniyor..." : "İlanı Yayınla"}
+            <Button type="button" variant="outline" className="cursor-pointer" onClick={() => setIsOpen(false)}>İptal</Button>
+            <Button type="submit" disabled={isSubmitting} className="cursor-pointer bg-[#d64526] text-white hover:bg-[#b93820]">
+              {isSubmitting ? "Yayınlanıyor..." : "İlanı Yayınla"}
             </Button>
           </DialogFooter>
         </form>
