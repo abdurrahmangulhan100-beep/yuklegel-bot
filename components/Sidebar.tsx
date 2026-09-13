@@ -1,8 +1,9 @@
 "use client"
 
-import { Building2, Calculator, ChevronLeft, ChevronRight, CircleHelp, FileText, LayoutDashboard, Settings, Truck, Users, WalletCards, X } from "lucide-react"
+import { Building2, Calculator, ChevronLeft, ChevronRight, CircleHelp, FileText, LayoutDashboard, LogOut, Settings, Truck, Users, WalletCards, X } from "lucide-react"
 import { Separator } from "@/components/ui/separator"
 import { cn } from "@/lib/utils"
+import { supabase } from "@/lib/supabase"
 
 type SidebarProps = {
   activeTab: string;
@@ -28,6 +29,12 @@ export function Sidebar({
     setIsSidebarOpen(false); 
   }
 
+  const handleLogout = async () => {
+    if (!supabase) return
+    await supabase.auth.signOut()
+    window.location.href = "/"
+  }
+
   return (
     <aside className={cn(
       "fixed inset-y-0 left-0 z-40 flex w-[260px] flex-col bg-[#122c4a] text-white transition-transform duration-200 lg:translate-x-0", 
@@ -49,7 +56,7 @@ export function Sidebar({
 
       <Separator className="bg-white/10" />
 
-      <nav className="flex flex-1 flex-col gap-1 px-3 py-6">
+      <nav className="flex flex-1 flex-col gap-1 px-3 py-6 overflow-y-auto">
         <NavItem icon={LayoutDashboard} label="Genel Bakış" active={activeTab === "overview"} collapsed={isCollapsed} onClick={() => go("overview")} />
         <NavItem icon={FileText} label="İlanlar" active={activeTab === "İlanlar"} collapsed={isCollapsed} badge={loadsCount.toString()} onClick={() => go("İlanlar")} />
         <NavItem icon={Truck} label="Seferlerim" active={activeTab === "Seferlerim"} collapsed={isCollapsed} onClick={() => go("Seferlerim")} />
@@ -63,6 +70,22 @@ export function Sidebar({
         <NavItem icon={Building2} label="Şirket Profili" active={activeTab === "Şirket Profili"} collapsed={isCollapsed} onClick={() => go("Şirket Profili")} />
         <NavItem icon={Settings} label="Ayarlar" active={activeTab === "Ayarlar"} collapsed={isCollapsed} onClick={() => go("Ayarlar")} />
         <NavItem icon={CircleHelp} label="Yardım Merkezi" active={activeTab === "Yardım Merkezi"} collapsed={isCollapsed} onClick={() => go("Yardım Merkezi")} />
+
+        {/* Çıkış Yap Butonu - Sol Menünün Alt Kısmına Eklendi */}
+        <div className="mt-auto pt-4">
+          <button
+            type="button"
+            onClick={handleLogout}
+            title={isCollapsed ? "Çıkış Yap" : undefined}
+            className={cn(
+              "flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-red-400 transition-colors hover:bg-red-500/10 hover:text-red-300",
+              isCollapsed && "justify-center"
+            )}
+          >
+            <LogOut className="size-5 shrink-0" />
+            {!isCollapsed && <span>Çıkış Yap</span>}
+          </button>
+        </div>
       </nav>
 
       <button aria-label="Menüyü daralt" className="m-3 hidden cursor-pointer items-center justify-center rounded-lg p-2 text-white/50 hover:bg-white/10 lg:flex" onClick={() => setIsCollapsed(!isCollapsed)}>
@@ -80,7 +103,7 @@ function NavItem({ icon: Icon, label, active, collapsed, badge, onClick }: { ico
       className={cn("flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-white/60 transition-colors hover:bg-white/10 hover:text-white", active && "bg-white/12 text-white", collapsed && "justify-center")} 
       title={collapsed ? label : undefined}
     >
-      <Icon />
+      <Icon className="size-5 shrink-0" />
       {!collapsed && (
         <>
           <span>{label}</span>
