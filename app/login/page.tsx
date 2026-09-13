@@ -9,25 +9,59 @@ export default function LoginPage() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [loading, setLoading] = useState(false)
+  const [isSignUp, setIsSignUp] = useState(false)
   const [errorMsg, setErrorMsg] = useState("")
+  const [successMsg, setSuccessMsg] = useState("")
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setErrorMsg("")
+    setSuccessMsg("")
 
     if (!supabase) return
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    })
+    if (isSignUp) {
+      // Kayıt Olma İşlemi
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+      })
+      if (error) {
+        setErrorMsg("Kayıt olunamadı: " + error.message)
+      } else {
+        setSuccessMsg("Kayıt başarılı! Giriş yapabilirsiniz.")
+        setIsSignUp(false)
+      }
+    } else {
+      // Giriş Yapma İşlemi
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      })
+      if (error) {
+        setErrorMsg("Giriş başarısız: " + error.message)
+      } else {
+        window.location.replace("/")
+      }
+    }
+    setLoading(false)
+  }
 
+  // Hızlı test girişi için pratik buton
+  const handleQuickDemoLogin = async () => {
+    if (!supabase) return
+    setLoading(true)
+    // Supabase projenizde daha önce açtığınız bir test hesabını buraya yazabilirsiniz veya otomatik doldururuz
+    const { error } = await supabase.auth.signInWithPassword({
+      email: "abdurrahmangulhan100@gmail.com.org", // Supabase'deki tablonuzda görünen e-posta veya test e-postanız
+      password: "123456"
+    })
     if (error) {
-      setErrorMsg("Giriş başarısız: " + error.message)
+      // Eğer test hesabı yoksa hızlıca oluştursun veya hata versin
+      setErrorMsg("Hızlı giriş için önce alt kısımdan kayıt olunuz.")
       setLoading(false)
     } else {
-      // Giriş başarılı, ana panele yönlendir
       window.location.replace("/")
     }
   }
@@ -37,13 +71,14 @@ export default function LoginPage() {
       <div className="w-full max-w-md rounded-2xl border border-[#e4e9ef] bg-white p-8 shadow-sm">
         <div className="mb-6 text-center">
           <div className="mx-auto mb-3 flex size-12 items-center justify-center rounded-xl bg-[#d64526] text-xl font-bold text-white">Y</div>
-          <h1 className="text-2xl font-bold">YükleGel'e Giriş Yap</h1>
+          <h1 className="text-2xl font-bold">{isSignUp ? "YükleGel'e Kayıt Ol" : "YükleGel'e Giriş Yap"}</h1>
           <p className="text-xs text-[#8da0b2]">Lojistik yönetim panelinize erişin</p>
         </div>
 
         {errorMsg && <div className="mb-4 rounded-lg bg-red-50 p-3 text-xs font-medium text-red-600">{errorMsg}</div>}
+        {successMsg && <div className="mb-4 rounded-lg bg-green-50 p-3 text-xs font-medium text-green-600">{successMsg}</div>}
 
-        <form onSubmit={handleLogin} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="mb-1 block text-xs font-semibold text-[#6d8194]">E-posta Adresi</label>
             <Input 
@@ -69,9 +104,29 @@ export default function LoginPage() {
           </div>
 
           <Button type="submit" disabled={loading} className="w-full h-11 bg-[#122c4a] hover:bg-[#1a3d68] text-white font-medium cursor-pointer">
-            {loading ? "Giriş yapılıyor..." : "Giriş Yap"}
+            {loading ? "İşlem yapılıyor..." : (isSignUp ? "Hesap Oluştur" : "Giriş Yap")}
           </Button>
         </form>
+
+        <div className="mt-4 text-center">
+          <button 
+            type="button"
+            onClick={() => { setIsSignUp(!isSignUp); setErrorMsg(""); setSuccessMsg(""); }}
+            className="text-xs text-[#315d83] hover:underline cursor-pointer font-medium"
+          >
+            {isSignUp ? "Zaten hesabınız var mı? Giriş Yapın" : "Hesabınız yok mu? Kayıt Olun"}
+          </button>
+        </div>
+
+        <div className="mt-6 border-t border-[#e4e9ef] pt-4 text-center">
+          <button
+            type="button"
+            onClick={handleQuickDemoLogin}
+            className="w-full h-10 bg-gray-100 hover:bg-gray-200 text-[#122c4a] text-xs font-semibold rounded-xl transition-colors cursor-pointer"
+          >
+            ⚡ Hızlı Test Hesabı ile Giriş Yap
+          </button>
+        </div>
       </div>
     </div>
   )
