@@ -43,6 +43,9 @@ export function ListingsView({
   const trimmedQuery = searchQuery.trim()
   const hasActiveSearch = trimmedQuery.length > 0
 
+  // Performans için ilan listesini maksimum 500 ile sınırlandırıyoruz
+  const limitedLoads = loads.slice(0, 500)
+
   return (
     <>
       <div className="mb-8 flex flex-col justify-between gap-5 md:flex-row md:items-end">
@@ -97,15 +100,15 @@ export function ListingsView({
           ))}
         </div>
         <div className="flex items-center gap-2 text-xs text-[#8da0b2]">
-          <span className="size-2 rounded-full bg-[#67c587]" /> {loads.length} ilan gösteriliyor
+          <span className="size-2 rounded-full bg-[#67c587]" /> {limitedLoads.length} ilan gösteriliyor (Maks: 500)
         </div>
       </div>
 
       <div className="grid gap-4 xl:grid-cols-2">
         {loading ? (
           <div className="col-span-full py-12 text-center text-sm text-[#718397]">Yükleniyor...</div>
-        ) : loads.length ? (
-          loads.map((load) => (
+        ) : limitedLoads.length ? (
+          limitedLoads.map((load) => (
             <div key={load.id} className="transition-all duration-300 rounded-xl">
               <LoadCard load={load} searchQuery={searchQuery} />
             </div>
