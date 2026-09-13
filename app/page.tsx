@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { Bell, ChevronDown, ChevronLeft, ChevronRight, Menu, Search, X } from "lucide-react"
+import { Bell, ChevronDown, Menu, Search } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
 import { cn } from "@/lib/utils"
@@ -41,16 +41,35 @@ export default function Page() {
   const [isLoading, setIsLoading] = useState(true)
   const [activeTab, setActiveTab] = useState("overview")
 
+  // Kullanıcı profil bilgileri (Sağ üst köşe için)
+  const [profile, setProfile] = useState({
+    company_name: "YükleGel Kullanıcısı",
+    authorized_person: "Misafir",
+    initials: "MK"
+  })
+
+  const fetchProfile = async () => {
+    if (!supabase) return
+    const { data } = await supabase.from("profiles").select("*").limit(1).single()
+    if (data) {
+      const cName = data.company_name || "YükleGel Kullanıcısı"
+      const aPerson = data.authorized_person || "Kullanıcı"
+      const initials = aPerson.split(" ").map((n: string) => n[0]).join("").toUpperCase().substring(0, 2)
+      setProfile({
+        company_name: cName,
+        authorized_person: aPerson,
+        initials: initials || "MK"
+      })
+    }
+  }
+
   const fetchListings = async () => {
     setIsLoading(true)
     try {
       const userReq = supabase.from("listings").select("*").order("created_at", { ascending: false })
       const botReq = supabase.from("bot_listings").select("*").order("created_at", { ascending: false })
 
-      const [{ data: userData, error: userErr }, { data: botData, error: botErr }] = await Promise.all([userReq, botReq])
-
-      if (userErr) console.error("Listings hatası:", userErr)
-      if (botErr) console.error("Bot listings hatası:", botErr)
+      const [{ data: userData }, { data: botData }] = await Promise.all([userReq, botReq])
 
       const formattedUserLoads: Load[] = (userData || []).map((item: any) => ({
         id: `user-${item.id}`,
@@ -103,15 +122,17 @@ export default function Page() {
 
   useEffect(() => {
     fetchListings()
+    fetchProfile()
 
-    const channelListings = supabase
-      .channel("realtime-listings")
+    const channel = supabase
+      .channel("realtime-all")
       .on("postgres_changes", { event: "*", schema: "public", table: "listings" }, () => fetchListings())
       .on("postgres_changes", { event: "*", schema: "public", table: "bot_listings" }, () => fetchListings())
+      .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, () => fetchProfile())
       .subscribe()
 
     return () => {
-      supabase.removeChannel(channelListings)
+      supabase.removeChannel(channel)
     }
   }, [])
 
@@ -164,11 +185,11 @@ export default function Page() {
           <div className="flex items-center gap-3 sm:gap-5">
             <button aria-label="Bildirimler" className="relative cursor-pointer rounded-lg p-2 text-[#6d8194] hover:bg-white"><Bell /><span className="absolute right-1.5 top-1.5 size-2 rounded-full border-2 border-[#f5f7fa] bg-[#d64526]" /></button>
             <Separator orientation="vertical" className="hidden h-8 sm:block" />
-            <button className="flex cursor-pointer items-center gap-2 rounded-lg p-1 hover:bg-white">
-              <div className="grid size-9 place-items-center rounded-full bg-[#dbe8f2] text-sm font-bold text-[#315d83]">MK</div>
+            <button onClick={() => setActiveTab("Şirket Profili")} className="flex cursor-pointer items-center gap-2 rounded-lg p-1 hover:bg-white">
+              <div className="grid size-9 place-items-center rounded-full bg-[#dbe8f2] text-sm font-bold text-[#315d83]">{profile.initials}</div>
               <div className="hidden text-left sm:block">
-                <div className="text-sm font-semibold">Mehmet Kaya</div>
-                <div className="text-xs text-[#8da0b2]">Aksoy Lojistik</div>
+                <div className="text-sm font-semibold">{profile.authorized_person}</div>
+                <div className="text-xs text-[#8da0b2]">{profile.company_name}</div>
               </div>
               <ChevronDown className="hidden text-[#8da0b2] sm:block" />
             </button>
@@ -190,7 +211,7 @@ export default function Page() {
           )}
           {activeTab === "Seferlerim" && <TripsView loads={loads} />}
           {activeTab === "Firmalar" && <CompaniesView loads={loads} />}
-          {activeTab === "Şirket Profili" && <CompanyProfileView />}
+          {activeTab === "Şirket Profili" && <CompanyProfileView onProfileUpdated={fetchProfile} />}
           {activeTab === "Sefer Hesapla" && <CalculatorView />}
         </main>
       </div>
