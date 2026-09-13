@@ -133,7 +133,7 @@ export function FinanceView() {
         <div className="p-4 border-b border-[#e4e9ef] font-semibold text-[#122c4a]">Sefer ve Harcama Geçmişiniz</div>
         {loading ? (
           <div className="p-8 text-center text-sm text-[#718397]">Yükleniyor...</div>
-        ើ) : finances.length === 0 ? (
+        ) : finances.length === 0 ? (
           <div className="p-12 text-center text-sm text-[#718397]">Henüz kayıtlı bir sefer veya gider bulunmuyor. Sağ üstten ekleyebilirsiniz.</div>
         ) : (
           <div className="divide-y divide-[#e4e9ef]">
