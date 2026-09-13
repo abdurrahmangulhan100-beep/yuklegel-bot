@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { Bell, ChevronDown, Menu, Search } from "lucide-react"
+import { Bell, ChevronDown, Menu, Search, LogOut } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
 import { cn } from "@/lib/utils"
@@ -160,6 +160,12 @@ export default function Page() {
     setLoads(prev => [newLoad, ...prev])
   }
 
+  const handleLogout = async () => {
+    if (!supabase) return
+    await supabase.auth.signOut()
+    window.location.replace("/")
+  }
+
   return (
     <div className="min-h-screen bg-[#f5f7fa] text-[#122c4a]">
       {isSidebarOpen && <button aria-label="Menüyü kapat" className="fixed inset-0 z-30 cursor-pointer bg-[#122c4a]/35 lg:hidden" onClick={() => setIsSidebarOpen(false)} />}
@@ -196,6 +202,7 @@ export default function Page() {
           <div className="flex items-center justify-end gap-3 sm:gap-5">
             <button aria-label="Bildirimler" className="relative cursor-pointer rounded-lg p-2 text-[#6d8194] hover:bg-white"><Bell /><span className="absolute right-1.5 top-1.5 size-2 rounded-full border-2 border-[#f5f7fa] bg-[#d64526]" /></button>
             <Separator orientation="vertical" className="hidden h-8 sm:block" />
+            
             <button onClick={() => setActiveTab("Şirket Profili")} className="flex cursor-pointer items-center gap-2 rounded-lg p-1 hover:bg-white">
               <div className="grid size-9 place-items-center rounded-full bg-[#dbe8f2] text-sm font-bold text-[#315d83]">{profile.initials}</div>
               <div className="hidden text-left sm:block">
@@ -203,6 +210,15 @@ export default function Page() {
                 <div className="text-xs text-[#8da0b2]">{profile.company_name}</div>
               </div>
               <ChevronDown className="hidden text-[#8da0b2] sm:block" />
+            </button>
+
+            <button 
+              onClick={handleLogout}
+              className="flex items-center gap-1.5 cursor-pointer text-xs font-semibold text-red-600 bg-red-50 hover:bg-red-100 px-3 py-2 rounded-lg transition-colors"
+              title="Çıkış Yap"
+            >
+              <LogOut className="size-4" />
+              <span className="hidden sm:inline">Çıkış Yap</span>
             </button>
           </div>
         </header>
