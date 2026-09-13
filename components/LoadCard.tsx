@@ -24,19 +24,27 @@ type LoadCardProps = {
   searchQuery?: string
 }
 
-// Sadece eşleşen kelimeyi sarı fosforlu yapan fonksiyon
+// Türkçe karakter ve büyük/küçük harf duyarlı kusursuz vurgulama fonksiyonu
 const highlightMatch = (text: string, query: string) => {
   if (!query || !text) return text
-  const parts = text.split(new RegExp(`(${query})`, "gi"))
-  return parts.map((part, i) => 
-    part.toLowerCase() === query.toLowerCase() ? (
-      <mark key={i} className="bg-amber-300 text-amber-950 font-bold px-1 rounded">
+  
+  // Türkçe karakterleri ve büyük/küçük harfleri güvenle eşlemek için regex
+  const escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const regex = new RegExp(`(${escapedQuery})`, "gi")
+  const parts = text.split(regex)
+
+  return parts.map((part, i) => {
+    // Eşleşen kelime kontrolü (büyük/küçük harf duyarsız)
+    const isMatch = part.toLocaleLowerCase('tr-TR') === query.toLocaleLowerCase('tr-TR')
+    
+    return isMatch ? (
+      <mark key={i} className="bg-amber-300 text-amber-950 font-bold px-1 rounded mx-0.5 shadow-sm">
         {part}
       </mark>
     ) : (
       part
     )
-  )
+  })
 }
 
 export function LoadCard({ load, searchQuery = "" }: LoadCardProps) {
@@ -53,7 +61,6 @@ export function LoadCard({ load, searchQuery = "" }: LoadCardProps) {
   }
 
   return (
-    // Kartın kendisi sade ve normal bırakıldı, sadece aranan kelime boyanacak
     <div className="relative flex flex-col justify-between rounded-xl border border-[#e4e9ef] bg-white p-5 shadow-sm transition-all hover:shadow-md">
       <div>
         {/* Üst Kısım: Firma ve Zaman */}
