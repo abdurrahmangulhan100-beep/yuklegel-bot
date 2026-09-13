@@ -12,6 +12,7 @@ import { TripsView } from "@/components/views/TripsView"
 import { CalculatorView } from "@/components/views/CalculatorView"
 import { CompaniesView } from "@/components/views/CompaniesView"
 import { CompanyProfileView } from "@/components/views/CompanyProfileView"
+import { OverviewView } from "@/components/views/OverviewView"
 import { CreateListingModal } from "@/components/CreateListingModal"
 import { Sidebar } from "@/components/Sidebar"
 
@@ -197,7 +198,14 @@ export default function Page() {
         </header>
 
         <main className="mx-auto max-w-[1450px] px-4 py-7 sm:px-8 sm:py-9">
-          {(activeTab === "overview" || activeTab === "İlanlar") && (
+          {activeTab === "overview" && (
+            <OverviewView 
+              loads={loads} 
+              onOpenCreate={() => setIsCreateOpen(true)} 
+              setActiveTab={setActiveTab} 
+            />
+          )}
+          {activeTab === "İlanlar" && (
             <ListingsView 
               loads={filteredLoads} 
               stats={stats} 
@@ -216,7 +224,7 @@ export default function Page() {
         </main>
       </div>
 
-      <CreateListingModal isOpen={isCreateOpen} setIsOpen={setIsCreateOpen} onAddLoad={handleAddLoad} />
+      <CreateListingModal isOpen={isCreateOpen} setIsOpen={isCreateOpen} onAddLoad={handleAddLoad} />
     </div>
   )
 }
