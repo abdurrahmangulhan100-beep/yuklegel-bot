@@ -40,7 +40,8 @@ export function ListingsView({
   setIsCreateOpen,
   searchQuery = ""
 }: ListingsViewProps) { 
-  const isKonyaSearch = searchQuery.toLowerCase().includes("konya")
+  const trimmedQuery = searchQuery.trim()
+  const hasActiveSearch = trimmedQuery.length > 0
 
   return (
     <>
@@ -55,11 +56,12 @@ export function ListingsView({
         </Button>
       </div>
 
-      {isKonyaSearch && (
+      {/* DİNAMİK ARAMA BİLDİRİMİ: Hangi kelime yazılırsa yazılsın burada görünür */}
+      {hasActiveSearch && (
         <div className="mb-6 flex items-center gap-3 rounded-xl border border-amber-300 bg-amber-50/80 px-4 py-3 text-amber-800 shadow-sm animate-pulse">
           <Sparkles className="size-5 shrink-0 text-amber-600 animate-spin" />
           <div className="text-sm font-medium">
-            <span className="font-bold">Konya</span> araması için filtrelenen ilanlar listeleniyor. Toplam <span className="font-bold">{loads.length}</span> sonuç bulundu.
+            <span className="font-bold uppercase tracking-wide">&quot;{trimmedQuery}&quot;</span> araması için filtrelenen ilanlar listeleniyor. Toplam <span className="font-bold">{loads.length}</span> sonuç bulundu.
           </div>
         </div>
       )}
@@ -109,7 +111,7 @@ export function ListingsView({
               key={load.id} 
               className={cn(
                 "transition-all duration-300 rounded-xl",
-                isKonyaSearch && "ring-2 ring-amber-400 ring-offset-2 bg-amber-50/20 shadow-md"
+                hasActiveSearch && "ring-2 ring-amber-400 ring-offset-2 bg-amber-50/20 shadow-md"
               )}
             >
               <LoadCard load={load} />
@@ -117,7 +119,7 @@ export function ListingsView({
           ))
         ) : (
           <div className="col-span-full rounded-xl border border-dashed border-[#ccd6e0] bg-white py-16 text-center text-sm text-[#718397]">
-            {isKonyaSearch ? "Konya ile eşleşen herhangi bir ilan bulunamadı." : "Henüz ilan bulunamadı."}
+            {hasActiveSearch ? `"${trimmedQuery}" ile eşleşen herhangi bir ilan bulunamadı.` : "Henüz ilan bulunamadı."}
           </div>
         )}
       </div>
