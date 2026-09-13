@@ -100,8 +100,10 @@ export function CreateListingModal({ isOpen, setIsOpen, onAddLoad }: CreateModal
     }
   }
 
-  return (
-    <Dialog open={isOpen} onOpenChange={(open) => setIsOpen(open)}>
+ return (
+    <Dialog open={isOpen} onOpenChange={(open) => {
+      if (!open) setIsOpen(false);
+    }}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[560px]">
         <DialogHeader>
           <DialogTitle className="text-xl font-bold text-[#122c4a]">Yeni İlan Oluştur</DialogTitle>
@@ -140,7 +142,17 @@ export function CreateListingModal({ isOpen, setIsOpen, onAddLoad }: CreateModal
           </div>
 
           <DialogFooter className="pt-4">
-            <Button type="button" variant="outline" className="cursor-pointer" onClick={() => setIsOpen(false)}>İptal</Button>
+            <Button 
+              type="button" 
+              variant="outline" 
+              className="cursor-pointer" 
+              onClick={(e) => {
+                e.preventDefault();
+                setIsOpen(false);
+              }}
+            >
+              İptal
+            </Button>
             <Button type="submit" disabled={isSubmitting} className="cursor-pointer bg-[#d64526] text-white hover:bg-[#b93820]">
               {isSubmitting ? "Yayınlanıyor..." : "İlanı Yayınla"}
             </Button>
@@ -149,4 +161,3 @@ export function CreateListingModal({ isOpen, setIsOpen, onAddLoad }: CreateModal
       </DialogContent>
     </Dialog>
   )
-}
