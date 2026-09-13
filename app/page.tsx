@@ -50,35 +50,63 @@ export default function Page() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [activeTab, setActiveTab] = useState("overview")
 
-  // Supabase'den İlanları Çekme Fonksiyonu
+  // Supabase'den İlanları Çekme Fonksiyonu (Hem Kullanıcı Hem Bot İlanları)
   const fetchListings = async () => {
     setIsLoading(true)
     try {
-      const { data, error } = await supabase
+      // 1. Kullanıcı İlanlarını Çek
+      const userReq = supabase
         .from("listings")
         .select("*")
         .order("created_at", { ascending: false })
 
-      if (error) {
-        console.error("Supabase hatası:", error)
-        setLoads(fallbackLoads)
-      } else if (data && data.length > 0) {
-        const formattedLoads: Load[] = data.map((item: any) => ({
-          id: item.id,
-          company: item.company_name || "İsimsiz Firma",
-          initials: (item.company_name || "İF").substring(0, 2).toUpperCase(),
-          from: item.from_city || "-",
-          to: item.to_city || "-",
-          cargo: item.cargo_detail || "-",
-          vehicle: item.vehicle_type || "13.60 Tenteli",
-          distance: "450 km",
-          price: typeof item.price === "number" ? `₺${item.price.toLocaleString("tr-TR")}` : (item.price || "₺0"),
-          urgent: Boolean(item.urgent),
-          time: item.created_at ? new Date(item.created_at).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" }) : "Yeni",
-          color: item.is_bot ? "bg-[#315d83]" : "bg-[#d64526]",
-          source: item.is_bot ? "bot" : "user"
-        }))
-        setLoads(formattedLoads)
+      // 2. Bot İlanlarını Çek
+      const botReq = supabase
+        .from("bot_listings")
+        .select("*")
+        .order("created_at", { ascending: false })
+
+      const [{ data: userData, error: userErr }, { data: botData, error: botErr }] = await Promise.all([userReq, botReq])
+
+      if (userErr) console.error("Listings hatası:", userErr)
+      if (botErr) console.error("Bot listings hatası:", botErr)
+
+      const formattedUserLoads: Load[] = (userData || []).map((item: any) => ({
+        id: `user-${item.id}`,
+        company: item.company_name || "İsimsiz Firma",
+        initials: (item.company_name || "İF").substring(0, 2).toUpperCase(),
+        from: item.from_city || "-",
+        to: item.to_city || "-",
+        cargo: item.cargo_detail || "-",
+        vehicle: item.vehicle_type || "13.60 Tenteli",
+        distance: "450 km",
+        price: typeof item.price === "number" ? `₺${item.price.toLocaleString("tr-TR")}` : (item.price || "₺0"),
+        urgent: Boolean(item.urgent),
+        time: item.created_at ? new Date(item.created_at).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" }) : "Yeni",
+        color: "bg-[#d64526]",
+        source: "user"
+      }))
+
+      const formattedBotLoads: Load[] = (botData || []).map((item: any) => ({
+        id: `bot-${item.id}`,
+        company: item.company_name || "WhatsApp Lojistik Akışı",
+        initials: (item.company_name || "WA").substring(0, 2).toUpperCase(),
+        from: item.from_city || "-",
+        to: item.to_city || "-",
+        cargo: item.cargo_detail || "-",
+        vehicle: item.vehicle_type || "13.60 Tenteli",
+        distance: "450 km",
+        price: typeof item.price === "number" ? `₺${item.price.toLocaleString("tr-TR")}` : (item.price || "₺0"),
+        urgent: Boolean(item.urgent),
+        time: item.created_at ? new Date(item.created_at).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" }) : "Yeni",
+        color: "bg-[#315d83]",
+        source: "bot"
+      }))
+
+      const allLoads = [...formattedUserLoads, ...formattedBotLoads]
+
+      if (allLoads.length > 0) {
+        setLoads(allLoads)
       } else {
         setLoads([])
       }
