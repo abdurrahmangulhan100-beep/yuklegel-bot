@@ -27,46 +27,57 @@ export default function LoginPage() {
       return
     }
 
-    // Gerçek bir kullanıcı girişi yapıldığı an misafir bayrağını temizle
-    localStorage.removeItem("is_guest")
-
-    if (isSignUp) {
-      const { data, error } = await supabase.auth.signUp({ 
-        email, 
-        password,
-        options: {
-          data: {
-            company_name: "YükleGel Kullanıcısı",
-            authorized_person: email.split("@")[0]
+    try {
+      if (isSignUp) {
+        const { data, error } = await supabase.auth.signUp({ 
+          email, 
+          password,
+          options: {
+            data: {
+              company_name: "YükleGel Kullanıcısı",
+              authorized_person: email.split("@")[0]
+            }
           }
-        }
-      })
+        })
 
-      if (error) {
-        setErrorMsg("Kayıt olunamadı: " + error.message)
-      } else {
-        // Otomatik profiles kaydı oluşturma güvenlik garantisi
-        if (data?.user) {
-          await supabase.from("profiles").upsert({
-            id: data.user.id,
-            email: email,
-            company_name: "YükleGel Kullanıcısı",
-            authorized_person: email.split("@")[0]
-          })
+        if (error) {
+          setErrorMsg("Kayıt olunamadı: " + error.message)
+        } else {
+          // Giriş başarılı olduğu kesinleşince misafir bayrağını sil
+          localStorage.removeItem("is_guest")
+
+          if (data?.user) {
+            await supabase.from("profiles").upsert({
+              id: data.user.id,
+              email: email,
+              company_name: "YükleGel Kullanıcısı",
+              authorized_person: email.split("@")[0],
+              updated_at: new Date().toISOString()
+            })
+          }
+          setSuccessMsg("Kayıt başarılı! Hesabınız oluşturuldu, yönlendiriliyorsunuz...")
+          setTimeout(() => {
+            router.push("/")
+            router.refresh()
+          }, 1000)
         }
-        setSuccessMsg("Kayıt başarılı! Hesabınız oluşturuldu, yönlendiriliyorsunuz...")
-        setTimeout(() => router.push("/"), 1000)
-      }
-    } else {
-      const { error } = await supabase.auth.signInWithPassword({ email, password })
-      if (error) {
-        setErrorMsg("Giriş başarısız: " + error.message)
       } else {
-        router.push("/")
-        router.refresh()
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+        
+        if (error) {
+          setErrorMsg("Giriş başarısız: " + error.message)
+        } else if (data?.user) {
+          // Giriş başarılı olduğu kesinleşince misafir bayrağını sil
+          localStorage.removeItem("is_guest")
+          router.push("/")
+          router.refresh()
+        }
       }
+    } catch (err: any) {
+      setErrorMsg("Bir sorun oluştu: " + err.message)
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }
 
   const handleGuestLogin = () => {
