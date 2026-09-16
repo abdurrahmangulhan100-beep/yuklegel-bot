@@ -18,7 +18,6 @@ import { FinanceView } from "@/components/views/FinanceView"
 import { CreateListingModal } from "@/components/CreateListingModal"
 import { Sidebar } from "@/components/Sidebar"
 
-// Supabase'den gelecek ham veri için tip tanımlaması
 interface DatabaseListing {
   id: string | number
   company_name?: string
@@ -77,8 +76,8 @@ export default function Page() {
         
         if (isGuest) {
           setProfile({
-            company_name: "YükleGel Kullanıcısı",
-            authorized_person: "Misafir",
+            company_name: "Misafir Şirket",
+            authorized_person: "Misafir Kullanıcı",
             initials: "MK"
           })
           setIsCheckingAuth(false)
@@ -105,7 +104,6 @@ export default function Page() {
 
     verifySession()
 
-    // Canlı oturum değişimi takibi (örn. token süresi dolarsa)
     if (supabase) {
       const { data } = supabase.auth.onAuthStateChange((event, session) => {
         const isGuest = typeof window !== 'undefined' ? localStorage.getItem("is_guest") === "true" : false
@@ -128,7 +126,15 @@ export default function Page() {
     
     try {
       const isGuest = localStorage.getItem("is_guest") === "true"
-      if (isGuest) return
+      // Misafir modundaysa kesinlikle veritabanı profilini ÇEKME
+      if (isGuest) {
+        setProfile({
+          company_name: "Misafir Şirket",
+          authorized_person: "Misafir Kullanıcı",
+          initials: "MK"
+        })
+        return
+      }
 
       const { data: { user }, error: userError } = await supabase.auth.getUser()
       if (userError || !user) return
@@ -147,7 +153,7 @@ export default function Page() {
         setProfile({
           company_name: cName,
           authorized_person: aPerson,
-          initials: initials || "MK"
+          initials: initials || "UK"
         })
       } else {
         const defaultName = user.email?.split("@")[0] || "Kullanıcı"
@@ -178,7 +184,7 @@ export default function Page() {
         to: cleanText(item.to_city),
         cargo: cleanText(item.cargo_detail),
         vehicle: cleanText(item.vehicle_type || "13.60 Tenteli"),
-        distance: "450 km", // İleride Google Maps veya uzaklık API'si ile dinamikleştirilebilir
+        distance: "450 km",
         price: typeof item.price === "number" ? `₺${item.price.toLocaleString("tr-TR")}` : (item.price || "₺0"),
         urgent: Boolean(item.urgent),
         time: item.created_at ? new Date(item.created_at).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" }) : "Yeni",
@@ -262,7 +268,6 @@ export default function Page() {
     setLoads(prev => [newLoad, ...prev])
   }
 
-  // Profesyonel Tam Çıkış İşlemi
   const handleLogout = async () => {
     try {
       localStorage.removeItem("is_guest")
