@@ -28,12 +28,12 @@ export default function LoginPage() {
     }
 
     try {
-      if (isSignUp) {
-        // Kayıt öncesi çerez ve bayrak temizliği
-        localStorage.removeItem("is_guest")
+      // Önce misafir durumunu ve eski oturum izlerini sil
+      localStorage.removeItem("is_guest")
 
-        const { data, error } = await supabase.auth.signUp({ 
-          email, 
+      if (isSignUp) {
+        const { data, error } = await supabase.auth.signUp({
+          email,
           password,
           options: {
             data: {
@@ -55,20 +55,25 @@ export default function LoginPage() {
               updated_at: new Date().toISOString()
             })
           }
-          setSuccessMsg("Kayıt başarılı! Hesabınız oluşturuldu, yönlendiriliyorsunuz...")
-          setTimeout(() => {
-            router.push("/")
-            router.refresh()
-          }, 1000)
+          
+          // Kayıt sonrası otomatik oturum açmayı dene
+          const { error: signInError } = await supabase.auth.signInWithPassword({ email, password })
+          
+          if (signInError) {
+            setSuccessMsg("Kayıt oluşturuldu. Lütfen e-postanızı onaylayın veya giriş yapın.")
+          } else {
+            setSuccessMsg("Kayıt başarılı! Yönlendiriliyorsunuz...")
+            setTimeout(() => {
+              router.push("/")
+              router.refresh()
+            }, 800)
+          }
         }
       } else {
-        // Giriş yapmadan önce misafir bayrağını ve eski çerez artıklarını sil
-        localStorage.removeItem("is_guest")
-
         const { data, error } = await supabase.auth.signInWithPassword({ email, password })
         
         if (error) {
-          setErrorMsg("Giriş başarısız: " + error.message)
+          setErrorMsg("Giriş başarısız: Şifre hatalı veya hesap bulunamadı.")
         } else if (data?.user) {
           router.push("/")
           router.refresh()
@@ -84,11 +89,10 @@ export default function LoginPage() {
   const handleGuestLogin = async () => {
     setLoading(true)
     try {
-      // 1. Önce aktif bir Supabase oturumu varsa arka planda tamamen sonlandır
+      // Misafir moduna geçerken eski Supabase oturumunu KESİNLİKLE kapat
       if (supabase) {
         await supabase.auth.signOut()
       }
-      // 2. Tarayıcı hafızasını tamamen temizle ve misafir modunu aktif et
       localStorage.clear()
       localStorage.setItem("is_guest", "true")
       
