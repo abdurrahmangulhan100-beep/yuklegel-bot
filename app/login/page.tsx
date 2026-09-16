@@ -29,6 +29,9 @@ export default function LoginPage() {
 
     try {
       if (isSignUp) {
+        // Kayıt öncesi çerez ve bayrak temizliği
+        localStorage.removeItem("is_guest")
+
         const { data, error } = await supabase.auth.signUp({ 
           email, 
           password,
@@ -43,9 +46,6 @@ export default function LoginPage() {
         if (error) {
           setErrorMsg("Kayıt olunamadı: " + error.message)
         } else {
-          // Giriş başarılı olduğu kesinleşince misafir bayrağını sil
-          localStorage.removeItem("is_guest")
-
           if (data?.user) {
             await supabase.from("profiles").upsert({
               id: data.user.id,
@@ -62,13 +62,14 @@ export default function LoginPage() {
           }, 1000)
         }
       } else {
+        // Giriş yapmadan önce misafir bayrağını ve eski çerez artıklarını sil
+        localStorage.removeItem("is_guest")
+
         const { data, error } = await supabase.auth.signInWithPassword({ email, password })
         
         if (error) {
           setErrorMsg("Giriş başarısız: " + error.message)
         } else if (data?.user) {
-          // Giriş başarılı olduğu kesinleşince misafir bayrağını sil
-          localStorage.removeItem("is_guest")
           router.push("/")
           router.refresh()
         }
@@ -80,10 +81,24 @@ export default function LoginPage() {
     }
   }
 
-  const handleGuestLogin = () => {
-    localStorage.setItem("is_guest", "true")
-    router.push("/")
-    router.refresh()
+  const handleGuestLogin = async () => {
+    setLoading(true)
+    try {
+      // 1. Önce aktif bir Supabase oturumu varsa arka planda tamamen sonlandır
+      if (supabase) {
+        await supabase.auth.signOut()
+      }
+      // 2. Tarayıcı hafızasını tamamen temizle ve misafir modunu aktif et
+      localStorage.clear()
+      localStorage.setItem("is_guest", "true")
+      
+      router.push("/")
+      router.refresh()
+    } catch (err) {
+      console.error("Misafir giriş hatası:", err)
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -142,6 +157,7 @@ export default function LoginPage() {
           <button
             type="button"
             onClick={handleGuestLogin}
+            disabled={loading}
             className="w-full h-10 bg-gray-100 hover:bg-gray-200 text-[#122c4a] text-xs font-semibold rounded-xl transition-colors cursor-pointer"
           >
             👀 Misafir Modu ile Hemen İncele
