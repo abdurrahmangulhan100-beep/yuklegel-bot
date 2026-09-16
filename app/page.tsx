@@ -126,7 +126,6 @@ export default function Page() {
     
     try {
       const isGuest = localStorage.getItem("is_guest") === "true"
-      // Misafir modundaysa kesinlikle veritabanı profilini ÇEKME
       if (isGuest) {
         setProfile({
           company_name: "Misafir Şirket",
@@ -168,11 +167,28 @@ export default function Page() {
     }
   }
 
+  // Sadece son 12 saatin verilerini çeken güncellenmiş fonksiyon
   const fetchListings = async () => {
     setIsLoading(true)
     try {
-      const userReq = supabase ? supabase.from("listings").select("*").order("created_at", { ascending: false }) : Promise.resolve({ data: [] })
-      const botReq = supabase ? supabase.from("bot_listings").select("*").order("created_at", { ascending: false }) : Promise.resolve({ data: [] })
+      // 12 saat öncesinin zaman damgası
+      const twelveHoursAgo = new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString()
+
+      const userReq = supabase 
+        ? supabase
+            .from("listings")
+            .select("*")
+            .gte("created_at", twelveHoursAgo)
+            .order("created_at", { ascending: false }) 
+        : Promise.resolve({ data: [] })
+
+      const botReq = supabase 
+        ? supabase
+            .from("bot_listings")
+            .select("*")
+            .gte("created_at", twelveHoursAgo)
+            .order("created_at", { ascending: false }) 
+        : Promise.resolve({ data: [] })
 
       const [{ data: userData }, { data: botData }] = await Promise.all([userReq, botReq])
 
