@@ -1,11 +1,13 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 
 export default function LoginPage() {
+  const router = useRouter()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [loading, setLoading] = useState(false)
@@ -19,32 +21,58 @@ export default function LoginPage() {
     setErrorMsg("")
     setSuccessMsg("")
 
-    if (!supabase) return
+    if (!supabase) {
+      setErrorMsg("Veritabanı bağlantısı kurulamadı.")
+      setLoading(false)
+      return
+    }
+
+    // Gerçek bir kullanıcı girişi yapıldığı an misafir bayrağını temizle
+    localStorage.removeItem("is_guest")
 
     if (isSignUp) {
-      const { error } = await supabase.auth.signUp({ email, password })
+      const { data, error } = await supabase.auth.signUp({ 
+        email, 
+        password,
+        options: {
+          data: {
+            company_name: "YükleGel Kullanıcısı",
+            authorized_person: email.split("@")[0]
+          }
+        }
+      })
+
       if (error) {
         setErrorMsg("Kayıt olunamadı: " + error.message)
       } else {
-        setSuccessMsg("Kayıt başarılı! Giriş yapabilirsiniz.")
-        setIsSignUp(false)
+        // Otomatik profiles kaydı oluşturma güvenlik garantisi
+        if (data?.user) {
+          await supabase.from("profiles").upsert({
+            id: data.user.id,
+            email: email,
+            company_name: "YükleGel Kullanıcısı",
+            authorized_person: email.split("@")[0]
+          })
+        }
+        setSuccessMsg("Kayıt başarılı! Hesabınız oluşturuldu, yönlendiriliyorsunuz...")
+        setTimeout(() => router.push("/"), 1000)
       }
     } else {
       const { error } = await supabase.auth.signInWithPassword({ email, password })
       if (error) {
         setErrorMsg("Giriş başarısız: " + error.message)
       } else {
-        window.location.replace("/")
+        router.push("/")
+        router.refresh()
       }
     }
     setLoading(false)
   }
 
-  // Misafir Modu: Oturum açmadan direkt panele geçiş izni verir
   const handleGuestLogin = () => {
-    // Tarayıcı hafızasında misafir olduğunu işaretle
     localStorage.setItem("is_guest", "true")
-    window.location.replace("/")
+    router.push("/")
+    router.refresh()
   }
 
   return (
