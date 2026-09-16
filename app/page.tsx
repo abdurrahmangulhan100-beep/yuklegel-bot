@@ -18,7 +18,23 @@ import { FinanceView } from "@/components/views/FinanceView"
 import { CreateListingModal } from "@/components/CreateListingModal"
 import { Sidebar } from "@/components/Sidebar"
 
-const cleanText = (text: string) => {
+// Supabase'den gelecek ham veri için tip tanımlaması
+interface DatabaseListing {
+  id: string | number
+  company_name?: string
+  from_city?: string
+  to_city?: string
+  cargo_detail?: string
+  message?: string
+  text?: string
+  vehicle_type?: string
+  price?: number | string
+  urgent?: boolean
+  created_at?: string
+  phone?: string
+}
+
+const cleanText = (text?: string | null) => {
   if (!text) return "-"
   return text
     .replace(/[*_~`]/g, "")
@@ -27,10 +43,10 @@ const cleanText = (text: string) => {
     .trim()
 }
 
-const extractPhone = (text: string) => {
+const extractPhone = (text?: string | null) => {
   if (!text) return "05551234567"
-  const match = text.match(/(0?5\d{2}\s*\d{3}\s*\d{2}\s*\d{2})/);
-  return match ? match[0].replace(/\s+/g, "") : "05551234567";
+  const match = text.match(/(0?5\d{2}\s*\d{3}\s*\d{2}\s*\d{2})/)
+  return match ? match[0].replace(/\s+/g, "") : "05551234567"
 }
 
 export default function Page() {
@@ -53,29 +69,37 @@ export default function Page() {
   })
 
   useEffect(() => {
+    let authSubscription: { unsubscribe: () => void } | null = null;
+
     const verifySession = async () => {
-      const isGuest = localStorage.getItem("is_guest") === "true"
-      
-      if (isGuest) {
-        setProfile({
-          company_name: "YükleGel Kullanıcısı",
-          authorized_person: "Misafir",
-          initials: "MK"
-        })
-        setIsCheckingAuth(false)
-        return
-      }
+      try {
+        const isGuest = typeof window !== 'undefined' ? localStorage.getItem("is_guest") === "true" : false
+        
+        if (isGuest) {
+          setProfile({
+            company_name: "YükleGel Kullanıcısı",
+            authorized_person: "Misafir",
+            initials: "MK"
+          })
+          setIsCheckingAuth(false)
+          return
+        }
 
-      if (!supabase) {
-        setIsCheckingAuth(false)
-        return
-      }
+        if (!supabase) {
+          setIsCheckingAuth(false)
+          return
+        }
 
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) {
+        const { data: { session }, error } = await supabase.auth.getSession()
+        
+        if (error || !session) {
+          router.push("/login")
+        } else {
+          setIsCheckingAuth(false)
+        }
+      } catch (err) {
+        console.error("Oturum doğrulama hatası:", err)
         router.push("/login")
-      } else {
-        setIsCheckingAuth(false)
       }
     }
 
@@ -83,14 +107,18 @@ export default function Page() {
 
     // Canlı oturum değişimi takibi (örn. token süresi dolarsa)
     if (supabase) {
-      const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
-        const isGuest = localStorage.getItem("is_guest") === "true"
+      const { data } = supabase.auth.onAuthStateChange((event, session) => {
+        const isGuest = typeof window !== 'undefined' ? localStorage.getItem("is_guest") === "true" : false
         if (!session && !isGuest && event === "SIGNED_OUT") {
           router.push("/login")
         }
       })
-      return () => {
-        authListener.subscription.unsubscribe()
+      authSubscription = data.subscription
+    }
+
+    return () => {
+      if (authSubscription) {
+        authSubscription.unsubscribe()
       }
     }
   }, [router])
@@ -98,35 +126,39 @@ export default function Page() {
   const fetchProfile = async () => {
     if (!supabase) return
     
-    const isGuest = localStorage.getItem("is_guest") === "true"
-    if (isGuest) return
+    try {
+      const isGuest = localStorage.getItem("is_guest") === "true"
+      if (isGuest) return
 
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
+      const { data: { user }, error: userError } = await supabase.auth.getUser()
+      if (userError || !user) return
 
-    const { data } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("id", user.id)
-      .maybeSingle()
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", user.id)
+        .maybeSingle()
 
-    if (data) {
-      const cName = data.company_name || "YükleGel Kullanıcısı"
-      const aPerson = data.authorized_person || user.email?.split("@")[0] || "Kullanıcı"
-      const initials = aPerson.split(" ").map((n: string) => n[0]).join("").toUpperCase().substring(0, 2)
-      setProfile({
-        company_name: cName,
-        authorized_person: aPerson,
-        initials: initials || "MK"
-      })
-    } else {
-      // Profil kaydı veritabanında henüz oluşturulmadıysa e-posta bilgisini göster
-      const defaultName = user.email?.split("@")[0] || "Kullanıcı"
-      setProfile({
-        company_name: "YükleGel Kullanıcısı",
-        authorized_person: defaultName,
-        initials: defaultName.substring(0, 2).toUpperCase()
-      })
+      if (data && !error) {
+        const cName = data.company_name || "YükleGel Kullanıcısı"
+        const aPerson = data.authorized_person || user.email?.split("@")[0] || "Kullanıcı"
+        const initials = aPerson.split(" ").map((n: string) => n[0]).join("").toUpperCase().substring(0, 2)
+        
+        setProfile({
+          company_name: cName,
+          authorized_person: aPerson,
+          initials: initials || "MK"
+        })
+      } else {
+        const defaultName = user.email?.split("@")[0] || "Kullanıcı"
+        setProfile({
+          company_name: "YükleGel Kullanıcısı",
+          authorized_person: defaultName,
+          initials: defaultName.substring(0, 2).toUpperCase()
+        })
+      }
+    } catch (err) {
+      console.error("Profil çekme hatası:", err)
     }
   }
 
@@ -138,7 +170,7 @@ export default function Page() {
 
       const [{ data: userData }, { data: botData }] = await Promise.all([userReq, botReq])
 
-      const formattedUserLoads: Load[] = (userData || []).map((item: any) => ({
+      const formattedUserLoads: Load[] = (userData || []).map((item: DatabaseListing) => ({
         id: `user-${item.id}`,
         company: item.company_name || "İsimsiz Firma",
         initials: (item.company_name || "İF").substring(0, 2).toUpperCase(),
@@ -146,7 +178,7 @@ export default function Page() {
         to: cleanText(item.to_city),
         cargo: cleanText(item.cargo_detail),
         vehicle: cleanText(item.vehicle_type || "13.60 Tenteli"),
-        distance: "450 km",
+        distance: "450 km", // İleride Google Maps veya uzaklık API'si ile dinamikleştirilebilir
         price: typeof item.price === "number" ? `₺${item.price.toLocaleString("tr-TR")}` : (item.price || "₺0"),
         urgent: Boolean(item.urgent),
         time: item.created_at ? new Date(item.created_at).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" }) : "Yeni",
@@ -155,7 +187,7 @@ export default function Page() {
         phone: item.phone || "05551234567"
       }))
 
-      const formattedBotLoads: Load[] = (botData || []).map((item: any) => {
+      const formattedBotLoads: Load[] = (botData || []).map((item: DatabaseListing) => {
         const rawDetail = cleanText(item.cargo_detail || item.message || item.text || "WhatsApp İlanı")
         const rawCompany = cleanText(item.company_name || "WhatsApp Lojistik Akışı")
         const rawVehicle = cleanText(item.vehicle_type || "TIR / Kamyon")
@@ -165,8 +197,8 @@ export default function Page() {
           id: `bot-${item.id}`,
           company: rawCompany,
           initials: "WA",
-          from: cleanText(item.from_city || ""),
-          to: cleanText(item.to_city || ""),
+          from: cleanText(item.from_city),
+          to: cleanText(item.to_city),
           cargo: rawDetail,
           vehicle: rawVehicle,
           distance: "Belirtilmemiş",
@@ -189,10 +221,12 @@ export default function Page() {
 
   useEffect(() => {
     if (isCheckingAuth) return
+    
     fetchListings()
     fetchProfile()
 
     if (!supabase) return
+    
     const channel = supabase
       .channel("realtime-all")
       .on("postgres_changes", { event: "*", schema: "public", table: "listings" }, () => fetchListings())
@@ -230,21 +264,35 @@ export default function Page() {
 
   // Profesyonel Tam Çıkış İşlemi
   const handleLogout = async () => {
-    localStorage.removeItem("is_guest")
-    if (supabase) {
-      await supabase.auth.signOut()
+    try {
+      localStorage.removeItem("is_guest")
+      if (supabase) {
+        await supabase.auth.signOut()
+      }
+      router.push("/login")
+      router.refresh()
+    } catch (error) {
+      console.error("Çıkış yapılırken hata oluştu:", error)
     }
-    router.push("/login")
-    router.refresh()
   }
 
   if (isCheckingAuth) {
-    return <div className="flex h-screen items-center justify-center bg-[#f5f7fa] text-[#122c4a] font-medium text-sm">Oturum kontrol ediliyor...</div>
+    return (
+      <div className="flex h-screen items-center justify-center bg-[#f5f7fa] text-[#122c4a] font-medium text-sm">
+        Oturum kontrol ediliyor...
+      </div>
+    )
   }
 
   return (
     <div className="min-h-screen bg-[#f5f7fa] text-[#122c4a]">
-      {isSidebarOpen && <button aria-label="Menüyü kapat" className="fixed inset-0 z-30 cursor-pointer bg-[#122c4a]/35 lg:hidden" onClick={() => setIsSidebarOpen(false)} />}
+      {isSidebarOpen && (
+        <button 
+          aria-label="Menüyü kapat" 
+          className="fixed inset-0 z-30 cursor-pointer bg-[#122c4a]/35 lg:hidden" 
+          onClick={() => setIsSidebarOpen(false)} 
+        />
+      )}
       
       <Sidebar 
         activeTab={activeTab} 
@@ -259,7 +307,13 @@ export default function Page() {
       <div className={cn("min-h-screen transition-[padding] duration-200 lg:pl-[260px]", isCollapsed && "lg:pl-[76px]")}>
         <header className="sticky top-0 z-25 flex flex-col gap-3 border-b border-[#e4e9ef] bg-[#f5f7fa]/95 px-4 py-3 backdrop-blur-md sm:flex-row sm:h-[82px] sm:items-center sm:justify-between sm:py-0 sm:px-8">
           <div className="flex w-full items-center gap-3 sm:w-auto">
-            <button aria-label="Menüyü aç" className="cursor-pointer rounded-lg p-2 hover:bg-white lg:hidden shrink-0" onClick={() => setIsSidebarOpen(true)}><Menu /></button>
+            <button 
+              aria-label="Menüyü aç" 
+              className="cursor-pointer rounded-lg p-2 hover:bg-white lg:hidden shrink-0" 
+              onClick={() => setIsSidebarOpen(true)}
+            >
+              <Menu />
+            </button>
             <div className="relative w-full sm:w-[320px]">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8da0b2]" />
               <Input 
@@ -276,7 +330,10 @@ export default function Page() {
             </div>
           </div>
           <div className="flex items-center justify-end gap-3 sm:gap-5">
-            <button aria-label="Bildirimler" className="relative cursor-pointer rounded-lg p-2 text-[#6d8194] hover:bg-white"><Bell /><span className="absolute right-1.5 top-1.5 size-2 rounded-full border-2 border-[#f5f7fa] bg-[#d64526]" /></button>
+            <button aria-label="Bildirimler" className="relative cursor-pointer rounded-lg p-2 text-[#6d8194] hover:bg-white">
+              <Bell />
+              <span className="absolute right-1.5 top-1.5 size-2 rounded-full border-2 border-[#f5f7fa] bg-[#d64526]" />
+            </button>
             <Separator orientation="vertical" className="hidden h-8 sm:block" />
             
             <button onClick={() => setActiveTab("Şirket Profili")} className="flex cursor-pointer items-center gap-2 rounded-lg p-1 hover:bg-white">
