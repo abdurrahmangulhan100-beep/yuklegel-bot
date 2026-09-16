@@ -35,33 +35,54 @@ export function CompanyProfileView({ onProfileUpdated }: CompanyProfileViewProps
         return
       }
 
-      const { data: { user } } = await supabase.auth.getUser()
+      try {
+        const { data: { user }, error: authError } = await supabase.auth.getUser()
 
-      if (user) {
+        if (authError || !user) {
+          setErrorMsg("Oturum bulunamadı. Lütfen giriş yapın.")
+          return
+        }
+
         setUserId(user.id)
+        const userEmail = user.email || ""
 
+        // 406 Not Acceptable hatasını önlemek için explicit alan seçimi
         const { data, error } = await supabase
           .from("profiles")
-          .select("*")
+          .select("id, company_name, authorized_person, phone, tax_number, city, email")
           .eq("id", user.id)
           .maybeSingle()
 
-        if (data && !error) {
+        if (error) {
+          console.error("Profil çekme hatası:", error.message)
+          // Veritabanı hatası alsa bile kullanıcının e-postasını formda göster
+          setForm(prev => ({ ...prev, email: userEmail }))
+          return
+        }
+
+        if (data) {
           setForm({
             company_name: data.company_name || "",
-            authorized_person: data.authorized_person || "",
+            authorized_person: data.authorized_person || userEmail.split("@")[0] || "",
             phone: data.phone || "",
             tax_number: data.tax_number || "",
             city: data.city || "",
-            email: data.email || user.email || ""
+            email: data.email || userEmail
           })
         } else {
-          setForm(prev => ({ ...prev, email: user.email || "" }))
+          // profiles tablosunda henüz satır yoksa e-posta bilgisini yerleştir
+          setForm(prev => ({ 
+            ...prev, 
+            email: userEmail,
+            authorized_person: userEmail.split("@")[0] || "" 
+          }))
         }
-      } else {
-        setErrorMsg("Oturum bulunamadı. Lütfen giriş yapın.")
+      } catch (err: any) {
+        console.error("Beklenmeyen hata:", err)
+        setErrorMsg("Profil yüklenirken bir sorun oluştu.")
       }
     }
+
     fetchProfile()
   }, [])
 
@@ -70,37 +91,43 @@ export function CompanyProfileView({ onProfileUpdated }: CompanyProfileViewProps
     setSavedMsg(false)
     setErrorMsg(null)
 
-    if (!userId) {
+    const isGuest = localStorage.getItem("is_guest") === "true"
+    if (isGuest || !userId) {
       setErrorMsg("Misafir modunda kayıt yapılamaz. Lütfen gerçek bir hesapla giriş yapın.")
       return
     }
 
     setLoading(true)
 
-    if (supabase) {
-      const { error } = await supabase.from("profiles").upsert({
-        id: userId,
-        company_name: form.company_name,
-        authorized_person: form.authorized_person,
-        phone: form.phone,
-        tax_number: form.tax_number,
-        city: form.city,
-        email: form.email,
-        updated_at: new Date().toISOString()
-      })
+    try {
+      if (supabase) {
+        // SQL RLS politikalarına uyumlu upsert işlemi
+        const { error } = await supabase.from("profiles").upsert({
+          id: userId,
+          company_name: form.company_name,
+          authorized_person: form.authorized_person,
+          phone: form.phone,
+          tax_number: form.tax_number,
+          city: form.city,
+          email: form.email,
+          updated_at: new Date().toISOString()
+        })
 
-      if (error) {
-        setErrorMsg("Kaydedilirken hata oluştu: " + error.message)
-      } else {
-        setSavedMsg(true)
-        if (onProfileUpdated) {
-          onProfileUpdated()
+        if (error) {
+          setErrorMsg("Kaydedilirken hata oluştu: " + error.message)
+        } else {
+          setSavedMsg(true)
+          if (onProfileUpdated) {
+            onProfileUpdated()
+          }
+          setTimeout(() => setSavedMsg(false), 3000)
         }
-        setTimeout(() => setSavedMsg(false), 3000)
       }
+    } catch (err: any) {
+      setErrorMsg("Bağlantı hatası: " + err.message)
+    } finally {
+      setLoading(false)
     }
-
-    setLoading(false)
   }
 
   return (
