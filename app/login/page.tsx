@@ -19,32 +19,63 @@ export default function LoginPage() {
     setErrorMsg("")
     setSuccessMsg("")
 
-    if (!supabase) return
+    if (!supabase) {
+      setErrorMsg("Veritabanı bağlantısı kurulamadı.")
+      setLoading(false)
+      return
+    }
 
     if (isSignUp) {
-      const { error } = await supabase.auth.signUp({ email, password })
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          // İsteğe bağlı: Kayıt sırasında varsayılan kullanıcı adı/şirket adı gönderme
+          data: {
+            full_name: email.split("@")[0],
+            company_name: "Yeni Firma",
+          },
+        },
+      })
+
       if (error) {
         setErrorMsg("Kayıt olunamadı: " + error.message)
+      } else if (data.user && data.session === null) {
+        setSuccessMsg("Kayıt başarılı! Lütfen e-posta adresinizi doğrulayın.")
       } else {
-        setSuccessMsg("Kayıt başarılı! Giriş yapabilirsiniz.")
-        setIsSignUp(false)
+        localStorage.removeItem("is_guest")
+        window.location.replace("/")
       }
     } else {
       const { error } = await supabase.auth.signInWithPassword({ email, password })
       if (error) {
         setErrorMsg("Giriş başarısız: " + error.message)
       } else {
+        // Normal kullanıcı girişi yapıldığında misafir modunu temizle
+        localStorage.removeItem("is_guest")
         window.location.replace("/")
       }
     }
     setLoading(false)
   }
 
-  // Misafir Modu: Oturum açmadan direkt panele geçiş izni verir
-  const handleGuestLogin = () => {
-    // Tarayıcı hafızasında misafir olduğunu işaretle
-    localStorage.setItem("is_guest", "true")
-    window.location.replace("/")
+  // Misafir Modu: Mevcut tüm gerçek oturumları sonlandırır
+  const handleGuestLogin = async () => {
+    setLoading(true)
+    try {
+      // 1. Önce var olan Supabase oturumunu kesin olarak kapat
+      if (supabase) {
+        await supabase.auth.signOut()
+      }
+      // 2. Misafir bayrağını ayarla
+      localStorage.setItem("is_guest", "true")
+      // 3. Ana sayfaya yönlendir
+      window.location.replace("/")
+    } catch (err) {
+      console.error("Misafir girişi hatası:", err)
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -103,6 +134,7 @@ export default function LoginPage() {
           <button
             type="button"
             onClick={handleGuestLogin}
+            disabled={loading}
             className="w-full h-10 bg-gray-100 hover:bg-gray-200 text-[#122c4a] text-xs font-semibold rounded-xl transition-colors cursor-pointer"
           >
             👀 Misafir Modu ile Hemen İncele
