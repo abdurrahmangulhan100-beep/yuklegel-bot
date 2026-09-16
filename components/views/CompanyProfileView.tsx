@@ -7,7 +7,11 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { supabase } from "@/lib/supabase"
 
-export function CompanyProfileView() {
+interface CompanyProfileViewProps {
+  onProfileUpdated?: () => void
+}
+
+export function CompanyProfileView({ onProfileUpdated }: CompanyProfileViewProps) {
   const [loading, setLoading] = useState(false)
   const [savedMsg, setSavedMsg] = useState(false)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
@@ -25,7 +29,6 @@ export function CompanyProfileView() {
     async function fetchProfile() {
       if (!supabase) return
 
-      // Misafir oturum bayrağını kontrol et
       const isGuest = localStorage.getItem("is_guest") === "true"
       if (isGuest) {
         setErrorMsg("Misafir modundasınız. Profilinizi kaydetmek için lütfen üye girişi yapın.")
@@ -77,13 +80,22 @@ export function CompanyProfileView() {
     if (supabase) {
       const { error } = await supabase.from("profiles").upsert({
         id: userId,
-        ...form
+        company_name: form.company_name,
+        authorized_person: form.authorized_person,
+        phone: form.phone,
+        tax_number: form.tax_number,
+        city: form.city,
+        email: form.email,
+        updated_at: new Date().toISOString()
       })
 
       if (error) {
         setErrorMsg("Kaydedilirken hata oluştu: " + error.message)
       } else {
         setSavedMsg(true)
+        if (onProfileUpdated) {
+          onProfileUpdated()
+        }
         setTimeout(() => setSavedMsg(false), 3000)
       }
     }
