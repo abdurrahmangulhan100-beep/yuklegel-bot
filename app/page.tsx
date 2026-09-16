@@ -46,15 +46,19 @@ export default function Page() {
 
   const [profile, setProfile] = useState({
     company_name: "YükleGel Kullanıcısı",
-    authorized_person: "Misafir",
+    authorized_person: "Kullanıcı",
     initials: "MK"
   })
 
-  // Oturum ve Misafir Modu Kontrolü
   useEffect(() => {
     const verifySession = async () => {
       const isGuest = localStorage.getItem("is_guest")
       if (isGuest === "true") {
+        setProfile({
+          company_name: "YükleGel Kullanıcısı",
+          authorized_person: "Misafir",
+          initials: "MK"
+        })
         setIsCheckingAuth(false)
         return
       }
@@ -72,7 +76,19 @@ export default function Page() {
 
   const fetchProfile = async () => {
     if (!supabase) return
-    const { data } = await supabase.from("profiles").select("*").limit(1).single()
+    
+    const isGuest = localStorage.getItem("is_guest") === "true"
+    if (isGuest) return
+
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+
+    const { data } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", user.id)
+      .maybeSingle()
+
     if (data) {
       const cName = data.company_name || "YükleGel Kullanıcısı"
       const aPerson = data.authorized_person || "Kullanıcı"
@@ -183,7 +199,6 @@ export default function Page() {
     setLoads(prev => [newLoad, ...prev])
   }
 
-  // Çıkış yap ve misafir oturumunu temizle
   const handleLogout = async () => {
     localStorage.removeItem("is_guest")
     if (supabase) {
