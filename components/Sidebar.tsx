@@ -30,8 +30,10 @@ export function Sidebar({
   }
 
   const handleLogout = async () => {
-    if (!supabase) return
-    await supabase.auth.signOut()
+    if (supabase) {
+      await supabase.auth.signOut()
+    }
+    localStorage.removeItem("is_guest")
     window.location.replace("/")
   }
 
@@ -71,7 +73,6 @@ export function Sidebar({
         <NavItem icon={Settings} label="Ayarlar" active={activeTab === "Ayarlar"} collapsed={isCollapsed} onClick={() => go("Ayarlar")} />
         <NavItem icon={CircleHelp} label="Yardım Merkezi" active={activeTab === "Yardım Merkezi"} collapsed={isCollapsed} onClick={() => go("Yardım Merkezi")} />
 
-        {/* Çıkış Yap Butonu */}
         <div className="mt-auto pt-4">
           <button
             type="button"
