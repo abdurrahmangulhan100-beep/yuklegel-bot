@@ -1,12 +1,11 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { supabase } from "@/lib/supabase" // Supabase client yolunuzu kontrol edin
+import { supabase } from "@/lib/supabase"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Checkbox } from "@/components/ui/checkbox"
 
 type CreateListingModalProps = {
   isOpen: boolean
@@ -29,27 +28,23 @@ export function CreateListingModal({ isOpen, onClose, onSuccess }: CreateListing
   const [distance, setDistance] = useState("")
   const [isUrgent, setIsUrgent] = useState(false)
 
-  // Modal açıldığında sadece GİRİŞ YAPAN KULLANICININ profilini çek
   useEffect(() => {
     async function loadUserProfile() {
       if (!isOpen) return
       setFetchingProfile(true)
 
       try {
-        // 1. O an oturum açmış aktif kullanıcıyı al
         const { data: { user }, error: authError } = await supabase.auth.getUser()
 
         if (authError || !user) {
-          console.error("Kullanıcı oturumu bulunamadı:", authError)
           setFetchingProfile(false)
           return
         }
 
-        // 2. SADECE bu kullanıcının ID'sine ait profil verisini çek (.eq("id", user.id))
         const { data: profile, error: profileError } = await supabase
           .from("profiles")
           .select("company_name, phone")
-          .eq("id", user.id) // KRİTİK NOKTA: Başkasının firmasını çekmesini engeller
+          .eq("id", user.id)
           .maybeSingle()
 
         if (profileError) {
@@ -68,7 +63,6 @@ export function CreateListingModal({ isOpen, onClose, onSuccess }: CreateListing
     loadUserProfile()
   }, [isOpen])
 
-  // İlanı kaydetme fonksiyonu
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
@@ -82,10 +76,9 @@ export function CreateListingModal({ isOpen, onClose, onSuccess }: CreateListing
         return
       }
 
-      // İlanı veritabanına ekle
       const { error } = await supabase.from("listings").insert([
         {
-          user_id: user.id, // İlanın sahibini belirliyoruz
+          user_id: user.id,
           company_name: companyName,
           phone: phone,
           from_city: fromCity,
@@ -214,10 +207,12 @@ export function CreateListingModal({ isOpen, onClose, onSuccess }: CreateListing
           </div>
 
           <div className="flex items-center space-x-2 pt-1">
-            <Checkbox
+            <input
+              type="checkbox"
               id="urgent"
               checked={isUrgent}
-              onCheckedChange={(checked) => setIsUrgent(!!checked)}
+              onChange={(e) => setIsUrgent(e.target.checked)}
+              className="size-4 rounded border-gray-300 text-[#d64526] focus:ring-[#d64526]"
             />
             <Label htmlFor="urgent" className="text-xs cursor-pointer font-medium">
               Acil İlan Olarak İşaretle
