@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
+import { useRouter } from "next/navigation"
 import { Bell, ChevronDown, Menu, Search, LogOut } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
@@ -33,6 +34,7 @@ const extractPhone = (text: string) => {
 }
 
 export default function Page() {
+  const router = useRouter()
   const [isCheckingAuth, setIsCheckingAuth] = useState(true)
   const [loads, setLoads] = useState<Load[]>([])
   const [activeFilter, setActiveFilter] = useState("Tümü")
@@ -52,8 +54,9 @@ export default function Page() {
 
   useEffect(() => {
     const verifySession = async () => {
-      const isGuest = localStorage.getItem("is_guest")
-      if (isGuest === "true") {
+      const isGuest = localStorage.getItem("is_guest") === "true"
+      
+      if (isGuest) {
         setProfile({
           company_name: "YükleGel Kullanıcısı",
           authorized_person: "Misafir",
@@ -63,16 +66,34 @@ export default function Page() {
         return
       }
 
-      if (!supabase) return
+      if (!supabase) {
+        setIsCheckingAuth(false)
+        return
+      }
+
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) {
-        window.location.replace("/login")
+        router.push("/login")
       } else {
         setIsCheckingAuth(false)
       }
     }
+
     verifySession()
-  }, [])
+
+    // Canlı oturum değişimi takibi (örn. token süresi dolarsa)
+    if (supabase) {
+      const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+        const isGuest = localStorage.getItem("is_guest") === "true"
+        if (!session && !isGuest && event === "SIGNED_OUT") {
+          router.push("/login")
+        }
+      })
+      return () => {
+        authListener.subscription.unsubscribe()
+      }
+    }
+  }, [router])
 
   const fetchProfile = async () => {
     if (!supabase) return
@@ -91,12 +112,20 @@ export default function Page() {
 
     if (data) {
       const cName = data.company_name || "YükleGel Kullanıcısı"
-      const aPerson = data.authorized_person || "Kullanıcı"
+      const aPerson = data.authorized_person || user.email?.split("@")[0] || "Kullanıcı"
       const initials = aPerson.split(" ").map((n: string) => n[0]).join("").toUpperCase().substring(0, 2)
       setProfile({
         company_name: cName,
         authorized_person: aPerson,
         initials: initials || "MK"
+      })
+    } else {
+      // Profil kaydı veritabanında henüz oluşturulmadıysa e-posta bilgisini göster
+      const defaultName = user.email?.split("@")[0] || "Kullanıcı"
+      setProfile({
+        company_name: "YükleGel Kullanıcısı",
+        authorized_person: defaultName,
+        initials: defaultName.substring(0, 2).toUpperCase()
       })
     }
   }
@@ -199,16 +228,18 @@ export default function Page() {
     setLoads(prev => [newLoad, ...prev])
   }
 
+  // Profesyonel Tam Çıkış İşlemi
   const handleLogout = async () => {
     localStorage.removeItem("is_guest")
     if (supabase) {
       await supabase.auth.signOut()
     }
-    window.location.replace("/login")
+    router.push("/login")
+    router.refresh()
   }
 
   if (isCheckingAuth) {
-    return <div className="flex h-screen items-center justify-center bg-[#f5f7fa] text-[#122c4a]">Oturum kontrol ediliyor...</div>
+    return <div className="flex h-screen items-center justify-center bg-[#f5f7fa] text-[#122c4a] font-medium text-sm">Oturum kontrol ediliyor...</div>
   }
 
   return (
