@@ -10,6 +10,7 @@ import { supabase } from "@/lib/supabase"
 export function CompanyProfileView() {
   const [loading, setLoading] = useState(false)
   const [savedMsg, setSavedMsg] = useState(false)
+  const [userId, setUserId] = useState<string | null>(null)
   const [form, setForm] = useState({
     company_name: "",
     authorized_person: "",
@@ -19,20 +20,37 @@ export function CompanyProfileView() {
     email: ""
   })
 
-  // Sayfa açıldığında kayıtlı profili çek
+  // Sayfa açıldığında giriş yapan kullanıcının kendi profilini çek
   useEffect(() => {
     async function fetchProfile() {
       if (!supabase) return
-      const { data, error } = await supabase.from("profiles").select("*").limit(1).single()
-      if (data && !error) {
-        setForm({
-          company_name: data.company_name || "",
-          authorized_person: data.authorized_person || "",
-          phone: data.phone || "",
-          tax_number: data.tax_number || "",
-          city: data.city || "",
-          email: data.email || ""
-        })
+
+      // 1. Aktif kullanıcının ID'sini al
+      const { data: { user } } = await supabase.auth.getUser()
+
+      if (user) {
+        setUserId(user.id)
+
+        // 2. SADECE bu kullanıcının profilini veritabanından sorgula
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("id", user.id)
+          .maybeSingle()
+
+        if (data && !error) {
+          setForm({
+            company_name: data.company_name || "",
+            authorized_person: data.authorized_person || "",
+            phone: data.phone || "",
+            tax_number: data.tax_number || "",
+            city: data.city || "",
+            email: data.email || user.email || ""
+          })
+        } else {
+          // Eğer veritabanında kaydı yoksa varsayılan e-postasını doldur
+          setForm(prev => ({ ...prev, email: user.email || "" }))
+        }
       }
     }
     fetchProfile()
@@ -42,20 +60,24 @@ export function CompanyProfileView() {
     e.preventDefault()
     setLoading(true)
 
-    if (supabase) {
-      // Önce tabloda kayıt var mı kontrol et, varsa güncelle yoksa ekle
-      const { data: existing } = await supabase.from("profiles").select("id").limit(1)
+    if (supabase && userId) {
+      // upsert: Kullanıcının ID'sine ait kayıt varsa GÜNCELLE, yoksa YENİ EKLE
+      const profileData = {
+        id: userId,
+        ...form
+      }
 
-      if (existing && existing.length > 0) {
-        await supabase.from("profiles").update(form).eq("id", existing[0].id)
+      const { error } = await supabase.from("profiles").upsert(profileData)
+
+      if (error) {
+        alert("Profil kaydedilirken hata oluştu: " + error.message)
       } else {
-        await supabase.from("profiles").insert([form])
+        setSavedMsg(true)
+        setTimeout(() => setSavedMsg(false), 3000)
       }
     }
 
     setLoading(false)
-    setSavedMsg(true)
-    setTimeout(() => setSavedMsg(false), 3000)
   }
 
   return (
@@ -66,38 +88,74 @@ export function CompanyProfileView() {
         <p className="mt-2 text-sm text-[#718397]">Kurumsal bilgilerinizi, vergi numaranızı ve iletişim kanallarınızı güncelleyin.</p>
       </div>
       <form onSubmit={handleSave} className="max-w-2xl rounded-xl border border-[#e4e9ef] bg-white p-6 grid gap-4">
-        {savedMsg && <div className="p-3 rounded-lg bg-[#e7f5ed] text-[#3b8068] text-sm font-medium flex items-center gap-2"><CheckCircle2 className="size-4" /> Bilgileriniz başarıyla kaydedildi.</div>}
-        
+        {savedMsg && (
+          <div className="p-3 rounded-lg bg-[#e7f5ed] text-[#3b8068] text-sm font-medium flex items-center gap-2">
+            <CheckCircle2 className="size-4" /> Bilgileriniz başarıyla kaydedildi.
+          </div>
+        )}
+
         <div className="grid gap-2">
           <Label>Şirket / Unvan Adı</Label>
-          <Input value={form.company_name} onChange={e => setForm({...form, company_name: e.target.value})} placeholder="Örn: Aksoy Lojistik" required />
+          <Input 
+            value={form.company_name} 
+            onChange={e => setForm({...form, company_name: e.target.value})} 
+            placeholder="Örn: Aksoy Lojistik" 
+            required 
+          />
         </div>
-        
+
         <div className="grid grid-cols-2 gap-3">
           <div className="grid gap-2">
             <Label>Yetkili Kişi</Label>
-            <Input value={form.authorized_person} onChange={e => setForm({...form, authorized_person: e.target.value})} placeholder="Ad Soyad" required />
+            <Input 
+              value={form.authorized_person} 
+              onChange={e => setForm({...form, authorized_person: e.target.value})} 
+              placeholder="Ad Soyad" 
+              required 
+            />
           </div>
           <div className="grid gap-2">
             <Label>Telefon Numarası</Label>
-            <Input value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} placeholder="05xx xxx xx xx" required />
+            <Input 
+              value={form.phone} 
+              onChange={e => setForm({...form, phone: e.target.value})} 
+              placeholder="05xx xxx xx xx" 
+              required 
+            />
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
           <div className="grid gap-2">
             <Label>Vergi Numarası</Label>
-            <Input value={form.tax_number} onChange={e => setForm({...form, tax_number: e.target.value})} placeholder="Vergi No" required />
+            <Input 
+              value={form.tax_number} 
+              onChange={e => setForm({...form, tax_number: e.target.value})} 
+              placeholder="Vergi No" 
+              required 
+            />
           </div>
           <div className="grid gap-2">
             <Label>Şehir / İlçe</Label>
-            <Input value={form.city} onChange={e => setForm({...form, city: e.target.value})} placeholder="Konya / Selçuklu" required />
+            <Input 
+              value={form.city} 
+              onChange={e => setForm({...form, city: e.target.value})} 
+              placeholder="Konya / Selçuklu" 
+              required 
+            />
           </div>
         </div>
 
         <div className="grid gap-2">
           <Label>Kurumsal E-posta</Label>
-          <Input value={form.email} onChange={e => setForm({...form, email: e.target.value})} placeholder="info@sirket.com" type="email" required />
+          <Input 
+            value={form.email} 
+            disabled
+            className="bg-gray-100 cursor-not-allowed" 
+            placeholder="info@sirket.com" 
+            type="email" 
+            required 
+          />
         </div>
 
         <div className="pt-2">
