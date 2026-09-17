@@ -16,7 +16,7 @@ import {
   Pencil,
   Download,
   Filter,
-  PieChart
+  FileText
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -79,7 +79,6 @@ export function FinanceView() {
     fetchFinances()
   }, [])
 
-  // Düzenleme Modunu Aç
   const handleOpenEdit = (item: FinanceItem) => {
     setEditingItem(item)
     setType(item.type)
@@ -91,7 +90,6 @@ export function FinanceView() {
     setIsOpenModal(true)
   }
 
-  // Yeni Kayıt veya Düzenlemeyi Kaydet
   const handleSaveRecord = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!supabase) return
@@ -106,7 +104,6 @@ export function FinanceView() {
     }
 
     if (editingItem) {
-      // Güncelleme
       const { error } = await supabase
         .from("finances")
         .update(payload)
@@ -114,7 +111,6 @@ export function FinanceView() {
 
       if (!error) closeModal()
     } else {
-      // Yeni Ekleme
       const { error } = await supabase
         .from("finances")
         .insert([payload])
@@ -141,13 +137,11 @@ export function FinanceView() {
     fetchFinances()
   }
 
-  // Benzersiz Plakalar
   const uniquePlates = useMemo(() => {
     const plates = items.map(i => i.plate).filter(Boolean)
     return Array.from(new Set(plates))
   }, [items])
 
-  // Filtrelenmiş Liste
   const filteredItems = useMemo(() => {
     return items.filter(item => {
       const matchesType = filterType === "all" ? true : item.type === filterType
@@ -166,12 +160,10 @@ export function FinanceView() {
     })
   }, [items, filterType, selectedPlate, searchQuery, startDate, endDate])
 
-  // Hesaplamalar
   const totalIncome = filteredItems.filter(i => i.type === "income").reduce((acc, curr) => acc + Number(curr.amount), 0)
   const totalExpense = filteredItems.filter(i => i.type === "expense").reduce((acc, curr) => acc + Number(curr.amount), 0)
   const netProfit = totalIncome - totalExpense
 
-  // CSV İndirme Fonksiyonu
   const exportToCSV = () => {
     if (filteredItems.length === 0) return
     const headers = ["Tarih", "Tür", "Kategori", "Plaka", "Tutar (TL)", "Açıklama"]
@@ -197,9 +189,9 @@ export function FinanceView() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto pb-12">
+    <div className="max-w-6xl mx-auto pb-12 px-2 sm:px-4">
       {/* Üst Başlık & Butonlar */}
-      <div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+      <div className="mb-5 flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
         <div>
           <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-[#d64526]">Finansal Yönetim</p>
           <h1 className="text-2xl font-bold tracking-tight text-[#122c4a]">Gelir ve Gider Takibi</h1>
@@ -209,72 +201,71 @@ export function FinanceView() {
           <Button 
             onClick={exportToCSV}
             variant="outline"
-            className="h-9 text-xs gap-1.5 cursor-pointer border-[#e4e9ef]"
+            className="h-9 text-xs gap-1.5 cursor-pointer border-[#e4e9ef] flex-1 sm:flex-none"
           >
-            <Download className="size-3.5" /> Dışa Aktar (.CSV)
+            <Download className="size-3.5" /> CSV İndir
           </Button>
           <Button 
             onClick={() => { setEditingItem(null); setType("income"); setIsOpenModal(true); }} 
-            className="bg-emerald-600 text-white hover:bg-emerald-700 cursor-pointer gap-1.5 h-9 text-xs"
+            className="bg-emerald-600 text-white hover:bg-emerald-700 cursor-pointer gap-1.5 h-9 text-xs flex-1 sm:flex-none"
           >
-            <ArrowUpRight className="size-4" /> Gelir Ekle
+            <ArrowUpRight className="size-4" /> Gelir
           </Button>
           <Button 
             onClick={() => { setEditingItem(null); setType("expense"); setIsOpenModal(true); }} 
-            className="bg-red-600 text-white hover:bg-red-700 cursor-pointer gap-1.5 h-9 text-xs"
+            className="bg-red-600 text-white hover:bg-red-700 cursor-pointer gap-1.5 h-9 text-xs flex-1 sm:flex-none"
           >
-            <ArrowDownLeft className="size-4" /> Gider Ekle
+            <ArrowDownLeft className="size-4" /> Gider
           </Button>
         </div>
       </div>
 
       {/* Özet Kartları */}
-      <div className="mb-6 grid gap-4 sm:grid-cols-3">
-        <div className="rounded-xl border border-[#e4e9ef] bg-white p-4 shadow-2xs">
+      <div className="mb-5 grid gap-3 grid-cols-1 sm:grid-cols-3">
+        <div className="rounded-xl border border-[#e4e9ef] bg-white p-3.5 shadow-2xs">
           <div className="flex items-center justify-between text-emerald-600 mb-1">
             <span className="text-xs font-medium text-[#718397]">Toplam Gelir</span>
             <TrendingUp className="size-4" />
           </div>
-          <div className="text-xl font-bold text-emerald-600">₺{totalIncome.toLocaleString("tr-TR")}</div>
+          <div className="text-lg sm:text-xl font-bold text-emerald-600">₺{totalIncome.toLocaleString("tr-TR")}</div>
         </div>
-        <div className="rounded-xl border border-[#e4e9ef] bg-white p-4 shadow-2xs">
+        <div className="rounded-xl border border-[#e4e9ef] bg-white p-3.5 shadow-2xs">
           <div className="flex items-center justify-between text-red-600 mb-1">
             <span className="text-xs font-medium text-[#718397]">Toplam Gider</span>
             <TrendingDown className="size-4" />
           </div>
-          <div className="text-xl font-bold text-red-600">₺{totalExpense.toLocaleString("tr-TR")}</div>
+          <div className="text-lg sm:text-xl font-bold text-red-600">₺{totalExpense.toLocaleString("tr-TR")}</div>
         </div>
-        <div className="rounded-xl border border-[#e4e9ef] bg-white p-4 shadow-2xs">
+        <div className="rounded-xl border border-[#e4e9ef] bg-white p-3.5 shadow-2xs">
           <div className="flex items-center justify-between text-blue-600 mb-1">
             <span className="text-xs font-medium text-[#718397]">Net Bakiye</span>
             <Wallet className="size-4" />
           </div>
-          <div className={`text-xl font-bold ${netProfit >= 0 ? "text-emerald-700" : "text-red-600"}`}>
+          <div className={`text-lg sm:text-xl font-bold ${netProfit >= 0 ? "text-emerald-700" : "text-red-600"}`}>
             ₺{netProfit.toLocaleString("tr-TR")}
           </div>
         </div>
       </div>
 
       {/* Arama & Filtreleme Barları */}
-      <div className="mb-4 space-y-3">
-        <div className="flex flex-col sm:flex-row gap-2.5 items-center justify-between">
+      <div className="mb-4 space-y-2.5">
+        <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center justify-between">
           <div className="relative w-full sm:w-72">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-gray-400" />
             <Input 
-              placeholder="Arama (Kategori, plaka...)" 
+              placeholder="Arama yapın (Kategori, plaka...)" 
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-9 h-9 text-xs"
             />
           </div>
 
-          <div className="flex w-full sm:w-auto gap-2 items-center overflow-x-auto pb-1 sm:pb-0">
-            {/* Plaka Filtresi */}
+          <div className="flex gap-2 items-center justify-between sm:justify-end">
             {uniquePlates.length > 0 && (
               <select 
                 value={selectedPlate} 
                 onChange={(e) => setSelectedPlate(e.target.value)}
-                className="h-9 text-xs rounded-md border border-[#e4e9ef] bg-white px-2.5 text-[#122c4a] outline-none"
+                className="h-9 text-xs rounded-md border border-[#e4e9ef] bg-white px-2.5 text-[#122c4a] outline-none flex-1 sm:flex-none"
               >
                 <option value="all">Tüm Plakalar</option>
                 {uniquePlates.map(p => (
@@ -283,23 +274,22 @@ export function FinanceView() {
               </select>
             )}
 
-            {/* Tür Filtresi */}
-            <div className="flex bg-[#f5f7fa] p-1 rounded-lg border border-[#e4e9ef]">
+            <div className="flex bg-[#f5f7fa] p-1 rounded-lg border border-[#e4e9ef] shrink-0">
               <button 
                 onClick={() => setFilterType("all")} 
-                className={cn("px-3 py-1 text-xs font-semibold rounded-md transition-colors cursor-pointer", filterType === "all" ? "bg-white text-[#122c4a] shadow-xs" : "text-[#718397]")}
+                className={cn("px-2.5 py-1 text-xs font-semibold rounded-md transition-colors cursor-pointer", filterType === "all" ? "bg-white text-[#122c4a] shadow-xs" : "text-[#718397]")}
               >
                 Tümü
               </button>
               <button 
                 onClick={() => setFilterType("income")} 
-                className={cn("px-3 py-1 text-xs font-semibold rounded-md transition-colors cursor-pointer", filterType === "income" ? "bg-white text-emerald-600 shadow-xs" : "text-[#718397]")}
+                className={cn("px-2.5 py-1 text-xs font-semibold rounded-md transition-colors cursor-pointer", filterType === "income" ? "bg-white text-emerald-600 shadow-xs" : "text-[#718397]")}
               >
                 Gelirler
               </button>
               <button 
                 onClick={() => setFilterType("expense")} 
-                className={cn("px-3 py-1 text-xs font-semibold rounded-md transition-colors cursor-pointer", filterType === "expense" ? "bg-white text-red-600 shadow-xs" : "text-[#718397]")}
+                className={cn("px-2.5 py-1 text-xs font-semibold rounded-md transition-colors cursor-pointer", filterType === "expense" ? "bg-white text-red-600 shadow-xs" : "text-[#718397]")}
               >
                 Giderler
               </button>
@@ -309,26 +299,28 @@ export function FinanceView() {
 
         {/* Tarih Aralığı Süzgeci */}
         <div className="flex items-center gap-2 bg-gray-50 p-2 rounded-lg border border-[#e4e9ef] text-xs text-gray-600 flex-wrap">
-          <span className="font-semibold text-gray-700 flex items-center gap-1"><Filter className="size-3" /> Tarih Aralığı:</span>
-          <Input 
-            type="date" 
-            value={startDate} 
-            onChange={e => setStartDate(e.target.value)} 
-            className="h-7 text-xs w-36 bg-white" 
-          />
-          <span>-</span>
-          <Input 
-            type="date" 
-            value={endDate} 
-            onChange={e => setEndDate(e.target.value)} 
-            className="h-7 text-xs w-36 bg-white" 
-          />
+          <span className="font-semibold text-gray-700 flex items-center gap-1 shrink-0"><Filter className="size-3" /> Tarih:</span>
+          <div className="flex items-center gap-1.5 flex-1 sm:flex-none">
+            <Input 
+              type="date" 
+              value={startDate} 
+              onChange={e => setStartDate(e.target.value)} 
+              className="h-8 text-xs bg-white w-full sm:w-32" 
+            />
+            <span>-</span>
+            <Input 
+              type="date" 
+              value={endDate} 
+              onChange={e => setEndDate(e.target.value)} 
+              className="h-8 text-xs bg-white w-full sm:w-32" 
+            />
+          </div>
           {(startDate || endDate) && (
             <button 
               onClick={() => { setStartDate(""); setEndDate(""); }}
               className="text-red-600 text-xs hover:underline cursor-pointer ml-auto"
             >
-              Filtreyi Temizle
+              Temizle
             </button>
           )}
         </div>
@@ -345,53 +337,65 @@ export function FinanceView() {
             {filteredItems.map((item) => {
               const isIncome = item.type === "income"
               return (
-                <div key={item.id} className="p-3.5 flex items-center justify-between gap-3 hover:bg-[#f8fafc] transition-colors">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className={cn("grid size-9 shrink-0 place-items-center rounded-lg", isIncome ? "bg-emerald-50 text-emerald-600" : "bg-red-50 text-red-600")}>
-                      {isIncome ? <ArrowUpRight className="size-4" /> : <ArrowDownLeft className="size-4" />}
-                    </div>
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-[#122c4a] text-xs sm:text-sm truncate">{item.category}</span>
-                        {item.plate && (
-                          <span className="inline-flex items-center gap-1 rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-semibold text-gray-700 shrink-0">
-                            <Truck className="size-3 text-gray-500" />
-                            {item.plate}
-                          </span>
-                        )}
+                <div key={item.id} className="p-3.5 hover:bg-[#f8fafc] transition-colors">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-start gap-3 min-w-0 flex-1">
+                      <div className={cn("grid size-9 shrink-0 place-items-center rounded-lg mt-0.5", isIncome ? "bg-emerald-50 text-emerald-600" : "bg-red-50 text-red-600")}>
+                        {isIncome ? <ArrowUpRight className="size-4" /> : <ArrowDownLeft className="size-4" />}
                       </div>
-                      <div className="text-[11px] text-[#718397] flex items-center gap-2 mt-0.5">
-                        <span className="flex items-center gap-1 shrink-0"><Calendar className="size-3" /> {new Date(item.date).toLocaleDateString("tr-TR")}</span>
-                        {item.description && <span className="truncate">• {item.description}</span>}
+                      
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-bold text-[#122c4a] text-sm">{item.category}</span>
+                          {item.plate && (
+                            <span className="inline-flex items-center gap-1 rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-semibold text-gray-700 shrink-0">
+                              <Truck className="size-3 text-gray-500" />
+                              {item.plate}
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="text-[11px] text-[#718397] flex items-center gap-1.5 mt-1">
+                          <Calendar className="size-3 shrink-0" />
+                          <span>{new Date(item.date).toLocaleDateString("tr-TR")}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      <div className={cn("text-sm sm:text-base font-bold", isIncome ? "text-emerald-600" : "text-red-600")}>
+                        {isIncome 
+                          ? `+₺${Number(item.amount).toLocaleString("tr-TR")}` 
+                          : `-₺${Number(item.amount).toLocaleString("tr-TR")}`
+                        }
+                      </div>
+
+                      <div className="flex items-center gap-0.5 border-l border-gray-100 pl-1.5 ml-1">
+                        <button 
+                          onClick={() => handleOpenEdit(item)} 
+                          className="text-gray-400 hover:text-blue-600 p-1 cursor-pointer transition-colors"
+                          title="Düzenle"
+                        >
+                          <Pencil className="size-3.5" />
+                        </button>
+                        <button 
+                          onClick={() => handleDelete(item.id)} 
+                          className="text-gray-400 hover:text-red-600 p-1 cursor-pointer transition-colors"
+                          title="Sil"
+                        >
+                          <Trash2 className="size-3.5" />
+                        </button>
                       </div>
                     </div>
                   </div>
-                  
-                  <div className="flex items-center gap-3 shrink-0">
-                    <div className={cn("text-xs sm:text-sm font-bold", isIncome ? "text-emerald-600" : "text-red-600")}>
-                      {isIncome 
-                        ? `+₺${Number(item.amount).toLocaleString("tr-TR")}` 
-                        : `-₺${Number(item.amount).toLocaleString("tr-TR")}`
-                      }
+
+                  {/* Açıklama Alanı: Kesilmeden Tam Metin Olarak Gösterilir */}
+                  {item.description && (
+                    <div className="mt-2 text-xs text-gray-600 bg-gray-50 p-2 rounded-md border border-gray-100 flex items-start gap-1.5 break-words">
+                      <FileText className="size-3.5 text-gray-400 shrink-0 mt-0.5" />
+                      <span>{item.description}</span>
                     </div>
-                    
-                    <div className="flex items-center gap-1 border-l border-gray-100 pl-2">
-                      <button 
-                        onClick={() => handleOpenEdit(item)} 
-                        className="text-gray-400 hover:text-blue-600 p-1 cursor-pointer transition-colors"
-                        title="Düzenle"
-                      >
-                        <Pencil className="size-3.5" />
-                      </button>
-                      <button 
-                        onClick={() => handleDelete(item.id)} 
-                        className="text-gray-400 hover:text-red-600 p-1 cursor-pointer transition-colors"
-                        title="Sil"
-                      >
-                        <Trash2 className="size-3.5" />
-                      </button>
-                    </div>
-                  </div>
+                  )}
                 </div>
               )
             })}
@@ -399,7 +403,7 @@ export function FinanceView() {
         )}
       </div>
 
-      {/* Kayıt Ekleme / Düzenleme Modalı */}
+      {/* Kayıt Modalı */}
       {isOpenModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-xs">
           <div className="w-full max-w-md rounded-xl bg-white p-5 shadow-xl border border-[#e4e9ef]">
@@ -416,7 +420,6 @@ export function FinanceView() {
             </div>
 
             <form onSubmit={handleSaveRecord} className="space-y-3.5">
-              {/* İşlem Türü Seçimi */}
               <div className="flex bg-[#f5f7fa] p-1 rounded-lg border border-[#e4e9ef]">
                 <button 
                   type="button" 
@@ -434,7 +437,6 @@ export function FinanceView() {
                 </button>
               </div>
 
-              {/* Hızlı Kategori Önerileri */}
               <div>
                 <label className="text-[11px] font-medium text-[#718397] mb-1 block">Hızlı Kategori Seçimi</label>
                 <div className="flex flex-wrap gap-1 mb-2">
