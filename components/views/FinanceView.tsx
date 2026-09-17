@@ -3,7 +3,6 @@
 import { useState, useEffect, useMemo } from "react"
 import { supabase } from "@/lib/supabase"
 import { 
-  Plus, 
   Wallet, 
   TrendingUp, 
   TrendingDown, 
@@ -12,9 +11,12 @@ import {
   ArrowUpRight, 
   ArrowDownLeft, 
   Search, 
-  Filter, 
   X,
-  Truck
+  Truck,
+  Pencil,
+  Download,
+  Filter,
+  PieChart
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -39,11 +41,14 @@ export function FinanceView() {
   const [items, setItems] = useState<FinanceItem[]>([])
   const [loading, setLoading] = useState(true)
   const [isOpenModal, setIsOpenModal] = useState(false)
+  const [editingItem, setEditingItem] = useState<FinanceItem | null>(null)
   
-  // Filtreleme & Arama State'leri
+  // Filtreleme State'leri
   const [filterType, setFilterType] = useState<"all" | "income" | "expense">("all")
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedPlate, setSelectedPlate] = useState<string>("all")
+  const [startDate, setStartDate] = useState("")
+  const [endDate, setEndDate] = useState("")
 
   // Form State
   const [type, setType] = useState<"income" | "expense">("income")
@@ -74,39 +79,69 @@ export function FinanceView() {
     fetchFinances()
   }, [])
 
-  const handleAddRecord = async (e: React.FormEvent) => {
+  // Düzenleme Modunu Aç
+  const handleOpenEdit = (item: FinanceItem) => {
+    setEditingItem(item)
+    setType(item.type)
+    setCategory(item.category || "")
+    setAmount(item.amount ? String(item.amount) : "")
+    setPlate(item.plate || "")
+    setDate(item.date ? item.date.split("T")[0] : new Date().toISOString().split("T")[0])
+    setDescription(item.description || "")
+    setIsOpenModal(true)
+  }
+
+  // Yeni Kayıt veya Düzenlemeyi Kaydet
+  const handleSaveRecord = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!supabase) return
 
-    const { error } = await supabase.from("finances").insert([
-      {
-        type,
-        category: category || (type === "income" ? "Navlun Bedeli" : "Mazot Alımı"),
-        amount: Number(amount) || 0,
-        plate: plate.toUpperCase().trim(),
-        date,
-        description,
-      }
-    ])
-
-    if (!error) {
-      setIsOpenModal(false)
-      setCategory("")
-      setAmount("")
-      setPlate("")
-      setDescription("")
-      setDate(new Date().toISOString().split("T")[0])
-      fetchFinances()
+    const payload = {
+      type,
+      category: category || (type === "income" ? "Navlun Bedeli" : "Mazot Alımı"),
+      amount: Number(amount) || 0,
+      plate: plate.toUpperCase().trim(),
+      date,
+      description,
     }
+
+    if (editingItem) {
+      // Güncelleme
+      const { error } = await supabase
+        .from("finances")
+        .update(payload)
+        .eq("id", editingItem.id)
+
+      if (!error) closeModal()
+    } else {
+      // Yeni Ekleme
+      const { error } = await supabase
+        .from("finances")
+        .insert([payload])
+
+      if (!error) closeModal()
+    }
+    fetchFinances()
+  }
+
+  const closeModal = () => {
+    setIsOpenModal(false)
+    setEditingItem(null)
+    setCategory("")
+    setAmount("")
+    setPlate("")
+    setDescription("")
+    setDate(new Date().toISOString().split("T")[0])
   }
 
   const handleDelete = async (id: string) => {
     if (!supabase) return
+    if (!confirm("Bu kaydı silmek istediğinize emin misiniz?")) return
     await supabase.from("finances").delete().eq("id", id)
     fetchFinances()
   }
 
-  // Plaka Listesi (Filtreleme için)
+  // Benzersiz Plakalar
   const uniquePlates = useMemo(() => {
     const plates = items.map(i => i.plate).filter(Boolean)
     return Array.from(new Set(plates))
@@ -122,14 +157,44 @@ export function FinanceView() {
         item.plate?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         item.description?.toLowerCase().includes(searchQuery.toLowerCase())
       )
-      return matchesType && matchesPlate && matchesSearch
+      
+      const itemDate = new Date(item.date)
+      const matchesStart = startDate ? itemDate >= new Date(startDate) : true
+      const matchesEnd = endDate ? itemDate <= new Date(endDate) : true
+
+      return matchesType && matchesPlate && matchesSearch && matchesStart && matchesEnd
     })
-  }, [items, filterType, selectedPlate, searchQuery])
+  }, [items, filterType, selectedPlate, searchQuery, startDate, endDate])
 
   // Hesaplamalar
-  const totalIncome = items.filter(i => i.type === "income").reduce((acc, curr) => acc + Number(curr.amount), 0)
-  const totalExpense = items.filter(i => i.type === "expense").reduce((acc, curr) => acc + Number(curr.amount), 0)
+  const totalIncome = filteredItems.filter(i => i.type === "income").reduce((acc, curr) => acc + Number(curr.amount), 0)
+  const totalExpense = filteredItems.filter(i => i.type === "expense").reduce((acc, curr) => acc + Number(curr.amount), 0)
   const netProfit = totalIncome - totalExpense
+
+  // CSV İndirme Fonksiyonu
+  const exportToCSV = () => {
+    if (filteredItems.length === 0) return
+    const headers = ["Tarih", "Tür", "Kategori", "Plaka", "Tutar (TL)", "Açıklama"]
+    const rows = filteredItems.map(item => [
+      item.date,
+      item.type === "income" ? "Gelir" : "Gider",
+      `"${item.category || ''}"`,
+      `"${item.plate || ''}"`,
+      item.amount,
+      `"${item.description || ''}"`
+    ])
+
+    const csvContent = "data:text/csv;charset=utf-8,\uFEFF" 
+      + [headers.join(","), ...rows.map(e => e.join(","))].join("\n")
+
+    const encodedUri = encodeURI(csvContent)
+    const link = document.createElement("a")
+    link.setAttribute("href", encodedUri)
+    link.setAttribute("download", `Finans_Raporu_${new Date().toISOString().split("T")[0]}.csv`)
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
 
   return (
     <div className="max-w-6xl mx-auto pb-12">
@@ -138,18 +203,25 @@ export function FinanceView() {
         <div>
           <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-[#d64526]">Finansal Yönetim</p>
           <h1 className="text-2xl font-bold tracking-tight text-[#122c4a]">Gelir ve Gider Takibi</h1>
-          <p className="mt-0.5 text-xs text-[#718397]">Tüm finansal hareketlerinizi kayıt altına alın ve net durumunuzu analiz edin.</p>
+          <p className="mt-0.5 text-xs text-[#718397]">Tüm finansal hareketlerinizi yönetin ve raporlayın.</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <Button 
-            onClick={() => { setType("income"); setIsOpenModal(true); }} 
-            className="bg-emerald-600 text-white hover:bg-emerald-700 cursor-pointer gap-2 h-9 text-xs"
+            onClick={exportToCSV}
+            variant="outline"
+            className="h-9 text-xs gap-1.5 cursor-pointer border-[#e4e9ef]"
+          >
+            <Download className="size-3.5" /> Dışa Aktar (.CSV)
+          </Button>
+          <Button 
+            onClick={() => { setEditingItem(null); setType("income"); setIsOpenModal(true); }} 
+            className="bg-emerald-600 text-white hover:bg-emerald-700 cursor-pointer gap-1.5 h-9 text-xs"
           >
             <ArrowUpRight className="size-4" /> Gelir Ekle
           </Button>
           <Button 
-            onClick={() => { setType("expense"); setIsOpenModal(true); }} 
-            className="bg-red-600 text-white hover:bg-red-700 cursor-pointer gap-2 h-9 text-xs"
+            onClick={() => { setEditingItem(null); setType("expense"); setIsOpenModal(true); }} 
+            className="bg-red-600 text-white hover:bg-red-700 cursor-pointer gap-1.5 h-9 text-xs"
           >
             <ArrowDownLeft className="size-4" /> Gider Ekle
           </Button>
@@ -183,54 +255,82 @@ export function FinanceView() {
         </div>
       </div>
 
-      {/* Arama ve Filtreleme Barları */}
-      <div className="mb-4 flex flex-col sm:flex-row gap-3 items-center justify-between">
-        <div className="relative w-full sm:w-72">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-gray-400" />
-          <Input 
-            placeholder="Arama yapın (Kategori, plaka...)" 
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9 h-9 text-xs"
-          />
+      {/* Arama & Filtreleme Barları */}
+      <div className="mb-4 space-y-3">
+        <div className="flex flex-col sm:flex-row gap-2.5 items-center justify-between">
+          <div className="relative w-full sm:w-72">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-gray-400" />
+            <Input 
+              placeholder="Arama (Kategori, plaka...)" 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9 h-9 text-xs"
+            />
+          </div>
+
+          <div className="flex w-full sm:w-auto gap-2 items-center overflow-x-auto pb-1 sm:pb-0">
+            {/* Plaka Filtresi */}
+            {uniquePlates.length > 0 && (
+              <select 
+                value={selectedPlate} 
+                onChange={(e) => setSelectedPlate(e.target.value)}
+                className="h-9 text-xs rounded-md border border-[#e4e9ef] bg-white px-2.5 text-[#122c4a] outline-none"
+              >
+                <option value="all">Tüm Plakalar</option>
+                {uniquePlates.map(p => (
+                  <option key={p} value={p}>{p}</option>
+                ))}
+              </select>
+            )}
+
+            {/* Tür Filtresi */}
+            <div className="flex bg-[#f5f7fa] p-1 rounded-lg border border-[#e4e9ef]">
+              <button 
+                onClick={() => setFilterType("all")} 
+                className={cn("px-3 py-1 text-xs font-semibold rounded-md transition-colors cursor-pointer", filterType === "all" ? "bg-white text-[#122c4a] shadow-xs" : "text-[#718397]")}
+              >
+                Tümü
+              </button>
+              <button 
+                onClick={() => setFilterType("income")} 
+                className={cn("px-3 py-1 text-xs font-semibold rounded-md transition-colors cursor-pointer", filterType === "income" ? "bg-white text-emerald-600 shadow-xs" : "text-[#718397]")}
+              >
+                Gelirler
+              </button>
+              <button 
+                onClick={() => setFilterType("expense")} 
+                className={cn("px-3 py-1 text-xs font-semibold rounded-md transition-colors cursor-pointer", filterType === "expense" ? "bg-white text-red-600 shadow-xs" : "text-[#718397]")}
+              >
+                Giderler
+              </button>
+            </div>
+          </div>
         </div>
 
-        <div className="flex w-full sm:w-auto gap-2 items-center overflow-x-auto pb-1 sm:pb-0">
-          {/* Plaka Filtresi */}
-          {uniquePlates.length > 0 && (
-            <select 
-              value={selectedPlate} 
-              onChange={(e) => setSelectedPlate(e.target.value)}
-              className="h-9 text-xs rounded-md border border-[#e4e9ef] bg-white px-3 text-[#122c4a] outline-none"
+        {/* Tarih Aralığı Süzgeci */}
+        <div className="flex items-center gap-2 bg-gray-50 p-2 rounded-lg border border-[#e4e9ef] text-xs text-gray-600 flex-wrap">
+          <span className="font-semibold text-gray-700 flex items-center gap-1"><Filter className="size-3" /> Tarih Aralığı:</span>
+          <Input 
+            type="date" 
+            value={startDate} 
+            onChange={e => setStartDate(e.target.value)} 
+            className="h-7 text-xs w-36 bg-white" 
+          />
+          <span>-</span>
+          <Input 
+            type="date" 
+            value={endDate} 
+            onChange={e => setEndDate(e.target.value)} 
+            className="h-7 text-xs w-36 bg-white" 
+          />
+          {(startDate || endDate) && (
+            <button 
+              onClick={() => { setStartDate(""); setEndDate(""); }}
+              className="text-red-600 text-xs hover:underline cursor-pointer ml-auto"
             >
-              <option value="all">Tüm Plakalar</option>
-              {uniquePlates.map(p => (
-                <option key={p} value={p}>{p}</option>
-              ))}
-            </select>
+              Filtreyi Temizle
+            </button>
           )}
-
-          {/* Tür Filtresi */}
-          <div className="flex bg-[#f5f7fa] p-1 rounded-lg border border-[#e4e9ef]">
-            <button 
-              onClick={() => setFilterType("all")} 
-              className={cn("px-3 py-1 text-xs font-semibold rounded-md transition-colors cursor-pointer", filterType === "all" ? "bg-white text-[#122c4a] shadow-xs" : "text-[#718397]")}
-            >
-              Tümü
-            </button>
-            <button 
-              onClick={() => setFilterType("income")} 
-              className={cn("px-3 py-1 text-xs font-semibold rounded-md transition-colors cursor-pointer", filterType === "income" ? "bg-white text-emerald-600 shadow-xs" : "text-[#718397]")}
-            >
-              Gelirler
-            </button>
-            <button 
-              onClick={() => setFilterType("expense")} 
-              className={cn("px-3 py-1 text-xs font-semibold rounded-md transition-colors cursor-pointer", filterType === "expense" ? "bg-white text-red-600 shadow-xs" : "text-[#718397]")}
-            >
-              Giderler
-            </button>
-          </div>
         </div>
       </div>
 
@@ -266,6 +366,7 @@ export function FinanceView() {
                       </div>
                     </div>
                   </div>
+                  
                   <div className="flex items-center gap-3 shrink-0">
                     <div className={cn("text-xs sm:text-sm font-bold", isIncome ? "text-emerald-600" : "text-red-600")}>
                       {isIncome 
@@ -273,13 +374,23 @@ export function FinanceView() {
                         : `-₺${Number(item.amount).toLocaleString("tr-TR")}`
                       }
                     </div>
-                    <button 
-                      onClick={() => handleDelete(item.id)} 
-                      className="text-gray-400 hover:text-red-600 p-1 cursor-pointer transition-colors"
-                      title="Sil"
-                    >
-                      <Trash2 className="size-4" />
-                    </button>
+                    
+                    <div className="flex items-center gap-1 border-l border-gray-100 pl-2">
+                      <button 
+                        onClick={() => handleOpenEdit(item)} 
+                        className="text-gray-400 hover:text-blue-600 p-1 cursor-pointer transition-colors"
+                        title="Düzenle"
+                      >
+                        <Pencil className="size-3.5" />
+                      </button>
+                      <button 
+                        onClick={() => handleDelete(item.id)} 
+                        className="text-gray-400 hover:text-red-600 p-1 cursor-pointer transition-colors"
+                        title="Sil"
+                      >
+                        <Trash2 className="size-3.5" />
+                      </button>
+                    </div>
                   </div>
                 </div>
               )
@@ -288,20 +399,23 @@ export function FinanceView() {
         )}
       </div>
 
-      {/* Kayıt Ekleme Modalı */}
+      {/* Kayıt Ekleme / Düzenleme Modalı */}
       {isOpenModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-xs">
           <div className="w-full max-w-md rounded-xl bg-white p-5 shadow-xl border border-[#e4e9ef]">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-base font-bold text-[#122c4a]">
-                {type === "income" ? "Yeni Gelir Ekle" : "Yeni Gider Ekle"}
+                {editingItem 
+                  ? "Kayıt Düzenle" 
+                  : type === "income" ? "Yeni Gelir Ekle" : "Yeni Gider Ekle"
+                }
               </h2>
-              <button onClick={() => setIsOpenModal(false)} className="text-gray-400 hover:text-gray-600 cursor-pointer">
+              <button onClick={closeModal} className="text-gray-400 hover:text-gray-600 cursor-pointer">
                 <X className="size-4" />
               </button>
             </div>
 
-            <form onSubmit={handleAddRecord} className="space-y-3.5">
+            <form onSubmit={handleSaveRecord} className="space-y-3.5">
               {/* İşlem Türü Seçimi */}
               <div className="flex bg-[#f5f7fa] p-1 rounded-lg border border-[#e4e9ef]">
                 <button 
@@ -339,7 +453,7 @@ export function FinanceView() {
                   required 
                   value={category} 
                   onChange={e => setCategory(e.target.value)} 
-                  placeholder="veya özel kategori adı yazın..." 
+                  placeholder="Kategori adı..." 
                   className="h-9 text-xs" 
                 />
               </div>
@@ -361,7 +475,7 @@ export function FinanceView() {
                   <Input 
                     value={plate} 
                     onChange={e => setPlate(e.target.value)} 
-                    placeholder="Örn: 34 ABC 123" 
+                    placeholder="Örn: 42 DLB 59" 
                     className="h-9 text-xs uppercase" 
                   />
                 </div>
@@ -382,14 +496,16 @@ export function FinanceView() {
                 <Input 
                   value={description} 
                   onChange={e => setDescription(e.target.value)} 
-                  placeholder="Detaylı açıklama..." 
+                  placeholder="Açıklama giriniz..." 
                   className="h-9 text-xs" 
                 />
               </div>
 
               <div className="flex justify-end gap-2 pt-2">
-                <Button type="button" variant="outline" onClick={() => setIsOpenModal(false)} className="h-8 text-xs cursor-pointer">İptal</Button>
-                <Button type="submit" className={cn("h-8 text-xs text-white cursor-pointer", type === "income" ? "bg-emerald-600 hover:bg-emerald-700" : "bg-red-600 hover:bg-red-700")}>Kaydet</Button>
+                <Button type="button" variant="outline" onClick={closeModal} className="h-8 text-xs cursor-pointer">İptal</Button>
+                <Button type="submit" className={cn("h-8 text-xs text-white cursor-pointer", type === "income" ? "bg-emerald-600 hover:bg-emerald-700" : "bg-red-600 hover:bg-red-700")}>
+                  {editingItem ? "Güncelle" : "Kaydet"}
+                </Button>
               </div>
             </form>
           </div>
