@@ -30,6 +30,7 @@ type FinanceItem = {
   plate: string
   date: string
   description: string
+  isFreight?: boolean // Otomatik eklenen nakliye kaydı olduğunu ayırt etmek için
 }
 
 const CATEGORY_SUGGESTIONS = {
@@ -64,14 +65,44 @@ export function FinanceView() {
       setLoading(false)
       return
     }
-    const { data, error } = await supabase
+
+    // 1. Manuel Finans Kayıtlarını Çek
+    const { data: financesData, error: financesError } = await supabase
       .from("finances")
       .select("*")
-      .order("date", { ascending: false })
 
-    if (!error && data) {
-      setItems(data)
+    // 2. Hesaba Geçmiş / Tamamlanmış Nakliyeleri Çek (Tablo veya sütun adlarınızı ihtiyaca göre güncelleyebilirsiniz)
+    const { data: freightsData, error: freightsError } = await supabase
+      .from("freights") // Veritabanınızdaki nakliye tablosu adı
+      .select("*")
+      .eq("status", "completed") // Sadece teslim edilen/tamamlanan nakliyeler
+
+    let combinedItems: FinanceItem[] = []
+
+    if (!financesError && financesData) {
+      combinedItems = [...financesData]
     }
+
+    // Nakliyeleri Finans Formatına Dönüştür ve Ekleyin
+    if (!freightsError && freightsData) {
+      const mappedFreights: FinanceItem[] = freightsData.map((f: any) => ({
+        id: `freight-${f.id}`,
+        type: "income",
+        category: "Navlun Bedeli",
+        amount: Number(f.price || f.amount || 0),
+        plate: f.plate || "",
+        date: f.completed_at ? f.completed_at.split("T")[0] : (f.created_at ? f.created_at.split("T")[0] : new Date().toISOString().split("T")[0]),
+        description: f.description || `Hesaba geçen nakliye ödemesi (Nakliye #${f.id})`,
+        isFreight: true
+      }))
+
+      combinedItems = [...combinedItems, ...mappedFreights]
+    }
+
+    // Tarihe göre yeniden sırala (En yeni en üstte)
+    combinedItems.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+
+    setItems(combinedItems)
     setLoading(false)
   }
 
@@ -80,6 +111,11 @@ export function FinanceView() {
   }, [])
 
   const handleOpenEdit = (item: FinanceItem) => {
+    // Otomatik nakliye kayıtları doğrudan düzenlenemez
+    if (item.isFreight) {
+      alert("Nakliye kayıtları otomatik çekilmektedir, nakliyeler sayfasından güncelleyebilirsiniz.")
+      return
+    }
     setEditingItem(item)
     setType(item.type)
     setCategory(item.category || "")
@@ -130,10 +166,14 @@ export function FinanceView() {
     setDate(new Date().toISOString().split("T")[0])
   }
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (item: FinanceItem) => {
+    if (item.isFreight) {
+      alert("Otomatik nakliye kayıtları buradan silinemez. Lütfen nakliyeler modülünü kullanın.")
+      return
+    }
     if (!supabase) return
     if (!confirm("Bu kaydı silmek istediğinize emin misiniz?")) return
-    await supabase.from("finances").delete().eq("id", id)
+    await supabase.from("finances").delete().eq("id", item.id)
     fetchFinances()
   }
 
@@ -166,14 +206,15 @@ export function FinanceView() {
 
   const exportToCSV = () => {
     if (filteredItems.length === 0) return
-    const headers = ["Tarih", "Tür", "Kategori", "Plaka", "Tutar (TL)", "Açıklama"]
+    const headers = ["Tarih", "Tür", "Kategori", "Plaka", "Tutar (TL)", "Açıklama", "Kaynak"]
     const rows = filteredItems.map(item => [
       item.date,
       item.type === "income" ? "Gelir" : "Gider",
       `"${item.category || ''}"`,
       `"${item.plate || ''}"`,
       item.amount,
-      `"${item.description || ''}"`
+      `"${item.description || ''}"`,
+      item.isFreight ? "Otomatik Nakliye" : "Manuel Kayıt"
     ])
 
     const csvContent = "data:text/csv;charset=utf-8,\uFEFF" 
@@ -353,6 +394,11 @@ export function FinanceView() {
                               {item.plate}
                             </span>
                           )}
+                          {item.isFreight && (
+                            <span className="inline-flex items-center gap-1 rounded bg-blue-50 border border-blue-200 px-1.5 py-0.5 text-[10px] font-semibold text-blue-700 shrink-0">
+                              Nakliye Sistemi
+                            </span>
+                          )}
                         </div>
 
                         <div className="text-[11px] text-[#718397] flex items-center gap-1.5 mt-1">
@@ -370,26 +416,28 @@ export function FinanceView() {
                         }
                       </div>
 
-                      <div className="flex items-center gap-0.5 border-l border-gray-100 pl-1.5 ml-1">
-                        <button 
-                          onClick={() => handleOpenEdit(item)} 
-                          className="text-gray-400 hover:text-blue-600 p-1 cursor-pointer transition-colors"
-                          title="Düzenle"
-                        >
-                          <Pencil className="size-3.5" />
-                        </button>
-                        <button 
-                          onClick={() => handleDelete(item.id)} 
-                          className="text-gray-400 hover:text-red-600 p-1 cursor-pointer transition-colors"
-                          title="Sil"
-                        >
-                          <Trash2 className="size-3.5" />
-                        </button>
-                      </div>
+                      {!item.isFreight && (
+                        <div className="flex items-center gap-0.5 border-l border-gray-100 pl-1.5 ml-1">
+                          <button 
+                            onClick={() => handleOpenEdit(item)} 
+                            className="text-gray-400 hover:text-blue-600 p-1 cursor-pointer transition-colors"
+                            title="Düzenle"
+                          >
+                            <Pencil className="size-3.5" />
+                          </button>
+                          <button 
+                            onClick={() => handleDelete(item)} 
+                            className="text-gray-400 hover:text-red-600 p-1 cursor-pointer transition-colors"
+                            title="Sil"
+                          >
+                            <Trash2 className="size-3.5" />
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
 
-                  {/* Açıklama Alanı: Kesilmeden Tam Metin Olarak Gösterilir */}
+                  {/* Açıklama Alanı */}
                   {item.description && (
                     <div className="mt-2 text-xs text-gray-600 bg-gray-50 p-2 rounded-md border border-gray-100 flex items-start gap-1.5 break-words">
                       <FileText className="size-3.5 text-gray-400 shrink-0 mt-0.5" />
