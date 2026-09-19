@@ -40,10 +40,13 @@ export function CreateListingModal({ isOpen, onClose, onSuccess }: CreateListing
   const [companyName, setCompanyName] = useState("")
   const [phone, setPhone] = useState("")
   const [fromCity, setFromCity] = useState("")
+  const [fromDistrict, setFromDistrict] = useState("")
   const [toCity, setToCity] = useState("")
+  const [toDistrict, setToDistrict] = useState("")
   const [cargo, setCargo] = useState("Kömür")
   const [customCargo, setCustomCargo] = useState("")
   const [vehicleType, setVehicleType] = useState("Damperli Tır")
+  const [description, setDescription] = useState("")
   
   // Fiyat Hesaplama State'leri
   const [priceType, setPriceType] = useState<"total" | "per_ton">("per_ton")
@@ -53,7 +56,6 @@ export function CreateListingModal({ isOpen, onClose, onSuccess }: CreateListing
   const [distance, setDistance] = useState("")
   const [isUrgent, setIsUrgent] = useState(false)
 
-  // Modal kapandığında state'leri sıfırla
   const handleOpenChange = (open: boolean) => {
     if (!open) {
       onClose()
@@ -95,7 +97,6 @@ export function CreateListingModal({ isOpen, onClose, onSuccess }: CreateListing
     loadUserProfile()
   }, [isOpen])
 
-  // Toplam Tutar Hesaplama (Ton Başı x Tonaj)
   const calculatedTotalPrice = () => {
     if (priceType === "per_ton") {
       const p = parseFloat(unitPrice) || 0
@@ -127,9 +128,12 @@ export function CreateListingModal({ isOpen, onClose, onSuccess }: CreateListing
           company_name: companyName,
           phone: phone,
           from_city: fromCity,
+          from_district: fromDistrict,
           to_city: toCity,
+          to_district: toDistrict,
           cargo_type: finalCargo,
           vehicle_type: vehicleType,
+          description: description,
           price: totalPrice,
           price_type: priceType,
           unit_price: parseFloat(unitPrice) || 0,
@@ -153,11 +157,11 @@ export function CreateListingModal({ isOpen, onClose, onSuccess }: CreateListing
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-[550px] bg-white text-[#122c4a]">
+      <DialogContent className="sm:max-w-[600px] bg-white text-[#122c4a] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-xl font-bold">Yeni İlan Oluştur</DialogTitle>
           <DialogDescription className="text-xs text-[#718397]">
-            Firma ve iletişim bilgileriniz profilinizden otomatik çekilir. İlan ayrıntılarını seçip hızlıca oluşturabilirsiniz.
+            Firma ve iletişim bilgileriniz profilinizden otomatik çekilir. Ayrıntıları doldurarak ilanınızı hemen paylaşın.
           </DialogDescription>
         </DialogHeader>
 
@@ -186,7 +190,7 @@ export function CreateListingModal({ isOpen, onClose, onSuccess }: CreateListing
             </div>
           </div>
 
-          {/* Çıkış ve Varış Şehri (Dropdown) */}
+          {/* Çıkış Şehri ve İlçe/Açıklaması */}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
               <Label className="text-xs font-semibold">Çıkış Şehri</Label>
@@ -196,12 +200,25 @@ export function CreateListingModal({ isOpen, onClose, onSuccess }: CreateListing
                 onChange={(e) => setFromCity(e.target.value)}
                 className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-xs shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               >
-                <option value="">İl Seçiniz</option>
+                <option value="">Şehir Seçiniz</option>
                 {CITIES.map((city) => (
                   <option key={city} value={city}>{city}</option>
                 ))}
               </select>
             </div>
+            <div className="space-y-1">
+              <Label className="text-xs font-semibold">Çıkış İlçesi / Bölge (Opsiyonel)</Label>
+              <Input
+                value={fromDistrict}
+                onChange={(e) => setFromDistrict(e.target.value)}
+                placeholder="Örn: Çayıran, Meram vb."
+                className="text-xs"
+              />
+            </div>
+          </div>
+
+          {/* Varış Şehri ve İlçe/Açıklaması */}
+          <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
               <Label className="text-xs font-semibold">Varış Şehri</Label>
               <select
@@ -210,15 +227,24 @@ export function CreateListingModal({ isOpen, onClose, onSuccess }: CreateListing
                 onChange={(e) => setToCity(e.target.value)}
                 className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-xs shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               >
-                <option value="">İl Seçiniz</option>
+                <option value="">Şehir Seçiniz</option>
                 {CITIES.map((city) => (
                   <option key={city} value={city}>{city}</option>
                 ))}
               </select>
             </div>
+            <div className="space-y-1">
+              <Label className="text-xs font-semibold">Varış İlçesi / Bölge (Opsiyonel)</Label>
+              <Input
+                value={toDistrict}
+                onChange={(e) => setToDistrict(e.target.value)}
+                placeholder="Örn: Ilgın, Merkez vb."
+                className="text-xs"
+              />
+            </div>
           </div>
 
-          {/* Yük Cinsi ve Araç Tipi (Dropdown) */}
+          {/* Yük Cinsi ve Araç Tipi */}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
               <Label className="text-xs font-semibold">Yük Cinsi</Label>
@@ -257,7 +283,7 @@ export function CreateListingModal({ isOpen, onClose, onSuccess }: CreateListing
             </div>
           </div>
 
-          {/* Fiyat Tipi ve Ton Başı Fiyat Hesaplama */}
+          {/* Fiyatlandırma Bölümü */}
           <div className="p-3 bg-[#f8fafc] rounded-lg border border-[#e2e8f0] space-y-3">
             <div className="flex items-center justify-between">
               <Label className="text-xs font-bold text-[#122c4a]">Fiyatlandırma Türü</Label>
@@ -329,6 +355,17 @@ export function CreateListingModal({ isOpen, onClose, onSuccess }: CreateListing
                 Hesaplanan Toplam Tutar: <span className="font-bold">{calculatedTotalPrice().toLocaleString("tr-TR")} TL</span>
               </div>
             )}
+          </div>
+
+          {/* İlan Açıklaması / Özel Notlar */}
+          <div className="space-y-1">
+            <Label className="text-xs font-semibold">İlan Açıklaması / Özel Notlar (Opsiyonel)</Label>
+            <Input
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Örn: Yükleme saati 14:00, kapalı kasa tercih sebebidir..."
+              className="text-xs"
+            />
           </div>
 
           {/* Mesafe ve Acil İlan */}
