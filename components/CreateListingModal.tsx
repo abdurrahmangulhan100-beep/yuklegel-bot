@@ -39,9 +39,9 @@ export function CreateListingModal({ isOpen, onClose, onSuccess }: CreateListing
   // Form State
   const [companyName, setCompanyName] = useState("")
   const [phone, setPhone] = useState("")
-  const [fromCity, setFromCity] = useState("")
+  const [fromCity, setFromCity] = useState("Adana")
   const [fromDistrict, setFromDistrict] = useState("")
-  const [toCity, setToCity] = useState("")
+  const [toCity, setToCity] = useState("Adana")
   const [toDistrict, setToDistrict] = useState("")
   const [cargo, setCargo] = useState("Kömür")
   const [customCargo, setCustomCargo] = useState("")
@@ -61,15 +61,17 @@ export function CreateListingModal({ isOpen, onClose, onSuccess }: CreateListing
   }
 
   useEffect(() => {
+    let isMounted = true
     async function loadUserProfile() {
       if (!isOpen) return
       setFetchingProfile(true)
 
       try {
-        const { data: { user }, error: authError } = await supabase.auth.getUser()
+        const { data: authData } = await supabase.auth.getUser()
+        const user = authData?.user
 
-        if (authError || !user) {
-          setFetchingProfile(false)
+        if (!user) {
+          if (isMounted) setFetchingProfile(false)
           return
         }
 
@@ -79,18 +81,21 @@ export function CreateListingModal({ isOpen, onClose, onSuccess }: CreateListing
           .eq("id", user.id)
           .maybeSingle()
 
-        if (profile) {
+        if (profile && isMounted) {
           setCompanyName(profile.company_name || "")
           setPhone(profile.phone || "")
         }
       } catch (err) {
         console.error("Profil yükleme hatası:", err)
       } finally {
-        setFetchingProfile(false)
+        if (isMounted) setFetchingProfile(false)
       }
     }
 
     loadUserProfile()
+    return () => {
+      isMounted = false
+    }
   }, [isOpen])
 
   const calculatedTotalPrice = () => {
@@ -107,45 +112,49 @@ export function CreateListingModal({ isOpen, onClose, onSuccess }: CreateListing
     setLoading(true)
 
     try {
-      const { data: { user } } = await supabase.auth.getUser()
+      const { data: authData, error: authErr } = await supabase.auth.getUser()
 
-      if (!user) {
-        alert("İlan oluşturmak için giriş yapmalısınız.")
+      if (authErr || !authData?.user) {
+        alert("İlan oluşturmak için oturum açmış olmalısınız.")
         setLoading(false)
         return
       }
 
+      const user = authData.user
       const finalCargo = cargo === "Diğer" ? customCargo : cargo
       const totalPrice = calculatedTotalPrice()
 
-      const { error } = await supabase.from("listings").insert([
-        {
-          user_id: user.id,
-          company_name: companyName,
-          phone: phone,
-          from_city: fromCity,
-          from_district: fromDistrict,
-          to_city: toCity,
-          to_district: toDistrict,
-          cargo_type: finalCargo,
-          vehicle_type: vehicleType,
-          description: description,
-          price: totalPrice,
-          price_type: priceType,
-          unit_price: parseFloat(unitPrice) || 0,
-          tonnage: parseFloat(tonnage) || null,
-          distance: distance,
-          is_urgent: isUrgent,
-          source: "user"
-        }
-      ])
+      const newListing = {
+        user_id: user.id,
+        company_name: companyName || "Bireysel İlan",
+        phone: phone || "",
+        from_city: fromCity,
+        from_district: fromDistrict || null,
+        to_city: toCity,
+        to_district: toDistrict || null,
+        cargo_type: finalCargo,
+        vehicle_type: vehicleType,
+        description: description || null,
+        price: totalPrice,
+        price_type: priceType,
+        unit_price: parseFloat(unitPrice) || 0,
+        tonnage: parseFloat(tonnage) || null,
+        distance: distance || null,
+        is_urgent: Boolean(isUrgent),
+        source: "user"
+      }
 
-      if (error) throw error
+      const { error } = await supabase.from("listings").insert(newListing)
+
+      if (error) {
+        console.error("Supabase Insert Hatası:", error)
+        throw new Error(error.message || "Veritabanına kaydedilemedi.")
+      }
 
       if (onSuccess) onSuccess()
       onClose()
     } catch (err: any) {
-      alert("İlan eklenirken bir hata oluştu: " + err.message)
+      alert("İlan eklenirken bir hata oluştu: " + (err?.message || "Bilinmeyen hata"))
     } finally {
       setLoading(false)
     }
