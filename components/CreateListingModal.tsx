@@ -36,7 +36,7 @@ export function CreateListingModal({ isOpen, onClose, onSuccess }: CreateListing
   const [loading, setLoading] = useState(false)
   const [fetchingProfile, setFetchingProfile] = useState(false)
 
-  // Form State'leri
+  // Form State
   const [companyName, setCompanyName] = useState("")
   const [phone, setPhone] = useState("")
   const [fromCity, setFromCity] = useState("")
@@ -48,7 +48,7 @@ export function CreateListingModal({ isOpen, onClose, onSuccess }: CreateListing
   const [vehicleType, setVehicleType] = useState("Damperli Tır")
   const [description, setDescription] = useState("")
   
-  // Fiyat Hesaplama State'leri
+  // Fiyat Hesaplama State
   const [priceType, setPriceType] = useState<"total" | "per_ton">("per_ton")
   const [unitPrice, setUnitPrice] = useState("")
   const [tonnage, setTonnage] = useState("")
@@ -57,9 +57,7 @@ export function CreateListingModal({ isOpen, onClose, onSuccess }: CreateListing
   const [isUrgent, setIsUrgent] = useState(false)
 
   const handleOpenChange = (open: boolean) => {
-    if (!open) {
-      onClose()
-    }
+    if (!open) onClose()
   }
 
   useEffect(() => {
@@ -75,20 +73,18 @@ export function CreateListingModal({ isOpen, onClose, onSuccess }: CreateListing
           return
         }
 
-        const { data: profile, error: profileError } = await supabase
+        const { data: profile } = await supabase
           .from("profiles")
           .select("company_name, phone")
           .eq("id", user.id)
           .maybeSingle()
 
-        if (profileError) {
-          console.error("Profil verisi çekilemedi:", profileError)
-        } else if (profile) {
+        if (profile) {
           setCompanyName(profile.company_name || "")
           setPhone(profile.phone || "")
         }
       } catch (err) {
-        console.error("Beklenmeyen hata:", err)
+        console.error("Profil yükleme hatası:", err)
       } finally {
         setFetchingProfile(false)
       }
