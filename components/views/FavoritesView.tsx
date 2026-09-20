@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { supabase } from "@/lib/supabase"
 import { LoadCard, Load } from "@/components/LoadCard"
 
-export default function FavoritesPage() {
+export function FavoritesView() {
   const [favoriteLoads, setFavoriteLoads] = useState<Load[]>([])
   const [favoriteIds, setFavoriteIds] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
@@ -18,23 +18,29 @@ export default function FavoritesPage() {
     try {
       if (!supabase) return
 
-      // 1. Giriş yapan kullanıcı bilgisini al
+      // 1. Giriş yapan aktif kullanıcıyı al
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) {
         setFavoriteLoads([])
+        setFavoriteIds([])
         setLoading(false)
         return
       }
 
-      // 2. Kullanıcının Supabase'deki favori ilan ID'lerini çek
+      // 2. Kullanıcının favori ilan ID'lerini çek
       const { data: favData, error: favError } = await supabase
         .from("favorites")
         .select("listing_id")
         .eq("user_id", user.id)
 
-      if (favError) throw favError
+      if (favError) {
+        console.error("Favoriler çekilirken hata:", favError)
+        setLoading(false)
+        return
+      }
 
-      const ids = favData.map((f) => f.listing_id)
+      // ID'lerin string tipinde olduğundan emin ol
+      const ids = (favData || []).map((f) => String(f.listing_id)).filter(Boolean)
       setFavoriteIds(ids)
 
       if (ids.length === 0) {
@@ -49,11 +55,15 @@ export default function FavoritesPage() {
         .select("*")
         .in("id", ids)
 
-      if (listingsError) throw listingsError
+      if (listingsError) {
+        console.error("İlan detayları çekilirken hata:", listingsError)
+        setLoading(false)
+        return
+      }
 
-      // Veriyi Load tipine dönüştür
+      // Verileri Load yapısına dönüştür
       const formattedLoads: Load[] = (listingsData || []).map((item) => ({
-        id: item.id,
+        id: String(item.id),
         userId: item.user_id,
         company: item.company_name || "İsimsiz Firma",
         initials: (item.company_name || "NK").substring(0, 2).toUpperCase(),
@@ -71,43 +81,44 @@ export default function FavoritesPage() {
 
       setFavoriteLoads(formattedLoads)
     } catch (err) {
-      console.error("Favoriler yüklenirken hata oluştu:", err)
+      console.error("Favoriler yüklenirken beklenmeyen hata:", err)
     } finally {
       setLoading(false)
     }
   }
 
-  // Favoriden Çıkarma Fonksiyonu
   const handleToggleFavorite = async (listingId: string) => {
     try {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
 
-      // Supabase'den sil
+      // Supabase'den favoriyi sil
       await supabase
         .from("favorites")
         .delete()
         .eq("user_id", user.id)
         .eq("listing_id", listingId)
 
-      // Ekrandan kaldır
-      setFavoriteLoads((prev) => prev.filter((load) => load.id !== listingId))
-      setFavoriteIds((prev) => prev.filter((id) => id !== listingId))
+      // State'i anlık güncelle
+      setFavoriteLoads((prev) => prev.filter((load) => String(load.id) !== String(listingId)))
+      setFavoriteIds((prev) => prev.filter((id) => id !== String(listingId)))
     } catch (err) {
-      console.error("Favori silinirken hata oluştu:", err)
+      console.error("Favori silinirken hata:", err)
     }
   }
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
       <div className="mb-6">
-        <span className="text-xs font-bold uppercase tracking-wider text-[#d64526]">Özel İlan Listeniz</span>
+        <span className="text-xs font-bold uppercase tracking-wider text-[#d64526]">ÖZEL İLAN LİSTENİZ</span>
         <h1 className="text-2xl font-bold text-[#122c4a]">Favori İlanlarım</h1>
         <p className="text-xs text-gray-500 mt-1">Takip etmek üzere kaydettiğiniz tüm yük ve taşıma ilanları burada listelenir.</p>
       </div>
 
       {loading ? (
-        <div className="py-12 text-center text-gray-400 text-sm">Favori ilanlar yükleniyor...</div>
+        <div className="py-12 text-center text-gray-400 text-sm bg-white rounded-xl border border-gray-100 p-8 shadow-xs">
+          Favori ilanlarınız yükleniyor...
+        </div>
       ) : favoriteLoads.length === 0 ? (
         <div className="py-12 text-center text-gray-400 text-sm bg-white rounded-xl border border-gray-100 p-8 shadow-xs">
           Henüz favorilerinize eklediğiniz bir ilan bulunmuyor.
@@ -118,8 +129,8 @@ export default function FavoritesPage() {
             <LoadCard
               key={load.id}
               load={load}
-              isFavorite={favoriteIds.includes(load.id)}
-              onToggleFavorite={() => handleToggleFavorite(load.id)}
+              isFavorite={favoriteIds.includes(String(load.id))}
+              onToggleFavorite={() => handleToggleFavorite(String(load.id))}
             />
           ))}
         </div>
