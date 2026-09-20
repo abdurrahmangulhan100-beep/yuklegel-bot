@@ -1,40 +1,31 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useEffect, useState } from "react"
 import { supabase } from "@/lib/supabase"
 import { LoadCard, Load } from "@/components/LoadCard"
-import { Heart, Lock } from "lucide-react"
 
-export function FavoritesView() {
+export default function FavorilerPage() {
   const [favoriteLoads, setFavoriteLoads] = useState<Load[]>([])
+  const [favoriteIds, setFavoriteIds] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
-  const [isGuest, setIsGuest] = useState(false)
 
   useEffect(() => {
-    loadUserFavorites()
+    fetchFavorites()
   }, [])
 
-  const loadUserFavorites = async () => {
-    setLoading(true)
-
-    // Misafir Kontrolü
-    const guestCheck = typeof window !== "undefined" ? localStorage.getItem("is_guest") === "true" : false
-    setIsGuest(guestCheck)
-
-    if (guestCheck) {
-      setLoading(false)
-      return
-    }
-
+  const fetchFavorites = async () => {
     try {
+      setLoading(true)
+      if (!supabase) return
+
+      // 1. Oturum açmış kullanıcıyı al
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) {
-        setFavoriteLoads([])
         setLoading(false)
         return
       }
 
-      // 1. Supabase 'favorites' tablosundan bu kullanıcının favorilerini al
+      // 2. Kullanıcının favori kayıtlarını 'favorites' tablosundan çek
       const { data: favData, error: favError } = await supabase
         .from("favorites")
         .select("listing_id")
@@ -42,115 +33,103 @@ export function FavoritesView() {
 
       if (favError) throw favError
 
-      const favIds = (favData || []).map((f) => String(f.listing_id))
-
-      if (favIds.length === 0) {
+      if (!favData || favData.length === 0) {
         setFavoriteLoads([])
+        setFavoriteIds([])
         setLoading(false)
         return
       }
 
-      // 2. Kullanıcı İlanlarından (listings) eşleşenleri çek
-      const { data: userListings } = await supabase
-        .from("listings")
-        .select("*")
-        .in("id", favIds)
+      const favListingIds = favData.map((f) => String(f.listing_id))
+      setFavoriteIds(favListingIds)
 
-      // 3. Bot/Saha İlanlarından (bot_listings) eşleşenleri çek
-      const { data: botListings } = await supabase
-        .from("bot_listings")
-        .select("*")
-        .in("id", favIds)
+      // 3. İlanları tüm olası tablolardan (listings, bot_listings, ilanlar) paralel olarak çek
+      const [userListingsRes, botListingsRes, ilanlarRes] = await Promise.all([
+        supabase.from("listings").select("*").in("id", favListingIds),
+        supabase.from("bot_listings").select("*").in("id", favListingIds),
+        supabase.from("ilanlar").select("*").in("id", favListingIds)
+      ])
 
-      // 4. İlanları formatla
-      const formattedUserLoads: Load[] = (userListings || []).map((item) => ({
+      // 4. Farklı tablolardan gelen verileri standart 'Load' formatına dönüştür
+      const userLoads: Load[] = (userListingsRes.data || []).map((item) => ({
         id: String(item.id),
-        userId: item.user_id,
-        company: item.company_name || "Şirket Adı",
-        initials: (item.company_name || "NK").substring(0, 2).toUpperCase(),
-        from: item.from_city || "-",
-        to: item.to_city || "-",
-        cargo: item.cargo_detail || "Belirtilmedi",
-        message: item.message,
-        vehicle: item.vehicle_type || "-",
-        price: item.price ? `₺${Number(item.price).toLocaleString("tr-TR")}` : "₺0",
-        urgent: item.urgent || false,
-        time: item.created_at ? new Date(item.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "Yeni",
+        company: item.company_name || item.company || "İsimsiz Firma",
+        initials: (item.company_name || item.company || "NK").substring(0, 2).toUpperCase(),
+        from: item.from_location || item.from || "-",
+        to: item.to_location || item.to || "-",
+        cargo: item.cargo_type || item.cargo || "Yük detayı yok",
+        message: item.description || item.message,
+        vehicle: item.vehicle_type || item.vehicle || "-",
+        price: item.price ? `₺${item.price}` : undefined,
+        time: item.created_at ? new Date(item.created_at).toLocaleTimeString("tr-TR", { hour: '2-digit', minute: '2-digit' }) : "Yeni",
         source: "user",
+        phone: item.phone || "Belirtilmedi",
+        userId: item.user_id
+      }))
+
+      const botLoads: Load[] = (botListingsRes.data || []).map((item) => ({
+        id: String(item.id),
+        company: item.company || "Saha Lojistik Ağı",
+        initials: "SL",
+        from: item.from || "-",
+        to: item.to || "-",
+        cargo: item.content || item.cargo || "Bot Yük Detayı",
+        vehicle: item.vehicle || "-",
+        time: item.time || "Yeni",
+        source: "bot",
         phone: item.phone || "Belirtilmedi"
       }))
 
-      const formattedBotLoads: Load[] = (botListings || []).map((item) => ({
+      const ilanlarLoads: Load[] = (ilanlarRes.data || []).map((item) => ({
         id: String(item.id),
-        company: item.company_name || "Saha Lojistik Ağ",
-        initials: "SL",
-        from: item.from_city || "-",
-        to: item.to_city || "-",
-        cargo: item.description || item.cargo_detail || "Saha İlanı",
-        message: item.message,
-        vehicle: item.vehicle_type || "Belirtilmedi",
-        price: item.price ? `₺${Number(item.price).toLocaleString("tr-TR")}` : "Belirtilmedi",
-        urgent: false,
-        time: item.created_at ? new Date(item.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "Yeni",
-        source: "bot",
-        phone: item.phone || "-"
+        company: item.firma_adi || item.company || "Firma",
+        initials: "NK",
+        from: item.nereden || item.from || "-",
+        to: item.nereye || item.to || "-",
+        cargo: item.yuk_tipi || item.cargo || "Yük",
+        vehicle: item.arac_tipi || item.vehicle || "-",
+        time: "Yeni",
+        source: "user",
+        phone: item.telefon || item.phone || "Belirtilmedi"
       }))
 
-      setFavoriteLoads([...formattedUserLoads, ...formattedBotLoads])
+      // Tüm eşleşen verileri birleştir
+      const combinedLoads = [...userLoads, ...botLoads, ...ilanlarLoads]
+      setFavoriteLoads(combinedLoads)
+
     } catch (err) {
-      console.error("Favoriler yüklenirken hata:", err)
+      console.error("Favoriler yüklenirken hata oluştu:", err)
     } finally {
       setLoading(false)
     }
   }
 
-  const handleRemoveFavorite = async (listingId: string) => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
-
-      await supabase
-        .from("favorites")
-        .delete()
-        .eq("user_id", user.id)
-        .eq("listing_id", String(listingId))
-
-      setFavoriteLoads((prev) => prev.filter((load) => String(load.id) !== String(listingId)))
-    } catch (err) {
-      console.error("Favori silinirken hata:", err)
-    }
+  // Favoriden çıkarma işlemi için handler
+  const handleToggleFavorite = async (listingId?: string) => {
+    if (!listingId) return
+    // Ekrandan anlık olarak kaldır
+    setFavoriteLoads((prev) => prev.filter((load) => load.id !== listingId))
+    setFavoriteIds((prev) => prev.filter((id) => id !== listingId))
   }
 
-  if (isGuest) {
-    return (
-      <div className="p-6 max-w-4xl mx-auto text-center py-16">
-        <div className="w-16 h-16 bg-red-50 text-[#d64526] rounded-full flex items-center justify-center mx-auto mb-4">
-          <Lock className="size-8" />
-        </div>
-        <h2 className="text-xl font-bold text-[#122c4a]">Favorilerim Özelliği Kısıtlı</h2>
-        <p className="text-xs text-gray-500 mt-2 max-w-md mx-auto">
-          Misafir hesaplar favori ilanı kaydedemez. Takip etmek istediğiniz ilanları listenize eklemek için lütfen üye girişi yapın.
-        </p>
-      </div>
-    )
+  if (loading) {
+    return <div className="p-8 text-center text-gray-500">Favoriler yükleniyor...</div>
   }
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      <div className="mb-6">
-        <span className="text-xs font-bold uppercase tracking-wider text-[#d64526]">ÖZEL İLAN LİSTENİZ</span>
+    <div className="p-6 max-w-7xl mx-auto space-y-6">
+      <div>
+        <span className="text-xs font-bold tracking-wider text-orange-600 uppercase">ÖZEL İLAN LİSTENİZ</span>
         <h1 className="text-2xl font-bold text-[#122c4a]">Favori İlanlarım</h1>
-        <p className="text-xs text-gray-500 mt-1">Takip etmek üzere kaydettiğiniz tüm yük ve taşıma ilanları burada listelenir.</p>
+        <p className="text-sm text-gray-500">Takip etmek üzere kaydettiğiniz tüm yük ve taşıma ilanları burada listelenir.</p>
       </div>
 
-      {loading ? (
-        <div className="py-12 text-center text-gray-400 text-sm bg-white rounded-xl border border-gray-100 p-8 shadow-xs">
-          Favorileriniz yükleniyor...
-        </div>
-      ) : favoriteLoads.length === 0 ? (
-        <div className="py-12 text-center text-gray-400 text-sm bg-white rounded-xl border border-gray-100 p-8 shadow-xs">
-          <Heart className="size-8 text-gray-300 mx-auto mb-2" />
-          Henüz favorilerinize eklediğiniz bir ilan bulunmuyor.
+      {favoriteLoads.length === 0 ? (
+        <div className="flex flex-col items-center justify-center p-12 bg-white rounded-xl border border-gray-100 text-center">
+          <svg className="w-12 h-12 text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+          </svg>
+          <p className="text-sm text-gray-500">Henüz favorilerinize eklediğiniz bir ilan bulunmuyor.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -158,8 +137,8 @@ export function FavoritesView() {
             <LoadCard
               key={load.id}
               load={load}
-              isFavorite={true}
-              onToggleFavorite={() => handleRemoveFavorite(String(load.id))}
+              isFavorite={favoriteIds.includes(load.id)}
+              onToggleFavorite={handleToggleFavorite}
             />
           ))}
         </div>
@@ -167,5 +146,3 @@ export function FavoritesView() {
     </div>
   )
 }
-
-export default FavoritesView
