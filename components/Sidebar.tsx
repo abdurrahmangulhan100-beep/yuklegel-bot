@@ -1,6 +1,6 @@
 "use client"
 
-import { Building2, Calculator, ChevronLeft, ChevronRight, CircleHelp, FileText, LayoutDashboard, LogOut, Settings, ShieldCheck, Truck, UserX, Users, WalletCards, X } from "lucide-react"
+import { Building2, Calculator, ChevronLeft, ChevronRight, CircleHelp, FileText, LayoutDashboard, LogOut, ShieldCheck, Truck, UserX, Users, WalletCards, X } from "lucide-react"
 import { Separator } from "@/components/ui/separator"
 import { cn } from "@/lib/utils"
 import { supabase } from "@/lib/supabase"
@@ -71,10 +71,9 @@ export function Sidebar({
         <p className={cn("px-3 pb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/35", isCollapsed && "sr-only")}>Yönetim</p>
         
         <NavItem icon={Building2} label="Şirket Profili" active={activeTab === "Şirket Profili"} collapsed={isCollapsed} onClick={() => go("Şirket Profili")} />
-        <NavItem icon={Settings} label="Ayarlar" active={activeTab === "Ayarlar"} collapsed={isCollapsed} onClick={() => go("Ayarlar")} />
         <NavItem icon={CircleHelp} label="Yardım Merkezi" active={activeTab === "Yardım Merkezi"} collapsed={isCollapsed} onClick={() => go("Yardım Merkezi")} />
 
-        {/* GOOGLE PLAY SÖZLEŞME VE POLİTİKA LİNKLERİ (ZORUNLU) */}
+        {/* GOOGLE PLAY SÖZLEŞME VE POLİTİKA LİNKLERİ */}
         <div className="my-4 h-px bg-white/10" />
         <p className={cn("px-3 pb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/35", isCollapsed && "sr-only")}>Yasal & Gizlilik</p>
 
@@ -83,7 +82,8 @@ export function Sidebar({
           {!isCollapsed && <span>Gizlilik Politikası</span>}
         </Link>
 
-        <NavItem icon={UserX} label="Hesabımı Sil" active={activeTab === "Hesabımı Sil"} collapsed={isCollapsed} onClick={() => go("Ayarlar")} />
+        {/* HESABIMI SİL TIKLANDIĞINDA DOĞRUDAN 'Şirket Profili' SEKME SİNE GÖNDERİLİYOR */}
+        <NavItem icon={UserX} label="Hesabımı Sil" active={false} collapsed={isCollapsed} onClick={() => go("Şirket Profili")} />
 
         <div className="mt-auto pt-4">
           <button
