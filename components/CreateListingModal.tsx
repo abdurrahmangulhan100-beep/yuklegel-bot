@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { supabase } from "@/lib/supabase" // Supabase bağlantınızı içeri aktarın
+import { supabase } from "@/lib/supabase"
 
 interface CreateListingModalProps {
   isOpen: boolean
@@ -31,7 +31,7 @@ export function CreateListingModal({ isOpen, onClose, onSuccess }: CreateListing
   const [formData, setFormData] = useState({
     companyName: "GÜLHAN NAKLİYAT",
     phone: "05421698053",
-    fromCity: "Adana",
+    fromCity: "Afyonkarahisar",
     fromDistrict: "",
     toCity: "Adana",
     toDistrict: "",
@@ -57,7 +57,11 @@ export function CreateListingModal({ isOpen, onClose, onSuccess }: CreateListing
     setLoading(true)
 
     try {
-      // Supabase'e veri ekleme işlemi (Ana sayfadaki DatabaseListing tipine uygun olarak)
+      // Yük detayını opsiyonel açıklama ile birleştiriyoruz
+      const finalCargoDetail = formData.description 
+        ? `${formData.cargoType} (${formData.description})` 
+        : formData.cargoType
+
       const { error } = await supabase
         .from('listings')
         .insert([
@@ -66,10 +70,9 @@ export function CreateListingModal({ isOpen, onClose, onSuccess }: CreateListing
             phone: formData.phone,
             from_city: formData.fromDistrict ? `${formData.fromCity} - ${formData.fromDistrict}` : formData.fromCity,
             to_city: formData.toDistrict ? `${formData.toCity} - ${formData.toDistrict}` : formData.toCity,
-            cargo_detail: formData.cargoType,
+            cargo_detail: finalCargoDetail,
             vehicle_type: formData.vehicleType,
             price: formData.price ? Number(formData.price) : null,
-            message: formData.description,
             urgent: formData.isUrgent
           }
         ])
@@ -81,6 +84,7 @@ export function CreateListingModal({ isOpen, onClose, onSuccess }: CreateListing
       }
 
       if (onSuccess) onSuccess()
+      handleClose()
     } catch (error) {
       console.error("İlan oluşturulurken beklenmeyen hata:", error)
       alert("Bir hata oluştu, lütfen tekrar deneyin.")
