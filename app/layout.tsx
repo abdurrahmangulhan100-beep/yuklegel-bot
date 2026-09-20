@@ -3,9 +3,10 @@ import type { Metadata, Viewport } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'YükleGel | Lojistik İlanları',
-  description: 'Türkiye’nin güvenilir yük ve lojistik ilan platformu.',
+  title: 'Nakliye Cepte | Lojistik ve Yük İlanları',
+  description: 'Türkiye’nin güncel ve güvenilir yük, taşıma ve lojistik ilanları platformu.',
   generator: 'v0.app',
+  manifest: '/manifest.json', // PWABuilder için zorunlu olan Web App Manifest bağlantısı
   icons: {
     icon: [
       {
@@ -27,7 +28,7 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   colorScheme: 'light',
-  themeColor: '#f5f7fa',
+  themeColor: '#122c4a', // PWA tema rengi uygulamanın ana rengiyle eşleştirildi
 }
 
 export default function RootLayout({
