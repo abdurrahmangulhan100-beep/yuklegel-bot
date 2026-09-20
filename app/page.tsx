@@ -81,23 +81,39 @@ export default function Page() {
     initials: "NK"
   })
 
-  useEffect(() => {
-    const savedFavs = localStorage.getItem("favorite_loads")
-    if (savedFavs) {
-      try {
-        setFavoriteIds(JSON.parse(savedFavs))
-      } catch (e) {
-        console.error("Favoriler yüklenirken hata:", e)
+  // KULLANICIYA ÖZEL FAVORİLERİ SUPABASE'DEN ÇEK
+  const fetchUserFavorites = async (userId: string) => {
+    if (!supabase || !userId) return
+    try {
+      const { data, error } = await supabase
+        .from("favorites")
+        .select("listing_id")
+        .eq("user_id", userId)
+
+      if (!error && data) {
+        setFavoriteIds(data.map((f) => String(f.listing_id)))
       }
+    } catch (e) {
+      console.error("Favoriler yüklenirken hata:", e)
     }
-  }, [])
+  }
+
+  useEffect(() => {
+    if (currentUserId) {
+      fetchUserFavorites(currentUserId)
+    } else {
+      setFavoriteIds([])
+    }
+  }, [currentUserId])
 
   const toggleFavorite = (id: string) => {
     setFavoriteIds((prev) => {
-      const updated = prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
-      localStorage.setItem("favorite_loads", JSON.stringify(updated))
-      return updated
+      const isFav = prev.includes(id)
+      return isFav ? prev.filter((item) => item !== id) : [...prev, id]
     })
+    if (currentUserId) {
+      fetchUserFavorites(currentUserId)
+    }
   }
 
   useEffect(() => {
@@ -143,6 +159,8 @@ export default function Page() {
         const isGuest = typeof window !== 'undefined' ? localStorage.getItem("is_guest") === "true" : false
         if (session) {
           setCurrentUserId(session.user.id)
+        } else {
+          setCurrentUserId(null)
         }
         if (!session && !isGuest && event === "SIGNED_OUT") {
           router.push("/login")
@@ -256,7 +274,7 @@ export default function Page() {
 
         return {
           id: `user-${item.id}`,
-          userId: item.user_id, // Seferlerim filtresi için hayati önem taşır
+          userId: item.user_id,
           company: companyName,
           initials: initials,
           from: cleanText(item.from_city),
@@ -269,7 +287,7 @@ export default function Page() {
           urgent: Boolean(item.urgent),
           time: item.created_at ? new Date(item.created_at).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" }) : "Yeni",
           color: "bg-[#d64526]",
-          source: "user", // Kesinlikle user olarak belirlenir
+          source: "user",
           phone: phone
         }
       })
@@ -299,7 +317,7 @@ export default function Page() {
           urgent: Boolean(item.urgent),
           time: item.created_at ? new Date(item.created_at).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" }) : "Yeni",
           color: "bg-[#315d83]",
-          source: "bot", // Kesinlikle bot olarak belirlenir
+          source: "bot",
           phone: extractedPhone
         }
       })
@@ -325,12 +343,15 @@ export default function Page() {
       .on("postgres_changes", { event: "*", schema: "public", table: "listings" }, () => fetchListings())
       .on("postgres_changes", { event: "*", schema: "public", table: "bot_listings" }, () => fetchListings())
       .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, () => fetchProfile())
+      .on("postgres_changes", { event: "*", schema: "public", table: "favorites" }, () => {
+        if (currentUserId) fetchUserFavorites(currentUserId)
+      })
       .subscribe()
 
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [isCheckingAuth])
+  }, [isCheckingAuth, currentUserId])
 
   const filteredLoads = useMemo(() => loads.filter((load) => {
     const filterMatch = activeFilter === "Tümü" || (activeFilter === "Acil" ? load.urgent : load.vehicle.toLowerCase().includes(activeFilter.toLowerCase()))
@@ -355,10 +376,13 @@ export default function Page() {
 
   const handleLogout = async () => {
     try {
+      localStorage.removeItem("favorite_loads")
       localStorage.removeItem("is_guest")
       if (supabase) {
         await supabase.auth.signOut()
       }
+      setCurrentUserId(null)
+      setFavoriteIds([])
       router.push("/login")
       router.refresh()
     } catch (error) {
