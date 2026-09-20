@@ -19,20 +19,12 @@ export function OverviewView({ loads, onOpenCreate, setActiveTab }: OverviewProp
       {/* Üst Karşılama Alanı */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-2xl bg-[#122c4a] p-6 text-white shadow-md">
         <div>
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-2xl bg-[#122c4a] p-6 text-white shadow-md">
-  <div>
-    <h1 className="text-2xl font-bold tracking-tight">
-      <span className="text-[#d64526]">Nakliye Cepte</span> Operasyon Paneline Hoş Geldiniz
-    </h1>
-    <p className="mt-1 text-sm text-gray-300">Günlük lojistik akışınızı yönetin, yeni seferler ekleyin ve piyasa verilerini takip edin.</p>
-  </div>
-  <div className="flex items-center gap-3">
-    <Button onClick={onOpenCreate} className="bg-[#d64526] hover:bg-[#b93820] text-white cursor-pointer gap-2">
-      {/* Buton içeriği */}
-    </Button>
-  </div>
-</div>
-          <p className="mt-1 text-sm text-gray-300">Günlük lojistik akışınızı yönetin, yeni seferler ekleyin ve piyasa verilerini takip edin.</p>
+          <h1 className="text-2xl font-bold tracking-tight">
+            <span className="text-[#d64526]">Nakliye Cepte</span> Operasyon Paneline Hoş Geldiniz
+          </h1>
+          <p className="mt-1 text-sm text-gray-300">
+            Günlük lojistik akışınızı yönetin, yeni seferler ekleyin ve piyasa verilerini takip edin.
+          </p>
         </div>
         <div className="flex items-center gap-3">
           <Button onClick={onOpenCreate} className="bg-[#d64526] hover:bg-[#b93820] text-white cursor-pointer gap-2">
@@ -44,7 +36,7 @@ export function OverviewView({ loads, onOpenCreate, setActiveTab }: OverviewProp
         </div>
       </div>
 
-      {/* İstatistik Kartları (3 Adet - Sistem Durumu Kaldırıldı) */}
+      {/* İstatistik Kartları */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <div className="rounded-xl border border-[#e4e9ef] bg-white p-5 shadow-sm">
           <div className="flex items-center justify-between text-[#718397]">
@@ -74,7 +66,7 @@ export function OverviewView({ loads, onOpenCreate, setActiveTab }: OverviewProp
         </div>
       </div>
 
-      {/* Son Seferlerim Alanı (Tam Genişlik) */}
+      {/* Son Seferlerim Alanı */}
       <div className="rounded-xl border border-[#e4e9ef] bg-white p-6 shadow-sm">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-bold text-[#122c4a]">Son Seferlerim</h3>
