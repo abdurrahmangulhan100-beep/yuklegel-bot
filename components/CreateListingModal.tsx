@@ -1,24 +1,6 @@
 "use client"
 
 import { useState } from "react"
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { Checkbox } from "@/components/ui/checkbox"
 
 interface CreateListingModalProps {
   isOpen: boolean
@@ -61,7 +43,8 @@ export function CreateListingModal({ isOpen, onClose, onSuccess }: CreateListing
     isUrgent: false
   })
 
-  // Modal kapama fonksiyonu
+  if (!isOpen) return null
+
   const handleClose = () => {
     if (typeof onClose === "function") {
       onClose()
@@ -73,11 +56,7 @@ export function CreateListingModal({ isOpen, onClose, onSuccess }: CreateListing
     setLoading(true)
 
     try {
-      // Supabase kayıt kodların buraya gelecek
-      // const { data, error } = await supabase.from('listings').insert([...])
-
       console.log("Gönderilen İlan Verisi:", formData)
-
       if (onSuccess) onSuccess()
       handleClose()
     } catch (error) {
@@ -88,233 +67,232 @@ export function CreateListingModal({ isOpen, onClose, onSuccess }: CreateListing
   }
 
   return (
-    <Dialog 
-      open={isOpen} 
-      onOpenChange={(open) => {
-        if (!open) handleClose()
-      }}
-    >
-      <DialogContent className="sm:max-w-[650px] bg-white text-[#122c4a] max-h-[90vh] overflow-y-auto rounded-xl p-6 shadow-2xl">
-        <DialogHeader className="border-b pb-3">
-          <DialogTitle className="text-xl font-bold text-[#122c4a]">
-            Yeni İlan Oluştur
-          </DialogTitle>
-          <p className="text-xs text-gray-500">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div 
+        className="relative w-full max-w-2xl bg-white text-[#122c4a] rounded-xl shadow-2xl p-6 max-h-[90vh] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Kapat (X) Butonu */}
+        <button
+          type="button"
+          onClick={handleClose}
+          className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-xl font-bold p-1 rounded-lg hover:bg-gray-100 transition-colors"
+        >
+          ✕
+        </button>
+
+        {/* Başlık */}
+        <div className="border-b pb-3 pr-8">
+          <h2 className="text-xl font-bold text-[#122c4a]">Yeni İlan Oluştur</h2>
+          <p className="text-xs text-gray-500 mt-0.5">
             Firma ve iletişim bilgileriniz profilinizden otomatik çekilir. Ayrıntıları doldurarak ilanınızı hemen paylaşın.
           </p>
-        </DialogHeader>
+        </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4 pt-2">
+        <form onSubmit={handleSubmit} className="space-y-4 pt-4">
           {/* Firma ve Telefon */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1">
-              <Label className="text-xs font-semibold">Firma Adı</Label>
-              <Input
+              <label className="text-xs font-semibold block text-[#122c4a]">Firma Adı</label>
+              <input
+                type="text"
                 value={formData.companyName}
                 onChange={(e) => setFormData({ ...formData, companyName: e.target.value })}
-                className="bg-gray-50 text-xs"
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-xs bg-gray-50 focus:outline-none focus:border-[#d64526]"
                 required
               />
             </div>
             <div className="space-y-1">
-              <Label className="text-xs font-semibold">Telefon Numarası</Label>
-              <Input
+              <label className="text-xs font-semibold block text-[#122c4a]">Telefon Numarası</label>
+              <input
+                type="text"
                 value={formData.phone}
                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                className="bg-gray-50 text-xs"
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-xs bg-gray-50 focus:outline-none focus:border-[#d64526]"
                 required
               />
             </div>
           </div>
 
           {/* Çıkış Şehri ve İlçesi */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1">
-              <Label className="text-xs font-semibold">Çıkış Şehri</Label>
-              <Select
+              <label className="text-xs font-semibold block text-[#122c4a]">Çıkış Şehri</label>
+              <select
                 value={formData.fromCity}
-                onValueChange={(value) => setFormData({ ...formData, fromCity: value })}
+                onChange={(e) => setFormData({ ...formData, fromCity: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-xs bg-white focus:outline-none focus:border-[#d64526]"
               >
-                <SelectTrigger className="text-xs">
-                  <SelectValue placeholder="Şehir Seçin" />
-                </SelectTrigger>
-                <SelectContent className="max-h-60 overflow-y-auto">
-                  {SEHIRLER.map((sehir) => (
-                    <SelectItem key={sehir} value={sehir} className="text-xs">
-                      {sehir}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                {SEHIRLER.map((sehir) => (
+                  <option key={sehir} value={sehir}>{sehir}</option>
+                ))}
+              </select>
             </div>
             <div className="space-y-1">
-              <Label className="text-xs font-semibold">Çıkış İlçesi / Bölge (Opsiyonel)</Label>
-              <Input
+              <label className="text-xs font-semibold block text-[#122c4a]">Çıkış İlçesi / Bölge (Opsiyonel)</label>
+              <input
+                type="text"
                 placeholder="Örn: Çayıran, Meram vb."
                 value={formData.fromDistrict}
                 onChange={(e) => setFormData({ ...formData, fromDistrict: e.target.value })}
-                className="text-xs"
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-xs bg-white focus:outline-none focus:border-[#d64526]"
               />
             </div>
           </div>
 
           {/* Varış Şehri ve İlçesi */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1">
-              <Label className="text-xs font-semibold">Varış Şehri</Label>
-              <Select
+              <label className="text-xs font-semibold block text-[#122c4a]">Varış Şehri</label>
+              <select
                 value={formData.toCity}
-                onValueChange={(value) => setFormData({ ...formData, toCity: value })}
+                onChange={(e) => setFormData({ ...formData, toCity: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-xs bg-white focus:outline-none focus:border-[#d64526]"
               >
-                <SelectTrigger className="text-xs">
-                  <SelectValue placeholder="Şehir Seçin" />
-                </SelectTrigger>
-                <SelectContent className="max-h-60 overflow-y-auto">
-                  {SEHIRLER.map((sehir) => (
-                    <SelectItem key={sehir} value={sehir} className="text-xs">
-                      {sehir}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                {SEHIRLER.map((sehir) => (
+                  <option key={sehir} value={sehir}>{sehir}</option>
+                ))}
+              </select>
             </div>
             <div className="space-y-1">
-              <Label className="text-xs font-semibold">Varış İlçesi / Bölge (Opsiyonel)</Label>
-              <Input
+              <label className="text-xs font-semibold block text-[#122c4a]">Varış İlçesi / Bölge (Opsiyonel)</label>
+              <input
+                type="text"
                 placeholder="Örn: Ilgın, Merkez vb."
                 value={formData.toDistrict}
                 onChange={(e) => setFormData({ ...formData, toDistrict: e.target.value })}
-                className="text-xs"
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-xs bg-white focus:outline-none focus:border-[#d64526]"
               />
             </div>
           </div>
 
           {/* Yük Cinsi ve Araç Tipi */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1">
-              <Label className="text-xs font-semibold">Yük Cinsi</Label>
-              <Select
+              <label className="text-xs font-semibold block text-[#122c4a]">Yük Cinsi</label>
+              <select
                 value={formData.cargoType}
-                onValueChange={(value) => setFormData({ ...formData, cargoType: value })}
+                onChange={(e) => setFormData({ ...formData, cargoType: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-xs bg-white focus:outline-none focus:border-[#d64526]"
               >
-                <SelectTrigger className="text-xs">
-                  <SelectValue placeholder="Seçin" />
-                </SelectTrigger>
-                <SelectContent>
-                  {YUK_CİNSLERİ.map((yuk) => (
-                    <SelectItem key={yuk} value={yuk} className="text-xs">
-                      {yuk}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                {YUK_CİNSLERİ.map((yuk) => (
+                  <option key={yuk} value={yuk}>{yuk}</option>
+                ))}
+              </select>
             </div>
             <div className="space-y-1">
-              <Label className="text-xs font-semibold">Araç Tipi</Label>
-              <Select
+              <label className="text-xs font-semibold block text-[#122c4a]">Araç Tipi</label>
+              <select
                 value={formData.vehicleType}
-                onValueChange={(value) => setFormData({ ...formData, vehicleType: value })}
+                onChange={(e) => setFormData({ ...formData, vehicleType: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-xs bg-white focus:outline-none focus:border-[#d64526]"
               >
-                <SelectTrigger className="text-xs">
-                  <SelectValue placeholder="Seçin" />
-                </SelectTrigger>
-                <SelectContent>
-                  {ARAÇ_TİPLERİ.map((arac) => (
-                    <SelectItem key={arac} value={arac} className="text-xs">
-                      {arac}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                {ARAÇ_TİPLERİ.map((arac) => (
+                  <option key={arac} value={arac}>{arac}</option>
+                ))}
+              </select>
             </div>
           </div>
 
           {/* Fiyatlandırma Kutusu */}
           <div className="p-3 bg-gray-50 rounded-lg border border-gray-100 space-y-3">
             <div className="flex items-center justify-between">
-              <Label className="text-xs font-bold text-[#122c4a]">Fiyatlandırma Türü</Label>
-              <RadioGroup
-                value={formData.priceType}
-                onValueChange={(val) => setFormData({ ...formData, priceType: val })}
-                className="flex items-center gap-4 text-xs"
-              >
-                <div className="flex items-center space-x-1.5">
-                  <RadioGroupItem value="ton" id="ton" />
-                  <Label htmlFor="ton" className="text-xs cursor-pointer">Ton Başı Fiyat</Label>
-                </div>
-                <div className="flex items-center space-x-1.5">
-                  <RadioGroupItem value="total" id="total" />
-                  <Label htmlFor="total" className="text-xs cursor-pointer">Götürü / Toplam Fiyat</Label>
-                </div>
-              </RadioGroup>
+              <label className="text-xs font-bold text-[#122c4a]">Fiyatlandırma Türü</label>
+              <div className="flex items-center gap-4 text-xs">
+                <label className="flex items-center gap-1.5 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="priceType"
+                    value="ton"
+                    checked={formData.priceType === "ton"}
+                    onChange={(e) => setFormData({ ...formData, priceType: e.target.value })}
+                    className="accent-[#d64526]"
+                  />
+                  <span>Ton Başı Fiyat</span>
+                </label>
+                <label className="flex items-center gap-1.5 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="priceType"
+                    value="total"
+                    checked={formData.priceType === "total"}
+                    onChange={(e) => setFormData({ ...formData, priceType: e.target.value })}
+                    className="accent-[#d64526]"
+                  />
+                  <span>Götürü / Toplam Fiyat</span>
+                </label>
+              </div>
             </div>
 
             <div className="space-y-1">
-              <Label className="text-xs font-medium">Toplam Fiyat (TL)</Label>
-              <Input
+              <label className="text-xs font-medium block text-[#122c4a]">Toplam Fiyat (TL)</label>
+              <input
                 type="number"
                 placeholder="Örn: 18000"
                 value={formData.price}
                 onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                className="bg-white text-xs"
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-xs bg-white focus:outline-none focus:border-[#d64526]"
               />
             </div>
           </div>
 
-          {/* Özel Notlar */}
+          {/* Açıklama */}
           <div className="space-y-1">
-            <Label className="text-xs font-semibold">İlan Açıklaması / Özel Notlar (Opsiyonel)</Label>
-            <Input
+            <label className="text-xs font-semibold block text-[#122c4a]">İlan Açıklaması / Özel Notlar (Opsiyonel)</label>
+            <input
+              type="text"
               placeholder="Örn: Yükleme saati 14:00, kapalı kasa tercih sebebidir..."
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              className="text-xs"
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-xs bg-white focus:outline-none focus:border-[#d64526]"
             />
           </div>
 
           {/* Mesafe ve Acil İşareti */}
-          <div className="grid grid-cols-2 gap-4 items-center">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center">
             <div className="space-y-1">
-              <Label className="text-xs font-semibold">Mesafe (İsteğe Bağlı)</Label>
-              <Input
+              <label className="text-xs font-semibold block text-[#122c4a]">Mesafe (İsteğe Bağlı)</label>
+              <input
+                type="text"
                 placeholder="Örn: 500 km"
                 value={formData.distance}
                 onChange={(e) => setFormData({ ...formData, distance: e.target.value })}
-                className="text-xs"
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-xs bg-white focus:outline-none focus:border-[#d64526]"
               />
             </div>
-            <div className="flex items-center space-x-2 pt-5">
-              <Checkbox
+            <div className="flex items-center gap-2 sm:pt-5">
+              <input
+                type="checkbox"
                 id="urgent"
                 checked={formData.isUrgent}
-                onCheckedChange={(checked) => setFormData({ ...formData, isUrgent: !!checked })}
+                onChange={(e) => setFormData({ ...formData, isUrgent: e.target.checked })}
+                className="w-4 h-4 accent-[#d64526] rounded cursor-pointer"
               />
-              <Label htmlFor="urgent" className="text-xs font-semibold cursor-pointer text-[#122c4a]">
+              <label htmlFor="urgent" className="text-xs font-semibold text-[#122c4a] cursor-pointer">
                 Acil İlan OlaraK İşaretle
-              </Label>
+              </label>
             </div>
           </div>
 
-          {/* Butonlar */}
+          {/* Alt Butonlar */}
           <div className="flex justify-end gap-2 pt-4 border-t mt-4">
-            <Button
+            <button
               type="button"
-              variant="outline"
               onClick={handleClose}
-              className="text-xs px-5 border-gray-300 hover:bg-gray-100"
+              className="px-4 py-2 border border-gray-300 rounded-lg text-xs font-medium text-gray-700 hover:bg-gray-100 transition-colors"
             >
               İptal
-            </Button>
-            <Button
+            </button>
+            <button
               type="submit"
               disabled={loading}
-              className="bg-[#d64526] hover:bg-[#b93820] text-white text-xs px-5"
+              className="px-4 py-2 bg-[#d64526] hover:bg-[#b93820] text-white rounded-lg text-xs font-medium transition-colors disabled:opacity-50"
             >
               {loading ? "Yayınlanıyor..." : "İlanı Yayınla"}
-            </Button>
+            </button>
           </div>
         </form>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </div>
   )
 }
