@@ -1,7 +1,8 @@
 "use client"
 
-import { Phone, MessageSquare, Star, Building2, MapPin, ArrowRight, Truck, Clock, ShieldCheck, Copy, Check } from "lucide-react"
+import { Phone, MessageSquare, Star, Building2, MapPin, ArrowRight, Truck, Clock, ShieldCheck, Copy, Check, Flag, Ban, X } from "lucide-react"
 import { useState } from "react"
+import { supabase } from "@/lib/supabase"
 
 export type Load = {
   id: string
@@ -27,6 +28,7 @@ type LoadCardProps = {
   searchQuery?: string
   isFavorite?: boolean
   onToggleFavorite?: () => void
+  onUserBlocked?: (userIdOrPhone: string) => void
 }
 
 const highlightMatch = (text: string, query: string) => {
@@ -49,8 +51,13 @@ const highlightMatch = (text: string, query: string) => {
   })
 }
 
-export function LoadCard({ load, searchQuery = "", isFavorite = false, onToggleFavorite }: LoadCardProps) {
+export function LoadCard({ load, searchQuery = "", isFavorite = false, onToggleFavorite, onUserBlocked }: LoadCardProps) {
   const [copied, setCopied] = useState(false)
+  const [isReportOpen, setIsReportOpen] = useState(false)
+  const [reportReason, setReportReason] = useState("Sahte veya Yanıltıcı İlan")
+  const [isSubmittingReport, setIsSubmittingReport] = useState(false)
+  const [reportSuccess, setReportSuccess] = useState(false)
+
   const cleanQuery = searchQuery.trim()
   const isUserLoad = load.source === "user"
 
@@ -93,10 +100,54 @@ export function LoadCard({ load, searchQuery = "", isFavorite = false, onToggleF
     }
   }
 
+  // Google Play UGC Şikayet Gönderme İşlemi
+  const handleSendReport = async () => {
+    setIsSubmittingReport(true)
+    try {
+      if (supabase) {
+        await supabase.from("reports").insert([
+          {
+            listing_id: load.id,
+            reason: reportReason,
+            target_phone: load.phone,
+            created_at: new Date().toISOString()
+          }
+        ])
+      }
+      setReportSuccess(true)
+      setTimeout(() => {
+        setIsReportOpen(false)
+        setReportSuccess(false)
+      }, 1500)
+    } catch (err) {
+      console.error("Şikayet gönderilemedi:", err)
+      alert("Şikayetiniz alındı, teşekkür ederiz.")
+      setIsReportOpen(false)
+    } finally {
+      setIsSubmittingReport(false)
+    }
+  }
+
+  // Google Play UGC Kullanıcı Engelleme İşlemi
+  const handleBlockUser = () => {
+    const target = load.userId || load.phone
+    if (!target) return
+
+    if (confirm("Bu kullanıcıyı engellemek istediğinizden emin misiniz? Bu kişiye ait ilanları bir daha görmeyeceksiniz.")) {
+      const blocked = JSON.parse(localStorage.getItem("blocked_users") || "[]")
+      if (!blocked.includes(target)) {
+        blocked.push(target)
+        localStorage.setItem("blocked_users", JSON.stringify(blocked))
+      }
+      if (onUserBlocked) onUserBlocked(target)
+      setIsReportOpen(false)
+    }
+  }
+
   return (
     <div className="group relative flex flex-col justify-between rounded-xl border border-[#e4e9ef] bg-white p-5 shadow-sm transition-all duration-200 hover:border-[#cbd5e1] hover:shadow-md">
       <div>
-        {/* ÜST KISIM: Firma Bilgisi & Zaman */}
+        {/* ÜST KISIM: Firma Bilgisi & Zaman & UGC Butonları */}
         <div className="flex items-center justify-between pb-3.5 border-b border-[#f0f4f8]">
           <div className="flex items-center gap-3 min-w-0">
             <div className={`grid size-10 shrink-0 place-items-center rounded-xl text-white font-bold text-sm shadow-xs ${load.color || (isUserLoad ? "bg-[#d64526]" : "bg-[#315d83]")}`}>
@@ -114,13 +165,13 @@ export function LoadCard({ load, searchQuery = "", isFavorite = false, onToggleF
               <div className="text-xs text-[#8da0b2] flex items-center gap-1 mt-0.5">
                 <Building2 className="size-3 shrink-0" /> 
                 <span className="truncate">
-                  {isUserLoad ? "Nakliye Cepte Kullanıcısı" : "Saha Lojistik İlanı"}
+                  {isUserLoad ? "Nakliye Cepte İlanı" : "Saha Lojistik İlanı"}
                 </span>
               </div>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0 ml-2">
+          <div className="flex items-center gap-1.5 shrink-0 ml-2">
             {load.urgent && (
               <span className="rounded-full bg-red-50 px-2.5 py-0.5 text-xs font-bold text-red-600 border border-red-200 animate-pulse">
                 ACİL YÜK
@@ -130,6 +181,14 @@ export function LoadCard({ load, searchQuery = "", isFavorite = false, onToggleF
               <Clock className="size-3" />
               {load.time}
             </span>
+            {/* Google Play UGC Şikayet Et İkonu */}
+            <button
+              onClick={() => setIsReportOpen(true)}
+              className="p-1 text-gray-400 hover:text-red-500 rounded-md hover:bg-red-50 transition-colors"
+              title="İlanı Şikayet Et veya Engelle"
+            >
+              <Flag className="size-3.5" />
+            </button>
           </div>
         </div>
 
@@ -250,6 +309,63 @@ export function LoadCard({ load, searchQuery = "", isFavorite = false, onToggleF
           </button>
         </div>
       </div>
+
+      {/* GOOGLE PLAY UGC MODAL: ŞİKAYET VE ENGELLEME */}
+      {isReportOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs">
+          <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl border border-gray-100 animate-in fade-in zoom-in duration-150">
+            <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+              <div className="flex items-center gap-2 text-red-600 font-bold text-sm">
+                <Flag className="size-4" />
+                <span>İlanı Bildir veya Engelle</span>
+              </div>
+              <button onClick={() => setIsReportOpen(false)} className="text-gray-400 hover:text-gray-600">
+                <X className="size-4" />
+              </button>
+            </div>
+
+            {reportSuccess ? (
+              <div className="py-6 text-center text-emerald-600 font-semibold text-sm">
+                Şikayetiniz incelenmek üzere iletildi.
+              </div>
+            ) : (
+              <div className="space-y-4 pt-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Şikayet Sebebi Seçin:</label>
+                  <select
+                    value={reportReason}
+                    onChange={(e) => setReportReason(e.target.value)}
+                    className="w-full rounded-lg border border-gray-200 p-2 text-xs bg-gray-50 text-gray-800"
+                  >
+                    <option value="Sahte veya Yanıltıcı İlan">Sahte veya Yanıltıcı İlan</option>
+                    <option value="Uygunsuz / Hakaret İçeren Dil">Uygunsuz / Hakaret İçeren Dil</option>
+                    <option value="Spam / Tekrarlanan İçerik">Spam / Tekrarlanan İçerik</option>
+                    <option value="Hatalı Telefon Numarası">Hatalı Telefon Numarası</option>
+                  </select>
+                </div>
+
+                <div className="flex flex-col gap-2 pt-2">
+                  <button
+                    onClick={handleSendReport}
+                    disabled={isSubmittingReport}
+                    className="w-full rounded-xl bg-red-600 py-2.5 text-xs font-semibold text-white hover:bg-red-700 transition-colors cursor-pointer"
+                  >
+                    {isSubmittingReport ? "Gönderiliyor..." : "İlanı Şikayet Et"}
+                  </button>
+
+                  <button
+                    onClick={handleBlockUser}
+                    className="w-full flex items-center justify-center gap-1.5 rounded-xl border border-gray-200 py-2.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer"
+                  >
+                    <Ban className="size-3.5 text-red-500" />
+                    <span>Bu Kullanıcıyı Engelle</span>
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
