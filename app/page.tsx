@@ -36,7 +36,11 @@ interface DatabaseListing {
     company_name?: string
     phone?: string
     authorized_person?: string
-  } | null
+  } | {
+    company_name?: string
+    phone?: string
+    authorized_person?: string
+  }[] | null
 }
 
 const cleanText = (text?: string | null) => {
@@ -185,13 +189,13 @@ export default function Page() {
     try {
       const twelveHoursAgo = new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString()
 
-      // listings tablosunu ilanı açan kullanıcının profiles verisiyle ilişkilendirip çekiyoruz
+      // profiles!left mantığı ile LEFT JOIN uygulanarak profili olmayan ilanların gizlenmesi engellendi
       const userReq = supabase 
         ? supabase
             .from("listings")
             .select(`
               *,
-              profiles:user_id (
+              profiles!left (
                 company_name,
                 phone,
                 authorized_person
@@ -209,19 +213,22 @@ export default function Page() {
             .order("created_at", { ascending: false }) 
         : Promise.resolve({ data: [] })
 
-      const [{ data: userData }, { data: botData }] = await Promise.all([userReq, botReq])
+      const [{ data: userData, error: userErr }, { data: botData, error: botErr }] = await Promise.all([userReq, botReq])
+
+      if (userErr) console.error("Listings hatası:", userErr)
+      if (botErr) console.error("Bot listings hatası:", botErr)
 
       const formattedUserLoads: Load[] = (userData || []).map((item: DatabaseListing) => {
-        // Öncelik sıralaması: İlandaki Firma Adı -> Profildeki Firma Adı -> Yetkili Kişi -> Bireysel Kullanıcı
+        const profileObj = Array.isArray(item.profiles) ? item.profiles[0] : item.profiles
+
         const companyName = cleanText(
           item.company_name || 
-          item.profiles?.company_name || 
-          item.profiles?.authorized_person || 
+          profileObj?.company_name || 
+          profileObj?.authorized_person || 
           "Bireysel Kullanıcı"
         )
 
-        // Öncelik sıralaması: İlandaki Telefon -> Profildeki Telefon
-        const phone = item.phone || item.profiles?.phone || "Belirtilmedi"
+        const phone = item.phone || profileObj?.phone || "Belirtilmedi"
 
         const initials = companyName
           .split(" ")
