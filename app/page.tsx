@@ -70,7 +70,7 @@ export default function Page() {
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState("overview")
+  const [activeTab, setActiveTab] = useState("Genel Bakış")
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
 
   const [profile, setProfile] = useState({
@@ -188,7 +188,6 @@ export default function Page() {
   const fetchListings = async () => {
     setIsLoading(true)
     try {
-      // Hata riskini önlemek için `profiles!left` join kaldırılarak doğrudan yalın sorgu atılır
       const userReq = supabase 
         ? supabase
             .from("listings")
@@ -243,7 +242,6 @@ export default function Page() {
           urgent: Boolean(item.urgent),
           time: item.created_at ? new Date(item.created_at).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" }) : "Yeni",
           color: "bg-[#d64526]",
-          // listings tablosundan gelen veriler kullanıcı ilanı olarak gösterilir
           source: "user",
           phone: phone
         }
@@ -415,9 +413,10 @@ export default function Page() {
         </header>
 
         <main className="mx-auto max-w-[1450px] px-4 py-7 sm:px-8 sm:py-9">
-          {activeTab === "overview" && (
+          {(activeTab === "Genel Bakış" || activeTab === "overview") && (
             <OverviewView 
               loads={loads} 
+              currentUserId={currentUserId}
               onOpenCreate={() => setIsCreateOpen(true)} 
               setActiveTab={setActiveTab} 
             />
