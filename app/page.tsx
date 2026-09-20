@@ -208,13 +208,19 @@ export default function Page() {
     }
   }
 
+  // SUPABASE RAHATLATMA: Son 3 günün ilanlarını çek
   const fetchListings = async () => {
     setIsLoading(true)
     try {
+      const threeDaysAgo = new Date()
+      threeDaysAgo.setDate(threeDaysAgo.getDate() - 3)
+      const isoThreeDaysAgo = threeDaysAgo.toISOString()
+
       const userReq = supabase 
         ? supabase
             .from("listings")
             .select("*")
+            .gte("created_at", isoThreeDaysAgo)
             .order("created_at", { ascending: false }) 
         : Promise.resolve({ data: [] })
 
@@ -222,6 +228,7 @@ export default function Page() {
         ? supabase
             .from("bot_listings")
             .select("*")
+            .gte("created_at", isoThreeDaysAgo)
             .order("created_at", { ascending: false }) 
         : Promise.resolve({ data: [] })
 
@@ -237,7 +244,7 @@ export default function Page() {
           item.company_name || 
           profileObj?.company_name || 
           profileObj?.authorized_person || 
-          "Bireysel Kullanıcı"
+          "YükleGel Kullanıcısı"
         )
 
         const phone = item.phone || profileObj?.phone || "Belirtilmedi"
@@ -248,7 +255,7 @@ export default function Page() {
           .map((n) => n[0])
           .join("")
           .toUpperCase()
-          .substring(0, 2) || "NK"
+          .substring(0, 2) || "YK"
 
         return {
           id: `user-${item.id}`,
@@ -265,7 +272,7 @@ export default function Page() {
           urgent: Boolean(item.urgent),
           time: item.created_at ? new Date(item.created_at).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" }) : "Yeni",
           color: "bg-[#d64526]",
-          source: "user",
+          source: item.is_bot ? "bot" : "user",
           phone: phone
         }
       })
