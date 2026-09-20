@@ -13,76 +13,88 @@ interface FavoritesViewProps {
 
 export function FavoritesView({ 
   loads = [], 
-  favoriteIds = [], 
   onToggleFavorite, 
   searchQuery = "" 
 }: FavoritesViewProps) {
   const [favoriteLoads, setFavoriteLoads] = useState<Load[]>([])
+  const [favoriteIds, setFavoriteIds] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     async function loadFavorites() {
       setLoading(true)
       try {
-        let combinedFavIds: string[] = [...favoriteIds]
-
-        // 1. LocalStorage'dan favorileri al (Sayfa yenilendiğinde yedek)
-        const savedFavs = typeof window !== "undefined" ? localStorage.getItem("favorite_loads") : null
-        if (savedFavs) {
-          try {
-            const parsed = JSON.parse(savedFavs)
-            if (Array.isArray(parsed)) {
-              combinedFavIds = Array.from(new Set([...combinedFavIds, ...parsed]))
-            }
-          } catch (e) {
-            console.error("LocalStorage favori okuma hatası:", e)
-          }
+        if (!supabase) {
+          setLoading(false)
+          return
         }
 
-        // 2. Supabase oturum açmış kullanıcı varsa veritabanından favorileri al
-        if (supabase) {
-          const { data: { user } } = await supabase.auth.getUser()
-          if (user) {
-            const { data: favData, error } = await supabase
-              .from("favorites")
-              .select("listing_id")
-              .eq("user_id", user.id)
-
-            if (!error && favData) {
-              const dbFavIds = favData.map((f) => String(f.listing_id))
-              combinedFavIds = Array.from(new Set([...combinedFavIds, ...dbFavIds]))
-            }
-          }
+        // 1. Giriş yapmış kullanıcıyı kontrol et
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) {
+          setFavoriteLoads([])
+          setFavoriteIds([])
+          setLoading(false)
+          return
         }
 
-        // 3. 'loads' listesindeki ilanlarla favori ID'leri eşleştir
-        // ID eşleştirmesinde 'user-', 'bot-' gibi ön ekler veya ham ID uyuşmazlıkları toleranslı kontrol edilir
+        // 2. Sadece BU KULLANICIYA ait favori kayıtlarını çek
+        const { data: favData, error } = await supabase
+          .from("favorites")
+          .select("listing_id")
+          .eq("user_id", user.id)
+
+        if (error || !favData) {
+          setFavoriteLoads([])
+          setFavoriteIds([])
+          setLoading(false)
+          return
+        }
+
+        const userFavIds = favData.map((f) => String(f.listing_id))
+        setFavoriteIds(userFavIds)
+
+        // 3. 'loads' prop'u ile veritabanından gelen kullanıcı favorilerini ID bazında eşleştir
         const matchedLoads = loads.filter((load) => {
           const cleanLoadId = String(load.id).replace(/^(user-|bot-)/, "")
-          
-          return combinedFavIds.some((favId) => {
+          return userFavIds.some((favId) => {
             const cleanFavId = String(favId).replace(/^(user-|bot-)/, "")
             return (
               favId === load.id ||
               cleanFavId === cleanLoadId ||
               `user-${cleanLoadId}` === favId ||
               `bot-${cleanLoadId}` === favId
-            );
-          });
+            )
+          })
         })
 
         setFavoriteLoads(matchedLoads)
       } catch (err) {
-        console.error("Favoriler işlenirken hata:", err)
+        console.error("Favoriler yüklenirken hata:", err)
       } finally {
         setLoading(false)
       }
     }
 
     loadFavorites()
-  }, [loads, favoriteIds])
+  }, [loads])
 
-  // Arama filtresi uygula
+  const handleToggleFavorite = (id?: string) => {
+    if (!id) return
+    const cleanId = id.replace(/^(user-|bot-)/, "")
+    
+    setFavoriteLoads((prev) => 
+      prev.filter((load) => String(load.id).replace(/^(user-|bot-)/, "") !== cleanId)
+    )
+    setFavoriteIds((prev) => 
+      prev.filter((favId) => favId.replace(/^(user-|bot-)/, "") !== cleanId)
+    )
+
+    if (onToggleFavorite) {
+      onToggleFavorite(id)
+    }
+  }
+
   const filteredLoads = favoriteLoads.filter((load) => {
     if (!searchQuery) return true
     const q = searchQuery.toLowerCase()
@@ -96,7 +108,7 @@ export function FavoritesView({
   })
 
   if (loading) {
-    return <div className="p-8 text-center text-gray-500">Favoriler yükleniyor...</div>
+    return <div className="p-8 text-center text-gray-500 font-medium">Favorileriniz yükleniyor...</div>
   }
 
   return (
@@ -122,7 +134,7 @@ export function FavoritesView({
               load={load}
               searchQuery={searchQuery}
               isFavorite={true}
-              onToggleFavorite={onToggleFavorite}
+              onToggleFavorite={handleToggleFavorite}
             />
           ))}
         </div>
