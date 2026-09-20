@@ -253,8 +253,8 @@ export default function Page() {
           urgent: Boolean(item.urgent),
           time: item.created_at ? new Date(item.created_at).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" }) : "Yeni",
           color: "bg-[#d64526]",
-          // is_bot true olsa bile listings tablosundan gelen veriyi kullanıcı ilanı kabul ediyoruz
-          source: item.is_bot ? "bot" : "user",
+          // DÜZELTME: listings tablosundan gelen tüm kayıtlar varsayılan olarak kullanıcı ilanıdır.
+          source: "user",
           phone: phone
         }
       })
