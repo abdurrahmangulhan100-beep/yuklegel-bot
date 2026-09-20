@@ -1,135 +1,137 @@
 "use client"
 
-import { MapPin, Package, Plus, Truck, Sparkles } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { LoadCard, Load } from "@/components/LoadCard"
-import { cn } from "@/lib/utils"
-
-const filters = ["Tümü", "Acil", "Tır", "Kamyon", "Frigo"]
-const sourceTabs = [
-  { value: "all", label: "Tüm İlanlar" }, 
-  { value: "user", label: "Nakliye Cepte İlanları (Kullanıcı)" }, 
-  { value: "bot", label: "Saha Lojistik İlanları" }
-] as const
+import { Load, LoadCard } from "@/components/LoadCard"
+import { Filter, Plus } from "lucide-react"
 
 type ListingsViewProps = {
-  loads: Load[];
+  loads: Load[]
   stats: {
-    activeTotal: number;
-    todayUserCount: number;
-    pendingTrips: number;
-    activeRoutesCount: number;
-  };
-  loading: boolean;
-  activeFilter: string;
-  setActiveFilter: (filter: string) => void;
-  sourceFilter: typeof sourceTabs[number]["value"];
-  setSourceFilter: (source: typeof sourceTabs[number]["value"]) => void;
-  setIsCreateOpen: (open: boolean) => void;
-  searchQuery?: string;
+    activeTotal: number
+    todayUserCount: number
+    pendingTrips: number
+    activeRoutesCount: number
+  }
+  loading: boolean
+  activeFilter: string
+  setActiveFilter: (filter: string) => void
+  sourceFilter: "all" | "user" | "bot"
+  setSourceFilter: (source: "all" | "user" | "bot") => void
+  setIsCreateOpen: (open: boolean) => void
+  searchQuery?: string
+  favoriteIds?: string[]
+  onToggleFavorite?: (id: string) => void
 }
 
-export function ListingsView({ 
-  loads, 
-  stats, 
-  loading, 
-  activeFilter, 
-  setActiveFilter, 
-  sourceFilter, 
-  setSourceFilter, 
+export function ListingsView({
+  loads,
+  stats,
+  loading,
+  activeFilter,
+  setActiveFilter,
+  sourceFilter,
+  setSourceFilter,
   setIsCreateOpen,
-  searchQuery = ""
-}: ListingsViewProps) { 
-  const trimmedQuery = searchQuery.trim()
-  const hasActiveSearch = trimmedQuery.length > 0
-
-  const limitedLoads = loads.slice(0, 500)
+  searchQuery = "",
+  favoriteIds = [],
+  onToggleFavorite
+}: ListingsViewProps) {
+  const filterOptions = ["Tümü", "Acil", "Tır", "Kamyon", "Frigo"]
 
   return (
-    <>
-      <div className="mb-8 flex flex-col justify-between gap-5 md:flex-row md:items-end">
+    <div className="space-y-6">
+      {/* ÜST BİLGİ & İLAN EKLE BUTONU */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="mb-2 text-sm font-medium text-[#d64526]">Canlı Lojistik Paneli</p>
-          <h1 className="text-3xl font-bold tracking-tight sm:text-[34px]">İlanlar</h1>
-          <p className="mt-2 text-sm text-[#718397]">Size uygun yükleri keşfedin ve yeni fırsatları kaçırmayın.</p>
+          <div className="text-xs font-semibold text-[#d64526] uppercase tracking-wider mb-1">Pazar Yeri</div>
+          <h1 className="text-2xl font-bold text-[#122c4a] sm:text-3xl">Güncel İlanlar</h1>
+          <p className="mt-1 text-sm text-[#627d98]">
+            Saha ve kullanıcı ilanları son 3 gün esas alınarak listelenmektedir.
+          </p>
         </div>
-        <Button className="h-11 cursor-pointer gap-2 bg-[#d64526] px-5 text-white hover:bg-[#b93820]" onClick={() => setIsCreateOpen(true)}>
-          <Plus /> İlan oluştur
-        </Button>
+        <button
+          onClick={() => setIsCreateOpen(true)}
+          className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#d64526] px-5 py-3 text-sm font-semibold text-white shadow-sm hover:bg-[#b8381e] transition-colors cursor-pointer shrink-0"
+        >
+          <Plus className="size-5" />
+          İlan Oluştur
+        </button>
       </div>
 
-      {hasActiveSearch && (
-        <div className="mb-6 flex items-center gap-3 rounded-xl border border-amber-300 bg-amber-50/80 px-4 py-3 text-amber-800 shadow-sm animate-pulse">
-          <Sparkles className="size-5 shrink-0 text-amber-600 animate-spin" />
-          <div className="text-sm font-medium">
-            <span className="font-bold uppercase tracking-wide">&quot;{trimmedQuery}&quot;</span> araması için filtrelenen ilanlar listeleniyor. Toplam <span className="font-bold">{loads.length}</span> sonuç bulundu.
-          </div>
-        </div>
-      )}
-
-      <section className="mb-7 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <Stat icon={Package} label="Aktif ilanlar (Tümü)" value={stats.activeTotal.toString()} />
-        <Stat icon={Package} label="Bugün eklenen (Kullanıcı)" value={stats.todayUserCount.toString()} />
-        <Stat icon={Truck} label="Bekleyen seferler (Kullanıcı)" value={stats.pendingTrips.toString()} />
-        <Stat icon={MapPin} label="Aktif rotalar" value={stats.activeRoutesCount.toString()} />
-      </section>
-
-      <div className="mb-4 flex gap-1 overflow-x-auto rounded-xl border border-[#e4e9ef] bg-white p-2">
-        {sourceTabs.map((tab) => (
-          <button 
-            key={tab.value} 
-            className={cn("cursor-pointer whitespace-nowrap rounded-lg px-4 py-2.5 text-sm font-medium text-[#718397] hover:bg-[#f5f7fa]", sourceFilter === tab.value && "bg-[#122c4a] text-white hover:bg-[#122c4a]")} 
-            onClick={() => setSourceFilter(tab.value)}
-          >
-            {tab.label}
-          </button>
-        ))}
+      {/* İLAN KAYNAĞI FİLTRELERİ */}
+      <div className="flex flex-wrap items-center gap-2 rounded-xl border border-[#e4e9ef] bg-white p-2 shadow-xs">
+        <button
+          onClick={() => setSourceFilter("all")}
+          className={`rounded-lg px-4 py-2 text-xs font-semibold transition-colors cursor-pointer ${
+            sourceFilter === "all" ? "bg-[#122c4a] text-white" : "text-[#627d98] hover:bg-[#f5f7fa]"
+          }`}
+        >
+          Tüm İlanlar ({stats.activeTotal})
+        </button>
+        <button
+          onClick={() => setSourceFilter("user")}
+          className={`rounded-lg px-4 py-2 text-xs font-semibold transition-colors cursor-pointer ${
+            sourceFilter === "user" ? "bg-[#d64526] text-white" : "text-[#627d98] hover:bg-[#f5f7fa]"
+          }`}
+        >
+          Nakliye Cepte İlanları ({stats.todayUserCount})
+        </button>
+        <button
+          onClick={() => setSourceFilter("bot")}
+          className={`rounded-lg px-4 py-2 text-xs font-semibold transition-colors cursor-pointer ${
+            sourceFilter === "bot" ? "bg-[#315d83] text-white" : "text-[#627d98] hover:bg-[#f5f7fa]"
+          }`}
+        >
+          Saha Lojistik İlanları
+        </button>
       </div>
 
-      <div className="mb-5 flex flex-col gap-4 rounded-xl border border-[#e4e9ef] bg-white p-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex gap-1 overflow-x-auto">
-          {filters.map((filter) => (
-            <button 
-              key={filter} 
-              className={cn("cursor-pointer whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium text-[#718397] hover:bg-[#f5f7fa]", activeFilter === filter && "bg-[#122c4a] text-white hover:bg-[#122c4a]")} 
-              onClick={() => setActiveFilter(filter)}
+      {/* ARAÇ & TİP FİLTRELERİ */}
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#e4e9ef] bg-white p-3 shadow-xs">
+        <div className="flex flex-wrap items-center gap-1.5">
+          {filterOptions.map((option) => (
+            <button
+              key={option}
+              onClick={() => setActiveFilter(option)}
+              className={`rounded-lg px-3.5 py-1.5 text-xs font-medium transition-colors cursor-pointer ${
+                activeFilter === option
+                  ? "bg-[#122c4a] text-white font-semibold"
+                  : "text-[#627d98] hover:bg-[#f5f7fa]"
+              }`}
             >
-              {filter}
+              {option}
             </button>
           ))}
         </div>
-        <div className="flex items-center gap-2 text-xs text-[#8da0b2]">
-          <span className="size-2 rounded-full bg-[#67c587]" /> {limitedLoads.length} ilan gösteriliyor (Maks: 500)
+        <div className="text-xs text-[#8da0b2] font-medium flex items-center gap-1">
+          <Filter className="size-3.5" />
+          <span>{loads.length} ilan listeleniyor</span>
         </div>
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-2">
-        {loading ? (
-          <div className="col-span-full py-12 text-center text-sm text-[#718397]">Yükleniyor...</div>
-        ) : limitedLoads.length ? (
-          limitedLoads.map((load) => (
-            <div key={load.id} className="transition-all duration-300 rounded-xl">
-              <LoadCard load={load} searchQuery={searchQuery} />
-            </div>
-          ))
-        ) : (
-          <div className="col-span-full rounded-xl border border-dashed border-[#ccd6e0] bg-white py-16 text-center text-sm text-[#718397]">
-            {hasActiveSearch ? `"${trimmedQuery}" ile eşleşen herhangi bir ilan bulunamadı.` : "Henüz ilan bulunamadı."}
-          </div>
-        )}
-      </div>
-    </>
-  )
-}
-
-function Stat({ icon: Icon, label, value }: { icon: any; label: string; value: string }) { 
-  return (
-    <div className="rounded-xl border border-[#e4e9ef] bg-white p-4">
-      <div className="mb-3 flex items-start justify-between">
-        <div className="grid size-9 place-items-center rounded-lg bg-[#eef4f8] text-[#315d83]"><Icon /></div>
-      </div>
-      <div className="text-2xl font-bold tracking-tight">{value}</div>
-      <div className="mt-1 text-xs text-[#8da0b2]">{label}</div>
+      {/* İLAN KARTLARI GRİDİ */}
+      {loading ? (
+        <div className="flex flex-col items-center justify-center py-16 text-[#8da0b2]">
+          <div className="size-8 rounded-full border-2 border-[#d64526] border-t-transparent animate-spin mb-3" />
+          <p className="text-sm font-medium">Son 3 günün ilanları yükleniyor...</p>
+        </div>
+      ) : loads.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-[#cbd5e1] bg-white p-12 text-center shadow-xs">
+          <p className="text-base font-bold text-[#122c4a]">Aramanıza uygun aktif ilan bulunamadı</p>
+          <p className="mt-1 text-xs text-[#627d98]">Filtrelerinizi değiştirmeyi veya arama teriminizi temizlemeyi deneyin.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {loads.map((load) => (
+            <LoadCard
+              key={load.id}
+              load={load}
+              searchQuery={searchQuery}
+              isFavorite={favoriteIds.includes(load.id)}
+              onToggleFavorite={() => onToggleFavorite && onToggleFavorite(load.id)}
+            />
+          ))}
+        </div>
+      )}
     </div>
-  ) 
+  )
 }
