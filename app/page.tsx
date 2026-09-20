@@ -76,12 +76,11 @@ export default function Page() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
 
   const [profile, setProfile] = useState({
-    company_name: "YükleGel Kullanıcısı",
+    company_name: "Nakliye Cepte Kullanıcısı",
     authorized_person: "Kullanıcı",
-    initials: "MK"
+    initials: "NK"
   })
 
-  // Favorileri tarayıcı hafızasından yükle
   useEffect(() => {
     const savedFavs = localStorage.getItem("favorite_loads")
     if (savedFavs) {
@@ -93,7 +92,6 @@ export default function Page() {
     }
   }, [])
 
-  // Favori Ekle / Çıkar Metodu
   const toggleFavorite = (id: string) => {
     setFavoriteIds((prev) => {
       const updated = prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
@@ -186,19 +184,19 @@ export default function Page() {
         .maybeSingle()
 
       if (data && !error) {
-        const cName = data.company_name || "YükleGel Kullanıcısı"
+        const cName = data.company_name || "Nakliye Cepte Kullanıcısı"
         const aPerson = data.authorized_person || user.email?.split("@")[0] || "Kullanıcı"
         const initials = aPerson.split(" ").map((n: string) => n[0]).join("").toUpperCase().substring(0, 2)
         
         setProfile({
           company_name: cName,
           authorized_person: aPerson,
-          initials: initials || "UK"
+          initials: initials || "NK"
         })
       } else {
         const defaultName = user.email?.split("@")[0] || "Kullanıcı"
         setProfile({
-          company_name: "YükleGel Kullanıcısı",
+          company_name: "Nakliye Cepte Kullanıcısı",
           authorized_person: defaultName,
           initials: defaultName.substring(0, 2).toUpperCase()
         })
@@ -208,7 +206,6 @@ export default function Page() {
     }
   }
 
-  // SUPABASE RAHATLATMA: Son 3 günün ilanlarını çek
   const fetchListings = async () => {
     setIsLoading(true)
     try {
@@ -244,7 +241,7 @@ export default function Page() {
           item.company_name || 
           profileObj?.company_name || 
           profileObj?.authorized_person || 
-          "YükleGel Kullanıcısı"
+          "Nakliye Cepte Kullanıcısı"
         )
 
         const phone = item.phone || profileObj?.phone || "Belirtilmedi"
@@ -255,11 +252,11 @@ export default function Page() {
           .map((n) => n[0])
           .join("")
           .toUpperCase()
-          .substring(0, 2) || "YK"
+          .substring(0, 2) || "NK"
 
         return {
           id: `user-${item.id}`,
-          userId: item.user_id,
+          userId: item.user_id, // Seferlerim filtresi için hayati önem taşır
           company: companyName,
           initials: initials,
           from: cleanText(item.from_city),
@@ -272,7 +269,7 @@ export default function Page() {
           urgent: Boolean(item.urgent),
           time: item.created_at ? new Date(item.created_at).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" }) : "Yeni",
           color: "bg-[#d64526]",
-          source: item.is_bot ? "bot" : "user",
+          source: "user", // Kesinlikle user olarak belirlenir
           phone: phone
         }
       })
@@ -302,7 +299,7 @@ export default function Page() {
           urgent: Boolean(item.urgent),
           time: item.created_at ? new Date(item.created_at).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" }) : "Yeni",
           color: "bg-[#315d83]",
-          source: "bot",
+          source: "bot", // Kesinlikle bot olarak belirlenir
           phone: extractedPhone
         }
       })
@@ -344,11 +341,13 @@ export default function Page() {
 
   const stats = useMemo(() => {
     const userLoads = loads.filter(l => l.source === "user")
+    const botLoads = loads.filter(l => l.source === "bot")
     const uniqueRoutes = new Set(loads.filter(l => l.from && l.to && l.from !== "-" && l.to !== "-").map(l => `${l.from}-${l.to}`)).size
 
     return {
       activeTotal: loads.length,
       todayUserCount: userLoads.length,
+      botCount: botLoads.length,
       pendingTrips: userLoads.length,
       activeRoutesCount: uniqueRoutes > 0 ? uniqueRoutes : 12
     }
