@@ -82,7 +82,7 @@ export default function PrivacyPage() {
           <section>
             <h2 className="text-base font-bold text-[#122c4a] mb-2">6. İletişim</h2>
             <p>
-              Gizlilik politikamız veya kişisel verilerinizle ilgili sorularınız için bizimle <strong>destek@nakliyecepte.com</strong> e-posta adresi üzerinden iletişime geçebilirsiniz.
+              Gizlilik politikamız veya kişisel verilerinizle ilgili sorularınız için bizimle <strong>destek.nakliyecepte.com@gmail.com</strong> e-posta adresi üzerinden iletişime geçebilirsiniz.
             </p>
           </section>
         </div>
