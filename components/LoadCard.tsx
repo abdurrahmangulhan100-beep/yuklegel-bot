@@ -74,7 +74,7 @@ export function LoadCard({ load, searchQuery = "" }: LoadCardProps) {
 
     const message = isUserLoad 
       ? `Merhaba, ${load.from} -> ${load.to} güzergahındaki (${load.cargo || 'Yük'}) ilanınız için yazıyorum.`
-      : `Merhaba, WhatsApp üzerinden paylaştığınız ilanınız için görüşmek istiyorum.`
+      : `Merhaba, saha ağında paylaştığınız ilanınız için görüşmek istiyorum.`
 
     window.open(`https://wa.me/${formattedPhone}?text=${encodeURIComponent(message)}`, "_blank")
   }
@@ -94,12 +94,12 @@ export function LoadCard({ load, searchQuery = "" }: LoadCardProps) {
         <div className="flex items-center justify-between pb-3.5 border-b border-[#f0f4f8]">
           <div className="flex items-center gap-3 min-w-0">
             <div className={`grid size-10 shrink-0 place-items-center rounded-xl text-white font-bold text-sm shadow-xs ${load.color || (isUserLoad ? "bg-[#d64526]" : "bg-[#315d83]")}`}>
-              {load.initials || load.company?.substring(0, 2).toUpperCase() || "LN"}
+              {load.initials || load.company?.substring(0, 2).toUpperCase() || (isUserLoad ? "LN" : "SL")}
             </div>
             <div className="min-w-0 truncate">
               <div className="flex items-center gap-1.5 truncate">
                 <span className="font-semibold text-sm text-[#122c4a] truncate">
-                  {highlightMatch(load.company || "İsimsiz Firma", cleanQuery)}
+                  {highlightMatch(load.company || (isUserLoad ? "İsimsiz Firma" : "Saha Lojistik Ağı"), cleanQuery)}
                 </span>
                 {isUserLoad && (
                   <ShieldCheck className="size-4 text-blue-600 shrink-0" title="Onaylı İlan" />
@@ -108,7 +108,7 @@ export function LoadCard({ load, searchQuery = "" }: LoadCardProps) {
               <div className="text-xs text-[#8da0b2] flex items-center gap-1 mt-0.5">
                 <Building2 className="size-3 shrink-0" /> 
                 <span className="truncate">
-                  {isUserLoad ? "Nakliye Cepte Kullanıcısı" : "WhatsApp Bot İlanı"}
+                  {isUserLoad ? "Nakliye Cepte Kullanıcısı" : "Saha Lojistik İlanı"}
                 </span>
               </div>
             </div>
@@ -127,52 +127,54 @@ export function LoadCard({ load, searchQuery = "" }: LoadCardProps) {
           </div>
         </div>
 
-        {/* NEREDEN - NEREYE ROTA KUTUSU */}
-        <div className="my-4 rounded-xl bg-[#f8fafc] p-3.5 border border-[#edf2f7]">
-          <div className="flex items-center justify-between gap-2">
-            {/* Kalkış */}
-            <div className="flex-1 min-w-0">
-              <span className="block text-[10px] font-bold tracking-wider text-[#8da0b2] uppercase">Nereden</span>
-              <div className="flex items-center gap-1.5 mt-0.5">
-                <MapPin className="size-4 text-emerald-600 shrink-0" />
-                <span className="font-bold text-[#122c4a] text-sm sm:text-base truncate">
-                  {load.from && load.from !== "-" ? highlightMatch(load.from, cleanQuery) : "Belirtilmedi"}
-                </span>
+        {/* NEREDEN - NEREYE ROTA KUTUSU (Sadece Kullanıcı İlanlarında Gösterilir) */}
+        {isUserLoad && (
+          <div className="my-4 rounded-xl bg-[#f8fafc] p-3.5 border border-[#edf2f7]">
+            <div className="flex items-center justify-between gap-2">
+              {/* Kalkış */}
+              <div className="flex-1 min-w-0">
+                <span className="block text-[10px] font-bold tracking-wider text-[#8da0b2] uppercase">Nereden</span>
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  <MapPin className="size-4 text-emerald-600 shrink-0" />
+                  <span className="font-bold text-[#122c4a] text-sm sm:text-base truncate">
+                    {load.from && load.from !== "-" ? highlightMatch(load.from, cleanQuery) : "Belirtilmedi"}
+                  </span>
+                </div>
               </div>
-            </div>
 
-            {/* Ok */}
-            <div className="flex flex-col items-center justify-center px-2 shrink-0">
-              <div className="flex items-center gap-1 text-[#cbd5e1]">
-                <div className="h-0.5 w-3 bg-[#cbd5e1] rounded-full hidden sm:block" />
-                <ArrowRight className="size-4 text-[#8da0b2]" />
-                <div className="h-0.5 w-3 bg-[#cbd5e1] rounded-full hidden sm:block" />
+              {/* Ok */}
+              <div className="flex flex-col items-center justify-center px-2 shrink-0">
+                <div className="flex items-center gap-1 text-[#cbd5e1]">
+                  <div className="h-0.5 w-3 bg-[#cbd5e1] rounded-full hidden sm:block" />
+                  <ArrowRight className="size-4 text-[#8da0b2]" />
+                  <div className="h-0.5 w-3 bg-[#cbd5e1] rounded-full hidden sm:block" />
+                </div>
+                {load.distance && load.distance !== "Belirtilmemiş" && (
+                  <span className="text-[10px] font-medium text-[#8da0b2] mt-0.5">{load.distance}</span>
+                )}
               </div>
-              {load.distance && load.distance !== "Belirtilmemiş" && (
-                <span className="text-[10px] font-medium text-[#8da0b2] mt-0.5">{load.distance}</span>
-              )}
-            </div>
 
-            {/* Varış */}
-            <div className="flex-1 min-w-0 text-right">
-              <span className="block text-[10px] font-bold tracking-wider text-[#8da0b2] uppercase">Nereye</span>
-              <div className="flex items-center justify-end gap-1.5 mt-0.5">
-                <span className="font-bold text-[#122c4a] text-sm sm:text-base truncate">
-                  {load.to && load.to !== "-" ? highlightMatch(load.to, cleanQuery) : "Belirtilmedi"}
-                </span>
-                <MapPin className="size-4 text-red-500 shrink-0" />
+              {/* Varış */}
+              <div className="flex-1 min-w-0 text-right">
+                <span className="block text-[10px] font-bold tracking-wider text-[#8da0b2] uppercase">Nereye</span>
+                <div className="flex items-center justify-end gap-1.5 mt-0.5">
+                  <span className="font-bold text-[#122c4a] text-sm sm:text-base truncate">
+                    {load.to && load.to !== "-" ? highlightMatch(load.to, cleanQuery) : "Belirtilmedi"}
+                  </span>
+                  <MapPin className="size-4 text-red-500 shrink-0" />
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* YÜK DETAYI / İLAN İÇERİĞİ */}
-        <div className="space-y-2 mb-3">
+        <div className="space-y-2 my-3">
           <div className="bg-[#f8fafc] p-3 rounded-lg border border-[#edf2f7]">
             <span className="text-[10px] uppercase tracking-wider text-[#8da0b2] block font-semibold mb-1">
               İlan İçeriği / Yük Detayı
             </span>
-            <p className="text-sm text-[#334e68] leading-relaxed font-normal">
+            <p className="text-sm text-[#334e68] leading-relaxed font-normal break-words">
               {highlightMatch(load.cargo || "Yük detayı belirtilmedi.", cleanQuery)}
             </p>
           </div>
