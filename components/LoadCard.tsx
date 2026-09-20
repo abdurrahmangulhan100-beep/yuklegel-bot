@@ -25,6 +25,8 @@ export type Load = {
 type LoadCardProps = {
   load: Load
   searchQuery?: string
+  isFavorite?: boolean
+  onToggleFavorite?: () => void
 }
 
 const highlightMatch = (text: string, query: string) => {
@@ -47,12 +49,11 @@ const highlightMatch = (text: string, query: string) => {
   })
 }
 
-export function LoadCard({ load, searchQuery = "" }: LoadCardProps) {
+export function LoadCard({ load, searchQuery = "", isFavorite = false, onToggleFavorite }: LoadCardProps) {
   const [copied, setCopied] = useState(false)
   const cleanQuery = searchQuery.trim()
   const isUserLoad = load.source === "user"
 
-  // Firma ismi temizliği: Veritabanından veya bot verisinden "WhatsApp" içeren bir isim gelirse otomatik temizler
   const displayCompany = isUserLoad 
     ? (load.company || "İsimsiz Firma")
     : (load.company && !load.company.toLowerCase().includes("whatsapp") ? load.company : "Saha Lojistik Ağı")
@@ -132,11 +133,10 @@ export function LoadCard({ load, searchQuery = "" }: LoadCardProps) {
           </div>
         </div>
 
-        {/* NEREDEN - NEREYE ROTA KUTUSU (Sadece Kullanıcı İlanlarında Gösterilir) */}
+        {/* NEREDEN - NEREYE ROTA KUTUSU */}
         {isUserLoad && (
           <div className="my-4 rounded-xl bg-[#f8fafc] p-3.5 border border-[#edf2f7]">
             <div className="flex items-center justify-between gap-2">
-              {/* Kalkış */}
               <div className="flex-1 min-w-0">
                 <span className="block text-[10px] font-bold tracking-wider text-[#8da0b2] uppercase">Nereden</span>
                 <div className="flex items-center gap-1.5 mt-0.5">
@@ -147,7 +147,6 @@ export function LoadCard({ load, searchQuery = "" }: LoadCardProps) {
                 </div>
               </div>
 
-              {/* Ok */}
               <div className="flex flex-col items-center justify-center px-2 shrink-0">
                 <div className="flex items-center gap-1 text-[#cbd5e1]">
                   <div className="h-0.5 w-3 bg-[#cbd5e1] rounded-full hidden sm:block" />
@@ -159,7 +158,6 @@ export function LoadCard({ load, searchQuery = "" }: LoadCardProps) {
                 )}
               </div>
 
-              {/* Varış */}
               <div className="flex-1 min-w-0 text-right">
                 <span className="block text-[10px] font-bold tracking-wider text-[#8da0b2] uppercase">Nereye</span>
                 <div className="flex items-center justify-end gap-1.5 mt-0.5">
@@ -240,10 +238,15 @@ export function LoadCard({ load, searchQuery = "" }: LoadCardProps) {
             <Phone className="size-4" />
           </button>
           <button 
-            title="Favorilere Ekle" 
-            className="grid size-9 place-items-center rounded-lg bg-gray-50 text-gray-400 hover:bg-gray-100 hover:text-amber-500 transition-colors cursor-pointer"
+            onClick={onToggleFavorite}
+            title={isFavorite ? "Favorilerden Çıkar" : "Favorilere Ekle"} 
+            className={`grid size-9 place-items-center rounded-lg transition-colors cursor-pointer ${
+              isFavorite 
+                ? "bg-amber-50 text-amber-500 hover:bg-amber-100" 
+                : "bg-gray-50 text-gray-400 hover:bg-gray-100 hover:text-amber-500"
+            }`}
           >
-            <Star className="size-4" />
+            <Star className={`size-4 ${isFavorite ? "fill-amber-500" : ""}`} />
           </button>
         </div>
       </div>
