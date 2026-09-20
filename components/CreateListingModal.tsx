@@ -49,7 +49,7 @@ export function CreateListingModal({ isOpen, onClose, onSuccess }: CreateListing
   const [description, setDescription] = useState("")
   
   // Fiyat Hesaplama State
-  const [priceType, setPriceType] = useState<"total" | "per_ton">("per_ton")
+  const [priceType, setPriceType] = useState<"total" | "per_ton">("total")
   const [unitPrice, setUnitPrice] = useState("")
   const [tonnage, setTonnage] = useState("")
   
@@ -139,7 +139,7 @@ export function CreateListingModal({ isOpen, onClose, onSuccess }: CreateListing
         to_city: toCity,
         to_district: toDistrict || "",
         cargo_type: finalCargo,
-        cargo_detail: finalCargo, // Eski şema uyumluluğu için
+        cargo_detail: finalCargo,
         vehicle_type: vehicleType,
         description: description || "",
         price: totalPrice,
@@ -158,17 +158,25 @@ export function CreateListingModal({ isOpen, onClose, onSuccess }: CreateListing
       }
 
       resetForm()
-      if (onSuccess) onSuccess()
-      onClose()
+      
+      // onSuccess fonksiyonunu Güvenli Şekilde Çağır
+      if (typeof onSuccess === "function") {
+        onSuccess()
+      }
+      
+      // Pencereyi Kapat
+      if (typeof onClose === "function") {
+        onClose()
+      }
     } catch (err: any) {
-      alert("Hata oluştu: " + (err.message || "İlan kaydedilemedi"))
+      alert("Hata oluştu: " + (err?.message || "İlan kaydedilemedi"))
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose() }}>
+    <Dialog open={isOpen} onOpenChange={(open) => { if (!open && onClose) onClose() }}>
       <DialogContent className="sm:max-w-[600px] bg-white text-[#122c4a] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-xl font-bold">Yeni İlan Oluştur</DialogTitle>
