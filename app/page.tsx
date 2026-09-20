@@ -32,6 +32,7 @@ interface DatabaseListing {
   urgent?: boolean
   created_at?: string
   phone?: string
+  is_bot?: boolean
   profiles?: {
     company_name?: string
     phone?: string
@@ -187,7 +188,6 @@ export default function Page() {
   const fetchListings = async () => {
     setIsLoading(true)
     try {
-      // 24 saat kuralı uygulandı
       const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
 
       const userReq = supabase 
@@ -215,12 +215,8 @@ export default function Page() {
 
       const [{ data: userData, error: userErr }, { data: botData, error: botErr }] = await Promise.all([userReq, botReq])
 
-      if (userErr) {
-        console.error("Listings Supabase Hatası (RLS İznini kontrol edin):", userErr)
-      }
-      if (botErr) {
-        console.error("Bot listings hatası:", botErr)
-      }
+      if (userErr) console.error("Listings hatası:", userErr)
+      if (botErr) console.error("Bot listings hatası:", botErr)
 
       const formattedUserLoads: Load[] = (userData || []).map((item: DatabaseListing) => {
         const profileObj = Array.isArray(item.profiles) ? item.profiles[0] : item.profiles
@@ -257,7 +253,8 @@ export default function Page() {
           urgent: Boolean(item.urgent),
           time: item.created_at ? new Date(item.created_at).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" }) : "Yeni",
           color: "bg-[#d64526]",
-          source: "user",
+          // is_bot true olsa bile listings tablosundan gelen veriyi kullanıcı ilanı kabul ediyoruz
+          source: item.is_bot ? "bot" : "user",
           phone: phone
         }
       })
