@@ -15,7 +15,7 @@ import { CompaniesView } from "@/components/views/CompaniesView"
 import { CompanyProfileView } from "@/components/views/CompanyProfileView"
 import { OverviewView } from "@/components/views/OverviewView"
 import { FinanceView } from "@/components/views/FinanceView"
-import { HelpCenterView } from "@/components/views/HelpCenterView" // YARDIM MERKEZİ IMPORT EDİLDİ
+import { HelpCenterView } from "@/components/views/HelpCenterView"
 import { CreateListingModal } from "@/components/CreateListingModal"
 import { Sidebar } from "@/components/Sidebar"
 
@@ -249,15 +249,15 @@ export default function Page() {
       })
 
       const formattedBotLoads: Load[] = (botData || []).map((item: DatabaseListing) => {
-        const rawDetail = cleanText(item.cargo_detail || item.message || item.text || "WhatsApp İlanı")
-        const rawCompany = cleanText(item.company_name || "WhatsApp Lojistik Akışı")
+        const rawDetail = cleanText(item.cargo_detail || item.message || item.text || "Saha İlanı")
+        const rawCompany = cleanText(item.company_name || "Saha Lojistik Ağı")
         const rawVehicle = cleanText(item.vehicle_type || "TIR / Kamyon")
         const extractedPhone = extractPhone(rawDetail) || item.phone || "Belirtilmedi"
 
         return {
           id: `bot-${item.id}`,
           company: rawCompany,
-          initials: "WA",
+          initials: "SL",
           from: cleanText(item.from_city),
           to: cleanText(item.to_city),
           cargo: rawDetail,
@@ -440,7 +440,6 @@ export default function Page() {
           {activeTab === "Firmalar" && <CompaniesView loads={loads} />}
           {activeTab === "Şirket Profili" && <CompanyProfileView onProfileUpdated={fetchProfile} />}
           {activeTab === "Sefer Hesapla" && <CalculatorView />}
-          {/* YARDIM MERKEZİ EKRANA BAĞLANDI */}
           {activeTab === "Yardım Merkezi" && <HelpCenterView />}
         </main>
       </div>
