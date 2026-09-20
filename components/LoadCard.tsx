@@ -1,6 +1,7 @@
 "use client"
 
-import { Phone, MessageSquare, Star, Building2, MapPin, ArrowRight, Truck, Clock, ShieldCheck } from "lucide-react"
+import { Phone, MessageSquare, Star, Building2, MapPin, ArrowRight, Truck, Clock, ShieldCheck, Copy, Check } from "lucide-react"
+import { useState } from "react"
 
 export type Load = {
   id: string
@@ -47,8 +48,16 @@ const highlightMatch = (text: string, query: string) => {
 }
 
 export function LoadCard({ load, searchQuery = "" }: LoadCardProps) {
+  const [copied, setCopied] = useState(false)
   const cleanQuery = searchQuery.trim()
   const isUserLoad = load.source === "user"
+
+  const copyPhone = () => {
+    if (!load.phone || load.phone === "Belirtilmedi") return
+    navigator.clipboard.writeText(load.phone)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
 
   const handleWhatsApp = () => {
     if (!load.phone || load.phone === "Belirtilmedi") {
@@ -119,48 +128,46 @@ export function LoadCard({ load, searchQuery = "" }: LoadCardProps) {
         </div>
 
         {/* NEREDEN - NEREYE ROTA KUTUSU */}
-        {isUserLoad && (
-          <div className="my-4 rounded-xl bg-[#f8fafc] p-3.5 border border-[#edf2f7]">
-            <div className="flex items-center justify-between gap-2">
-              {/* Kalkış */}
-              <div className="flex-1 min-w-0">
-                <span className="block text-[10px] font-bold tracking-wider text-[#8da0b2] uppercase">Nereden</span>
-                <div className="flex items-center gap-1.5 mt-0.5">
-                  <MapPin className="size-4 text-emerald-600 shrink-0" />
-                  <span className="font-bold text-[#122c4a] text-sm sm:text-base truncate">
-                    {load.from && load.from !== "-" ? highlightMatch(load.from, cleanQuery) : "Belirtilmedi"}
-                  </span>
-                </div>
+        <div className="my-4 rounded-xl bg-[#f8fafc] p-3.5 border border-[#edf2f7]">
+          <div className="flex items-center justify-between gap-2">
+            {/* Kalkış */}
+            <div className="flex-1 min-w-0">
+              <span className="block text-[10px] font-bold tracking-wider text-[#8da0b2] uppercase">Nereden</span>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <MapPin className="size-4 text-emerald-600 shrink-0" />
+                <span className="font-bold text-[#122c4a] text-sm sm:text-base truncate">
+                  {load.from && load.from !== "-" ? highlightMatch(load.from, cleanQuery) : "Belirtilmedi"}
+                </span>
               </div>
+            </div>
 
-              {/* Ok */}
-              <div className="flex flex-col items-center justify-center px-2 shrink-0">
-                <div className="flex items-center gap-1 text-[#cbd5e1]">
-                  <div className="h-0.5 w-3 bg-[#cbd5e1] rounded-full hidden sm:block" />
-                  <ArrowRight className="size-4 text-[#8da0b2]" />
-                  <div className="h-0.5 w-3 bg-[#cbd5e1] rounded-full hidden sm:block" />
-                </div>
-                {load.distance && load.distance !== "Belirtilmemiş" && (
-                  <span className="text-[10px] font-medium text-[#8da0b2] mt-0.5">{load.distance}</span>
-                )}
+            {/* Ok */}
+            <div className="flex flex-col items-center justify-center px-2 shrink-0">
+              <div className="flex items-center gap-1 text-[#cbd5e1]">
+                <div className="h-0.5 w-3 bg-[#cbd5e1] rounded-full hidden sm:block" />
+                <ArrowRight className="size-4 text-[#8da0b2]" />
+                <div className="h-0.5 w-3 bg-[#cbd5e1] rounded-full hidden sm:block" />
               </div>
+              {load.distance && load.distance !== "Belirtilmemiş" && (
+                <span className="text-[10px] font-medium text-[#8da0b2] mt-0.5">{load.distance}</span>
+              )}
+            </div>
 
-              {/* Varış */}
-              <div className="flex-1 min-w-0 text-right">
-                <span className="block text-[10px] font-bold tracking-wider text-[#8da0b2] uppercase">Nereye</span>
-                <div className="flex items-center justify-end gap-1.5 mt-0.5">
-                  <span className="font-bold text-[#122c4a] text-sm sm:text-base truncate">
-                    {load.to && load.to !== "-" ? highlightMatch(load.to, cleanQuery) : "Belirtilmedi"}
-                  </span>
-                  <MapPin className="size-4 text-red-500 shrink-0" />
-                </div>
+            {/* Varış */}
+            <div className="flex-1 min-w-0 text-right">
+              <span className="block text-[10px] font-bold tracking-wider text-[#8da0b2] uppercase">Nereye</span>
+              <div className="flex items-center justify-end gap-1.5 mt-0.5">
+                <span className="font-bold text-[#122c4a] text-sm sm:text-base truncate">
+                  {load.to && load.to !== "-" ? highlightMatch(load.to, cleanQuery) : "Belirtilmedi"}
+                </span>
+                <MapPin className="size-4 text-red-500 shrink-0" />
               </div>
             </div>
           </div>
-        )}
+        </div>
 
         {/* YÜK DETAYI / İLAN İÇERİĞİ */}
-        <div className={`space-y-2 mb-3 ${!isUserLoad ? "mt-4" : ""}`}>
+        <div className="space-y-2 mb-3">
           <div className="bg-[#f8fafc] p-3 rounded-lg border border-[#edf2f7]">
             <span className="text-[10px] uppercase tracking-wider text-[#8da0b2] block font-semibold mb-1">
               İlan İçeriği / Yük Detayı
@@ -170,7 +177,6 @@ export function LoadCard({ load, searchQuery = "" }: LoadCardProps) {
             </p>
           </div>
 
-          {/* Varsa Ekstra Mesaj/Açıklama Notu */}
           {load.message && load.message !== "-" && load.message !== load.cargo && (
             <p className="text-xs text-[#627d98] bg-[#f0f4f8] p-2.5 rounded-lg border border-[#e2e8f0] italic line-clamp-2">
               "{highlightMatch(load.message, cleanQuery)}"
@@ -187,7 +193,7 @@ export function LoadCard({ load, searchQuery = "" }: LoadCardProps) {
             </span>
           )}
 
-          {load.price && (
+          {load.price && load.price !== "₺0" && (
             <span className="text-xs bg-emerald-50 text-emerald-700 font-bold px-3 py-1 rounded-md ml-auto border border-emerald-200 shadow-2xs">
               {load.price}
             </span>
@@ -197,9 +203,20 @@ export function LoadCard({ load, searchQuery = "" }: LoadCardProps) {
 
       {/* ALT KISIM: İletişim & Butonlar */}
       <div className="flex items-center justify-between pt-3 border-t border-[#f0f4f8] mt-3">
-        <div className="text-xs text-[#8da0b2]">
-          İletişim: <span className="font-bold text-[#122c4a] ml-1">{load.phone || "Belirtilmedi"}</span>
+        <div className="flex items-center gap-1.5 text-xs text-[#8da0b2]">
+          <span>İletişim:</span>
+          <span className="font-bold text-[#122c4a]">{load.phone || "Belirtilmedi"}</span>
+          {load.phone && load.phone !== "Belirtilmedi" && (
+            <button
+              onClick={copyPhone}
+              className="p-1 hover:bg-gray-100 rounded transition-colors text-gray-500"
+              title="Numarayı Kopyala"
+            >
+              {copied ? <Check className="size-3.5 text-green-600" /> : <Copy className="size-3.5" />}
+            </button>
+          )}
         </div>
+
         <div className="flex items-center gap-2">
           <button 
             onClick={handleWhatsApp} 
