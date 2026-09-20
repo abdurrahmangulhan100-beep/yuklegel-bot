@@ -20,6 +20,7 @@ import { Sidebar } from "@/components/Sidebar"
 
 interface DatabaseListing {
   id: string | number
+  user_id?: string
   company_name?: string
   from_city?: string
   to_city?: string
@@ -60,6 +61,7 @@ export default function Page() {
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [activeTab, setActiveTab] = useState("overview")
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
 
   const [profile, setProfile] = useState({
     company_name: "YükleGel Kullanıcısı",
@@ -68,7 +70,7 @@ export default function Page() {
   })
 
   useEffect(() => {
-    let authSubscription: { unsubscribe: () => void } | null = null;
+    let authSubscription: { unsubscribe: () => void } | null = null
 
     const verifySession = async () => {
       try {
@@ -94,6 +96,7 @@ export default function Page() {
         if (error || !session) {
           router.push("/login")
         } else {
+          setCurrentUserId(session.user.id)
           setIsCheckingAuth(false)
         }
       } catch (err) {
@@ -107,6 +110,9 @@ export default function Page() {
     if (supabase) {
       const { data } = supabase.auth.onAuthStateChange((event, session) => {
         const isGuest = typeof window !== 'undefined' ? localStorage.getItem("is_guest") === "true" : false
+        if (session) {
+          setCurrentUserId(session.user.id)
+        }
         if (!session && !isGuest && event === "SIGNED_OUT") {
           router.push("/login")
         }
@@ -137,6 +143,8 @@ export default function Page() {
 
       const { data: { user }, error: userError } = await supabase.auth.getUser()
       if (userError || !user) return
+
+      setCurrentUserId(user.id)
 
       const { data, error } = await supabase
         .from("profiles")
@@ -192,12 +200,13 @@ export default function Page() {
 
       const formattedUserLoads: Load[] = (userData || []).map((item: DatabaseListing) => ({
         id: `user-${item.id}`,
+        userId: item.user_id, // Kullanıcı ID eklendi
         company: item.company_name || "İsimsiz Firma",
         initials: (item.company_name || "İF").substring(0, 2).toUpperCase(),
         from: cleanText(item.from_city),
         to: cleanText(item.to_city),
         cargo: cleanText(item.cargo_detail),
-        message: cleanText(item.message), // Özel açıklama metni eklendi
+        message: cleanText(item.message),
         vehicle: cleanText(item.vehicle_type || "13.60 Tenteli"),
         distance: "450 km",
         price: typeof item.price === "number" ? `₺${item.price.toLocaleString("tr-TR")}` : (item.price || "₺0"),
@@ -394,7 +403,7 @@ export default function Page() {
               searchQuery={query}
             />
           )}
-          {activeTab === "Seferlerim" && <TripsView loads={loads} />}
+          {activeTab === "Seferlerim" && <TripsView loads={loads} currentUserId={currentUserId} />}
           {activeTab === "Gelir Gider" && <FinanceView />}
           {activeTab === "Firmalar" && <CompaniesView loads={loads} />}
           {activeTab === "Şirket Profili" && <CompanyProfileView onProfileUpdated={fetchProfile} />}
