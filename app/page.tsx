@@ -167,11 +167,9 @@ export default function Page() {
     }
   }
 
-  // Sadece son 12 saatin verilerini çeken güncellenmiş fonksiyon
   const fetchListings = async () => {
     setIsLoading(true)
     try {
-      // 12 saat öncesinin zaman damgası
       const twelveHoursAgo = new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString()
 
       const userReq = supabase 
@@ -199,6 +197,7 @@ export default function Page() {
         from: cleanText(item.from_city),
         to: cleanText(item.to_city),
         cargo: cleanText(item.cargo_detail),
+        message: cleanText(item.message), // Özel açıklama metni eklendi
         vehicle: cleanText(item.vehicle_type || "13.60 Tenteli"),
         distance: "450 km",
         price: typeof item.price === "number" ? `₺${item.price.toLocaleString("tr-TR")}` : (item.price || "₺0"),
@@ -222,6 +221,7 @@ export default function Page() {
           from: cleanText(item.from_city),
           to: cleanText(item.to_city),
           cargo: rawDetail,
+          message: cleanText(item.message),
           vehicle: rawVehicle,
           distance: "Belirtilmemiş",
           price: "",
@@ -264,7 +264,7 @@ export default function Page() {
   const filteredLoads = useMemo(() => loads.filter((load) => {
     const filterMatch = activeFilter === "Tümü" || (activeFilter === "Acil" ? load.urgent : load.vehicle.toLowerCase().includes(activeFilter.toLowerCase()))
     const sourceMatch = sourceFilter === "all" || load.source === sourceFilter
-    const searchMatch = `${load.company} ${load.from} ${load.to} ${load.cargo}`.toLowerCase().includes(query.toLowerCase())
+    const searchMatch = `${load.company} ${load.from} ${load.to} ${load.cargo} ${load.message || ''}`.toLowerCase().includes(query.toLowerCase())
     return filterMatch && sourceMatch && searchMatch
   }), [loads, activeFilter, sourceFilter, query])
 
@@ -279,10 +279,6 @@ export default function Page() {
       activeRoutesCount: uniqueRoutes > 0 ? uniqueRoutes : 12
     }
   }, [loads])
-
-  const handleAddLoad = (newLoad: Load) => {
-    setLoads(prev => [newLoad, ...prev])
-  }
 
   const handleLogout = async () => {
     try {
@@ -405,12 +401,12 @@ export default function Page() {
           {activeTab === "Sefer Hesapla" && <CalculatorView />}
         </main>
       </div>
-     <CreateListingModal 
+      <CreateListingModal 
         isOpen={isCreateOpen} 
         onClose={() => setIsCreateOpen(false)} 
         onSuccess={() => {
           setIsCreateOpen(false)
-          fetchListings() // İlan eklendikten sonra listeyi otomatik yeniler
+          fetchListings()
         }} 
       />
     </div>
