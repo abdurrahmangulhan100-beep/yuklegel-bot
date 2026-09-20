@@ -19,7 +19,7 @@ export function OverviewView({ loads, onOpenCreate, setActiveTab }: OverviewProp
       {/* Üst Karşılama Alanı */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-2xl bg-[#122c4a] p-6 text-white shadow-md">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">YükleGel Operasyon Paneline Hoş Geldiniz</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Nakliye Cepte Operasyon Paneline Hoş Geldiniz</h1>
           <p className="mt-1 text-sm text-gray-300">Günlük lojistik akışınızı yönetin, yeni seferler ekleyin ve piyasa verilerini takip edin.</p>
         </div>
         <div className="flex items-center gap-3">
