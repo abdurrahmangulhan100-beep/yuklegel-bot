@@ -32,6 +32,11 @@ interface DatabaseListing {
   urgent?: boolean
   created_at?: string
   phone?: string
+  profiles?: {
+    company_name?: string
+    phone?: string
+    authorized_person?: string
+  } | null
 }
 
 const cleanText = (text?: string | null) => {
@@ -44,9 +49,9 @@ const cleanText = (text?: string | null) => {
 }
 
 const extractPhone = (text?: string | null) => {
-  if (!text) return "05551234567"
+  if (!text) return ""
   const match = text.match(/(0?5\d{2}\s*\d{3}\s*\d{2}\s*\d{2})/)
-  return match ? match[0].replace(/\s+/g, "") : "05551234567"
+  return match ? match[0].replace(/\s+/g, "") : ""
 }
 
 export default function Page() {
@@ -180,10 +185,18 @@ export default function Page() {
     try {
       const twelveHoursAgo = new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString()
 
+      // listings tablosunu ilanı açan kullanıcının profiles verisiyle ilişkilendirip çekiyoruz
       const userReq = supabase 
         ? supabase
             .from("listings")
-            .select("*")
+            .select(`
+              *,
+              profiles:user_id (
+                company_name,
+                phone,
+                authorized_person
+              )
+            `)
             .gte("created_at", twelveHoursAgo)
             .order("created_at", { ascending: false }) 
         : Promise.resolve({ data: [] })
@@ -198,30 +211,51 @@ export default function Page() {
 
       const [{ data: userData }, { data: botData }] = await Promise.all([userReq, botReq])
 
-      const formattedUserLoads: Load[] = (userData || []).map((item: DatabaseListing) => ({
-        id: `user-${item.id}`,
-        userId: item.user_id, // Kullanıcı ID eklendi
-        company: item.company_name || "İsimsiz Firma",
-        initials: (item.company_name || "İF").substring(0, 2).toUpperCase(),
-        from: cleanText(item.from_city),
-        to: cleanText(item.to_city),
-        cargo: cleanText(item.cargo_detail),
-        message: cleanText(item.message),
-        vehicle: cleanText(item.vehicle_type || "13.60 Tenteli"),
-        distance: "450 km",
-        price: typeof item.price === "number" ? `₺${item.price.toLocaleString("tr-TR")}` : (item.price || "₺0"),
-        urgent: Boolean(item.urgent),
-        time: item.created_at ? new Date(item.created_at).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" }) : "Yeni",
-        color: "bg-[#d64526]",
-        source: "user",
-        phone: item.phone || "05551234567"
-      }))
+      const formattedUserLoads: Load[] = (userData || []).map((item: DatabaseListing) => {
+        // Öncelik sıralaması: İlandaki Firma Adı -> Profildeki Firma Adı -> Yetkili Kişi -> Bireysel Kullanıcı
+        const companyName = cleanText(
+          item.company_name || 
+          item.profiles?.company_name || 
+          item.profiles?.authorized_person || 
+          "Bireysel Kullanıcı"
+        )
+
+        // Öncelik sıralaması: İlandaki Telefon -> Profildeki Telefon
+        const phone = item.phone || item.profiles?.phone || "Belirtilmedi"
+
+        const initials = companyName
+          .split(" ")
+          .filter(Boolean)
+          .map((n) => n[0])
+          .join("")
+          .toUpperCase()
+          .substring(0, 2) || "NK"
+
+        return {
+          id: `user-${item.id}`,
+          userId: item.user_id,
+          company: companyName,
+          initials: initials,
+          from: cleanText(item.from_city),
+          to: cleanText(item.to_city),
+          cargo: cleanText(item.cargo_detail),
+          message: cleanText(item.message),
+          vehicle: cleanText(item.vehicle_type || "13.60 Tenteli"),
+          distance: "450 km",
+          price: typeof item.price === "number" ? `₺${item.price.toLocaleString("tr-TR")}` : (item.price || "₺0"),
+          urgent: Boolean(item.urgent),
+          time: item.created_at ? new Date(item.created_at).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" }) : "Yeni",
+          color: "bg-[#d64526]",
+          source: "user",
+          phone: phone
+        }
+      })
 
       const formattedBotLoads: Load[] = (botData || []).map((item: DatabaseListing) => {
         const rawDetail = cleanText(item.cargo_detail || item.message || item.text || "WhatsApp İlanı")
         const rawCompany = cleanText(item.company_name || "WhatsApp Lojistik Akışı")
         const rawVehicle = cleanText(item.vehicle_type || "TIR / Kamyon")
-        const extractedPhone = extractPhone(rawDetail)
+        const extractedPhone = extractPhone(rawDetail) || item.phone || "Belirtilmedi"
 
         return {
           id: `bot-${item.id}`,
