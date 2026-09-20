@@ -57,11 +57,6 @@ export function CreateListingModal({ isOpen, onClose, onSuccess }: CreateListing
     setLoading(true)
 
     try {
-      // Yük detayını opsiyonel açıklama ile birleştiriyoruz
-      const finalCargoDetail = formData.description 
-        ? `${formData.cargoType} (${formData.description})` 
-        : formData.cargoType
-
       const { error } = await supabase
         .from('listings')
         .insert([
@@ -70,9 +65,10 @@ export function CreateListingModal({ isOpen, onClose, onSuccess }: CreateListing
             phone: formData.phone,
             from_city: formData.fromDistrict ? `${formData.fromCity} - ${formData.fromDistrict}` : formData.fromCity,
             to_city: formData.toDistrict ? `${formData.toCity} - ${formData.toDistrict}` : formData.toCity,
-            cargo_detail: finalCargoDetail,
+            cargo_detail: formData.cargoType,
             vehicle_type: formData.vehicleType,
             price: formData.price ? Number(formData.price) : null,
+            message: formData.description, // Özel not 'message' kolonuna kaydediliyor
             urgent: formData.isUrgent
           }
         ])
