@@ -15,6 +15,7 @@ import { CompaniesView } from "@/components/views/CompaniesView"
 import { CompanyProfileView } from "@/components/views/CompanyProfileView"
 import { OverviewView } from "@/components/views/OverviewView"
 import { FinanceView } from "@/components/views/FinanceView"
+import { HelpCenterView } from "@/components/views/HelpCenterView" // YARDIM MERKEZİ IMPORT EDİLDİ
 import { CreateListingModal } from "@/components/CreateListingModal"
 import { Sidebar } from "@/components/Sidebar"
 
@@ -439,6 +440,8 @@ export default function Page() {
           {activeTab === "Firmalar" && <CompaniesView loads={loads} />}
           {activeTab === "Şirket Profili" && <CompanyProfileView onProfileUpdated={fetchProfile} />}
           {activeTab === "Sefer Hesapla" && <CalculatorView />}
+          {/* YARDIM MERKEZİ EKRANA BAĞLANDI */}
+          {activeTab === "Yardım Merkezi" && <HelpCenterView />}
         </main>
       </div>
       <CreateListingModal 
