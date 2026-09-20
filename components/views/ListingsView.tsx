@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils"
 const filters = ["Tümü", "Acil", "Tır", "Kamyon", "Frigo"]
 const sourceTabs = [
   { value: "all", label: "Tüm İlanlar" }, 
-  { value: "user", label: "YükleGel İlanları (Kullanıcı)" }, 
+  { value: "user", label: "Nakliye Cepte İlanları (Kullanıcı)" }, 
   { value: "bot", label: "Web/Bot İlanları" }
 ] as const
 
