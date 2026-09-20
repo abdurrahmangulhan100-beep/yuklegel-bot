@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { supabase } from "@/lib/supabase"
 
 interface CreateListingModalProps {
@@ -28,9 +28,10 @@ const YUK_CİNSLERİ = ["Kömür", "Tahıl / Hububat", "Demir / Çelik", "Paletl
 
 export function CreateListingModal({ isOpen, onClose, onSuccess }: CreateListingModalProps) {
   const [loading, setLoading] = useState(false)
+  const [userId, setUserId] = useState<string | null>(null)
   const [formData, setFormData] = useState({
-    companyName: "GÜLHAN NAKLİYAT",
-    phone: "05421698053",
+    companyName: "",
+    phone: "",
     fromCity: "Afyonkarahisar",
     fromDistrict: "",
     toCity: "Adana",
@@ -43,6 +44,38 @@ export function CreateListingModal({ isOpen, onClose, onSuccess }: CreateListing
     distance: "",
     isUrgent: false
   })
+
+  // Modal açıldığında giriş yapan kullanıcının bilgilerini çek
+  useEffect(() => {
+    if (!isOpen) return
+
+    const loadUserProfile = async () => {
+      if (!supabase) return
+
+      try {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return
+
+        setUserId(user.id)
+
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("id", user.id)
+          .maybeSingle()
+
+        setFormData((prev) => ({
+          ...prev,
+          companyName: profile?.company_name || user.email?.split("@")[0] || "Şirket Adı",
+          phone: profile?.phone || user.user_metadata?.phone || ""
+        }))
+      } catch (err) {
+        console.error("Kullanıcı bilgisi çekme hatası:", err)
+      }
+    }
+
+    loadUserProfile()
+  }, [isOpen])
 
   if (!isOpen) return null
 
@@ -61,14 +94,15 @@ export function CreateListingModal({ isOpen, onClose, onSuccess }: CreateListing
         .from('listings')
         .insert([
           {
+            user_id: userId, // Aktif kullanıcının Auth ID'si
             company_name: formData.companyName,
             phone: formData.phone,
-            from_city: formData.fromDistrict ? `${formData.fromCity} - ${formData.fromDistrict}` : formData.fromCity,
-            to_city: formData.toDistrict ? `${formData.toCity} - ${formData.toDistrict}` : formData.toCity,
+            from_city: formData.fromDistrict ? `${formData.fromCity} -${formData.fromDistrict}` : formData.fromCity,
+            to_city: formData.toDistrict ? `${formData.toCity} -${formData.toDistrict}` : formData.toCity,
             cargo_detail: formData.cargoType,
             vehicle_type: formData.vehicleType,
             price: formData.price ? Number(formData.price) : null,
-            message: formData.description, // Özel not 'message' kolonuna kaydediliyor
+            message: formData.description,
             urgent: formData.isUrgent
           }
         ])
