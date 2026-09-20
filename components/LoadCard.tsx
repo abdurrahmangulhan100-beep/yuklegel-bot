@@ -27,7 +27,7 @@ type LoadCardProps = {
   load: Load
   searchQuery?: string
   isFavorite?: boolean
-  onToggleFavorite?: () => void
+  onToggleFavorite?: (listingId?: string) => void
   onUserBlocked?: (userIdOrPhone: string) => void
 }
 
@@ -57,6 +57,7 @@ export function LoadCard({ load, searchQuery = "", isFavorite = false, onToggleF
   const [reportReason, setReportReason] = useState("Sahte veya Yanıltıcı İlan")
   const [isSubmittingReport, setIsSubmittingReport] = useState(false)
   const [reportSuccess, setReportSuccess] = useState(false)
+  const [isFavLoading, setIsFavLoading] = useState(false)
 
   const cleanQuery = searchQuery.trim()
   const isUserLoad = load.source === "user"
@@ -97,6 +98,68 @@ export function LoadCard({ load, searchQuery = "", isFavorite = false, onToggleF
       window.location.href = `tel:${load.phone}`
     } else {
       alert("Bu ilan için telefon numarası bulunamadı.")
+    }
+  }
+
+  // FAVORİ EKLEME & ÇIKARMA / MİSAFİR KONTROLÜ
+  const handleFavoriteClick = async (e: React.MouseEvent) => {
+    e.stopPropagation()
+
+    // 1. Misafir Kullanıcı Kontrolü
+    const isGuest = typeof window !== "undefined" ? localStorage.getItem("is_guest") === "true" : false
+    if (isGuest) {
+      alert("Favorilere ilan ekleyebilmek için lütfen ücretsiz üye olunuz veya giriş yapınız.")
+      return
+    }
+
+    if (isFavLoading) return
+    setIsFavLoading(true)
+
+    try {
+      if (!supabase) return
+
+      // 2. Aktif Kullanıcı Kontrolü
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        alert("Favorilere eklemek için oturum açmanız gerekmektedir.")
+        setIsFavLoading(false)
+        return
+      }
+
+      const listingIdStr = String(load.id)
+
+      if (isFavorite) {
+        // Supabase favorites tablosundan sil
+        const { error } = await supabase
+          .from("favorites")
+          .delete()
+          .eq("user_id", user.id)
+          .eq("listing_id", listingIdStr)
+
+        if (error) throw error
+      } else {
+        // Supabase favorites tablosuna ekle
+        const { error } = await supabase
+          .from("favorites")
+          .insert([
+            {
+              user_id: user.id,
+              listing_id: listingIdStr
+            }
+          ])
+
+        if (error) throw error
+      }
+
+      // Üst bileşene durumun değiştiğini bildir
+      if (onToggleFavorite) {
+        onToggleFavorite(listingIdStr)
+      }
+    } catch (err) {
+      console.error("Favori işlemi sırasında hata oluştu:", err)
+      alert("Favori işlemi gerçekleştirilemedi. Lütfen tekrar deneyin.")
+    } finally {
+      setIsFavLoading(false)
     }
   }
 
@@ -297,15 +360,18 @@ export function LoadCard({ load, searchQuery = "", isFavorite = false, onToggleF
             <Phone className="size-4" />
           </button>
           <button 
-            onClick={onToggleFavorite}
+            onClick={handleFavoriteClick}
+            disabled={isFavLoading}
             title={isFavorite ? "Favorilerden Çıkar" : "Favorilere Ekle"} 
             className={`grid size-9 place-items-center rounded-lg transition-colors cursor-pointer ${
+              isFavLoading ? "opacity-50 cursor-not-allowed" : ""
+            } ${
               isFavorite 
                 ? "bg-amber-50 text-amber-500 hover:bg-amber-100" 
                 : "bg-gray-50 text-gray-400 hover:bg-gray-100 hover:text-amber-500"
             }`}
           >
-            <Star className={`size-4 ${isFavorite ? "fill-amber-500" : ""}`} />
+            <Star className={`size-4 ${isFavorite ? "fill-amber-500 text-amber-500" : ""}`} />
           </button>
         </div>
       </div>
