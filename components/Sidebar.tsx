@@ -1,6 +1,6 @@
 "use client"
 
-import { Building2, Calculator, ChevronLeft, ChevronRight, CircleHelp, FileText, LayoutDashboard, LogOut, ShieldCheck, Truck, UserX, Users, WalletCards, X } from "lucide-react"
+import { Building2, Calculator, ChevronLeft, ChevronRight, CircleHelp, FileText, LayoutDashboard, LogOut, ShieldCheck, Star, Truck, UserX, WalletCards, X } from "lucide-react"
 import { Separator } from "@/components/ui/separator"
 import { cn } from "@/lib/utils"
 import { supabase } from "@/lib/supabase"
@@ -10,6 +10,7 @@ type SidebarProps = {
   activeTab: string;
   setActiveTab: (tab: string) => void;
   loadsCount: number;
+  favoritesCount?: number;
   isCollapsed: boolean;
   setIsCollapsed: (collapsed: boolean) => void;
   isSidebarOpen: boolean;
@@ -20,6 +21,7 @@ export function Sidebar({
   activeTab, 
   setActiveTab, 
   loadsCount, 
+  favoritesCount = 0,
   isCollapsed, 
   setIsCollapsed, 
   isSidebarOpen, 
@@ -60,12 +62,12 @@ export function Sidebar({
       <Separator className="bg-white/10" />
 
       <nav className="flex flex-1 flex-col gap-1 px-3 py-6 overflow-y-auto">
-        <NavItem icon={LayoutDashboard} label="Genel Bakış" active={activeTab === "overview"} collapsed={isCollapsed} onClick={() => go("overview")} />
+        <NavItem icon={LayoutDashboard} label="Genel Bakış" active={activeTab === "overview"} onClick={() => go("overview")} collapsed={isCollapsed} />
         <NavItem icon={FileText} label="İlanlar" active={activeTab === "İlanlar"} collapsed={isCollapsed} badge={loadsCount.toString()} onClick={() => go("İlanlar")} />
+        <NavItem icon={Star} label="Favorilerim" active={activeTab === "Favorilerim"} collapsed={isCollapsed} badge={favoritesCount > 0 ? favoritesCount.toString() : undefined} onClick={() => go("Favorilerim")} />
         <NavItem icon={Truck} label="Seferlerim" active={activeTab === "Seferlerim"} collapsed={isCollapsed} onClick={() => go("Seferlerim")} />
         <NavItem icon={WalletCards} label="Gelir & Gider" active={activeTab === "Gelir Gider"} collapsed={isCollapsed} onClick={() => go("Gelir Gider")} />
         <NavItem icon={Calculator} label="Sefer Hesapla" active={activeTab === "Sefer Hesapla"} collapsed={isCollapsed} onClick={() => go("Sefer Hesapla")} />
-        <NavItem icon={Users} label="Firmalar" active={activeTab === "Firmalar"} collapsed={isCollapsed} onClick={() => go("Firmalar")} />
 
         <div className="my-5 h-px bg-white/10" />
         <p className={cn("px-3 pb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/35", isCollapsed && "sr-only")}>Yönetim</p>
