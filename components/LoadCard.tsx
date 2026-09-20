@@ -52,6 +52,11 @@ export function LoadCard({ load, searchQuery = "" }: LoadCardProps) {
   const cleanQuery = searchQuery.trim()
   const isUserLoad = load.source === "user"
 
+  // Firma ismi temizliği: Veritabanından veya bot verisinden "WhatsApp" içeren bir isim gelirse otomatik temizler
+  const displayCompany = isUserLoad 
+    ? (load.company || "İsimsiz Firma")
+    : (load.company && !load.company.toLowerCase().includes("whatsapp") ? load.company : "Saha Lojistik Ağı")
+
   const copyPhone = () => {
     if (!load.phone || load.phone === "Belirtilmedi") return
     navigator.clipboard.writeText(load.phone)
@@ -94,12 +99,12 @@ export function LoadCard({ load, searchQuery = "" }: LoadCardProps) {
         <div className="flex items-center justify-between pb-3.5 border-b border-[#f0f4f8]">
           <div className="flex items-center gap-3 min-w-0">
             <div className={`grid size-10 shrink-0 place-items-center rounded-xl text-white font-bold text-sm shadow-xs ${load.color || (isUserLoad ? "bg-[#d64526]" : "bg-[#315d83]")}`}>
-              {load.initials || load.company?.substring(0, 2).toUpperCase() || (isUserLoad ? "LN" : "SL")}
+              {isUserLoad ? (load.initials || "NK") : "SL"}
             </div>
             <div className="min-w-0 truncate">
               <div className="flex items-center gap-1.5 truncate">
                 <span className="font-semibold text-sm text-[#122c4a] truncate">
-                  {highlightMatch(load.company || (isUserLoad ? "İsimsiz Firma" : "Saha Lojistik Ağı"), cleanQuery)}
+                  {highlightMatch(displayCompany, cleanQuery)}
                 </span>
                 {isUserLoad && (
                   <ShieldCheck className="size-4 text-blue-600 shrink-0" title="Onaylı İlan" />
