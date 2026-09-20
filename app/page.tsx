@@ -405,11 +405,13 @@ export default function Page() {
           {activeTab === "Sefer Hesapla" && <CalculatorView />}
         </main>
       </div>
-
-      <CreateListingModal 
+     <CreateListingModal 
         isOpen={isCreateOpen} 
-        setIsOpen={setIsCreateOpen} 
-        onAddLoad={handleAddLoad} 
+        onClose={() => setIsCreateOpen(false)} 
+        onSuccess={() => {
+          setIsCreateOpen(false)
+          fetchListings() // İlan eklendikten sonra listeyi otomatik yeniler
+        }} 
       />
     </div>
   )
