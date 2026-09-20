@@ -11,13 +11,13 @@ export function FavoritesView() {
   const [isGuest, setIsGuest] = useState(false)
 
   useEffect(() => {
-    checkAndLoadFavorites()
+    loadUserFavorites()
   }, [])
 
-  const checkAndLoadFavorites = async () => {
+  const loadUserFavorites = async () => {
     setLoading(true)
 
-    // 1. Misafir Kontrolü
+    // Misafir Kontrolü
     const guestCheck = typeof window !== "undefined" ? localStorage.getItem("is_guest") === "true" : false
     setIsGuest(guestCheck)
 
@@ -27,41 +27,43 @@ export function FavoritesView() {
     }
 
     try {
-      // 2. Kullanıcının Supabase ID'sini Al
       const { data: { user } } = await supabase.auth.getUser()
-
-      // 3. LocalStorage'dan kayıtlı favori ID'lerini çek
-      const localFavs: string[] = JSON.parse(localStorage.getItem("favorites") || "[]")
-      let dbFavIds: string[] = []
-
-      // 4. Supabase DB'den kayıtlı favori ID'lerini çek
-      if (user) {
-        const { data: favData } = await supabase
-          .from("favorites")
-          .select("listing_id")
-          .eq("user_id", user.id)
-
-        if (favData) {
-          dbFavIds = favData.map((f) => String(f.listing_id))
-        }
-      }
-
-      // İki kaynaktaki ID'leri birleştir (Benzersiz yap)
-      const allFavIds = Array.from(new Set([...localFavs.map(String), ...dbFavIds]))
-
-      if (allFavIds.length === 0) {
+      if (!user) {
         setFavoriteLoads([])
         setLoading(false)
         return
       }
 
-      // 5. İlan Detaylarını Getir (Kullanıcı İlanları)
-      const { data: listingsData } = await supabase
+      // 1. Supabase 'favorites' tablosundan bu kullanıcının favorilerini al
+      const { data: favData, error: favError } = await supabase
+        .from("favorites")
+        .select("listing_id")
+        .eq("user_id", user.id)
+
+      if (favError) throw favError
+
+      const favIds = (favData || []).map((f) => String(f.listing_id))
+
+      if (favIds.length === 0) {
+        setFavoriteLoads([])
+        setLoading(false)
+        return
+      }
+
+      // 2. Kullanıcı İlanlarından (listings) eşleşenleri çek
+      const { data: userListings } = await supabase
         .from("listings")
         .select("*")
-        .in("id", allFavIds)
+        .in("id", favIds)
 
-      const formattedListings: Load[] = (listingsData || []).map((item) => ({
+      // 3. Bot/Saha İlanlarından (bot_listings) eşleşenleri çek
+      const { data: botListings } = await supabase
+        .from("bot_listings")
+        .select("*")
+        .in("id", favIds)
+
+      // 4. İlanları formatla
+      const formattedUserLoads: Load[] = (userListings || []).map((item) => ({
         id: String(item.id),
         userId: item.user_id,
         company: item.company_name || "Şirket Adı",
@@ -78,50 +80,47 @@ export function FavoritesView() {
         phone: item.phone || "Belirtilmedi"
       }))
 
-      // 6. Eğer bot/önbellek ilanları varsa onları da ekle
-      const cachedLoads: Load[] = JSON.parse(localStorage.getItem("all_cached_loads") || "[]")
-      const matchedCachedLoads = cachedLoads.filter((load) => allFavIds.includes(String(load.id)))
+      const formattedBotLoads: Load[] = (botListings || []).map((item) => ({
+        id: String(item.id),
+        company: item.company_name || "Saha Lojistik Ağ",
+        initials: "SL",
+        from: item.from_city || "-",
+        to: item.to_city || "-",
+        cargo: item.description || item.cargo_detail || "Saha İlanı",
+        message: item.message,
+        vehicle: item.vehicle_type || "Belirtilmedi",
+        price: item.price ? `₺${Number(item.price).toLocaleString("tr-TR")}` : "Belirtilmedi",
+        urgent: false,
+        time: item.created_at ? new Date(item.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "Yeni",
+        source: "bot",
+        phone: item.phone || "-"
+      }))
 
-      // Tüm eşleşen favorileri birleştir
-      const mergedLoads = [...formattedListings]
-      matchedCachedLoads.forEach((cached) => {
-        if (!mergedLoads.some((m) => String(m.id) === String(cached.id))) {
-          mergedLoads.push(cached)
-        }
-      })
-
-      setFavoriteLoads(mergedLoads)
+      setFavoriteLoads([...formattedUserLoads, ...formattedBotLoads])
     } catch (err) {
-      console.error("Favoriler yüklenirken hata oluştu:", err)
+      console.error("Favoriler yüklenirken hata:", err)
     } finally {
       setLoading(false)
     }
   }
 
-  // Favoriden Çıkarma Fonksiyonu
   const handleRemoveFavorite = async (listingId: string) => {
-    const idStr = String(listingId)
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
 
-    // LocalStorage Güncelle
-    const localFavs: string[] = JSON.parse(localStorage.getItem("favorites") || "[]")
-    const updatedLocal = localFavs.filter((id) => String(id) !== idStr)
-    localStorage.setItem("favorites", JSON.stringify(updatedLocal))
-
-    // Supabase DB Güncelle
-    const { data: { user } } = await supabase.auth.getUser()
-    if (user) {
       await supabase
         .from("favorites")
         .delete()
         .eq("user_id", user.id)
-        .eq("listing_id", idStr)
-    }
+        .eq("listing_id", String(listingId))
 
-    // State Güncelle
-    setFavoriteLoads((prev) => prev.filter((load) => String(load.id) !== idStr))
+      setFavoriteLoads((prev) => prev.filter((load) => String(load.id) !== String(listingId)))
+    } catch (err) {
+      console.error("Favori silinirken hata:", err)
+    }
   }
 
-  // Misafir Görünümü
   if (isGuest) {
     return (
       <div className="p-6 max-w-4xl mx-auto text-center py-16">
@@ -132,12 +131,6 @@ export function FavoritesView() {
         <p className="text-xs text-gray-500 mt-2 max-w-md mx-auto">
           Misafir hesaplar favori ilanı kaydedemez. Takip etmek istediğiniz ilanları listenize eklemek için lütfen üye girişi yapın.
         </p>
-        <button
-          onClick={() => (window.location.href = "/login")}
-          className="mt-6 px-6 py-2.5 bg-[#d64526] text-white rounded-lg text-xs font-semibold hover:bg-[#b93820] transition-colors"
-        >
-          Giriş Yap / Üye Ol
-        </button>
       </div>
     )
   }
