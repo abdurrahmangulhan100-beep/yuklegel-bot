@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
-import { ShieldAlert, PhoneCall } from "lucide-react"
+import { ShieldAlert, ShieldCheck } from "lucide-react"
 
 interface CreateListingModalProps {
   isOpen: boolean
@@ -34,6 +34,9 @@ export function CreateListingModal({ isOpen, onClose, onSuccess }: CreateListing
   const [userId, setUserId] = useState<string | null>(null)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const [isGuestUser, setIsGuestUser] = useState(false)
+  
+  // Google Play UGC Şartlar Onay Kutusu
+  const [acceptedTerms, setAcceptedTerms] = useState(false)
 
   const [formData, setFormData] = useState({
     companyName: "",
@@ -54,6 +57,7 @@ export function CreateListingModal({ isOpen, onClose, onSuccess }: CreateListing
   useEffect(() => {
     if (!isOpen) return
     setErrorMsg(null)
+    setAcceptedTerms(false)
 
     // 1. MİSAFİR KULLANICI KONTROLÜ
     const checkGuest = typeof window !== 'undefined' ? localStorage.getItem("is_guest") === "true" : false
@@ -115,6 +119,12 @@ export function CreateListingModal({ isOpen, onClose, onSuccess }: CreateListing
         handleClose()
         router.push("/login")
       }, 1500)
+      return
+    }
+
+    // Google Play UGC Politika Onay Kontrolü
+    if (!acceptedTerms) {
+      setErrorMsg("Lütfen ilan yayınlamadan önce Hizmet Şartları ve Yayın Kurallarını kabul ediniz.")
       return
     }
 
@@ -390,6 +400,22 @@ export function CreateListingModal({ isOpen, onClose, onSuccess }: CreateListing
             </div>
           </div>
 
+          {/* GOOGLE PLAY UGC POLİTİKA ONAY KUTUSU (EULA & ŞARTLAR) */}
+          <div className="p-3 bg-amber-50/60 rounded-xl border border-amber-200/80 mt-2">
+            <label className="flex items-start gap-2.5 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={acceptedTerms}
+                onChange={(e) => setAcceptedTerms(e.target.checked)}
+                className="w-4 h-4 mt-0.5 accent-[#d64526] rounded cursor-pointer shrink-0"
+                disabled={isGuestUser}
+              />
+              <span className="text-[11px] text-gray-700 leading-tight">
+                İlanımda <strong>yasalara aykırı, yanıltıcı veya genel ahlaka uymayan</strong> içerik bulunmadığını, aksi takdirde ilanımın silineceğini ve hesabımın engellenebileceğini bildiren <a href="/privacy" target="_blank" className="text-[#d64526] underline font-semibold">Kullanım Koşulları & Topluluk Kurallarını</a> okudum ve kabul ediyorum.
+              </span>
+            </label>
+          </div>
+
           <div className="flex justify-end gap-2 pt-4 border-t mt-4">
             <button
               type="button"
@@ -400,10 +426,11 @@ export function CreateListingModal({ isOpen, onClose, onSuccess }: CreateListing
             </button>
             <button
               type="submit"
-              disabled={loading || isGuestUser}
-              className="px-4 py-2 bg-[#d64526] hover:bg-[#b93820] text-white rounded-lg text-xs font-medium transition-colors disabled:opacity-50"
+              disabled={loading || isGuestUser || !acceptedTerms}
+              className="px-4 py-2 bg-[#d64526] hover:bg-[#b93820] text-white rounded-lg text-xs font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
             >
-              {loading ? "Yayınlanıyor..." : "İlanı Yayınla"}
+              <ShieldCheck className="size-3.5" />
+              <span>{loading ? "Yayınlanıyor..." : "İlanı Yayınla"}</span>
             </button>
           </div>
         </form>
