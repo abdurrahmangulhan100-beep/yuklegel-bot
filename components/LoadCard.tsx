@@ -4,6 +4,7 @@ import { Phone, MessageSquare, Star, Building2, MapPin, ArrowRight, Truck, Clock
 
 export type Load = {
   id: string
+  userId?: string
   company: string
   initials: string
   from: string
@@ -50,6 +51,11 @@ export function LoadCard({ load, searchQuery = "" }: LoadCardProps) {
   const isUserLoad = load.source === "user"
 
   const handleWhatsApp = () => {
+    if (!load.phone || load.phone === "Belirtilmedi") {
+      alert("Bu ilan için telefon numarası bulunamadı.")
+      return
+    }
+
     const cleanPhone = load.phone.replace(/\D/g, "")
     const formattedPhone = cleanPhone.startsWith("0") 
       ? `9${cleanPhone}` 
@@ -65,8 +71,10 @@ export function LoadCard({ load, searchQuery = "" }: LoadCardProps) {
   }
 
   const handleCall = () => {
-    if (load.phone) {
+    if (load.phone && load.phone !== "Belirtilmedi") {
       window.location.href = `tel:${load.phone}`
+    } else {
+      alert("Bu ilan için telefon numarası bulunamadı.")
     }
   }
 
@@ -77,7 +85,7 @@ export function LoadCard({ load, searchQuery = "" }: LoadCardProps) {
         <div className="flex items-center justify-between pb-3.5 border-b border-[#f0f4f8]">
           <div className="flex items-center gap-3 min-w-0">
             <div className={`grid size-10 shrink-0 place-items-center rounded-xl text-white font-bold text-sm shadow-xs ${load.color || (isUserLoad ? "bg-[#d64526]" : "bg-[#315d83]")}`}>
-              {load.initials || "LN"}
+              {load.initials || load.company?.substring(0, 2).toUpperCase() || "LN"}
             </div>
             <div className="min-w-0 truncate">
               <div className="flex items-center gap-1.5 truncate">
@@ -110,7 +118,7 @@ export function LoadCard({ load, searchQuery = "" }: LoadCardProps) {
           </div>
         </div>
 
-        {/* SADECE KULLANICI İLANLARINDA NEREDEN - NEREYE ROTA KUTUSU GÖRÜNÜR */}
+        {/* NEREDEN - NEREYE ROTA KUTUSU */}
         {isUserLoad && (
           <div className="my-4 rounded-xl bg-[#f8fafc] p-3.5 border border-[#edf2f7]">
             <div className="flex items-center justify-between gap-2">
