@@ -9,8 +9,16 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { supabase } from "@/lib/supabase"
 import { Load } from "@/components/LoadCard"
 
-export function TripsView({ loads }: { loads: Load[] }) {
-  const userLoads = loads.filter(l => l.source === "user")
+interface TripsViewProps {
+  loads: Load[]
+  currentUserId: string | null
+}
+
+export function TripsView({ loads, currentUserId }: TripsViewProps) {
+  // Sadece o an oturum açmış kullanıcının (currentUserId) kendi ilanlarını filtreliyoruz
+  const userLoads = loads.filter(
+    (l) => l.source === "user" && l.userId && currentUserId && l.userId === currentUserId
+  )
   
   const [editingLoad, setEditingLoad] = useState<Load | null>(null)
   const [isEditOpen, setIsEditOpen] = useState(false)
@@ -138,7 +146,7 @@ export function TripsView({ loads }: { loads: Load[] }) {
               <div className="grid gap-2"><Label>Yük Detayı</Label><Input name="cargo" defaultValue={editingLoad.cargo} required /></div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="grid gap-2"><Label>Araç Tipi</Label><Input name="vehicle" defaultValue={editingLoad.vehicle} required /></div>
-                <div className="grid gap-2"><Label>Fiyat (TL)</Label><Input name="price" type="number" defaultValue={editingLoad.price.replace(/[^\d]/g, "")} required /></div>
+                <div className="grid gap-2"><Label>Fiyat (TL)</Label><Input name="price" type="number" defaultValue={editingLoad.price ? editingLoad.price.replace(/[^\d]/g, "") : ""} required /></div>
               </div>
               <DialogFooter className="pt-4">
                 <Button type="button" variant="outline" onClick={() => setIsEditOpen(false)}>İptal</Button>
