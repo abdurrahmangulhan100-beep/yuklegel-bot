@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { supabase } from "@/lib/supabase" // Supabase bağlantınızı içeri aktarın
 
 interface CreateListingModalProps {
   isOpen: boolean
@@ -36,7 +37,7 @@ export function CreateListingModal({ isOpen, onClose, onSuccess }: CreateListing
     toDistrict: "",
     cargoType: "Kömür",
     vehicleType: "Damperli Tır",
-    priceType: "total", // "ton" | "total"
+    priceType: "total", 
     price: "",
     description: "",
     distance: "",
@@ -56,23 +57,44 @@ export function CreateListingModal({ isOpen, onClose, onSuccess }: CreateListing
     setLoading(true)
 
     try {
-      console.log("Gönderilen İlan Verisi:", formData)
+      // Supabase'e veri ekleme işlemi (Ana sayfadaki DatabaseListing tipine uygun olarak)
+      const { error } = await supabase
+        .from('listings')
+        .insert([
+          {
+            company_name: formData.companyName,
+            phone: formData.phone,
+            from_city: formData.fromDistrict ? `${formData.fromCity} - ${formData.fromDistrict}` : formData.fromCity,
+            to_city: formData.toDistrict ? `${formData.toCity} - ${formData.toDistrict}` : formData.toCity,
+            cargo_detail: formData.cargoType,
+            vehicle_type: formData.vehicleType,
+            price: formData.price ? Number(formData.price) : null,
+            message: formData.description,
+            urgent: formData.isUrgent
+          }
+        ])
+
+      if (error) {
+        console.error("Kayıt Hatası:", error)
+        alert("İlan kaydedilemedi: " + error.message)
+        return
+      }
+
       if (onSuccess) onSuccess()
-      handleClose()
     } catch (error) {
-      console.error("İlan oluşturulurken hata:", error)
+      console.error("İlan oluşturulurken beklenmeyen hata:", error)
+      alert("Bir hata oluştu, lütfen tekrar deneyin.")
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4">
       <div 
         className="relative w-full max-w-2xl bg-white text-[#122c4a] rounded-xl shadow-2xl p-6 max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Kapat (X) Butonu */}
         <button
           type="button"
           onClick={handleClose}
@@ -81,7 +103,6 @@ export function CreateListingModal({ isOpen, onClose, onSuccess }: CreateListing
           ✕
         </button>
 
-        {/* Başlık */}
         <div className="border-b pb-3 pr-8">
           <h2 className="text-xl font-bold text-[#122c4a]">Yeni İlan Oluştur</h2>
           <p className="text-xs text-gray-500 mt-0.5">
@@ -90,7 +111,6 @@ export function CreateListingModal({ isOpen, onClose, onSuccess }: CreateListing
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4 pt-4">
-          {/* Firma ve Telefon */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1">
               <label className="text-xs font-semibold block text-[#122c4a]">Firma Adı</label>
@@ -114,7 +134,6 @@ export function CreateListingModal({ isOpen, onClose, onSuccess }: CreateListing
             </div>
           </div>
 
-          {/* Çıkış Şehri ve İlçesi */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1">
               <label className="text-xs font-semibold block text-[#122c4a]">Çıkış Şehri</label>
@@ -140,7 +159,6 @@ export function CreateListingModal({ isOpen, onClose, onSuccess }: CreateListing
             </div>
           </div>
 
-          {/* Varış Şehri ve İlçesi */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1">
               <label className="text-xs font-semibold block text-[#122c4a]">Varış Şehri</label>
@@ -166,7 +184,6 @@ export function CreateListingModal({ isOpen, onClose, onSuccess }: CreateListing
             </div>
           </div>
 
-          {/* Yük Cinsi ve Araç Tipi */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1">
               <label className="text-xs font-semibold block text-[#122c4a]">Yük Cinsi</label>
@@ -194,7 +211,6 @@ export function CreateListingModal({ isOpen, onClose, onSuccess }: CreateListing
             </div>
           </div>
 
-          {/* Fiyatlandırma Kutusu */}
           <div className="p-3 bg-gray-50 rounded-lg border border-gray-100 space-y-3">
             <div className="flex items-center justify-between">
               <label className="text-xs font-bold text-[#122c4a]">Fiyatlandırma Türü</label>
@@ -236,7 +252,6 @@ export function CreateListingModal({ isOpen, onClose, onSuccess }: CreateListing
             </div>
           </div>
 
-          {/* Açıklama */}
           <div className="space-y-1">
             <label className="text-xs font-semibold block text-[#122c4a]">İlan Açıklaması / Özel Notlar (Opsiyonel)</label>
             <input
@@ -248,7 +263,6 @@ export function CreateListingModal({ isOpen, onClose, onSuccess }: CreateListing
             />
           </div>
 
-          {/* Mesafe ve Acil İşareti */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center">
             <div className="space-y-1">
               <label className="text-xs font-semibold block text-[#122c4a]">Mesafe (İsteğe Bağlı)</label>
@@ -269,12 +283,11 @@ export function CreateListingModal({ isOpen, onClose, onSuccess }: CreateListing
                 className="w-4 h-4 accent-[#d64526] rounded cursor-pointer"
               />
               <label htmlFor="urgent" className="text-xs font-semibold text-[#122c4a] cursor-pointer">
-                Acil İlan OlaraK İşaretle
+                Acil İlan Olarak İşaretle
               </label>
             </div>
           </div>
 
-          {/* Alt Butonlar */}
           <div className="flex justify-end gap-2 pt-4 border-t mt-4">
             <button
               type="button"
