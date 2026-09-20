@@ -44,10 +44,12 @@ export function Sidebar({
       isCollapsed && "lg:w-[76px]"
     )}>
       <div className="flex h-[82px] items-center gap-3 px-5">
-        <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-[#d64526] text-xl font-bold">Y</div>
+        {/* Logo Harfi 'N' olarak güncellendi */}
+        <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-[#d64526] text-xl font-bold">N</div>
         {!isCollapsed && (
           <div>
-            <div className="text-[19px] font-bold tracking-tight">YükleGel</div>
+            {/* Marka Adı 'Nakliye Cepte' olarak güncellendi */}
+            <div className="text-[19px] font-bold tracking-tight">Nakliye Cepte</div>
             <div className="text-[10px] uppercase tracking-[0.2em] text-white/50">Lojistik ağı</div>
           </div>
         )}
