@@ -11,7 +11,7 @@ import { Load } from "@/components/LoadCard"
 import { ListingsView } from "@/components/views/ListingsView"
 import { TripsView } from "@/components/views/TripsView"
 import { CalculatorView } from "@/components/views/CalculatorView"
-import { CompaniesView } from "@/components/views/CompaniesView"
+import { FavoritesView } from "@/components/views/FavoritesView"
 import { CompanyProfileView } from "@/components/views/CompanyProfileView"
 import { OverviewView } from "@/components/views/OverviewView"
 import { FinanceView } from "@/components/views/FinanceView"
@@ -64,6 +64,7 @@ export default function Page() {
   const router = useRouter()
   const [isCheckingAuth, setIsCheckingAuth] = useState(true)
   const [loads, setLoads] = useState<Load[]>([])
+  const [favoriteIds, setFavoriteIds] = useState<string[]>([])
   const [activeFilter, setActiveFilter] = useState("Tümü")
   const [sourceFilter, setSourceFilter] = useState<"all" | "user" | "bot">("all")
   const [query, setQuery] = useState("")
@@ -79,6 +80,27 @@ export default function Page() {
     authorized_person: "Kullanıcı",
     initials: "MK"
   })
+
+  // Favorileri tarayıcı hafızasından yükle
+  useEffect(() => {
+    const savedFavs = localStorage.getItem("favorite_loads")
+    if (savedFavs) {
+      try {
+        setFavoriteIds(JSON.parse(savedFavs))
+      } catch (e) {
+        console.error("Favoriler yüklenirken hata:", e)
+      }
+    }
+  }, [])
+
+  // Favori Ekle / Çıkar Metodu
+  const toggleFavorite = (id: string) => {
+    setFavoriteIds((prev) => {
+      const updated = prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+      localStorage.setItem("favorite_loads", JSON.stringify(updated))
+      return updated
+    })
+  }
 
   useEffect(() => {
     let authSubscription: { unsubscribe: () => void } | null = null
@@ -250,7 +272,12 @@ export default function Page() {
 
       const formattedBotLoads: Load[] = (botData || []).map((item: DatabaseListing) => {
         const rawDetail = cleanText(item.cargo_detail || item.message || item.text || "Saha İlanı")
-        const rawCompany = cleanText(item.company_name || "Saha Lojistik Ağı")
+        let rawCompany = cleanText(item.company_name || "Saha Lojistik Ağı")
+        
+        if (rawCompany.toLowerCase().includes("whatsapp")) {
+          rawCompany = "Saha Lojistik Ağı"
+        }
+
         const rawVehicle = cleanText(item.vehicle_type || "TIR / Kamyon")
         const extractedPhone = extractPhone(rawDetail) || item.phone || "Belirtilmedi"
 
@@ -355,6 +382,7 @@ export default function Page() {
         activeTab={activeTab} 
         setActiveTab={setActiveTab} 
         loadsCount={loads.length} 
+        favoritesCount={favoriteIds.length}
         isCollapsed={isCollapsed} 
         setIsCollapsed={setIsCollapsed} 
         isSidebarOpen={isSidebarOpen} 
@@ -433,11 +461,20 @@ export default function Page() {
               setSourceFilter={setSourceFilter} 
               setIsCreateOpen={setIsCreateOpen} 
               searchQuery={query}
+              favoriteIds={favoriteIds}
+              onToggleFavorite={toggleFavorite}
+            />
+          )}
+          {activeTab === "Favorilerim" && (
+            <FavoritesView 
+              loads={loads} 
+              favoriteIds={favoriteIds} 
+              onToggleFavorite={toggleFavorite} 
+              searchQuery={query}
             />
           )}
           {activeTab === "Seferlerim" && <TripsView loads={loads} currentUserId={currentUserId} />}
           {activeTab === "Gelir Gider" && <FinanceView />}
-          {activeTab === "Firmalar" && <CompaniesView loads={loads} />}
           {activeTab === "Şirket Profili" && <CompanyProfileView onProfileUpdated={fetchProfile} />}
           {activeTab === "Sefer Hesapla" && <CalculatorView />}
           {activeTab === "Yardım Merkezi" && <HelpCenterView />}
