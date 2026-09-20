@@ -188,20 +188,11 @@ export default function Page() {
   const fetchListings = async () => {
     setIsLoading(true)
     try {
-      const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
-
+      // Hata riskini önlemek için `profiles!left` join kaldırılarak doğrudan yalın sorgu atılır
       const userReq = supabase 
         ? supabase
             .from("listings")
-            .select(`
-              *,
-              profiles!left (
-                company_name,
-                phone,
-                authorized_person
-              )
-            `)
-            .gte("created_at", twentyFourHoursAgo)
+            .select("*")
             .order("created_at", { ascending: false }) 
         : Promise.resolve({ data: [] })
 
@@ -209,7 +200,6 @@ export default function Page() {
         ? supabase
             .from("bot_listings")
             .select("*")
-            .gte("created_at", twentyFourHoursAgo)
             .order("created_at", { ascending: false }) 
         : Promise.resolve({ data: [] })
 
@@ -247,13 +237,13 @@ export default function Page() {
           to: cleanText(item.to_city),
           cargo: cleanText(item.cargo_detail),
           message: cleanText(item.message),
-          vehicle: cleanText(item.vehicle_type || "13.60 Tenteli"),
+          vehicle: cleanText(item.vehicle_type || "Damperli Tır"),
           distance: "450 km",
           price: typeof item.price === "number" ? `₺${item.price.toLocaleString("tr-TR")}` : (item.price || "₺0"),
           urgent: Boolean(item.urgent),
           time: item.created_at ? new Date(item.created_at).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" }) : "Yeni",
           color: "bg-[#d64526]",
-          // DÜZELTME: listings tablosundan gelen tüm kayıtlar varsayılan olarak kullanıcı ilanıdır.
+          // listings tablosundan gelen veriler kullanıcı ilanı olarak gösterilir
           source: "user",
           phone: phone
         }
