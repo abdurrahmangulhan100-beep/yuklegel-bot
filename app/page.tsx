@@ -187,9 +187,9 @@ export default function Page() {
   const fetchListings = async () => {
     setIsLoading(true)
     try {
-      const twelveHoursAgo = new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString()
+      // 24 saat kuralı uygulandı
+      const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
 
-      // profiles!left mantığı ile LEFT JOIN uygulanarak profili olmayan ilanların gizlenmesi engellendi
       const userReq = supabase 
         ? supabase
             .from("listings")
@@ -201,7 +201,7 @@ export default function Page() {
                 authorized_person
               )
             `)
-            .gte("created_at", twelveHoursAgo)
+            .gte("created_at", twentyFourHoursAgo)
             .order("created_at", { ascending: false }) 
         : Promise.resolve({ data: [] })
 
@@ -209,14 +209,18 @@ export default function Page() {
         ? supabase
             .from("bot_listings")
             .select("*")
-            .gte("created_at", twelveHoursAgo)
+            .gte("created_at", twentyFourHoursAgo)
             .order("created_at", { ascending: false }) 
         : Promise.resolve({ data: [] })
 
       const [{ data: userData, error: userErr }, { data: botData, error: botErr }] = await Promise.all([userReq, botReq])
 
-      if (userErr) console.error("Listings hatası:", userErr)
-      if (botErr) console.error("Bot listings hatası:", botErr)
+      if (userErr) {
+        console.error("Listings Supabase Hatası (RLS İznini kontrol edin):", userErr)
+      }
+      if (botErr) {
+        console.error("Bot listings hatası:", botErr)
+      }
 
       const formattedUserLoads: Load[] = (userData || []).map((item: DatabaseListing) => {
         const profileObj = Array.isArray(item.profiles) ? item.profiles[0] : item.profiles
