@@ -1,9 +1,10 @@
 "use client"
 
-import { Building2, Calculator, ChevronLeft, ChevronRight, CircleHelp, FileText, LayoutDashboard, LogOut, Settings, Truck, Users, WalletCards, X } from "lucide-react"
+import { Building2, Calculator, ChevronLeft, ChevronRight, CircleHelp, FileText, LayoutDashboard, LogOut, Settings, ShieldCheck, Truck, UserX, Users, WalletCards, X } from "lucide-react"
 import { Separator } from "@/components/ui/separator"
 import { cn } from "@/lib/utils"
 import { supabase } from "@/lib/supabase"
+import Link from "next/link"
 
 type SidebarProps = {
   activeTab: string;
@@ -44,11 +45,9 @@ export function Sidebar({
       isCollapsed && "lg:w-[76px]"
     )}>
       <div className="flex h-[82px] items-center gap-3 px-5">
-        {/* Logo Harfi 'N' olarak güncellendi */}
         <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-[#d64526] text-xl font-bold">N</div>
         {!isCollapsed && (
           <div>
-            {/* Marka Adı 'Nakliye Cepte' olarak güncellendi */}
             <div className="text-[19px] font-bold tracking-tight">Nakliye Cepte</div>
             <div className="text-[10px] uppercase tracking-[0.2em] text-white/50">Lojistik ağı</div>
           </div>
@@ -74,6 +73,17 @@ export function Sidebar({
         <NavItem icon={Building2} label="Şirket Profili" active={activeTab === "Şirket Profili"} collapsed={isCollapsed} onClick={() => go("Şirket Profili")} />
         <NavItem icon={Settings} label="Ayarlar" active={activeTab === "Ayarlar"} collapsed={isCollapsed} onClick={() => go("Ayarlar")} />
         <NavItem icon={CircleHelp} label="Yardım Merkezi" active={activeTab === "Yardım Merkezi"} collapsed={isCollapsed} onClick={() => go("Yardım Merkezi")} />
+
+        {/* GOOGLE PLAY SÖZLEŞME VE POLİTİKA LİNKLERİ (ZORUNLU) */}
+        <div className="my-4 h-px bg-white/10" />
+        <p className={cn("px-3 pb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/35", isCollapsed && "sr-only")}>Yasal & Gizlilik</p>
+
+        <Link href="/privacy" onClick={() => setIsSidebarOpen(false)} className={cn("flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-white/60 transition-colors hover:bg-white/10 hover:text-white", isCollapsed && "justify-center")} title={isCollapsed ? "Gizlilik Politikası" : undefined}>
+          <ShieldCheck className="size-5 shrink-0 text-emerald-400" />
+          {!isCollapsed && <span>Gizlilik Politikası</span>}
+        </Link>
+
+        <NavItem icon={UserX} label="Hesabımı Sil" active={activeTab === "Hesabımı Sil"} collapsed={isCollapsed} onClick={() => go("Ayarlar")} />
 
         <div className="mt-auto pt-4">
           <button
