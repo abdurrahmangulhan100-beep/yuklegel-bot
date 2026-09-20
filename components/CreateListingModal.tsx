@@ -56,10 +56,6 @@ export function CreateListingModal({ isOpen, onClose, onSuccess }: CreateListing
   const [distance, setDistance] = useState("")
   const [isUrgent, setIsUrgent] = useState(false)
 
-  const handleOpenChange = (open: boolean) => {
-    if (!open) onClose()
-  }
-
   useEffect(() => {
     let isMounted = true
     async function loadUserProfile() {
@@ -82,7 +78,7 @@ export function CreateListingModal({ isOpen, onClose, onSuccess }: CreateListing
           .maybeSingle()
 
         if (profile && isMounted) {
-          setCompanyName(profile.company_name || "")
+          setCompanyName(profile.company_name || "GÜLHAN NAKLİYAT")
           setPhone(profile.phone || "")
         }
       } catch (err) {
@@ -107,61 +103,72 @@ export function CreateListingModal({ isOpen, onClose, onSuccess }: CreateListing
     return parseFloat(unitPrice) || 0
   }
 
+  const resetForm = () => {
+    setFromDistrict("")
+    setToDistrict("")
+    setDescription("")
+    setUnitPrice("")
+    setTonnage("")
+    setDistance("")
+    setIsUrgent(false)
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
 
     try {
-      const { data: authData, error: authErr } = await supabase.auth.getUser()
+      const { data: authData } = await supabase.auth.getUser()
+      const user = authData?.user
 
-      if (authErr || !authData?.user) {
-        alert("İlan oluşturmak için oturum açmış olmalısınız.")
+      if (!user) {
+        alert("Lütfen oturum açınız.")
         setLoading(false)
         return
       }
 
-      const user = authData.user
       const finalCargo = cargo === "Diğer" ? customCargo : cargo
       const totalPrice = calculatedTotalPrice()
 
-      const newListing = {
+      const payload = {
         user_id: user.id,
-        company_name: companyName || "Bireysel İlan",
+        company_name: companyName || "GÜLHAN NAKLİYAT",
         phone: phone || "",
         from_city: fromCity,
-        from_district: fromDistrict || null,
+        from_district: fromDistrict || "",
         to_city: toCity,
-        to_district: toDistrict || null,
+        to_district: toDistrict || "",
         cargo_type: finalCargo,
+        cargo_detail: finalCargo, // Eski şema uyumluluğu için
         vehicle_type: vehicleType,
-        description: description || null,
+        description: description || "",
         price: totalPrice,
         price_type: priceType,
         unit_price: parseFloat(unitPrice) || 0,
         tonnage: parseFloat(tonnage) || null,
-        distance: distance || null,
-        is_urgent: Boolean(isUrgent),
+        distance: distance || "",
+        is_urgent: isUrgent,
         source: "user"
       }
 
-      const { error } = await supabase.from("listings").insert(newListing)
+      const { error } = await supabase.from("listings").insert([payload])
 
       if (error) {
-        console.error("Supabase Insert Hatası:", error)
-        throw new Error(error.message || "Veritabanına kaydedilemedi.")
+        throw error
       }
 
+      resetForm()
       if (onSuccess) onSuccess()
       onClose()
     } catch (err: any) {
-      alert("İlan eklenirken bir hata oluştu: " + (err?.message || "Bilinmeyen hata"))
+      alert("Hata oluştu: " + (err.message || "İlan kaydedilemedi"))
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
+    <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose() }}>
       <DialogContent className="sm:max-w-[600px] bg-white text-[#122c4a] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-xl font-bold">Yeni İlan Oluştur</DialogTitle>
@@ -195,7 +202,7 @@ export function CreateListingModal({ isOpen, onClose, onSuccess }: CreateListing
             </div>
           </div>
 
-          {/* Çıkış Şehri ve İlçe/Açıklaması */}
+          {/* Çıkış Şehri ve İlçe */}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
               <Label className="text-xs font-semibold">Çıkış Şehri</Label>
@@ -205,7 +212,6 @@ export function CreateListingModal({ isOpen, onClose, onSuccess }: CreateListing
                 onChange={(e) => setFromCity(e.target.value)}
                 className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-xs shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               >
-                <option value="">Şehir Seçiniz</option>
                 {CITIES.map((city) => (
                   <option key={city} value={city}>{city}</option>
                 ))}
@@ -222,7 +228,7 @@ export function CreateListingModal({ isOpen, onClose, onSuccess }: CreateListing
             </div>
           </div>
 
-          {/* Varış Şehri ve İlçe/Açıklaması */}
+          {/* Varış Şehri ve İlçe */}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
               <Label className="text-xs font-semibold">Varış Şehri</Label>
@@ -232,7 +238,6 @@ export function CreateListingModal({ isOpen, onClose, onSuccess }: CreateListing
                 onChange={(e) => setToCity(e.target.value)}
                 className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-xs shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               >
-                <option value="">Şehir Seçiniz</option>
                 {CITIES.map((city) => (
                   <option key={city} value={city}>{city}</option>
                 ))}
@@ -263,15 +268,6 @@ export function CreateListingModal({ isOpen, onClose, onSuccess }: CreateListing
                   <option key={item} value={item}>{item}</option>
                 ))}
               </select>
-              {cargo === "Diğer" && (
-                <Input
-                  required
-                  value={customCargo}
-                  onChange={(e) => setCustomCargo(e.target.value)}
-                  placeholder="Yük detayını yazınız"
-                  className="text-xs mt-1"
-                />
-              )}
             </div>
             <div className="space-y-1">
               <Label className="text-xs font-semibold">Araç Tipi</Label>
@@ -352,12 +348,6 @@ export function CreateListingModal({ isOpen, onClose, onSuccess }: CreateListing
                   placeholder="Örn: 18000"
                   className="text-xs"
                 />
-              </div>
-            )}
-
-            {priceType === "per_ton" && parseFloat(unitPrice) > 0 && parseFloat(tonnage) > 0 && (
-              <div className="text-right text-xs font-medium text-[#0284c7]">
-                Hesaplanan Toplam Tutar: <span className="font-bold">{calculatedTotalPrice().toLocaleString("tr-TR")} TL</span>
               </div>
             )}
           </div>
