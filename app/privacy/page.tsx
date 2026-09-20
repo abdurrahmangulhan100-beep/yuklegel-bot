@@ -75,7 +75,7 @@ export default function PrivacyPage() {
             <p className="text-xs sm:text-sm text-red-800">
               Kullanıcılar diledikleri zaman hesaplarını ve platformda kaydedilmiş tüm verilerini silme hakkına sahiptir. 
               Hesabınızı ve verilerinizi silmek için uygulama içindeki <strong>Ayarlar &gt; Hesabı Sil</strong> seçeneğini kullanabilir veya 
-              <strong> destek@nakliyecepte.com</strong> e-posta adresi üzerinden veri silme talebinde bulunabilirsiniz.
+              <strong> destek.nakliyecepte.com@gmail.com</strong> e-posta adresi üzerinden veri silme talebinde bulunabilirsiniz.
             </p>
           </section>
 
