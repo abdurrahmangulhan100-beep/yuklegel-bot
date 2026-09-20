@@ -6,13 +6,18 @@ import { Load } from "@/components/LoadCard"
 
 type OverviewProps = {
   loads: Load[];
+  currentUserId: string | null;
   onOpenCreate: () => void;
   setActiveTab: (tab: string) => void;
 }
 
-export function OverviewView({ loads, onOpenCreate, setActiveTab }: OverviewProps) {
-  const userLoads = loads.filter(l => l.source === "user")
-  const urgentLoads = loads.filter(l => l.urgent)
+export function OverviewView({ loads, currentUserId, onOpenCreate, setActiveTab }: OverviewProps) {
+  // SADECE O ANKİ KULLANICININ İLANLARINI FİLTRELE
+  const userLoads = loads.filter(
+    (l) => l.source === "user" && l.userId && currentUserId && l.userId === currentUserId
+  )
+  
+  const urgentLoads = loads.filter((l) => l.urgent)
 
   return (
     <div className="space-y-6">
@@ -47,6 +52,7 @@ export function OverviewView({ loads, onOpenCreate, setActiveTab }: OverviewProp
           <div className="mt-1 text-xs text-emerald-600 font-medium">Sistemde anlık yayında</div>
         </div>
 
+        {/* Seferlerim Sayacı -> Sadece Kullanıcının İlan Sayısı */}
         <div className="rounded-xl border border-[#e4e9ef] bg-white p-5 shadow-sm">
           <div className="flex items-center justify-between text-[#718397]">
             <span className="text-sm font-medium">Seferlerim</span>
@@ -66,7 +72,7 @@ export function OverviewView({ loads, onOpenCreate, setActiveTab }: OverviewProp
         </div>
       </div>
 
-      {/* Son Seferlerim Alanı */}
+      {/* Son Seferlerim Alanı -> Sadece Kullanıcının İlanları */}
       <div className="rounded-xl border border-[#e4e9ef] bg-white p-6 shadow-sm">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-bold text-[#122c4a]">Son Seferlerim</h3>
@@ -75,7 +81,7 @@ export function OverviewView({ loads, onOpenCreate, setActiveTab }: OverviewProp
           </Button>
         </div>
         <div className="space-y-3">
-          {userLoads.slice(0, 3).length > 0 ? (
+          {userLoads.length > 0 ? (
             userLoads.slice(0, 3).map((load) => (
               <div key={load.id} className="flex items-center justify-between border-b border-[#edf0f3] pb-3 last:border-0">
                 <div>
