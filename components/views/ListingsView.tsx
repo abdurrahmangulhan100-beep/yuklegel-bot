@@ -9,7 +9,7 @@ const filters = ["Tümü", "Acil", "Tır", "Kamyon", "Frigo"]
 const sourceTabs = [
   { value: "all", label: "Tüm İlanlar" }, 
   { value: "user", label: "Nakliye Cepte İlanları (Kullanıcı)" }, 
-  { value: "bot", label: "Web/Bot İlanları" }
+  { value: "bot", label: "Saha Lojistik İlanları" }
 ] as const
 
 type ListingsViewProps = {
@@ -43,7 +43,6 @@ export function ListingsView({
   const trimmedQuery = searchQuery.trim()
   const hasActiveSearch = trimmedQuery.length > 0
 
-  // Performans için ilan listesini maksimum 500 ile sınırlandırıyoruz
   const limitedLoads = loads.slice(0, 500)
 
   return (
