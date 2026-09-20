@@ -101,11 +101,9 @@ export function LoadCard({ load, searchQuery = "", isFavorite = false, onToggleF
     }
   }
 
-  // FAVORİ EKLEME & ÇIKARMA / MİSAFİR KONTROLÜ
   const handleFavoriteClick = async (e: React.MouseEvent) => {
     e.stopPropagation()
 
-    // 1. Misafir Kullanıcı Kontrolü
     const isGuest = typeof window !== "undefined" ? localStorage.getItem("is_guest") === "true" : false
     if (isGuest) {
       alert("Favorilere ilan ekleyebilmek için lütfen ücretsiz üye olunuz veya giriş yapınız.")
@@ -118,7 +116,6 @@ export function LoadCard({ load, searchQuery = "", isFavorite = false, onToggleF
     try {
       if (!supabase) return
 
-      // 2. Aktif Kullanıcı Kontrolü
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) {
         alert("Favorilere eklemek için oturum açmanız gerekmektedir.")
@@ -129,16 +126,17 @@ export function LoadCard({ load, searchQuery = "", isFavorite = false, onToggleF
       const listingIdStr = String(load.id)
 
       if (isFavorite) {
-        // Supabase favorites tablosundan sil
+        // Silme işlemi (Temizlenmiş ID veya ön ekli ID bazlı siler)
+        const cleanId = listingIdStr.replace(/^(user-|bot-)/, "")
         const { error } = await supabase
           .from("favorites")
           .delete()
           .eq("user_id", user.id)
-          .eq("listing_id", listingIdStr)
+          .or(`listing_id.eq.${listingIdStr},listing_id.eq.${cleanId},listing_id.eq.user-${cleanId}`)
 
         if (error) throw error
       } else {
-        // Supabase favorites tablosuna ekle
+        // Ekleme işlemi (Kullanıcı veritabanına ekler)
         const { error } = await supabase
           .from("favorites")
           .insert([
@@ -151,19 +149,17 @@ export function LoadCard({ load, searchQuery = "", isFavorite = false, onToggleF
         if (error) throw error
       }
 
-      // Üst bileşene durumun değiştiğini bildir
       if (onToggleFavorite) {
         onToggleFavorite(listingIdStr)
       }
     } catch (err) {
-      console.error("Favori işlemi sırasında hata oluştu:", err)
+      console.error("Favori işlemi hatası:", err)
       alert("Favori işlemi gerçekleştirilemedi. Lütfen tekrar deneyin.")
     } finally {
       setIsFavLoading(false)
     }
   }
 
-  // Google Play UGC Şikayet Gönderme İşlemi
   const handleSendReport = async () => {
     setIsSubmittingReport(true)
     try {
@@ -191,7 +187,6 @@ export function LoadCard({ load, searchQuery = "", isFavorite = false, onToggleF
     }
   }
 
-  // Google Play UGC Kullanıcı Engelleme İşlemi
   const handleBlockUser = () => {
     const target = load.userId || load.phone
     if (!target) return
@@ -210,7 +205,6 @@ export function LoadCard({ load, searchQuery = "", isFavorite = false, onToggleF
   return (
     <div className="group relative flex flex-col justify-between rounded-xl border border-[#e4e9ef] bg-white p-5 shadow-sm transition-all duration-200 hover:border-[#cbd5e1] hover:shadow-md">
       <div>
-        {/* ÜST KISIM: Firma Bilgisi & Zaman & UGC Butonları */}
         <div className="flex items-center justify-between pb-3.5 border-b border-[#f0f4f8]">
           <div className="flex items-center gap-3 min-w-0">
             <div className={`grid size-10 shrink-0 place-items-center rounded-xl text-white font-bold text-sm shadow-xs ${load.color || (isUserLoad ? "bg-[#d64526]" : "bg-[#315d83]")}`}>
@@ -244,7 +238,6 @@ export function LoadCard({ load, searchQuery = "", isFavorite = false, onToggleF
               <Clock className="size-3" />
               {load.time}
             </span>
-            {/* Google Play UGC Şikayet Et İkonu */}
             <button
               onClick={() => setIsReportOpen(true)}
               className="p-1 text-gray-400 hover:text-red-500 rounded-md hover:bg-red-50 transition-colors"
@@ -255,7 +248,6 @@ export function LoadCard({ load, searchQuery = "", isFavorite = false, onToggleF
           </div>
         </div>
 
-        {/* NEREDEN - NEREYE ROTA KUTUSU */}
         {isUserLoad && (
           <div className="my-4 rounded-xl bg-[#f8fafc] p-3.5 border border-[#edf2f7]">
             <div className="flex items-center justify-between gap-2">
@@ -293,7 +285,6 @@ export function LoadCard({ load, searchQuery = "", isFavorite = false, onToggleF
           </div>
         )}
 
-        {/* YÜK DETAYI / İLAN İÇERİĞİ */}
         <div className="space-y-2 my-3">
           <div className="bg-[#f8fafc] p-3 rounded-lg border border-[#edf2f7]">
             <span className="text-[10px] uppercase tracking-wider text-[#8da0b2] block font-semibold mb-1">
@@ -311,7 +302,6 @@ export function LoadCard({ load, searchQuery = "", isFavorite = false, onToggleF
           )}
         </div>
 
-        {/* ARAÇ TİPİ VE FİYAT ROZETLERİ */}
         <div className="flex flex-wrap items-center gap-2 mb-2">
           {load.vehicle && load.vehicle !== "-" && (
             <span className="inline-flex items-center gap-1 text-xs bg-[#eef4f8] text-[#315d83] font-semibold px-2.5 py-1 rounded-md border border-[#cbd5e1]/40">
@@ -328,7 +318,6 @@ export function LoadCard({ load, searchQuery = "", isFavorite = false, onToggleF
         </div>
       </div>
 
-      {/* ALT KISIM: İletişim & Butonlar */}
       <div className="flex items-center justify-between pt-3 border-t border-[#f0f4f8] mt-3">
         <div className="flex items-center gap-1.5 text-xs text-[#8da0b2]">
           <span>İletişim:</span>
@@ -376,7 +365,6 @@ export function LoadCard({ load, searchQuery = "", isFavorite = false, onToggleF
         </div>
       </div>
 
-      {/* GOOGLE PLAY UGC MODAL: ŞİKAYET VE ENGELLEME */}
       {isReportOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs">
           <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl border border-gray-100 animate-in fade-in zoom-in duration-150">
