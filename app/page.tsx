@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState, useCallback } from "react"
+import { useEffect, useMemo, useState, useRef, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { Bell, ChevronDown, Menu, Search, LogOut } from "lucide-react"
 import { Input } from "@/components/ui/input"
@@ -60,17 +60,6 @@ const extractPhone = (text?: string | null) => {
   return match ? match[0].replace(/\s+/g, "") : ""
 }
 
-// Türkçe karakterleri tam uyumlu küçük harfe çeviren güvenli fonksiyon
-function normalizeText(text?: string | null): string {
-  if (!text) return ""
-  return text
-    .toLocaleLowerCase("tr-TR")
-    .replace(/i̇/g, "i")
-    .replace(/I/g, "ı")
-    .replace(/İ/g, "i")
-    .trim()
-}
-
 export default function Page() {
   const router = useRouter()
   const [isCheckingAuth, setIsCheckingAuth] = useState(true)
@@ -78,7 +67,11 @@ export default function Page() {
   const [favoriteIds, setFavoriteIds] = useState<string[]>([])
   const [activeFilter, setActiveFilter] = useState("Tümü")
   const [sourceFilter, setSourceFilter] = useState<"all" | "user" | "bot">("all")
+  
+  // ARAMA STATE'LERİ
   const [query, setQuery] = useState("")
+  const [debouncedQuery, setDebouncedQuery] = useState("")
+  const queryRef = useRef("")
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const [isCollapsed, setIsCollapsed] = useState(false)
@@ -93,7 +86,15 @@ export default function Page() {
     initials: "NK"
   })
 
-  // Favorileri Çekme
+  // 1. ADIM: Arama kutusuna yazı yazıldığında 500ms bekler, sonra veritabanına sorgu atar
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedQuery(query)
+      queryRef.current = query
+    }, 500)
+    return () => clearTimeout(timer)
+  }, [query])
+
   const fetchUserFavorites = async (userId: string) => {
     if (!supabase || !userId) return
     try {
@@ -134,24 +135,16 @@ export default function Page() {
     const verifySession = async () => {
       try {
         const isGuest = typeof window !== 'undefined' ? localStorage.getItem("is_guest") === "true" : false
-        
         if (isGuest) {
-          setProfile({
-            company_name: "Misafir Şirket",
-            authorized_person: "Misafir Kullanıcı",
-            initials: "MK"
-          })
+          setProfile({ company_name: "Misafir Şirket", authorized_person: "Misafir Kullanıcı", initials: "MK" })
           setIsCheckingAuth(false)
           return
         }
-
         if (!supabase) {
           setIsCheckingAuth(false)
           return
         }
-
         const { data: { session }, error } = await supabase.auth.getSession()
-        
         if (error || !session) {
           router.push("/login")
         } else {
@@ -174,92 +167,55 @@ export default function Page() {
         } else {
           setCurrentUserId(null)
         }
-        if (!session && !isGuest && event === "SIGNED_OUT") {
-          router.push("/login")
-        }
+        if (!session && !isGuest && event === "SIGNED_OUT") router.push("/login")
       })
       authSubscription = data.subscription
     }
-
-    return () => {
-      if (authSubscription) {
-        authSubscription.unsubscribe()
-      }
-    }
+    return () => { if (authSubscription) authSubscription.unsubscribe() }
   }, [router])
 
   const fetchProfile = async () => {
     if (!supabase) return
-    
     try {
       const isGuest = localStorage.getItem("is_guest") === "true"
-      if (isGuest) {
-        setProfile({
-          company_name: "Misafir Şirket",
-          authorized_person: "Misafir Kullanıcı",
-          initials: "MK"
-        })
-        return
-      }
-
+      if (isGuest) return
       const { data: { user }, error: userError } = await supabase.auth.getUser()
       if (userError || !user) return
-
-      setCurrentUserId(user.id)
-
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", user.id)
-        .maybeSingle()
-
+      
+      const { data, error } = await supabase.from("profiles").select("*").eq("id", user.id).maybeSingle()
       if (data && !error) {
         const cName = data.company_name || "Nakliye Cepte Kullanıcısı"
         const aPerson = data.authorized_person || user.email?.split("@")[0] || "Kullanıcı"
         const initials = aPerson.split(" ").map((n: string) => n[0]).join("").toUpperCase().substring(0, 2)
-        
-        setProfile({
-          company_name: cName,
-          authorized_person: aPerson,
-          initials: initials || "NK"
-        })
-      } else {
-        const defaultName = user.email?.split("@")[0] || "Kullanıcı"
-        setProfile({
-          company_name: "Nakliye Cepte Kullanıcısı",
-          authorized_person: defaultName,
-          initials: defaultName.substring(0, 2).toUpperCase()
-        })
+        setProfile({ company_name: cName, authorized_person: aPerson, initials: initials || "NK" })
       }
     } catch (err) {
       console.error("Profil çekme hatası:", err)
     }
   }
 
-  // GÜVENLİ VE HIZLI VERİ ÇEKME
-  const fetchListings = useCallback(async () => {
+  // 2. ADIM: DOĞRUDAN SUPABASE ÜZERİNDE ARAMA (SERVER-SIDE SEARCH)
+  const fetchListings = useCallback(async (searchStr = "") => {
     setIsLoading(true)
     try {
-      if (!supabase) {
-        setLoads([])
-        setIsLoading(false)
-        return
+      if (!supabase) return
+
+      let userReq = supabase.from("listings").select("*")
+      let botReq = supabase.from("bot_listings").select("*")
+
+      // Eğer arama kelimesi varsa, veritabanına 10 bin ilan içinde arama yapmasını söylüyoruz
+      if (searchStr.trim()) {
+        const q = `%${searchStr.trim()}%`
+        // bot_listings tablosunda olmayan sütunlar hata vermesin diye dikkatle seçildi
+        userReq = userReq.or(`from_city.ilike.${q},to_city.ilike.${q},cargo_detail.ilike.${q},company_name.ilike.${q},message.ilike.${q}`)
+        botReq = botReq.or(`from_city.ilike.${q},to_city.ilike.${q},cargo_detail.ilike.${q},company_name.ilike.${q}`)
       }
 
-      // Veritabanındaki gerçek sütun isimleriyle istek atıyoruz
-      const userReq = supabase
-        .from("listings")
-        .select("*")
-        .order("created_at", { ascending: false })
-        .limit(500)
+      // Arama filtresi uygulandıktan SONRA sıralama ve limit koyuyoruz.
+      const finalUserReq = userReq.order("created_at", { ascending: false }).limit(1000)
+      const finalBotReq = botReq.order("created_at", { ascending: false }).limit(1000)
 
-      const botReq = supabase
-        .from("bot_listings")
-        .select("*")
-        .order("created_at", { ascending: false })
-        .limit(1500)
-
-      const [{ data: userData, error: userErr }, { data: botData, error: botErr }] = await Promise.all([userReq, botReq])
+      const [{ data: userData, error: userErr }, { data: botData, error: botErr }] = await Promise.all([finalUserReq, finalBotReq])
 
       if (userErr) console.error("User listings hatası:", userErr)
       if (botErr) console.error("Bot listings hatası:", botErr)
@@ -293,14 +249,8 @@ export default function Page() {
       const formattedBotLoads: Load[] = (botData || []).map((item: DatabaseListing) => {
         const rawDetail = cleanText(item.cargo_detail || "Saha İlanı")
         let rawCompany = cleanText(item.company_name || "Saha Lojistik Ağı")
+        if (rawCompany.toLowerCase().includes("whatsapp")) rawCompany = "Saha Lojistik Ağı"
         
-        if (rawCompany.toLowerCase().includes("whatsapp")) {
-          rawCompany = "Saha Lojistik Ağı"
-        }
-
-        const rawVehicle = cleanText(item.vehicle_type || "TIR / Kamyon")
-        const extractedPhone = extractPhone(rawDetail) || item.phone || "Belirtilmedi"
-
         return {
           id: `bot-${item.id}`,
           company: rawCompany,
@@ -309,14 +259,14 @@ export default function Page() {
           to: cleanText(item.to_city),
           cargo: rawDetail,
           message: "",
-          vehicle: rawVehicle,
+          vehicle: cleanText(item.vehicle_type || "TIR / Kamyon"),
           distance: "Belirtilmemiş",
           price: "",
           urgent: Boolean(item.urgent),
           time: item.created_at ? new Date(item.created_at).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" }) : "Yeni",
           color: "bg-[#315d83]",
           source: "bot",
-          phone: extractedPhone
+          phone: extractPhone(rawDetail) || item.phone || "Belirtilmedi"
         }
       })
 
@@ -328,11 +278,13 @@ export default function Page() {
     }
   }, [])
 
+  // 3. ADIM: Arama kelimesi değiştikçe veya sayfa yüklendiğinde fetchListings çalışır
   useEffect(() => {
     if (isCheckingAuth) return
-    fetchListings()
-  }, [isCheckingAuth, currentUserId, fetchListings])
+    fetchListings(debouncedQuery)
+  }, [isCheckingAuth, currentUserId, debouncedQuery, fetchListings])
 
+  // Canlı veritabanı değişiklikleri dinlenirken güncel arama kelimesi baz alınır
   useEffect(() => {
     if (isCheckingAuth) return
     fetchProfile()
@@ -341,8 +293,8 @@ export default function Page() {
     
     const channel = supabase
       .channel("realtime-all")
-      .on("postgres_changes", { event: "*", schema: "public", table: "listings" }, () => fetchListings())
-      .on("postgres_changes", { event: "*", schema: "public", table: "bot_listings" }, () => fetchListings())
+      .on("postgres_changes", { event: "*", schema: "public", table: "listings" }, () => fetchListings(queryRef.current))
+      .on("postgres_changes", { event: "*", schema: "public", table: "bot_listings" }, () => fetchListings(queryRef.current))
       .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, () => fetchProfile())
       .on("postgres_changes", { event: "*", schema: "public", table: "favorites" }, () => {
         if (currentUserId) fetchUserFavorites(currentUserId)
@@ -354,24 +306,14 @@ export default function Page() {
     }
   }, [isCheckingAuth, currentUserId, fetchListings])
 
-  // ANINDA VE KUSURSUZ TÜRKÇE ARAMA FİLTRESİ
+  // Ön Yüz (Frontend) Tipi ve Kaynak Filtrelemesi (Tır, Kamyon vs)
   const filteredLoads = useMemo(() => {
-    const searchNormalized = normalizeText(query)
-
     return loads.filter((load) => {
       const filterMatch = activeFilter === "Tümü" || (activeFilter === "Acil" ? load.urgent : load.vehicle.toLowerCase().includes(activeFilter.toLowerCase()))
       const sourceMatch = sourceFilter === "all" || load.source === sourceFilter
-      
-      if (!searchNormalized) return filterMatch && sourceMatch
-
-      const searchableText = normalizeText(
-        `${load.company} ${load.from} ${load.to} ${load.cargo} ${load.message || ''}`
-      )
-      const searchMatch = searchableText.includes(searchNormalized)
-
-      return filterMatch && sourceMatch && searchMatch
+      return filterMatch && sourceMatch
     })
-  }, [loads, activeFilter, sourceFilter, query])
+  }, [loads, activeFilter, sourceFilter])
 
   const stats = useMemo(() => {
     const userLoads = loads.filter(l => l.source === "user")
@@ -391,9 +333,7 @@ export default function Page() {
     try {
       localStorage.removeItem("favorite_loads")
       localStorage.removeItem("is_guest")
-      if (supabase) {
-        await supabase.auth.signOut()
-      }
+      if (supabase) await supabase.auth.signOut()
       setCurrentUserId(null)
       setFavoriteIds([])
       router.push("/login")
@@ -448,9 +388,7 @@ export default function Page() {
                 value={query} 
                 onChange={(e) => {
                   setQuery(e.target.value)
-                  if (e.target.value.trim().length > 0) {
-                    setActiveTab("İlanlar")
-                  }
+                  if (e.target.value.trim().length > 0) setActiveTab("İlanlar")
                 }} 
                 placeholder="İlan, firma veya şehir ara..." 
                 className="h-10 border-[#e0e6ed] bg-white pl-10 text-sm shadow-none w-full" 
@@ -528,7 +466,7 @@ export default function Page() {
         onClose={() => setIsCreateOpen(false)} 
         onSuccess={() => {
           setIsCreateOpen(false)
-          fetchListings()
+          fetchListings(debouncedQuery)
         }} 
       />
     </div>
