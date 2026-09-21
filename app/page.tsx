@@ -68,7 +68,6 @@ export default function Page() {
   const [activeFilter, setActiveFilter] = useState("Tümü")
   const [sourceFilter, setSourceFilter] = useState<"all" | "user" | "bot">("all")
   
-  // ARAMA STATE'LERİ
   const [query, setQuery] = useState("")
   const [debouncedQuery, setDebouncedQuery] = useState("")
   const queryRef = useRef("")
@@ -86,7 +85,7 @@ export default function Page() {
     initials: "NK"
   })
 
-  // 1. ADIM: Arama kutusuna yazı yazıldığında 500ms bekler, sonra veritabanına sorgu atar
+  // Arama için 500ms gecikme (Veritabanını yormamak için)
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedQuery(query)
@@ -98,35 +97,21 @@ export default function Page() {
   const fetchUserFavorites = async (userId: string) => {
     if (!supabase || !userId) return
     try {
-      const { data, error } = await supabase
-        .from("favorites")
-        .select("listing_id")
-        .eq("user_id", userId)
-
-      if (!error && data) {
-        setFavoriteIds(data.map((f) => String(f.listing_id)))
-      }
+      const { data, error } = await supabase.from("favorites").select("listing_id").eq("user_id", userId)
+      if (!error && data) setFavoriteIds(data.map((f) => String(f.listing_id)))
     } catch (e) {
       console.error("Favoriler yüklenirken hata:", e)
     }
   }
 
   useEffect(() => {
-    if (currentUserId) {
-      fetchUserFavorites(currentUserId)
-    } else {
-      setFavoriteIds([])
-    }
+    if (currentUserId) fetchUserFavorites(currentUserId)
+    else setFavoriteIds([])
   }, [currentUserId])
 
   const toggleFavorite = (id: string) => {
-    setFavoriteIds((prev) => {
-      const isFav = prev.includes(id)
-      return isFav ? prev.filter((item) => item !== id) : [...prev, id]
-    })
-    if (currentUserId) {
-      fetchUserFavorites(currentUserId)
-    }
+    setFavoriteIds((prev) => prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id])
+    if (currentUserId) fetchUserFavorites(currentUserId)
   }
 
   useEffect(() => {
@@ -140,17 +125,11 @@ export default function Page() {
           setIsCheckingAuth(false)
           return
         }
-        if (!supabase) {
-          setIsCheckingAuth(false)
-          return
-        }
+        if (!supabase) { setIsCheckingAuth(false); return }
+        
         const { data: { session }, error } = await supabase.auth.getSession()
-        if (error || !session) {
-          router.push("/login")
-        } else {
-          setCurrentUserId(session.user.id)
-          setIsCheckingAuth(false)
-        }
+        if (error || !session) router.push("/login")
+        else { setCurrentUserId(session.user.id); setIsCheckingAuth(false) }
       } catch (err) {
         console.error("Oturum doğrulama hatası:", err)
         router.push("/login")
@@ -162,11 +141,8 @@ export default function Page() {
     if (supabase) {
       const { data } = supabase.auth.onAuthStateChange((event, session) => {
         const isGuest = typeof window !== 'undefined' ? localStorage.getItem("is_guest") === "true" : false
-        if (session) {
-          setCurrentUserId(session.user.id)
-        } else {
-          setCurrentUserId(null)
-        }
+        if (session) setCurrentUserId(session.user.id)
+        else setCurrentUserId(null)
         if (!session && !isGuest && event === "SIGNED_OUT") router.push("/login")
       })
       authSubscription = data.subscription
@@ -194,7 +170,7 @@ export default function Page() {
     }
   }
 
-  // 2. ADIM: DOĞRUDAN SUPABASE ÜZERİNDE ARAMA (SERVER-SIDE SEARCH)
+  // TÜM SUPABASE'DE TÜRKÇE DUYARLI SERVER-SIDE ARAMA
   const fetchListings = useCallback(async (searchStr = "") => {
     setIsLoading(true)
     try {
@@ -203,17 +179,35 @@ export default function Page() {
       let userReq = supabase.from("listings").select("*")
       let botReq = supabase.from("bot_listings").select("*")
 
-      // Eğer arama kelimesi varsa, veritabanına 10 bin ilan içinde arama yapmasını söylüyoruz
+      // Eğer arama kelimesi varsa, veritabanına tüm varyasyonları gönderiyoruz
       if (searchStr.trim()) {
-        const q = `%${searchStr.trim()}%`
-        // bot_listings tablosunda olmayan sütunlar hata vermesin diye dikkatle seçildi
-        userReq = userReq.or(`from_city.ilike.${q},to_city.ilike.${q},cargo_detail.ilike.${q},company_name.ilike.${q},message.ilike.${q}`)
-        botReq = botReq.or(`from_city.ilike.${q},to_city.ilike.${q},cargo_detail.ilike.${q},company_name.ilike.${q}`)
+        const s = searchStr.trim()
+        // Türkçe karakter sorununu aşmak için kelimenin farklı varyasyonlarını üretiyoruz
+        const sLower = s.toLocaleLowerCase('tr-TR')
+        const sUpper = s.toLocaleUpperCase('tr-TR')
+        const sCap = s.charAt(0).toLocaleUpperCase('tr-TR') + s.slice(1).toLocaleLowerCase('tr-TR')
+
+        const qOrig = `%${s}%`
+        const qLow = `%${sLower}%`
+        const qUp = `%${sUpper}%`
+        const qCap = `%${sCap}%`
+
+        const uFields = ['from_city', 'to_city', 'cargo_detail', 'company_name', 'message']
+        const bFields = ['from_city', 'to_city', 'cargo_detail', 'company_name']
+
+        // Her bir sütun için ILGIN, ılgın, Ilgın aramalarını Supabase'e .or() ile yaptırıyoruz
+        const buildOr = (fields: string[]) => {
+          return fields.map(f => `${f}.ilike.${qOrig},${f}.ilike.${qLow},${f}.ilike.${qUp},${f}.ilike.${qCap}`).join(',')
+        }
+
+        userReq = userReq.or(buildOr(uFields))
+        botReq = botReq.or(buildOr(bFields))
       }
 
-      // Arama filtresi uygulandıktan SONRA sıralama ve limit koyuyoruz.
-      const finalUserReq = userReq.order("created_at", { ascending: false }).limit(1000)
-      const finalBotReq = botReq.order("created_at", { ascending: false }).limit(1000)
+      // Arama filtresi uygulandıktan SONRA arayüz kasmaması için limiti 500 olarak belirliyoruz
+      // Bu limit veritabanında arama yapılmasını engellemez, sadece eşleşen İLK 500 sonucu getirir.
+      const finalUserReq = userReq.order("created_at", { ascending: false }).limit(250)
+      const finalBotReq = botReq.order("created_at", { ascending: false }).limit(500)
 
       const [{ data: userData, error: userErr }, { data: botData, error: botErr }] = await Promise.all([finalUserReq, finalBotReq])
 
@@ -223,7 +217,6 @@ export default function Page() {
       const formattedUserLoads: Load[] = (userData || []).map((item: DatabaseListing) => {
         const profileObj = Array.isArray(item.profiles) ? item.profiles[0] : item.profiles
         const companyName = cleanText(item.company_name || profileObj?.company_name || profileObj?.authorized_person || "Nakliye Cepte Kullanıcısı")
-        const phone = item.phone || profileObj?.phone || "Belirtilmedi"
         const initials = companyName.split(" ").filter(Boolean).map((n) => n[0]).join("").toUpperCase().substring(0, 2) || "NK"
 
         return {
@@ -242,7 +235,7 @@ export default function Page() {
           time: item.created_at ? new Date(item.created_at).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" }) : "Yeni",
           color: "bg-[#d64526]",
           source: "user",
-          phone: phone
+          phone: item.phone || profileObj?.phone || "Belirtilmedi"
         }
       })
 
@@ -278,13 +271,11 @@ export default function Page() {
     }
   }, [])
 
-  // 3. ADIM: Arama kelimesi değiştikçe veya sayfa yüklendiğinde fetchListings çalışır
   useEffect(() => {
     if (isCheckingAuth) return
     fetchListings(debouncedQuery)
   }, [isCheckingAuth, currentUserId, debouncedQuery, fetchListings])
 
-  // Canlı veritabanı değişiklikleri dinlenirken güncel arama kelimesi baz alınır
   useEffect(() => {
     if (isCheckingAuth) return
     fetchProfile()
@@ -306,7 +297,8 @@ export default function Page() {
     }
   }, [isCheckingAuth, currentUserId, fetchListings])
 
-  // Ön Yüz (Frontend) Tipi ve Kaynak Filtrelemesi (Tır, Kamyon vs)
+  // Ön yüzdeki çift filtrelemeyi kaldırdık. Arama tamamen arka planda yapılıyor.
+  // Burada sadece "Tümü", "Acil", "Tır", "Kamyon" gibi sekme filtreleri çalışır.
   const filteredLoads = useMemo(() => {
     return loads.filter((load) => {
       const filterMatch = activeFilter === "Tümü" || (activeFilter === "Acil" ? load.urgent : load.vehicle.toLowerCase().includes(activeFilter.toLowerCase()))
