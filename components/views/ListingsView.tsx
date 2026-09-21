@@ -22,21 +22,6 @@ type ListingsViewProps = {
   onToggleFavorite?: (id: string) => void
 }
 
-// Türkçe karakter duyarlı metin normalizasyon fonksiyonu (Frontend hızlı filtreleme için)
-function normalizeText(text: string): string {
-  if (!text) return ""
-  return text
-    .toLocaleLowerCase("tr-TR")
-    .replace(/İ/g, "i")
-    .replace(/I/g, "ı")
-    .replace(/Ğ/g, "ğ")
-    .replace(/Ü/g, "ü")
-    .replace(/Ş/g, "ş")
-    .replace(/Ö/g, "ö")
-    .replace(/Ç/g, "ç")
-    .trim()
-}
-
 export function ListingsView({
   loads,
   stats,
@@ -51,19 +36,6 @@ export function ListingsView({
   onToggleFavorite
 }: ListingsViewProps) {
   const filterOptions = ["Tümü", "Acil", "Tır", "Kamyon", "Frigo"]
-  
-  // Arama filtresini tüm il ve ilçeler için güvenli hale getirme
-  const normalizedSearch = normalizeText(searchQuery)
-  
-  const filteredLoads = loads.filter((load) => {
-    if (!normalizedSearch) return true
-    
-    const searchableContent = normalizeText(
-      `${load.company || ""} ${load.from || ""} ${load.to || ""} ${load.cargo || ""} ${load.message || ""}`
-    )
-    
-    return searchableContent.includes(normalizedSearch)
-  })
 
   return (
     <div className="space-y-6">
@@ -73,7 +45,7 @@ export function ListingsView({
           <div className="text-xs font-semibold text-[#d64526] uppercase tracking-wider mb-1">Pazar Yeri</div>
           <h1 className="text-2xl font-bold text-[#122c4a] sm:text-3xl">Güncel İlanlar</h1>
           <p className="mt-1 text-sm text-[#627d98]">
-            Saha ve kullanıcı ilanları son 3 gün esas alınarak listelenmektedir.
+            Saha ve kullanıcı ilanları güncel esas alınarak listelenmektedir.
           </p>
         </div>
         <button
@@ -93,7 +65,7 @@ export function ListingsView({
             sourceFilter === "all" ? "bg-[#122c4a] text-white" : "text-[#627d98] hover:bg-[#f5f7fa]"
           }`}
         >
-          Listelenen İlanlar ({stats.activeTotal})
+          Tüm İlanlar ({stats.activeTotal})
         </button>
         <button
           onClick={() => setSourceFilter("user")}
@@ -132,7 +104,7 @@ export function ListingsView({
         </div>
         <div className="text-xs text-[#8da0b2] font-medium flex items-center gap-1">
           <Filter className="size-3.5" />
-          <span>{filteredLoads.length} eşleşen ilan gösteriliyor</span>
+          <span>{loads.length} eşleşen ilan gösteriliyor</span>
         </div>
       </div>
 
@@ -140,16 +112,16 @@ export function ListingsView({
       {loading ? (
         <div className="flex flex-col items-center justify-center py-16 text-[#8da0b2]">
           <div className="size-8 rounded-full border-2 border-[#d64526] border-t-transparent animate-spin mb-3" />
-          <p className="text-sm font-medium">Veritabanında aranıyor...</p>
+          <p className="text-sm font-medium">İlanlar yükleniyor...</p>
         </div>
-      ) : filteredLoads.length === 0 ? (
+      ) : loads.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-[#cbd5e1] bg-white p-12 text-center shadow-xs">
           <p className="text-base font-bold text-[#122c4a]">Aramanıza uygun aktif ilan bulunamadı</p>
           <p className="mt-1 text-xs text-[#627d98]">Filtrelerinizi değiştirmeyi veya arama teriminizi temizlemeyi deneyin.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {filteredLoads.map((load) => (
+          {loads.map((load) => (
             <LoadCard
               key={load.id}
               load={load}
