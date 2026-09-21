@@ -22,6 +22,21 @@ type ListingsViewProps = {
   onToggleFavorite?: (id: string) => void
 }
 
+// Türkçe karakter duyarlı metin normalizasyon fonksiyonu (Tüm il ve ilçeler için hatasız arama sağlar)
+function normalizeText(text: string): string {
+  if (!text) return ""
+  return text
+    .toLocaleLowerCase("tr-TR")
+    .replace(/İ/g, "i")
+    .replace(/I/g, "ı")
+    .replace(/Ğ/g, "ğ")
+    .replace(/Ü/g, "ü")
+    .replace(/Ş/g, "ş")
+    .replace(/Ö/g, "ö")
+    .replace(/Ç/g, "ç")
+    .trim()
+}
+
 export function ListingsView({
   loads,
   stats,
@@ -36,6 +51,21 @@ export function ListingsView({
   onToggleFavorite
 }: ListingsViewProps) {
   const filterOptions = ["Tümü", "Acil", "Tır", "Kamyon", "Frigo"]
+
+  // Arama filtresini tüm il ve ilçeler için güvenli hale getirme
+  const normalizedSearch = normalizeText(searchQuery)
+  
+  const filteredLoads = loads.filter((load) => {
+    if (!normalizedSearch) return true
+    
+    // İlanın arama yapılabilen alanlarını birleştirip normalize ediyoruz
+    // (Load objenizin yapısına göre buradaki alanları çoğaltabilirsiniz, örn: load.title, load.from, load.to vb.)
+    const searchableContent = normalizeText(
+      `${load.title || ""} ${load.content || ""} ${load.from || ""} ${load.to || ""}`
+    )
+    
+    return searchableContent.includes(normalizedSearch)
+  })
 
   return (
     <div className="space-y-6">
@@ -104,7 +134,7 @@ export function ListingsView({
         </div>
         <div className="text-xs text-[#8da0b2] font-medium flex items-center gap-1">
           <Filter className="size-3.5" />
-          <span>{loads.length} ilan listeleniyor</span>
+          <span>{filteredLoads.length} ilan listeleniyor</span>
         </div>
       </div>
 
@@ -114,14 +144,14 @@ export function ListingsView({
           <div className="size-8 rounded-full border-2 border-[#d64526] border-t-transparent animate-spin mb-3" />
           <p className="text-sm font-medium">Son 3 günün ilanları yükleniyor...</p>
         </div>
-      ) : loads.length === 0 ? (
+      ) : filteredLoads.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-[#cbd5e1] bg-white p-12 text-center shadow-xs">
           <p className="text-base font-bold text-[#122c4a]">Aramanıza uygun aktif ilan bulunamadı</p>
           <p className="mt-1 text-xs text-[#627d98]">Filtrelerinizi değiştirmeyi veya arama teriminizi temizlemeyi deneyin.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {loads.map((load) => (
+          {filteredLoads.map((load) => (
             <LoadCard
               key={load.id}
               load={load}
