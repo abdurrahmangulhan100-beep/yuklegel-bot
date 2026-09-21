@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState, useRef, useCallback } from "react"
+import { useEffect, useMemo, useState, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { Bell, ChevronDown, Menu, Search, LogOut } from "lucide-react"
 import { Input } from "@/components/ui/input"
@@ -60,6 +60,17 @@ const extractPhone = (text?: string | null) => {
   return match ? match[0].replace(/\s+/g, "") : ""
 }
 
+// Türkçe karakterleri tam uyumlu küçük harfe çeviren güvenli fonksiyon
+function normalizeText(text?: string | null): string {
+  if (!text) return ""
+  return text
+    .toLocaleLowerCase("tr-TR")
+    .replace(/i̇/g, "i")
+    .replace(/I/g, "ı")
+    .replace(/İ/g, "i")
+    .trim()
+}
+
 export default function Page() {
   const router = useRouter()
   const [isCheckingAuth, setIsCheckingAuth] = useState(true)
@@ -67,10 +78,7 @@ export default function Page() {
   const [favoriteIds, setFavoriteIds] = useState<string[]>([])
   const [activeFilter, setActiveFilter] = useState("Tümü")
   const [sourceFilter, setSourceFilter] = useState<"all" | "user" | "bot">("all")
-  
   const [query, setQuery] = useState("")
-  const [debouncedQuery, setDebouncedQuery] = useState("")
-  const queryRef = useRef("")
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const [isCollapsed, setIsCollapsed] = useState(false)
@@ -84,15 +92,6 @@ export default function Page() {
     authorized_person: "Kullanıcı",
     initials: "NK"
   })
-
-  // Debounce arama gecikmesi (400ms)
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedQuery(query)
-      queryRef.current = query
-    }, 400)
-    return () => clearTimeout(timer)
-  }, [query])
 
   // Favorileri Çekme
   const fetchUserFavorites = async (userId: string) => {
@@ -237,38 +236,32 @@ export default function Page() {
     }
   }
 
-  // GÜVENLİ İLAN ÇEKME VE ARAMA FONKSİYONU
-  const fetchListings = useCallback(async (searchStr = "") => {
+  // GÜVENLİ VE HIZLI VERİ ÇEKME
+  const fetchListings = useCallback(async () => {
     setIsLoading(true)
     try {
-      const threeDaysAgo = new Date()
-      threeDaysAgo.setDate(threeDaysAgo.getDate() - 3)
-      const isoThreeDaysAgo = threeDaysAgo.toISOString()
-
       if (!supabase) {
         setLoads([])
         setIsLoading(false)
         return
       }
 
-      let userReq = supabase.from("listings").select("*").gte("created_at", isoThreeDaysAgo)
-      let botReq = supabase.from("bot_listings").select("*").gte("created_at", isoThreeDaysAgo)
+      // Veritabanındaki gerçek sütun isimleriyle istek atıyoruz
+      const userReq = supabase
+        .from("listings")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(500)
 
-      // Arama varsa .or() filtresi .order() veya .limit()'ten önce eklenmeli
-      if (searchStr.trim()) {
-        const cleanSearch = searchStr.trim()
-        const q = `%${cleanSearch}%`
-        userReq = userReq.or(`from_city.ilike.${q},to_city.ilike.${q},cargo_detail.ilike.${q},message.ilike.${q},company_name.ilike.${q}`)
-        botReq = botReq.or(`from_city.ilike.${q},to_city.ilike.${q},cargo_detail.ilike.${q},message.ilike.${q},text.ilike.${q},company_name.ilike.${q}`)
-      }
+      const botReq = supabase
+        .from("bot_listings")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(1500)
 
-      // Sıralama ve limitleri filtrelemeden sonra bağlıyoruz
-      const userFinalReq = userReq.order("created_at", { ascending: false }).limit(150)
-      const botFinalReq = botReq.order("created_at", { ascending: false }).limit(150)
+      const [{ data: userData, error: userErr }, { data: botData, error: botErr }] = await Promise.all([userReq, botReq])
 
-      const [{ data: userData, error: userErr }, { data: botData, error: botErr }] = await Promise.all([userFinalReq, botFinalReq])
-
-      if (userErr) console.error("Listings hatası:", userErr)
+      if (userErr) console.error("User listings hatası:", userErr)
       if (botErr) console.error("Bot listings hatası:", botErr)
 
       const formattedUserLoads: Load[] = (userData || []).map((item: DatabaseListing) => {
@@ -298,7 +291,7 @@ export default function Page() {
       })
 
       const formattedBotLoads: Load[] = (botData || []).map((item: DatabaseListing) => {
-        const rawDetail = cleanText(item.cargo_detail || item.message || item.text || "Saha İlanı")
+        const rawDetail = cleanText(item.cargo_detail || "Saha İlanı")
         let rawCompany = cleanText(item.company_name || "Saha Lojistik Ağı")
         
         if (rawCompany.toLowerCase().includes("whatsapp")) {
@@ -315,7 +308,7 @@ export default function Page() {
           from: cleanText(item.from_city),
           to: cleanText(item.to_city),
           cargo: rawDetail,
-          message: cleanText(item.message),
+          message: "",
           vehicle: rawVehicle,
           distance: "Belirtilmemiş",
           price: "",
@@ -337,8 +330,8 @@ export default function Page() {
 
   useEffect(() => {
     if (isCheckingAuth) return
-    fetchListings(debouncedQuery)
-  }, [isCheckingAuth, currentUserId, debouncedQuery, fetchListings])
+    fetchListings()
+  }, [isCheckingAuth, currentUserId, fetchListings])
 
   useEffect(() => {
     if (isCheckingAuth) return
@@ -348,8 +341,8 @@ export default function Page() {
     
     const channel = supabase
       .channel("realtime-all")
-      .on("postgres_changes", { event: "*", schema: "public", table: "listings" }, () => fetchListings(queryRef.current))
-      .on("postgres_changes", { event: "*", schema: "public", table: "bot_listings" }, () => fetchListings(queryRef.current))
+      .on("postgres_changes", { event: "*", schema: "public", table: "listings" }, () => fetchListings())
+      .on("postgres_changes", { event: "*", schema: "public", table: "bot_listings" }, () => fetchListings())
       .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, () => fetchProfile())
       .on("postgres_changes", { event: "*", schema: "public", table: "favorites" }, () => {
         if (currentUserId) fetchUserFavorites(currentUserId)
@@ -361,12 +354,24 @@ export default function Page() {
     }
   }, [isCheckingAuth, currentUserId, fetchListings])
 
-  const filteredLoads = useMemo(() => loads.filter((load) => {
-    const filterMatch = activeFilter === "Tümü" || (activeFilter === "Acil" ? load.urgent : load.vehicle.toLowerCase().includes(activeFilter.toLowerCase()))
-    const sourceMatch = sourceFilter === "all" || load.source === sourceFilter
-    const searchMatch = `${load.company} ${load.from} ${load.to} ${load.cargo} ${load.message || ''}`.toLocaleLowerCase('tr-TR').includes(query.toLocaleLowerCase('tr-TR'))
-    return filterMatch && sourceMatch && searchMatch
-  }), [loads, activeFilter, sourceFilter, query])
+  // ANINDA VE KUSURSUZ TÜRKÇE ARAMA FİLTRESİ
+  const filteredLoads = useMemo(() => {
+    const searchNormalized = normalizeText(query)
+
+    return loads.filter((load) => {
+      const filterMatch = activeFilter === "Tümü" || (activeFilter === "Acil" ? load.urgent : load.vehicle.toLowerCase().includes(activeFilter.toLowerCase()))
+      const sourceMatch = sourceFilter === "all" || load.source === sourceFilter
+      
+      if (!searchNormalized) return filterMatch && sourceMatch
+
+      const searchableText = normalizeText(
+        `${load.company} ${load.from} ${load.to} ${load.cargo} ${load.message || ''}`
+      )
+      const searchMatch = searchableText.includes(searchNormalized)
+
+      return filterMatch && sourceMatch && searchMatch
+    })
+  }, [loads, activeFilter, sourceFilter, query])
 
   const stats = useMemo(() => {
     const userLoads = loads.filter(l => l.source === "user")
@@ -523,7 +528,7 @@ export default function Page() {
         onClose={() => setIsCreateOpen(false)} 
         onSuccess={() => {
           setIsCreateOpen(false)
-          fetchListings(debouncedQuery)
+          fetchListings()
         }} 
       />
     </div>
