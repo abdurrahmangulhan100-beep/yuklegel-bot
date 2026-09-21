@@ -22,7 +22,7 @@ type ListingsViewProps = {
   onToggleFavorite?: (id: string) => void
 }
 
-// Türkçe karakter duyarlı metin normalizasyon fonksiyonu (Tüm il ve ilçeler için hatasız arama sağlar)
+// Türkçe karakter duyarlı metin normalizasyon fonksiyonu (Frontend hızlı filtreleme için)
 function normalizeText(text: string): string {
   if (!text) return ""
   return text
@@ -51,17 +51,15 @@ export function ListingsView({
   onToggleFavorite
 }: ListingsViewProps) {
   const filterOptions = ["Tümü", "Acil", "Tır", "Kamyon", "Frigo"]
-
+  
   // Arama filtresini tüm il ve ilçeler için güvenli hale getirme
   const normalizedSearch = normalizeText(searchQuery)
   
   const filteredLoads = loads.filter((load) => {
     if (!normalizedSearch) return true
     
-    // İlanın arama yapılabilen alanlarını birleştirip normalize ediyoruz
-    // (Load objenizin yapısına göre buradaki alanları çoğaltabilirsiniz, örn: load.title, load.from, load.to vb.)
     const searchableContent = normalizeText(
-      `${load.title || ""} ${load.content || ""} ${load.from || ""} ${load.to || ""}`
+      `${load.company || ""} ${load.from || ""} ${load.to || ""} ${load.cargo || ""} ${load.message || ""}`
     )
     
     return searchableContent.includes(normalizedSearch)
@@ -95,7 +93,7 @@ export function ListingsView({
             sourceFilter === "all" ? "bg-[#122c4a] text-white" : "text-[#627d98] hover:bg-[#f5f7fa]"
           }`}
         >
-          Tüm İlanlar ({stats.activeTotal})
+          Listelenen İlanlar ({stats.activeTotal})
         </button>
         <button
           onClick={() => setSourceFilter("user")}
@@ -134,7 +132,7 @@ export function ListingsView({
         </div>
         <div className="text-xs text-[#8da0b2] font-medium flex items-center gap-1">
           <Filter className="size-3.5" />
-          <span>{filteredLoads.length} ilan listeleniyor</span>
+          <span>{filteredLoads.length} eşleşen ilan gösteriliyor</span>
         </div>
       </div>
 
@@ -142,7 +140,7 @@ export function ListingsView({
       {loading ? (
         <div className="flex flex-col items-center justify-center py-16 text-[#8da0b2]">
           <div className="size-8 rounded-full border-2 border-[#d64526] border-t-transparent animate-spin mb-3" />
-          <p className="text-sm font-medium">Son 3 günün ilanları yükleniyor...</p>
+          <p className="text-sm font-medium">Veritabanında aranıyor...</p>
         </div>
       ) : filteredLoads.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-[#cbd5e1] bg-white p-12 text-center shadow-xs">
