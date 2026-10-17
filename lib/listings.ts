@@ -150,3 +150,25 @@ export function dedupeLoads(loads: Load[]): Load[] {
   }
   return out
 }
+
+/**
+ * Yenileme sonrası içeriği değişmeyen ilanların eski nesnesini korur.
+ * Böylece memo'lu LoadCard'lar gereksiz yere yeniden çizilmez (mobilde kasmayı önler).
+ */
+export function reuseLoads(prev: Load[], next: Load[]): Load[] {
+  if (prev.length === 0) return next
+  const byId = new Map(prev.map((l) => [l.id, l]))
+  return next.map((n) => {
+    const p = byId.get(n.id)
+    if (!p) return n
+    const a = p as unknown as Record<string, unknown>
+    const b = n as unknown as Record<string, unknown>
+    for (const k of Object.keys(b)) {
+      const x = a[k], y = b[k]
+      if (x === y) continue
+      if (Array.isArray(x) && Array.isArray(y) && x.join("|") === y.join("|")) continue
+      return n
+    }
+    return p
+  })
+}
