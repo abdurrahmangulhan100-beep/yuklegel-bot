@@ -1,7 +1,6 @@
 "use client"
 
 import { Calculator, ChevronLeft, ChevronRight, CircleHelp, FileText, LayoutDashboard, LogIn, LogOut, ShieldCheck, Star, Truck, User, UserX, WalletCards, X } from "lucide-react"
-import { Separator } from "@/components/ui/separator"
 import { cn } from "@/lib/utils"
 import { supabase } from "@/lib/supabase"
 import Link from "next/link"
@@ -16,6 +15,7 @@ type SidebarProps = {
   isSidebarOpen: boolean;
   setIsSidebarOpen: (open: boolean) => void;
   isGuest?: boolean;
+  profile?: { company_name: string; authorized_person: string; initials: string };
 }
 
 export function Sidebar({ 
@@ -27,7 +27,8 @@ export function Sidebar({
   setIsCollapsed, 
   isSidebarOpen, 
   setIsSidebarOpen,
-  isGuest = false
+  isGuest = false,
+  profile
 }: SidebarProps) {
   const go = (tab: string) => { 
     setActiveTab(tab); 
@@ -44,26 +45,41 @@ export function Sidebar({
 
   return (
     <aside className={cn(
-      "fixed inset-y-0 left-0 z-40 flex w-[265px] flex-col bg-[#122c4a] text-white transition-all duration-300 lg:translate-x-0 shadow-2xl border-r border-white/10", 
-      isSidebarOpen ? "translate-x-0" : "-translate-x-full", 
+      "fixed inset-y-0 left-0 z-50 flex w-[288px] max-w-[86vw] flex-col bg-[#122c4a] text-white shadow-2xl transition-all duration-300 lg:w-[272px] lg:max-w-none lg:translate-x-0 border-r border-white/10",
+      isSidebarOpen ? "translate-x-0" : "-translate-x-full",
       isCollapsed && "lg:w-[78px]"
     )}>
-      <div className="flex h-[82px] items-center gap-3.5 px-5">
-        <div className="grid size-11 shrink-0 place-items-center rounded-2xl bg-[#d64526] text-xl font-bold shadow-md text-white">N</div>
+      <div className="flex h-[76px] shrink-0 items-center gap-3.5 px-5 pt-safe">
+        <div className="grid size-11 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-[#e5522f] to-[#c13a1c] text-xl font-bold shadow-md text-white">N</div>
         {!isCollapsed && (
           <div>
             <div className="text-[19px] font-bold tracking-tight">Nakliye Cepte</div>
             <div className="text-[10px] uppercase tracking-[0.2em] text-white/50 font-semibold">Nakliye Ağı</div>
           </div>
         )}
-        <button aria-label="Menüyü kapat" className="ml-auto cursor-pointer rounded-xl p-1.5 text-white/60 hover:bg-white/10 lg:hidden transition-colors" onClick={() => setIsSidebarOpen(false)}>
+        <button aria-label="Menüyü kapat" className="ml-auto grid size-9 place-items-center rounded-full text-white/70 hover:bg-white/10 lg:hidden transition-colors" onClick={() => setIsSidebarOpen(false)}>
           <X className="size-5" />
         </button>
       </div>
 
-      <Separator className="bg-white/10" />
+      {/* Mobil çekmecede kullanıcı kartı */}
+      {profile && !isCollapsed && (
+        <button
+          type="button"
+          onClick={() => go("Şirket Profili")}
+          className="mx-3 mb-2 flex items-center gap-3 rounded-2xl bg-white/[0.07] p-3 text-left transition-colors hover:bg-white/10 lg:hidden"
+        >
+          <div className="grid size-10 shrink-0 place-items-center rounded-full bg-[#dbe8f2] text-sm font-bold text-[#315d83]">{profile.initials}</div>
+          <div className="min-w-0">
+            <div className="truncate text-sm font-semibold">{profile.authorized_person}</div>
+            <div className="truncate text-xs text-white/55">{profile.company_name}</div>
+          </div>
+        </button>
+      )}
 
-      <nav className="flex flex-1 flex-col gap-1.5 px-3 py-5 overflow-y-auto">
+      <div className="mx-4 h-px bg-white/10" />
+
+      <nav className="flex flex-1 flex-col gap-1 overflow-y-auto px-3 py-4">
         <NavItem icon={LayoutDashboard} label="Genel Bakış" active={activeTab === "Genel Bakış" || activeTab === "overview"} onClick={() => go("Genel Bakış")} collapsed={isCollapsed} />
         <NavItem icon={FileText} label="İlanlar" active={activeTab === "İlanlar"} badge={loadsCount.toString()} onClick={() => go("İlanlar")} collapsed={isCollapsed} />
         <NavItem icon={Star} label="Favorilerim" active={activeTab === "Favorilerim"} badge={favoritesCount > 0 ? favoritesCount.toString() : undefined} onClick={() => go("Favorilerim")} collapsed={isCollapsed} />
@@ -71,16 +87,16 @@ export function Sidebar({
         <NavItem icon={WalletCards} label="Gelir & Gider" active={activeTab === "Gelir Gider"} onClick={() => go("Gelir Gider")} collapsed={isCollapsed} />
         <NavItem icon={Calculator} label="Sefer Hesapla" active={activeTab === "Sefer Hesapla"} onClick={() => go("Sefer Hesapla")} collapsed={isCollapsed} />
 
-        <div className="my-4 h-px bg-white/10" />
+        <div className="my-3 h-px bg-white/10" />
         <p className={cn("px-3 pb-1 text-[10px] font-bold uppercase tracking-[0.2em] text-white/40", isCollapsed && "sr-only")}>Hesabım</p>
         
         <NavItem icon={User} label="Profilim" active={activeTab === "Şirket Profili" || activeTab === "Profilim"} onClick={() => go("Şirket Profili")} collapsed={isCollapsed} />
         <NavItem icon={CircleHelp} label="Yardım Merkezi" active={activeTab === "Yardım Merkezi"} onClick={() => go("Yardım Merkezi")} collapsed={isCollapsed} />
 
-        <div className="my-4 h-px bg-white/10" />
+        <div className="my-3 h-px bg-white/10" />
         <p className={cn("px-3 pb-1 text-[10px] font-bold uppercase tracking-[0.2em] text-white/40", isCollapsed && "sr-only")}>Yasal & Gizlilik</p>
 
-        <Link href="/privacy" onClick={() => setIsSidebarOpen(false)} className={cn("flex w-full cursor-pointer items-center gap-3.5 rounded-xl px-3.5 py-3 text-sm font-medium text-white/70 transition-all hover:bg-white/10 hover:text-white", isCollapsed && "justify-center")} title={isCollapsed ? "Gizlilik Politikası" : undefined}>
+        <Link href="/privacy" onClick={() => setIsSidebarOpen(false)} className={cn("flex min-h-12 w-full items-center gap-3.5 rounded-xl px-3.5 py-3 text-sm font-medium text-white/70 transition-all hover:bg-white/10 hover:text-white", isCollapsed && "justify-center px-0")} title={isCollapsed ? "Gizlilik Politikası" : undefined}>
           <ShieldCheck className="size-5 shrink-0 text-emerald-400" />
           {!isCollapsed && <span>Gizlilik Politikası</span>}
         </Link>
@@ -93,8 +109,8 @@ export function Sidebar({
             onClick={handleLogout}
             title={isCollapsed ? (isGuest ? "Giriş Yap" : "Çıkış Yap") : undefined}
             className={cn(
-              "flex w-full cursor-pointer items-center gap-3.5 rounded-xl px-3.5 py-3 text-sm font-medium text-red-400 transition-all hover:bg-red-500/15 hover:text-red-300",
-              isCollapsed && "justify-center"
+              "flex min-h-12 w-full items-center gap-3.5 rounded-xl px-3.5 py-3 text-sm font-medium text-red-300 transition-all hover:bg-red-500/15 hover:text-red-200",
+              isCollapsed && "justify-center px-0"
             )}
           >
             {isGuest ? <LogIn className="size-5 shrink-0" /> : <LogOut className="size-5 shrink-0" />}
@@ -103,21 +119,23 @@ export function Sidebar({
         </div>
       </nav>
 
-      <button aria-label="Menüyü daralt" className="m-3.5 hidden cursor-pointer items-center justify-center rounded-xl bg-white/5 py-2.5 text-white/60 hover:bg-white/10 hover:text-white transition-colors lg:flex" onClick={() => setIsCollapsed(!isCollapsed)}>
+      <button aria-label={isCollapsed ? "Menüyü genişlet" : "Menüyü daralt"} className="m-3.5 hidden items-center justify-center rounded-xl bg-white/5 py-2.5 text-white/60 hover:bg-white/10 hover:text-white transition-colors lg:flex" onClick={() => setIsCollapsed(!isCollapsed)}>
         {isCollapsed ? <ChevronRight className="size-5" /> : <div className="flex items-center gap-2 text-xs font-medium"><ChevronLeft className="size-4" /><span>Menüyü Daralt</span></div>}
       </button>
+      <div className="pb-safe lg:hidden" />
     </aside>
   )
 }
 
-function NavItem({ icon: Icon, label, active, collapsed, badge, onClick }: { icon: any; label: string; active?: boolean; collapsed: boolean; badge?: string; onClick?: () => void }) { 
+function NavItem({ icon: Icon, label, active, collapsed, badge, onClick }: { icon: React.ComponentType<{ className?: string }>; label: string; active?: boolean; collapsed: boolean; badge?: string; onClick?: () => void }) { 
   return (
     <button 
       type="button" 
       onClick={onClick} 
+      aria-current={active ? "page" : undefined}
       className={cn(
-        "flex w-full cursor-pointer items-center gap-3.5 rounded-xl px-3.5 py-3 text-sm font-medium text-white/70 transition-all hover:bg-white/10 hover:text-white", 
-        active && "bg-[#d64526] text-white font-semibold shadow-md", 
+        "flex min-h-12 w-full items-center gap-3.5 rounded-xl px-3.5 py-3 text-sm font-medium text-white/70 transition-all hover:bg-white/10 hover:text-white", 
+        active && "bg-[#d64526] text-white font-semibold shadow-md hover:bg-[#d64526]", 
         collapsed && "justify-center px-0"
       )} 
       title={collapsed ? label : undefined}
