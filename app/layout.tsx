@@ -1,11 +1,26 @@
 import { Analytics } from '@vercel/analytics/next'
 import type { Metadata, Viewport } from 'next'
+import { Inter } from 'next/font/google'
 import './globals.css'
+
+// Türkçe karakterler (ğ, ş, ı, İ...) için latin-ext alt kümesi gerekli
+const inter = Inter({
+  subsets: ['latin', 'latin-ext'],
+  variable: '--font-inter',
+  display: 'swap',
+})
 
 export const metadata: Metadata = {
   title: 'Nakliye Cepte | Yük ve İlan Platformu',
   description: 'Türkiye’nin güncel ve güvenilir yük, taşıma ve Nakliye ilanları platformu.',
   manifest: '/manifest.json', // PWABuilder için zorunlu olan Web App Manifest bağlantısı
+  applicationName: 'Nakliye Cepte',
+  appleWebApp: {
+    capable: true,
+    title: 'Nakliye Cepte',
+    statusBarStyle: 'default',
+  },
+  formatDetection: { telephone: false },
   icons: {
     icon: [
       {
@@ -26,6 +41,9 @@ export const metadata: Metadata = {
 }
 
 export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover', // çentik / alt çubuk güvenli alanları için
   colorScheme: 'light',
   themeColor: '#122c4a', // PWA tema rengi uygulamanın ana rengiyle eşleştirildi
 }
@@ -36,7 +54,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="tr" className="light">
+    <html lang="tr" className={`light ${inter.variable}`}>
       <body className="antialiased">
         {children}
         {process.env.NODE_ENV === 'production' && <Analytics />}
