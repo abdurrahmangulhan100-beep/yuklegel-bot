@@ -21,7 +21,7 @@ export function BottomNav({ activeTab, setActiveTab, onOpenCreate, onOpenMenu, f
   return (
     <nav
       aria-label="Ana gezinme"
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-[#e4e9ef] bg-white/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-6px_24px_rgba(18,44,74,0.06)] backdrop-blur-lg lg:hidden"
+      className="fixed inset-x-0 bottom-0 z-40 border-t border-[#e4e9ef] bg-white pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_16px_rgba(18,44,74,0.06)] lg:hidden"
     >
       <div className="mx-auto grid h-16 max-w-xl grid-cols-5 items-stretch px-1">
         <Tab icon={LayoutDashboard} label="Ana Sayfa" active={isHome} onClick={() => setActiveTab("Genel Bakış")} />
