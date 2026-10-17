@@ -1,6 +1,6 @@
 "use client"
 
-import { Calculator, ChevronLeft, ChevronRight, CircleHelp, FileText, LayoutDashboard, LogIn, LogOut, ShieldCheck, Star, Truck, User, UserX, WalletCards, X } from "lucide-react"
+import { Calculator, ChevronLeft, ChevronRight, CircleHelp, FileText, LayoutDashboard, LogIn, LogOut, ShieldCheck, Star, Truck, User, UserX, WalletCards, Wrench, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { supabase } from "@/lib/supabase"
 import Link from "next/link"
@@ -86,6 +86,7 @@ export function Sidebar({
         <NavItem icon={Truck} label="Seferlerim" active={activeTab === "Seferlerim"} onClick={() => go("Seferlerim")} collapsed={isCollapsed} />
         <NavItem icon={WalletCards} label="Gelir & Gider" active={activeTab === "Gelir Gider"} onClick={() => go("Gelir Gider")} collapsed={isCollapsed} />
         <NavItem icon={Calculator} label="Sefer Hesapla" active={activeTab === "Sefer Hesapla"} onClick={() => go("Sefer Hesapla")} collapsed={isCollapsed} />
+        <NavItem icon={Wrench} label="Şoför Araçları" active={activeTab === "Araçlar"} badge="YENİ" onClick={() => go("Araçlar")} collapsed={isCollapsed} />
 
         <div className="my-3 h-px bg-white/10" />
         <p className={cn("px-3 pb-1 text-[10px] font-bold uppercase tracking-[0.2em] text-white/40", isCollapsed && "sr-only")}>Hesabım</p>
