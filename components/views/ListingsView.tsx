@@ -1,10 +1,11 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { Load, LoadCard } from "@/components/LoadCard"
 import { PackageSearch, Plus, Zap, Phone, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { isMissing } from "@/lib/route"
+import { PublicSourceNotice } from "@/components/PublicSourceNotice"
 
 type ListingsViewProps = {
   loads: Load[]
@@ -83,6 +84,29 @@ export function ListingsView({
     [loads, fromCity, toCity, onlyPhone]
   )
 
+  // Uzun listeyi tek seferde çizmek mobilde kasmaya yol açar: ekran kaydıkça parça parça ekle
+  const CHUNK = 20
+  const [shown, setShown] = useState(CHUNK)
+  const sentinelRef = useRef<HTMLDivElement | null>(null)
+  const filterKey = `${activeFilter}|${sourceFilter}|${fromCity}|${toCity}|${onlyPhone}|${searchQuery}`
+  useEffect(() => { setShown(CHUNK) }, [filterKey])
+
+  const renderedLoads = useMemo(() => visibleLoads.slice(0, shown), [visibleLoads, shown])
+  const hasHiddenLocal = shown < visibleLoads.length
+
+  useEffect(() => {
+    const el = sentinelRef.current
+    if (!el || !hasHiddenLocal) return
+    const io = new IntersectionObserver(
+      (entries) => { if (entries[0].isIntersecting) setShown((n) => n + CHUNK) },
+      { rootMargin: "600px 0px" }
+    )
+    io.observe(el)
+    return () => io.disconnect()
+  }, [hasHiddenLocal, shown])
+
+  const favoriteSet = useMemo(() => new Set(favoriteIds), [favoriteIds])
+
   const hasExtraFilters = Boolean(fromCity || toCity || onlyPhone)
   const clearAll = () => { setActiveFilter("Tümü"); setSourceFilter("all"); setFromCity(""); setToCity(""); setOnlyPhone(false) }
 
@@ -133,6 +157,9 @@ export function ListingsView({
           </button>
         ))}
       </div>
+
+      {/* Kamuya açık kaynak bilgilendirmesi (Saha Ağı ilanları görünürken) */}
+      {sourceFilter !== "user" && <PublicSourceNotice />}
 
       {/* Araç / tip çipleri (yatay kaydırma) */}
       <div className="-mx-4 sm:mx-0">
@@ -216,7 +243,7 @@ export function ListingsView({
                   <div className="h-3 w-1/4 rounded bg-[#f3f6f9]" />
                 </div>
               </div>
-              <div className="mt-4 h-24 rounded-2xl bg-[#f3f6f9]" />
+              <div className="mt-4 h-10 rounded-xl bg-[#f3f6f9]" />
               <div className="mt-4 space-y-2">
                 <div className="h-3 w-full rounded bg-[#f3f6f9]" />
                 <div className="h-3 w-3/4 rounded bg-[#f3f6f9]" />
@@ -246,12 +273,12 @@ export function ListingsView({
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4 xl:grid-cols-3">
-          {visibleLoads.map((load) => (
+          {renderedLoads.map((load) => (
             <LoadCard
               key={load.id}
               load={load}
               searchQuery={searchQuery}
-              isFavorite={favoriteIds.includes(load.id)}
+              isFavorite={favoriteSet.has(load.id)}
               onToggleFavorite={onToggleFavorite}
               onUserBlocked={onUserBlocked}
               onCitySearch={onCitySearch}
@@ -260,7 +287,9 @@ export function ListingsView({
         </div>
       )}
 
-      {!loading && hasMore && onLoadMore && (
+      {hasHiddenLocal && <div ref={sentinelRef} aria-hidden className="h-8" />}
+
+      {!loading && !hasHiddenLocal && hasMore && onLoadMore && (
         <div className="flex justify-center pt-2">
           <button
             onClick={onLoadMore}
