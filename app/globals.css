@@ -5,6 +5,7 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -47,38 +48,38 @@
 
 :root {
   color-scheme: light;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  --background: #f5f7fa;
+  --foreground: #122c4a;
+  --card: #ffffff;
+  --card-foreground: #122c4a;
+  --popover: #ffffff;
+  --popover-foreground: #122c4a;
+  --primary: #122c4a;
+  --primary-foreground: #ffffff;
+  --secondary: #eef4f8;
+  --secondary-foreground: #122c4a;
+  --muted: #f0f4f8;
+  --muted-foreground: #627d98;
+  --accent: #eef4f8;
+  --accent-foreground: #122c4a;
+  --destructive: #d64526;
+  --border: #e4e9ef;
+  --input: #dbe3ec;
+  --ring: #315d83;
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --radius: 0.75rem;
+  --sidebar: #122c4a;
+  --sidebar-foreground: #ffffff;
+  --sidebar-primary: #d64526;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #1a3d68;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: rgba(255, 255, 255, 0.1);
+  --sidebar-ring: #315d83;
 }
 
 .dark {
@@ -157,7 +158,98 @@
   * {
     @apply border-border outline-ring/50;
   }
+  html {
+    -webkit-text-size-adjust: 100%;
+    background-color: #f5f7fa;
+  }
   body {
     @apply bg-background text-foreground;
+    min-height: 100dvh;
+    -webkit-tap-highlight-color: transparent;
+    overscroll-behavior-y: none;
+    text-rendering: optimizeLegibility;
+  }
+  button,
+  a,
+  [role='button'] {
+    touch-action: manipulation;
+  }
+  button:not(:disabled) {
+    cursor: pointer;
+  }
+  /* iOS'ta odaklanınca sayfanın yakınlaşmasını engeller */
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+  @media (min-width: 768px) {
+    input,
+    select,
+    textarea {
+      font-size: inherit;
+    }
+  }
+}
+
+/* ---- Mobil yardımcıları ---- */
+@utility pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+@utility pt-safe {
+  padding-top: env(safe-area-inset-top);
+}
+@utility no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@keyframes sheet-up {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+@keyframes soft-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes soft-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@utility animate-sheet {
+  animation: sheet-up 280ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+@utility animate-fade {
+  animation: soft-fade 200ms ease-out;
+}
+@utility animate-rise {
+  /* 'backwards': animasyon bitince transform kalmaz (fixed çocukları bozmasın) */
+  animation: soft-rise 320ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }
