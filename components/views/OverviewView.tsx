@@ -1,7 +1,7 @@
 "use client"
 
 import { useMemo } from "react"
-import { Truck, Package, Zap, ArrowRight, Plus, Calculator, WalletCards, CircleHelp, ChevronRight, Star, MapPin, TrendingUp } from "lucide-react"
+import { Truck, Package, Zap, ArrowRight, Plus, Calculator, WalletCards, CircleHelp, ChevronRight, MapPin, TrendingUp, Timer } from "lucide-react"
 import { Load } from "@/components/LoadCard"
 import { cn } from "@/lib/utils"
 import { shortRoute } from "@/lib/route"
@@ -50,10 +50,10 @@ export function OverviewView({ loads, currentUserId, onOpenCreate, setActiveTab,
   }, [loads])
 
   const quickActions = [
+    { label: "Takograf Sayacı", icon: Timer, tab: "Araçlar", tone: "bg-amber-50 text-amber-600" },
     { label: "Sefer Hesapla", icon: Calculator, tab: "Sefer Hesapla", tone: "bg-[#eef4f8] text-[#315d83]" },
     { label: "Gelir & Gider", icon: WalletCards, tab: "Gelir Gider", tone: "bg-emerald-50 text-emerald-600" },
     { label: "Seferlerim", icon: Truck, tab: "Seferlerim", tone: "bg-[#fff0ec] text-[#d64526]" },
-    { label: "Favorilerim", icon: Star, tab: "Favorilerim", tone: "bg-amber-50 text-amber-500" },
   ]
 
   return (
@@ -135,7 +135,7 @@ export function OverviewView({ loads, currentUserId, onOpenCreate, setActiveTab,
         <div className="grid grid-cols-4 gap-2.5 sm:gap-4">
           {quickActions.map((a) => (
             <button
-              key={a.tab}
+              key={a.label}
               onClick={() => setActiveTab(a.tab)}
               className="flex flex-col items-center gap-2 rounded-2xl border border-[#e4e9ef] bg-white px-1 py-3.5 shadow-[0_1px_2px_rgba(18,44,74,0.04)] transition-all hover:shadow-md active:scale-95"
             >
