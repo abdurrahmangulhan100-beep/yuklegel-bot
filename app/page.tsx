@@ -17,6 +17,7 @@ import { CompanyProfileView } from "@/components/views/CompanyProfileView"
 import { OverviewView } from "@/components/views/OverviewView"
 import { FinanceView } from "@/components/views/FinanceView"
 import { HelpCenterView } from "@/components/views/HelpCenterView"
+import { ToolsView } from "@/components/views/ToolsView"
 import { CreateListingModal } from "@/components/CreateListingModal"
 import { Sidebar } from "@/components/Sidebar"
 import { BottomNav } from "@/components/BottomNav"
@@ -73,7 +74,7 @@ export default function Page() {
     return () => clearTimeout(timer)
   }, [query])
 
-  const fetchUserFavorites = async (userId: string) => {
+  const fetchUserFavorites = useCallback(async (userId: string) => {
     if (!supabase || !userId) return
     try {
       const { data, error } = await supabase.from("favorites").select("listing_id").eq("user_id", userId)
@@ -81,17 +82,19 @@ export default function Page() {
     } catch (e) {
       console.error("Favoriler yüklenirken hata:", e)
     }
-  }
+  }, [])
 
   useEffect(() => {
     if (currentUserId) fetchUserFavorites(currentUserId)
     else setFavoriteIds([])
-  }, [currentUserId])
+  }, [currentUserId, fetchUserFavorites])
 
-  const toggleFavorite = (id: string) => {
+  // Kararlı referans: LoadCard (memo) gereksiz yere yeniden çizilmesin
+  const toggleFavorite = useCallback((id?: string) => {
+    if (!id) return
     setFavoriteIds((prev) => prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id])
-    if (currentUserId) fetchUserFavorites(currentUserId)
-  }
+    if (currentUserIdRef.current) fetchUserFavorites(currentUserIdRef.current)
+  }, [fetchUserFavorites])
 
   useEffect(() => {
     let authSubscription: { unsubscribe: () => void } | null = null
@@ -355,14 +358,14 @@ export default function Page() {
     setActiveTab("İlanlar")
   }
 
-  const handleCitySearch = (city: string) => {
+  const handleCitySearch = useCallback((city: string) => {
     setQuery(city)
     setDebouncedQuery(city)
     queryRef.current = city
     setActiveFilter("Tümü")
     setSourceFilter("all")
     setActiveTab("İlanlar")
-  }
+  }, [])
 
   const effectiveTab = isGuest && GUEST_BLOCKED_TABS.includes(activeTab) ? "__guest" : activeTab
 
@@ -539,6 +542,7 @@ export default function Page() {
           {effectiveTab === "Gelir Gider" && <FinanceView />}
           {effectiveTab === "Şirket Profili" && <CompanyProfileView onProfileUpdated={fetchProfile} />}
           {effectiveTab === "Sefer Hesapla" && <CalculatorView />}
+          {effectiveTab === "Araçlar" && <ToolsView />}
           {effectiveTab === "Yardım Merkezi" && <HelpCenterView />}
         </main>
       </div>
