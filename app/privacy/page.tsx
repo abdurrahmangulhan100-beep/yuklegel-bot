@@ -19,7 +19,7 @@ export default function PrivacyPage() {
             </div>
             <div>
               <h1 className="text-xl sm:text-2xl font-bold text-[#122c4a]">Gizlilik Politikası</h1>
-              <p className="text-xs text-[#8da0b2] mt-0.5">Son Güncelleme: Eylül 2026</p>
+              <p className="text-xs text-[#8da0b2] mt-0.5">Son Güncelleme: Ekim 2026</p>
             </div>
           </div>
           <Link 
@@ -71,10 +71,7 @@ export default function PrivacyPage() {
               Yayınladığınız yük ilanlarındaki iletişim bilgileri (telefon numarası ve firma adı), ilanı inceleyen diğer kullanıcılar tarafından görüntülenebilir.
             </p>
             <p className="mt-2">
-              <strong>Saha lojistik ilanları:</strong> Platformda, kamuya açık nakliye paylaşım kanallarında yayınlanan yük
-              ilanları derlenerek &quot;Saha Lojistik İlanları&quot; başlığı altında gösterilebilir. Bu ilanlarda yer alan
-              iletişim bilgilerinin kaldırılmasını isteyen kişiler aşağıdaki e-posta adresine başvurabilir; talep
-              doğrultusunda ilgili kayıtlar silinir.
+              Kamuya açık kaynaklardan derlenen ilanlara ilişkin ayrıntılar bir sonraki bölümde yer almaktadır.
             </p>
             <p className="mt-2">
               <strong>Hizmet sağlayıcılar:</strong> Verileriniz; veri tabanı ve kimlik doğrulama için Supabase, barındırma ve
@@ -86,8 +83,31 @@ export default function PrivacyPage() {
             </p>
           </section>
 
+          <section id="kamuya-acik-ilanlar" className="scroll-mt-6 rounded-xl border border-[#d9e6f2] bg-[#f1f7fc] p-4">
+            <h2 className="text-base font-bold text-[#122c4a] mb-2">5. Kamuya Açık Kaynaklardan Derlenen İlanlar (Saha Ağı)</h2>
+            <p>
+              Platformdaki <strong>Saha Ağı</strong> bölümünde yer alan ilanlar, ilanı yayımlayan kişilerce kamuya açık
+              alanlarda herkesin görebileceği biçimde paylaşılmış nakliye ilanlarından derlenir. Nakliye Cepte bu
+              ilanların yayımcısı ya da tarafı değildir; ilan içeriğinin doğruluğundan ilanı paylaşan kişi sorumludur.
+              Nakliye Cepte yük, ödeme veya taşıma süreçlerinde aracılık yapmaz.
+            </p>
+            <ul className="list-disc pl-5 space-y-1 text-xs sm:text-sm mt-2">
+              <li><strong>İşlenen veriler:</strong> İlan metni, güzergah ve araç bilgisi ile ilan sahibinin ilanda kendi isteğiyle paylaştığı telefon numarası. Bunun dışında bir veri toplanmaz.</li>
+              <li><strong>Amaç:</strong> Yük ve taşıyıcıların birbirini bulmasını kolaylaştırmak; ilanı, yayımlandığı amaçla uyumlu şekilde göstermek.</li>
+              <li><strong>Hukuki sebep:</strong> Verilerin ilgili kişi tarafından alenileştirilmiş olması ve ilan sahipleri ile taşıyıcıların bir araya gelmesine yönelik meşru menfaat (6698 sayılı Kanun m.5/2-d ve m.5/2-f).</li>
+              <li><strong>Saklama:</strong> İlanlar güncelliğini yitirdikçe listeden kalkar; bildirim ya da talep halinde ilgili kayıt hemen silinir.</li>
+              <li><strong>Veri sorumlusu:</strong> Nakliye Cepte. Bu verilerle reklam profili oluşturulmaz, veriler üçüncü taraflara satılmaz.</li>
+            </ul>
+            <p className="mt-2">
+              <strong>İlanınızın kaldırılmasını istiyorsanız:</strong> İlan kartındaki <strong>⋯</strong> menüsünden
+              &quot;İlanı bildir &gt; Bu ilan bana ait, kaldırılmasını istiyorum&quot; seçeneğini kullanabilir veya{" "}
+              <strong>destek.nakliyecepte.com@gmail.com</strong> adresine yazabilirsiniz. Talebiniz incelenir ve
+              ilgili ilan ile bu ilana bağlı iletişim bilgileri silinir.
+            </p>
+          </section>
+
           <section className="bg-red-50/50 p-4 rounded-xl border border-red-100">
-            <h2 className="text-base font-bold text-red-900 mb-2">5. Hesap ve Veri Silme Hakkı (Google Play Uyumlu)</h2>
+            <h2 className="text-base font-bold text-red-900 mb-2">6. Hesap ve Veri Silme Hakkı (Google Play Uyumlu)</h2>
             <p className="text-xs sm:text-sm text-red-800">
               Kullanıcılar diledikleri zaman hesaplarını ve platformda kaydedilmiş tüm verilerini silme hakkına sahiptir. 
               Hesabınızı ve verilerinizi silmek için uygulama içinde <strong>Profilim &gt; Hesabımı Kalıcı Olarak Sil</strong> seçeneğini kullanabilir veya 
@@ -97,7 +117,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-base font-bold text-[#122c4a] mb-2">6. KVKK Kapsamındaki Haklarınız</h2>
+            <h2 className="text-base font-bold text-[#122c4a] mb-2">7. KVKK Kapsamındaki Haklarınız</h2>
             <p>
               6698 sayılı Kişisel Verilerin Korunması Kanunu&apos;nun 11. maddesi uyarınca; verilerinizin işlenip
               işlenmediğini öğrenme, düzeltilmesini veya silinmesini isteme ve işlemeye itiraz etme haklarına sahipsiniz.
@@ -106,7 +126,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-base font-bold text-[#122c4a] mb-2">7. Şikayet ve Engelleme</h2>
+            <h2 className="text-base font-bold text-[#122c4a] mb-2">8. Şikayet ve Engelleme</h2>
             <p>
               Uygunsuz, sahte veya yanıltıcı ilanları ilan kartındaki bayrak simgesinden bildirebilir ve ilan sahibini
               engelleyebilirsiniz. Bildirimler incelenir ve gerekli görülen ilanlar kaldırılır.
@@ -114,7 +134,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-base font-bold text-[#122c4a] mb-2">8. İletişim</h2>
+            <h2 className="text-base font-bold text-[#122c4a] mb-2">9. İletişim</h2>
             <p>
               Gizlilik politikamız veya kişisel verilerinizle ilgili sorularınız için bizimle <strong>destek.nakliyecepte.com@gmail.com</strong> e-posta adresi üzerinden iletişime geçebilirsiniz.
             </p>
