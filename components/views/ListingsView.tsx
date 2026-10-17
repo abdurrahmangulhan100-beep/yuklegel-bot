@@ -1,8 +1,10 @@
 "use client"
 
+import { useMemo, useState } from "react"
 import { Load, LoadCard } from "@/components/LoadCard"
-import { PackageSearch, Plus, Zap } from "lucide-react"
+import { PackageSearch, Plus, Zap, Phone, X } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { isMissing } from "@/lib/route"
 
 type ListingsViewProps = {
   loads: Load[]
@@ -23,11 +25,17 @@ type ListingsViewProps = {
   favoriteIds?: string[]
   onToggleFavorite?: (id: string) => void
   onUserBlocked?: (key: string) => void
+  onCitySearch?: (city: string) => void
   hasMore?: boolean
   onLoadMore?: () => void
 }
 
-const FILTER_OPTIONS = ["Tümü", "Acil", "Tır", "Kamyon", "Frigo"]
+const FILTER_OPTIONS = ["Tümü", "Acil", "Tır", "Kamyon", "Frigo", "Kırkayak", "Dorse", "Damperli"]
+
+const selectClass =
+  "h-10 min-w-0 flex-1 rounded-xl border border-[#e0e6ed] bg-white px-3 text-[13px] font-semibold text-[#334e68] outline-none transition-colors focus:border-[#122c4a] sm:flex-none sm:min-w-[170px]"
+
+const byTr = (a: string, b: string) => a.localeCompare(b, "tr-TR")
 
 export function ListingsView({
   loads,
@@ -42,10 +50,41 @@ export function ListingsView({
   favoriteIds = [],
   onToggleFavorite,
   onUserBlocked,
+  onCitySearch,
   hasMore = false,
   onLoadMore
 }: ListingsViewProps) {
   const fmt = (n: number) => n.toLocaleString("tr-TR")
+
+  // Rota filtreleri: ilan metninden çözümlenen şehirlerle çalışır
+  const [fromCity, setFromCity] = useState("")
+  const [toCity, setToCity] = useState("")
+  const [onlyPhone, setOnlyPhone] = useState(false)
+
+  const cityOptions = useMemo(() => {
+    const f = new Map<string, number>()
+    const t = new Map<string, number>()
+    for (const l of loads) {
+      if (l.fromCity) f.set(l.fromCity, (f.get(l.fromCity) ?? 0) + 1)
+      if (l.toCity) t.set(l.toCity, (t.get(l.toCity) ?? 0) + 1)
+    }
+    const toList = (m: Map<string, number>) => Array.from(m.entries()).sort((a, b) => b[1] - a[1] || byTr(a[0], b[0]))
+    return { from: toList(f), to: toList(t) }
+  }, [loads])
+
+  const visibleLoads = useMemo(
+    () =>
+      loads.filter((l) => {
+        if (fromCity && l.fromCity !== fromCity) return false
+        if (toCity && l.toCity !== toCity) return false
+        if (onlyPhone && isMissing(l.phone)) return false
+        return true
+      }),
+    [loads, fromCity, toCity, onlyPhone]
+  )
+
+  const hasExtraFilters = Boolean(fromCity || toCity || onlyPhone)
+  const clearAll = () => { setActiveFilter("Tümü"); setSourceFilter("all"); setFromCity(""); setToCity(""); setOnlyPhone(false) }
 
   const sources: { key: "all" | "user" | "bot"; label: string; count?: number; active: string }[] = [
     { key: "all", label: "Tümü", count: stats.activeTotal, active: "bg-[#122c4a] text-white shadow-sm" },
@@ -120,9 +159,48 @@ export function ListingsView({
         </div>
       </div>
 
+      {/* Rota filtreleri */}
+      {(cityOptions.from.length > 0 || cityOptions.to.length > 0) && (
+        <div className="flex flex-wrap items-center gap-2">
+          <select aria-label="Yükleme şehri" value={fromCity} onChange={(e) => setFromCity(e.target.value)} className={selectClass}>
+            <option value="">Yükleme: Tüm şehirler</option>
+            {cityOptions.from.map(([c, n]) => (
+              <option key={c} value={c}>{c} ({n})</option>
+            ))}
+          </select>
+          <select aria-label="Teslimat şehri" value={toCity} onChange={(e) => setToCity(e.target.value)} className={selectClass}>
+            <option value="">Teslimat: Tüm şehirler</option>
+            {cityOptions.to.map(([c, n]) => (
+              <option key={c} value={c}>{c} ({n})</option>
+            ))}
+          </select>
+          <button
+            type="button"
+            onClick={() => setOnlyPhone((v) => !v)}
+            aria-pressed={onlyPhone}
+            className={cn(
+              "inline-flex h-10 shrink-0 items-center gap-1.5 rounded-xl border px-3 text-[13px] font-semibold transition-colors",
+              onlyPhone ? "border-emerald-600 bg-emerald-50 text-emerald-700" : "border-[#e0e6ed] bg-white text-[#4a6178]"
+            )}
+          >
+            <Phone className="size-3.5" />
+            Telefonlu
+          </button>
+          {hasExtraFilters && (
+            <button
+              type="button"
+              onClick={() => { setFromCity(""); setToCity(""); setOnlyPhone(false) }}
+              className="inline-flex h-10 items-center gap-1 rounded-xl px-2 text-xs font-semibold text-[#d64526] hover:bg-[#fff0ec]"
+            >
+              <X className="size-3.5" /> Temizle
+            </button>
+          )}
+        </div>
+      )}
+
       {!loading && (
         <div className="px-1 text-xs font-medium text-[#8da0b2]">
-          <span className="font-bold text-[#122c4a]">{loads.length}</span> ilan gösteriliyor
+          <span className="font-bold text-[#122c4a]">{visibleLoads.length}</span> ilan gösteriliyor
         </div>
       )}
 
@@ -150,16 +228,16 @@ export function ListingsView({
             </div>
           ))}
         </div>
-      ) : loads.length === 0 ? (
+      ) : visibleLoads.length === 0 ? (
         <div className="rounded-3xl border border-dashed border-[#cbd5e1] bg-white px-6 py-14 text-center">
           <div className="mx-auto mb-4 grid size-16 place-items-center rounded-2xl bg-[#eef4f8] text-[#315d83]">
             <PackageSearch className="size-8" />
           </div>
           <p className="text-base font-bold text-[#122c4a]">Aramanıza uygun aktif ilan bulunamadı</p>
           <p className="mx-auto mt-1 max-w-xs text-sm text-[#627d98]">Filtrelerinizi değiştirmeyi veya arama teriminizi temizlemeyi deneyin.</p>
-          {(activeFilter !== "Tümü" || sourceFilter !== "all") && (
+          {(activeFilter !== "Tümü" || sourceFilter !== "all" || hasExtraFilters) && (
             <button
-              onClick={() => { setActiveFilter("Tümü"); setSourceFilter("all") }}
+              onClick={clearAll}
               className="mt-5 h-11 rounded-xl bg-[#122c4a] px-6 text-sm font-semibold text-white transition-colors hover:bg-[#1a3d68]"
             >
               Filtreleri Temizle
@@ -168,7 +246,7 @@ export function ListingsView({
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4 xl:grid-cols-3">
-          {loads.map((load) => (
+          {visibleLoads.map((load) => (
             <LoadCard
               key={load.id}
               load={load}
@@ -176,6 +254,7 @@ export function ListingsView({
               isFavorite={favoriteIds.includes(load.id)}
               onToggleFavorite={() => onToggleFavorite && onToggleFavorite(load.id)}
               onUserBlocked={onUserBlocked}
+              onCitySearch={onCitySearch}
             />
           ))}
         </div>
