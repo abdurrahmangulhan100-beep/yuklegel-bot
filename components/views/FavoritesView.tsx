@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { Star } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { LoadCard, Load } from "@/components/LoadCard"
 
@@ -110,26 +111,32 @@ export function FavoritesView({
   })
 
   if (loading) {
-    return <div className="p-8 text-center text-gray-500 font-medium">Favorileriniz yükleniyor...</div>
+    return (
+      <div className="flex flex-col items-center justify-center py-20 text-[#8da0b2]">
+        <div className="mb-3 size-8 animate-spin rounded-full border-2 border-[#d64526] border-t-transparent" />
+        <p className="text-sm font-medium">Favorileriniz yükleniyor...</p>
+      </div>
+    )
   }
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6">
+    <div className="space-y-4 sm:space-y-5">
       <div>
-        <span className="text-xs font-bold tracking-wider text-orange-600 uppercase">ÖZEL İLAN LİSTENİZ</span>
-        <h1 className="text-2xl font-bold text-[#122c4a]">Favori İlanlarım</h1>
-        <p className="text-sm text-gray-500">Takip etmek üzere kaydettiğiniz tüm yük ve taşıma ilanları burada listelenir.</p>
+        <span className="text-[11px] font-bold uppercase tracking-wider text-[#d64526]">Özel ilan listeniz</span>
+        <h1 className="text-2xl font-extrabold tracking-tight text-[#122c4a] sm:text-3xl">Favori İlanlarım</h1>
+        <p className="mt-1 text-sm text-[#627d98]">Takip etmek üzere kaydettiğiniz tüm yük ve taşıma ilanları burada listelenir.</p>
       </div>
 
       {filteredLoads.length === 0 ? (
-        <div className="flex flex-col items-center justify-center p-12 bg-white rounded-xl border border-gray-100 text-center shadow-xs">
-          <svg className="w-12 h-12 text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-          </svg>
-          <p className="text-sm text-gray-500">Henüz favorilerinize eklediğiniz bir ilan bulunmuyor.</p>
+        <div className="rounded-3xl border border-dashed border-[#cbd5e1] bg-white px-6 py-14 text-center">
+          <div className="mx-auto mb-4 grid size-16 place-items-center rounded-2xl bg-amber-50 text-amber-500">
+            <Star className="size-8" />
+          </div>
+          <p className="text-base font-bold text-[#122c4a]">Henüz favori ilanınız yok</p>
+          <p className="mx-auto mt-1 max-w-xs text-sm text-[#627d98]">İlanlardaki yıldız simgesine dokunarak beğendiğiniz yükleri buraya ekleyebilirsiniz.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4 xl:grid-cols-3">
           {filteredLoads.map((load) => (
             <LoadCard
               key={load.id}
