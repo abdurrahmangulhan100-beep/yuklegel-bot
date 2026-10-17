@@ -1,8 +1,10 @@
 "use client"
 
-import { Truck, Package, Zap, ArrowRight, Plus, Calculator, WalletCards, CircleHelp, ChevronRight, Star } from "lucide-react"
+import { useMemo } from "react"
+import { Truck, Package, Zap, ArrowRight, Plus, Calculator, WalletCards, CircleHelp, ChevronRight, Star, MapPin, TrendingUp } from "lucide-react"
 import { Load } from "@/components/LoadCard"
 import { cn } from "@/lib/utils"
+import { shortRoute } from "@/lib/route"
 
 type OverviewProps = {
   loads: Load[];
@@ -12,9 +14,11 @@ type OverviewProps = {
   totalCount?: number;
   urgentCount?: number;
   userName?: string;
+  /** Şehir çipine dokununca o şehrin ilanlarını açar */
+  onSelectCity?: (city: string) => void;
 }
 
-export function OverviewView({ loads, currentUserId, onOpenCreate, setActiveTab, totalCount, urgentCount, userName }: OverviewProps) {
+export function OverviewView({ loads, currentUserId, onOpenCreate, setActiveTab, totalCount, urgentCount, userName, onSelectCity }: OverviewProps) {
   // SADECE O ANKİ KULLANICININ İLANLARINI FİLTRELE
   const userLoads = loads.filter(
     (l) => l.source === "user" && l.userId && currentUserId && l.userId === currentUserId
@@ -25,6 +29,25 @@ export function OverviewView({ loads, currentUserId, onOpenCreate, setActiveTab,
   const total = (totalCount ?? loads.length).toLocaleString("tr-TR")
   const urgent = (urgentCount ?? urgentLoads.length).toLocaleString("tr-TR")
   const firstName = userName ? userName.split(" ")[0] : ""
+
+  // Elimizdeki ilanlardan: en çok yük çıkan şehirler ve en sık görülen rotalar
+  const hot = useMemo(() => {
+    const from = new Map<string, number>()
+    const routes = new Map<string, { from: string; to: string; n: number }>()
+    for (const l of loads) {
+      if (l.fromCity) from.set(l.fromCity, (from.get(l.fromCity) ?? 0) + 1)
+      if (l.fromCity && l.toCity) {
+        const k = `${l.fromCity}>${l.toCity}`
+        const cur = routes.get(k)
+        if (cur) cur.n++
+        else routes.set(k, { from: l.fromCity, to: l.toCity, n: 1 })
+      }
+    }
+    return {
+      cities: Array.from(from.entries()).sort((a, b) => b[1] - a[1]).slice(0, 8),
+      routes: Array.from(routes.values()).sort((a, b) => b.n - a.n).slice(0, 4),
+    }
+  }, [loads])
 
   const quickActions = [
     { label: "Sefer Hesapla", icon: Calculator, tab: "Sefer Hesapla", tone: "bg-[#eef4f8] text-[#315d83]" },
@@ -70,6 +93,42 @@ export function OverviewView({ loads, currentUserId, onOpenCreate, setActiveTab,
         <StatCard icon={Zap} label="Acil Yük" value={urgent} tone="text-amber-600 bg-amber-50" />
       </section>
 
+      {/* Yoğun bölgeler */}
+      {hot.cities.length > 0 && (
+        <section className="rounded-3xl border border-[#e4e9ef] bg-white p-4 shadow-[0_1px_2px_rgba(18,44,74,0.04)] sm:p-6">
+          <h2 className="mb-3 flex items-center gap-1.5 text-base font-bold text-[#122c4a]">
+            <TrendingUp className="size-4 text-[#315d83]" /> Yük Çıkan Şehirler
+          </h2>
+          <div className="flex flex-wrap gap-2">
+            {hot.cities.map(([city, n]) => (
+              <button
+                key={city}
+                onClick={() => onSelectCity?.(city)}
+                className="inline-flex h-10 items-center gap-2 rounded-full border border-[#e0e6ed] bg-[#f8fafc] pl-3 pr-1.5 text-[13px] font-semibold text-[#122c4a] transition-colors hover:border-[#c4d0dc] active:scale-95"
+              >
+                <MapPin className="size-3.5 text-[#315d83]" />
+                {city}
+                <span className="grid h-7 min-w-7 place-items-center rounded-full bg-[#122c4a] px-1.5 text-[11px] font-bold tabular-nums text-white">{n}</span>
+              </button>
+            ))}
+          </div>
+          {hot.routes.length > 0 && (
+            <ul className="mt-4 divide-y divide-[#edf0f3] border-t border-[#edf0f3]">
+              {hot.routes.map((r) => (
+                <li key={`${r.from}>${r.to}`}>
+                  <button onClick={() => onSelectCity?.(r.from)} className="flex w-full items-center gap-2 py-2.5 text-left text-sm font-semibold text-[#122c4a]">
+                    <span className="truncate">{r.from}</span>
+                    <ArrowRight className="size-4 shrink-0 text-[#d64526]" />
+                    <span className="truncate">{r.to}</span>
+                    <span className="ml-auto shrink-0 rounded-full bg-[#eef4f8] px-2 py-0.5 text-[11px] font-bold text-[#315d83]">{r.n} ilan</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      )}
+
       {/* Hızlı erişim */}
       <section>
         <h2 className="mb-3 px-1 text-base font-bold text-[#122c4a]">Hızlı Erişim</h2>
@@ -112,14 +171,12 @@ export function OverviewView({ loads, currentUserId, onOpenCreate, setActiveTab,
                     <span className="rounded-full bg-[#d64526] px-2 py-0.5 text-[10px] font-bold text-white">ACİL</span>
                     <span className="text-[11px] font-medium text-[#8da0b2]">{l.time}</span>
                   </div>
-                  <div className="mt-3 flex items-center gap-2 text-[15px] font-bold text-[#122c4a]">
-                    <span className="truncate">{l.from !== "-" ? l.from : "—"}</span>
-                    <ArrowRight className="size-4 shrink-0 text-[#d64526]" />
-                    <span className="truncate">{l.to !== "-" ? l.to : "—"}</span>
+                  <div className="mt-3 line-clamp-2 text-[15px] font-bold leading-snug text-[#122c4a]">
+                    {shortRoute(l.from, l.to) ?? l.cargo}
                   </div>
                   <div className="mt-1.5 flex items-center gap-1.5 text-xs text-[#627d98]">
                     <Truck className="size-3.5 shrink-0" />
-                    <span className="truncate">{l.vehicle}</span>
+                    <span className="truncate">{l.vehicle || "Araç belirtilmemiş"}</span>
                   </div>
                 </button>
               ))}
@@ -141,7 +198,7 @@ export function OverviewView({ loads, currentUserId, onOpenCreate, setActiveTab,
             {userLoads.slice(0, 3).map((load) => (
               <li key={load.id} className="flex items-center justify-between gap-3 py-3">
                 <div className="min-w-0">
-                  <div className="truncate text-sm font-bold text-[#122c4a]">{load.from} → {load.to}</div>
+                  <div className="truncate text-sm font-bold text-[#122c4a]">{shortRoute(load.from, load.to) ?? load.cargo}</div>
                   <div className="mt-0.5 truncate text-xs text-[#718397]">{load.cargo}</div>
                 </div>
                 {load.price && load.price !== "₺0" && (
@@ -187,9 +244,9 @@ export function OverviewView({ loads, currentUserId, onOpenCreate, setActiveTab,
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-sm font-bold text-[#122c4a]">
-                      {l.from !== "-" && l.to !== "-" ? `${l.from} → ${l.to}` : l.cargo}
+                      {shortRoute(l.from, l.to) ?? l.cargo}
                     </span>
-                    <span className="mt-0.5 block truncate text-xs text-[#718397]">{l.vehicle} • {l.time}</span>
+                    <span className="mt-0.5 block truncate text-xs text-[#718397]">{[l.vehicle, l.time].filter(Boolean).join(" • ")}</span>
                   </span>
                   <ChevronRight className="size-4 shrink-0 text-[#b4c1ce]" />
                 </button>
