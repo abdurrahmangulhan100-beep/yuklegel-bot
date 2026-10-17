@@ -23,7 +23,7 @@ type ListingsViewProps = {
   setIsCreateOpen: (open: boolean) => void
   searchQuery?: string
   favoriteIds?: string[]
-  onToggleFavorite?: (id: string) => void
+  onToggleFavorite?: (id?: string) => void
   onUserBlocked?: (key: string) => void
   onCitySearch?: (city: string) => void
   hasMore?: boolean
@@ -162,14 +162,14 @@ export function ListingsView({
       {/* Rota filtreleri */}
       {(cityOptions.from.length > 0 || cityOptions.to.length > 0) && (
         <div className="flex flex-wrap items-center gap-2">
-          <select aria-label="Yükleme şehri" value={fromCity} onChange={(e) => setFromCity(e.target.value)} className={selectClass}>
-            <option value="">Yükleme: Tüm şehirler</option>
+          <select aria-label="Çıkış şehri" value={fromCity} onChange={(e) => setFromCity(e.target.value)} className={selectClass}>
+            <option value="">Nereden: Tüm şehirler</option>
             {cityOptions.from.map(([c, n]) => (
               <option key={c} value={c}>{c} ({n})</option>
             ))}
           </select>
-          <select aria-label="Teslimat şehri" value={toCity} onChange={(e) => setToCity(e.target.value)} className={selectClass}>
-            <option value="">Teslimat: Tüm şehirler</option>
+          <select aria-label="Varış şehri" value={toCity} onChange={(e) => setToCity(e.target.value)} className={selectClass}>
+            <option value="">Nereye: Tüm şehirler</option>
             {cityOptions.to.map(([c, n]) => (
               <option key={c} value={c}>{c} ({n})</option>
             ))}
@@ -252,7 +252,7 @@ export function ListingsView({
               load={load}
               searchQuery={searchQuery}
               isFavorite={favoriteIds.includes(load.id)}
-              onToggleFavorite={() => onToggleFavorite && onToggleFavorite(load.id)}
+              onToggleFavorite={onToggleFavorite}
               onUserBlocked={onUserBlocked}
               onCitySearch={onCitySearch}
             />
