@@ -1,6 +1,6 @@
 "use client"
 
-import { Phone, MessageCircle, Star, Truck, Clock, Copy, Check, Flag, Ban, Zap, Package, ChevronDown, Share2, MapPin, ArrowRight, Ruler, Weight, Timer, Repeat, type LucideIcon } from "lucide-react"
+import { Phone, MessageCircle, Star, Check, Ban, Zap, ChevronDown, Share2, ArrowRight, Copy, Flag, MoreHorizontal } from "lucide-react"
 import { memo, useState } from "react"
 import { isMissing } from "@/lib/route"
 import { supabase } from "@/lib/supabase"
@@ -52,6 +52,7 @@ const REPORT_REASONS = [
   "Uygunsuz / Hakaret İçeren Dil",
   "Spam / Tekrarlanan İçerik",
   "Hatalı Telefon Numarası",
+  "Bu ilan bana ait, kaldırılmasını istiyorum",
 ]
 
 const highlightMatch = (text: string, query: string) => {
@@ -86,6 +87,7 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
   const [copied, setCopied] = useState(false)
   const [expanded, setExpanded] = useState(false)
   const [isReportOpen, setIsReportOpen] = useState(false)
+  const [sheetView, setSheetView] = useState<"menu" | "report">("menu")
   const [reportReason, setReportReason] = useState(REPORT_REASONS[0])
   const [isSubmittingReport, setIsSubmittingReport] = useState(false)
   const [reportSuccess, setReportSuccess] = useState(false)
@@ -110,7 +112,7 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
   const routeText = showRoute ? `${load.from} → ${load.to}` : hasFrom ? `${load.from} çıkışlı` : hasTo ? `${load.to} varışlı` : ""
   const hasPrice = Boolean(load.price) && load.price !== "₺0"
   const cargoText = !isMissing(load.cargo) ? load.cargo : "Yük detayı belirtilmedi."
-  const isLongCargo = cargoText.length > 160
+  const isLongCargo = cargoText.length > 110
   const showMessage = Boolean(load.message) && load.message !== "-" && load.message !== load.cargo
 
   const copyPhone = async () => {
@@ -267,276 +269,339 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
     }
   }
 
-  const renderPlace = (label: string, city?: string) =>
+  const place = (label: string, city?: string) =>
     city && onCitySearch ? (
       <button
         type="button"
         onClick={() => onCitySearch(city)}
-        title={`${city} ilanlarını ara`}
-        className="block max-w-full truncate text-left hover:underline"
+        className="min-w-0 max-w-full truncate text-left active:underline"
       >
         {highlightMatch(label, cleanQuery)}
       </button>
     ) : (
-      highlightMatch(label, cleanQuery)
+      <span className="min-w-0 max-w-full truncate">{highlightMatch(label, cleanQuery)}</span>
     )
+
+  const extraCities = load.extraCities ?? []
+  const showHeadline = hasFrom || hasTo || extraCities.length > 0 || hasPrice
+  const hasTags = load.urgent || hasVehicle || load.trailer || load.tonnage || load.timing || (load.repeatCount ?? 0) > 1
+
+  const accent = load.urgent
+    ? "bg-gradient-to-b from-[#e5522f] to-[#f4a259]"
+    : isUserLoad
+      ? "bg-[#e5522f]"
+      : "bg-[#3f7199]"
+
+  const openMenu = () => {
+    setSheetView("menu")
+    setIsReportOpen(true)
+  }
+
+  const closeSheet = () => setIsReportOpen(false)
+
+  const shareFromMenu = async () => {
+    await handleShare()
+    closeSheet()
+  }
+
+  const copyFromMenu = async () => {
+    await copyPhone()
+    setTimeout(closeSheet, 700)
+  }
 
   return (
     <article
-      style={{ contentVisibility: "auto", containIntrinsicSize: "auto 300px" }}
-      className="group relative flex flex-col overflow-hidden rounded-2xl border border-[#e4e9ef] bg-white shadow-[0_1px_3px_rgba(18,44,74,0.05)] transition-shadow duration-200 hover:shadow-[0_8px_24px_rgba(18,44,74,0.08)]"
+      style={{ contentVisibility: "auto", containIntrinsicSize: "auto 220px" }}
+      className={cn(
+        "relative overflow-hidden rounded-2xl border shadow-[0_1px_2px_rgba(18,44,74,0.06)]",
+        load.urgent ? "border-[#f6d9cf] bg-[#fffaf7]" : "border-[#e4e9ef] bg-white"
+      )}
     >
-      {load.urgent && <div className="h-1 w-full bg-gradient-to-r from-[#d64526] via-[#ef6a3a] to-[#f4a259]" />}
+      {/* Sol renk şeridi: ilan türünü / aciliyeti belli eder */}
+      <span aria-hidden className={cn("absolute inset-y-0 left-0 w-1", accent)} />
 
-      <div className="flex flex-1 flex-col gap-3.5 p-4">
+      <div className="flex flex-col gap-3 py-3.5 pl-5 pr-3.5">
         {/* Üst: firma + aksiyonlar */}
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex min-w-0 items-center gap-3">
-            <div className={cn(
-              "grid size-11 shrink-0 place-items-center rounded-2xl text-sm font-bold text-white",
-              isUserLoad ? "bg-gradient-to-br from-[#e5522f] to-[#c13a1c]" : "bg-gradient-to-br from-[#3f7199] to-[#274f73]"
-            )}>
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <div
+              className={cn(
+                "grid size-10 shrink-0 place-items-center rounded-xl text-[13px] font-bold text-white",
+                isUserLoad ? "bg-gradient-to-br from-[#e5522f] to-[#c13a1c]" : "bg-gradient-to-br from-[#3f7199] to-[#274f73]"
+              )}
+            >
               {isUserLoad ? (load.initials || "NK") : "SL"}
             </div>
             <div className="min-w-0">
-              <div className="truncate text-[15px] font-bold leading-tight text-[#122c4a]">
+              <div className="truncate text-sm font-bold leading-tight text-[#122c4a]">
                 {highlightMatch(displayCompany, cleanQuery)}
               </div>
-              <div className="mt-1 flex items-center gap-1.5 text-xs text-[#8da0b2]">
-                <Clock className="size-3 shrink-0" />
-                <span>{load.time}</span>
+              <div className="mt-0.5 flex items-center gap-1.5 text-xs text-[#8da0b2]">
+                <span className="shrink-0">{load.time}</span>
                 <span className="text-[#cbd5e1]">•</span>
-                <span className="truncate">{isUserLoad ? "Nakliye Cepte" : "Saha Lojistik"}</span>
+                <span className={cn("truncate font-medium", isUserLoad ? "text-[#d64526]" : "text-[#3f7199]")}>
+                  {isUserLoad ? "Nakliye Cepte" : "Kamuya açık ilan"}
+                </span>
               </div>
             </div>
           </div>
 
-          <div className="-mr-1 -mt-1 flex shrink-0 items-center">
+          <div className="-mr-1.5 flex shrink-0 items-center">
             <button
               onClick={handleFavoriteClick}
               disabled={isFavLoading}
               aria-pressed={isFavorite}
               aria-label={isFavorite ? "Favorilerden çıkar" : "Favorilere ekle"}
               className={cn(
-                "grid size-10 place-items-center rounded-full transition-all active:scale-90",
+                "grid size-10 place-items-center rounded-full active:scale-90",
                 isFavLoading && "opacity-50",
-                isFavorite ? "text-amber-500" : "text-[#b4c1ce] hover:text-amber-500"
+                isFavorite ? "text-amber-500" : "text-[#b4c1ce]"
               )}
             >
-              <Star className={cn("size-[22px]", isFavorite && "fill-amber-400")} />
+              <Star className={cn("size-[21px]", isFavorite && "fill-amber-400")} />
             </button>
             <button
-              onClick={handleShare}
-              aria-label="İlanı paylaş"
-              className="grid size-10 place-items-center rounded-full text-[#b4c1ce] transition-colors hover:bg-[#eef4f8] hover:text-[#315d83]"
+              onClick={openMenu}
+              aria-label="İlan işlemleri"
+              className="grid size-10 place-items-center rounded-full text-[#9aabbb] active:bg-[#eef4f8]"
             >
-              {shared ? <Check className="size-[18px] text-emerald-600" /> : <Share2 className="size-[18px]" />}
-            </button>
-            <button
-              onClick={() => setIsReportOpen(true)}
-              aria-label="İlanı şikayet et veya engelle"
-              className="grid size-10 place-items-center rounded-full text-[#b4c1ce] transition-colors hover:bg-red-50 hover:text-red-500"
-            >
-              <Flag className="size-[18px]" />
+              <MoreHorizontal className="size-5" />
             </button>
           </div>
         </div>
 
-        {/* Rozetler: sadece bilinen bilgiler gösterilir */}
-        {(load.urgent || hasVehicle || load.trailer || load.tonnage || load.timing || (load.repeatCount ?? 0) > 1) && (
-          <div className="flex flex-wrap items-center gap-1.5">
-            {load.urgent && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-[#fff0ec] px-2.5 py-1 text-[11px] font-bold text-[#d64526]">
-                <Zap className="size-3 fill-[#d64526]" />
-                ACİL YÜK
-              </span>
-            )}
-            {hasVehicle && <Chip icon={Truck} tone="bg-[#eef4f8] text-[#315d83]">{highlightMatch(load.vehicle, cleanQuery)}</Chip>}
-            {load.trailer && <Chip icon={Ruler} tone="bg-[#f3f0fa] text-[#5b4a99]">{load.trailer}</Chip>}
-            {load.tonnage && <Chip icon={Weight} tone="bg-[#f3f0fa] text-[#5b4a99]">{load.tonnage}</Chip>}
-            {load.timing && <Chip icon={Timer} tone="bg-amber-50 text-amber-700">{load.timing}</Chip>}
-            {(load.repeatCount ?? 0) > 1 && <Chip icon={Repeat} tone="bg-[#f1f5f9] text-[#627d98]">{load.repeatCount} kez paylaşıldı</Chip>}
-          </div>
-        )}
-
-        {/* Güzergah: tek satır. İki uç biliniyorsa "Konya → Kırşehir", tek uç biliniyorsa o şehir, hiçbiri yoksa hiç gösterme */}
-        {(hasFrom || hasTo) && (
-          <div className="flex items-center gap-2.5 rounded-xl bg-[#f6f9fc] px-3 py-2.5">
-            <MapPin className="size-4 shrink-0 text-[#d64526]" aria-hidden />
-            <div className="flex min-w-0 flex-1 items-center gap-1.5 text-[15px] font-bold text-[#122c4a]">
-              {!hasFrom && <ArrowRight className="size-4 shrink-0 text-[#d64526]" aria-hidden />}
-              {hasFrom && <span className="min-w-0 truncate">{renderPlace(load.from, load.fromCity)}</span>}
-              {showRoute && <ArrowRight className="size-4 shrink-0 text-[#d64526]" aria-hidden />}
-              {hasTo && <span className="min-w-0 truncate">{renderPlace(load.to, load.toCity)}</span>}
-              {!showRoute && hasFrom && <span className="shrink-0 text-xs font-semibold text-[#8da0b2]">çıkışlı</span>}
+        {/* Güzergah: kutusuz, sade başlık. Fiyat sağda */}
+        {showHeadline && (
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 flex-1 text-[17px] font-extrabold leading-snug tracking-tight text-[#122c4a]">
+              {hasFrom || hasTo ? (
+                <div className="flex min-w-0 flex-wrap items-center gap-x-1.5">
+                  {hasFrom && place(load.from, load.fromCity)}
+                  {showRoute && <ArrowRight aria-hidden className="size-4 shrink-0 text-[#e5522f]" strokeWidth={3} />}
+                  {hasTo && place(load.to, load.toCity)}
+                  {!showRoute && (
+                    <span className="text-xs font-semibold text-[#8da0b2]">{hasFrom ? "çıkışlı" : "varışlı"}</span>
+                  )}
+                </div>
+              ) : extraCities.length > 0 ? (
+                <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
+                  {extraCities.map((c, i) => (
+                    <span key={c} className="inline-flex items-center gap-1.5">
+                      {i > 0 && <span className="text-[#cbd5e1]">·</span>}
+                      {onCitySearch ? (
+                        <button type="button" onClick={() => onCitySearch(c)} className="active:underline">{c}</button>
+                      ) : (
+                        c
+                      )}
+                    </span>
+                  ))}
+                </div>
+              ) : null}
             </div>
+
             {(hasPrice || hasDistance) && (
               <div className="shrink-0 text-right leading-tight">
-                {hasPrice && <div className="text-base font-extrabold text-emerald-600">{load.price}</div>}
-                {hasDistance && <div className="text-[11px] font-medium text-[#8da0b2]">{load.distance}</div>}
+                {hasPrice && (
+                  <span className="inline-block rounded-lg bg-emerald-50 px-2.5 py-1 text-[15px] font-extrabold text-emerald-700">
+                    {load.price}
+                  </span>
+                )}
+                {hasDistance && <div className="mt-1 text-[11px] font-medium text-[#8da0b2]">{load.distance}</div>}
               </div>
             )}
           </div>
         )}
 
-        {(load.extraCities?.length ?? 0) > 0 && (
-          <div className="flex flex-wrap items-center gap-1.5 text-xs text-[#627d98]">
-            <span className="font-semibold">Metinde geçen diğer şehirler:</span>
-            {load.extraCities!.map((c) => (
-              onCitySearch ? (
-                <button key={c} type="button" onClick={() => onCitySearch(c)} className="rounded-full bg-[#eef4f8] px-2 py-0.5 font-semibold text-[#315d83] hover:bg-[#dfeaf3]">{c}</button>
-              ) : (
-                <span key={c} className="rounded-full bg-[#eef4f8] px-2 py-0.5 font-semibold text-[#315d83]">{c}</span>
-              )
-            ))}
-          </div>
-        )}
-
-        {/* Fiyat güzergah olmadan geldiyse */}
-        {!showRoute && !hasFrom && !hasTo && hasPrice && (
-          <div className="inline-flex w-fit items-center rounded-xl bg-emerald-50 px-3 py-1.5 text-sm font-extrabold text-emerald-700">
-            {load.price}
+        {/* Etiketler: yalnızca bilinen bilgiler, renkle ayrışır */}
+        {hasTags && (
+          <div className="flex flex-wrap items-center gap-1.5">
+            {load.urgent && (
+              <Tag tone="bg-[#e5522f] text-white">
+                <Zap className="size-3 fill-white" />
+                ACİL
+              </Tag>
+            )}
+            {hasVehicle && <Tag tone="bg-[#e8f0f7] text-[#274f73]">{highlightMatch(load.vehicle, cleanQuery)}</Tag>}
+            {load.trailer && <Tag tone="bg-[#efeafb] text-[#5b4a99]">{load.trailer}</Tag>}
+            {load.tonnage && <Tag tone="bg-amber-50 text-amber-700">{load.tonnage}</Tag>}
+            {load.timing && <Tag tone="bg-emerald-50 text-emerald-700">{load.timing}</Tag>}
+            {(load.repeatCount ?? 0) > 1 && <Tag tone="bg-[#f1f5f9] text-[#627d98]">{load.repeatCount} kez paylaşıldı</Tag>}
           </div>
         )}
 
         {/* Yük detayı */}
         <div>
-          <div className="mb-1 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-[#8da0b2]">
-            <Package className="size-3" />
-            Yük detayı
-          </div>
-          <p className={cn("break-words text-sm leading-relaxed text-[#334e68]", !expanded && "line-clamp-3")}>
+          <p className={cn("break-words text-[13.5px] leading-relaxed text-[#4a6178]", !expanded && "line-clamp-2")}>
             {highlightMatch(cargoText, cleanQuery)}
           </p>
           {isLongCargo && (
             <button
               type="button"
               onClick={() => setExpanded((v) => !v)}
-              className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-[#315d83]"
+              className="mt-0.5 inline-flex items-center gap-1 py-1 text-xs font-semibold text-[#315d83]"
             >
-              {expanded ? "Daha az göster" : "Devamını oku"}
-              <ChevronDown className={cn("size-3.5 transition-transform", expanded && "rotate-180")} />
+              {expanded ? "Daha az" : "Devamı"}
+              <ChevronDown className={cn("size-3.5", expanded && "rotate-180")} />
             </button>
+          )}
+          {showMessage && (
+            <p className="mt-1 line-clamp-2 text-xs italic leading-relaxed text-[#8da0b2]">
+              {highlightMatch(load.message as string, cleanQuery)}
+            </p>
           )}
         </div>
 
-        {showMessage && (
-          <p className="line-clamp-2 rounded-xl border-l-4 border-[#cfdceb] bg-[#f6f9fc] px-3 py-2 text-xs italic leading-relaxed text-[#627d98]">
-            {highlightMatch(load.message as string, cleanQuery)}
+        {/* İletişim */}
+        {hasPhone ? (
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              onClick={handleCall}
+              className="flex h-11 items-center justify-center gap-2 rounded-xl bg-[#122c4a] text-sm font-semibold text-white active:scale-[0.98] active:bg-[#1a3d68]"
+            >
+              <Phone className="size-[17px]" />
+              Ara
+            </button>
+            <button
+              onClick={handleWhatsApp}
+              className="flex h-11 items-center justify-center gap-2 rounded-xl bg-emerald-600 text-sm font-semibold text-white active:scale-[0.98] active:bg-emerald-700"
+            >
+              <MessageCircle className="size-[17px]" />
+              WhatsApp
+            </button>
+          </div>
+        ) : (
+          <p className="rounded-xl bg-[#f5f7fa] px-3 py-2.5 text-center text-xs font-medium text-[#8da0b2]">
+            Bu ilan için telefon numarası belirtilmemiş.
           </p>
         )}
       </div>
 
-      {/* Alt: iletişim */}
-      <div className="border-t border-[#edf0f3] bg-[#fbfcfd] p-3">
-        {hasPhone ? (
-          <div className="mb-2.5 flex items-center justify-between gap-2 px-1">
-            <span className="text-[13px] font-semibold tabular-nums text-[#122c4a]">{formatPhone(load.phone)}</span>
-            <button
-              onClick={copyPhone}
-              className="inline-flex h-8 items-center gap-1.5 rounded-lg px-2 text-xs font-semibold text-[#627d98] transition-colors hover:bg-[#eef2f6]"
-            >
-              {copied ? <Check className="size-3.5 text-emerald-600" /> : <Copy className="size-3.5" />}
-              {copied ? "Kopyalandı" : "Kopyala"}
-            </button>
-          </div>
-        ) : (
-          <p className="mb-2.5 px-1 text-xs font-medium text-[#8da0b2]">Bu ilan için telefon numarası belirtilmemiş.</p>
-        )}
-
-        <div className="grid grid-cols-2 gap-2.5">
-          <button
-            onClick={handleCall}
-            disabled={!hasPhone}
-            className="flex h-12 items-center justify-center gap-2 rounded-xl bg-[#122c4a] text-sm font-semibold text-white shadow-sm transition-all hover:bg-[#1a3d68] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            <Phone className="size-[18px]" />
-            Ara
-          </button>
-          <button
-            onClick={handleWhatsApp}
-            disabled={!hasPhone}
-            className="flex h-12 items-center justify-center gap-2 rounded-xl bg-emerald-600 text-sm font-semibold text-white shadow-sm transition-all hover:bg-emerald-700 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            <MessageCircle className="size-[18px]" />
-            WhatsApp
-          </button>
-        </div>
-      </div>
-
-      {/* Şikayet / engelle (sadece açıkken oluşturulur) */}
+      {/* İşlem menüsü / şikayet (sadece açıkken oluşturulur) */}
       {isReportOpen && (
-      <Sheet
-        open={isReportOpen}
-        onClose={() => setIsReportOpen(false)}
-        title="İlanı bildir veya engelle"
-        subtitle="Şikayetiniz incelenmek üzere ekibimize iletilir."
-        footer={
-          !reportSuccess ? (
-            <div className="flex flex-col gap-2">
+        <Sheet
+          open={isReportOpen}
+          onClose={closeSheet}
+          title={sheetView === "menu" ? "İlan işlemleri" : "İlanı bildir"}
+          subtitle={
+            sheetView === "menu"
+              ? routeText || displayCompany
+              : "Bildiriminiz incelenmek üzere ekibimize iletilir."
+          }
+          footer={
+            sheetView === "report" && !reportSuccess ? (
               <button
                 onClick={handleSendReport}
                 disabled={isSubmittingReport}
-                className="h-12 w-full rounded-xl bg-[#d64526] text-sm font-semibold text-white transition-colors hover:bg-[#b93820] disabled:opacity-60"
+                className="h-12 w-full rounded-xl bg-[#d64526] text-sm font-semibold text-white active:bg-[#b93820] disabled:opacity-60"
               >
-                {isSubmittingReport ? "Gönderiliyor..." : "İlanı Şikayet Et"}
+                {isSubmittingReport ? "Gönderiliyor..." : "Bildirimi Gönder"}
               </button>
+            ) : undefined
+          }
+        >
+          {sheetView === "menu" ? (
+            <div className="space-y-1 pt-1">
+              <MenuItem icon={Share2} onClick={shareFromMenu}>
+                {shared ? "Panoya kopyalandı" : "İlanı paylaş"}
+              </MenuItem>
+              {hasPhone && (
+                <MenuItem icon={copied ? Check : Copy} onClick={copyFromMenu} hint={formatPhone(load.phone)}>
+                  {copied ? "Numara kopyalandı" : "Numarayı kopyala"}
+                </MenuItem>
+              )}
+              <MenuItem icon={Flag} onClick={() => setSheetView("report")}>
+                İlanı bildir
+              </MenuItem>
               {blockTarget && (
-                <button
-                  onClick={handleBlockUser}
-                  className="flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-[#dbe3ec] text-sm font-semibold text-[#334e68] transition-colors hover:bg-[#f5f7fa]"
-                >
-                  <Ban className="size-4 text-red-500" />
-                  Bu Kullanıcıyı Engelle
-                </button>
+                <MenuItem icon={Ban} onClick={handleBlockUser} danger>
+                  Bu kullanıcıyı engelle
+                </MenuItem>
+              )}
+              {!isUserLoad && (
+                <p className="px-1 pt-3 text-[11px] leading-relaxed text-[#8da0b2]">
+                  Bu ilan kamuya açık bir alanda paylaşılmış olup Nakliye Cepte tarafından listelenmiştir. İlan size aitse
+                  &quot;İlanı bildir&quot; bölümünden kaldırma talebinde bulunabilirsiniz.
+                </p>
               )}
             </div>
-          ) : undefined
-        }
-      >
-        {reportSuccess ? (
-          <div className="py-8 text-center">
-            <div className="mx-auto mb-3 grid size-14 place-items-center rounded-full bg-emerald-50 text-emerald-600">
-              <Check className="size-7" />
+          ) : reportSuccess ? (
+            <div className="py-8 text-center">
+              <div className="mx-auto mb-3 grid size-14 place-items-center rounded-full bg-emerald-50 text-emerald-600">
+                <Check className="size-7" />
+              </div>
+              <p className="text-sm font-semibold text-emerald-700">Bildiriminiz incelenmek üzere iletildi.</p>
             </div>
-            <p className="text-sm font-semibold text-emerald-700">Şikayetiniz incelenmek üzere iletildi.</p>
-          </div>
-        ) : (
-          <div role="radiogroup" aria-label="Şikayet sebebi" className="space-y-2 pt-1">
-            {REPORT_REASONS.map((reason) => {
-              const selected = reportReason === reason
-              return (
-                <button
-                  key={reason}
-                  type="button"
-                  role="radio"
-                  aria-checked={selected}
-                  onClick={() => setReportReason(reason)}
-                  className={cn(
-                    "flex min-h-12 w-full items-center gap-3 rounded-xl border px-4 py-3 text-left text-sm font-medium transition-colors",
-                    selected ? "border-[#122c4a] bg-[#122c4a]/5 text-[#122c4a]" : "border-[#e4e9ef] text-[#334e68] hover:bg-[#f9fafc]"
-                  )}
-                >
-                  <span className={cn("grid size-5 shrink-0 place-items-center rounded-full border-2", selected ? "border-[#122c4a]" : "border-[#c4d0dc]")}>
-                    {selected && <span className="size-2.5 rounded-full bg-[#122c4a]" />}
-                  </span>
-                  {reason}
-                </button>
-              )
-            })}
-          </div>
-        )}
-      </Sheet>
+          ) : (
+            <div role="radiogroup" aria-label="Bildirim sebebi" className="space-y-2 pt-1">
+              {REPORT_REASONS.map((reason) => {
+                const selected = reportReason === reason
+                return (
+                  <button
+                    key={reason}
+                    type="button"
+                    role="radio"
+                    aria-checked={selected}
+                    onClick={() => setReportReason(reason)}
+                    className={cn(
+                      "flex min-h-12 w-full items-center gap-3 rounded-xl border px-4 py-3 text-left text-sm font-medium",
+                      selected ? "border-[#122c4a] bg-[#122c4a]/5 text-[#122c4a]" : "border-[#e4e9ef] text-[#334e68]"
+                    )}
+                  >
+                    <span className={cn("grid size-5 shrink-0 place-items-center rounded-full border-2", selected ? "border-[#122c4a]" : "border-[#c4d0dc]")}>
+                      {selected && <span className="size-2.5 rounded-full bg-[#122c4a]" />}
+                    </span>
+                    {reason}
+                  </button>
+                )
+              })}
+              <button
+                type="button"
+                onClick={() => setSheetView("menu")}
+                className="px-1 pt-2 text-xs font-semibold text-[#315d83]"
+              >
+                ← Geri dön
+              </button>
+            </div>
+          )}
+        </Sheet>
       )}
     </article>
   )
 })
 
-function Chip({ icon: Icon, tone, children }: { icon: LucideIcon; tone: string; children: React.ReactNode }) {
+function Tag({ tone, children }: { tone: string; children: React.ReactNode }) {
   return (
-    <span className={cn("inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold", tone)}>
-      <Icon className="size-3.5" />
+    <span className={cn("inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-semibold", tone)}>
       {children}
     </span>
+  )
+}
+
+function MenuItem({
+  icon: Icon,
+  children,
+  onClick,
+  hint,
+  danger,
+}: {
+  icon: React.ComponentType<{ className?: string }>
+  children: React.ReactNode
+  onClick: () => void
+  hint?: string
+  danger?: boolean
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "flex min-h-12 w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-semibold active:bg-[#f0f4f8]",
+        danger ? "text-red-600" : "text-[#122c4a]"
+      )}
+    >
+      <Icon className={cn("size-[18px] shrink-0", danger ? "text-red-500" : "text-[#627d98]")} />
+      <span className="flex-1">{children}</span>
+      {hint && <span className="text-xs font-medium tabular-nums text-[#8da0b2]">{hint}</span>}
+    </button>
   )
 }
