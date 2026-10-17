@@ -2,9 +2,8 @@
 
 import { useEffect, useMemo, useState, useRef, useCallback } from "react"
 import { useRouter } from "next/navigation"
-import { Bell, ChevronDown, Menu, Search, LogIn } from "lucide-react"
+import { Bell, Search, LogIn, X } from "lucide-react"
 import { Input } from "@/components/ui/input"
-import { Separator } from "@/components/ui/separator"
 import { cn, timeAgo } from "@/lib/utils"
 import { supabase } from "@/lib/supabase"
 import { Load } from "@/components/LoadCard"
@@ -18,6 +17,7 @@ import { FinanceView } from "@/components/views/FinanceView"
 import { HelpCenterView } from "@/components/views/HelpCenterView"
 import { CreateListingModal } from "@/components/CreateListingModal"
 import { Sidebar } from "@/components/Sidebar"
+import { BottomNav } from "@/components/BottomNav"
 
 interface DatabaseListing {
   id: string | number
@@ -426,22 +426,38 @@ export default function Page() {
     }
   }
 
+  useEffect(() => {
+    if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior })
+  }, [activeTab])
+
+  const openUrgent = () => {
+    setActiveFilter("Acil")
+    setSourceFilter("all")
+    setActiveTab("İlanlar")
+  }
+
   const effectiveTab = isGuest && GUEST_BLOCKED_TABS.includes(activeTab) ? "__guest" : activeTab
 
   if (isCheckingAuth) {
     return (
-      <div className="flex h-screen items-center justify-center bg-[#f5f7fa] text-[#122c4a] font-medium text-sm">
-        Oturum kontrol ediliyor...
+      <div className="flex h-dvh flex-col items-center justify-center gap-4 bg-gradient-to-b from-[#122c4a] to-[#0b1d33] text-white">
+        <div className="grid size-16 animate-pulse place-items-center rounded-3xl bg-gradient-to-br from-[#e5522f] to-[#c13a1c] text-3xl font-bold shadow-xl">N</div>
+        <div className="text-center">
+          <div className="text-lg font-bold tracking-tight">Nakliye Cepte</div>
+          <div className="mt-1 text-xs text-white/60">Oturum kontrol ediliyor...</div>
+        </div>
       </div>
     )
   }
 
+  const urgentTotal = totals ? totals.urgent : 0
+
   return (
-    <div className="min-h-screen bg-[#f5f7fa] text-[#122c4a]">
+    <div className="min-h-dvh bg-[#f5f7fa] text-[#122c4a]">
       {isSidebarOpen && (
         <button 
           aria-label="Menüyü kapat" 
-          className="fixed inset-0 z-30 cursor-pointer bg-[#122c4a]/35 lg:hidden" 
+          className="animate-fade fixed inset-0 z-[45] bg-[#0b1d33]/50 backdrop-blur-[2px] lg:hidden" 
           onClick={() => setIsSidebarOpen(false)} 
         />
       )}
@@ -456,61 +472,90 @@ export default function Page() {
         isSidebarOpen={isSidebarOpen} 
         setIsSidebarOpen={setIsSidebarOpen} 
         isGuest={isGuest}
+        profile={profile}
       />
 
-      <div className={cn("min-h-screen transition-[padding] duration-200 lg:pl-[260px]", isCollapsed && "lg:pl-[76px]")}>
-        <header className="sticky top-0 z-25 flex flex-col gap-3 border-b border-[#e4e9ef] bg-[#f5f7fa]/95 px-4 py-3 backdrop-blur-md sm:flex-row sm:h-[82px] sm:items-center sm:justify-between sm:py-0 sm:px-8">
-          <div className="flex w-full items-center gap-3 sm:w-auto">
-            <button 
-              aria-label="Menüyü aç" 
-              className="cursor-pointer rounded-lg p-2 hover:bg-white lg:hidden shrink-0" 
-              onClick={() => setIsSidebarOpen(true)}
-            >
-              <Menu />
-            </button>
-            <div className="relative w-full sm:w-[320px]">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8da0b2]" />
+      <div className={cn("min-h-dvh transition-[padding] duration-200 lg:pl-[272px]", isCollapsed && "lg:pl-[78px]")}>
+        <header className="sticky top-0 z-30 border-b border-[#e4e9ef] bg-[#f5f7fa]/90 pt-safe backdrop-blur-xl">
+          <div className="flex flex-col gap-2.5 px-4 pb-3 pt-3 sm:px-8 lg:h-[76px] lg:flex-row lg:items-center lg:justify-between lg:gap-4 lg:py-0">
+            {/* Mobil: marka + aksiyonlar */}
+            <div className="flex items-center justify-between gap-3 lg:hidden">
+              <button onClick={() => setActiveTab("Genel Bakış")} className="flex items-center gap-2.5" aria-label="Ana sayfa">
+                <span className="grid size-9 place-items-center rounded-xl bg-gradient-to-br from-[#e5522f] to-[#c13a1c] text-base font-bold text-white shadow-sm">N</span>
+                <span className="text-[17px] font-bold tracking-tight">Nakliye Cepte</span>
+              </button>
+              <div className="flex items-center gap-1.5">
+                <UrgentButton count={urgentTotal} onClick={openUrgent} />
+                {isGuest ? (
+                  <button
+                    onClick={handleLogout}
+                    className="flex h-10 items-center gap-1.5 rounded-full bg-[#122c4a] px-4 text-xs font-semibold text-white transition-colors hover:bg-[#1a3d68]"
+                  >
+                    <LogIn className="size-4" />
+                    Giriş
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => setActiveTab("Şirket Profili")}
+                    aria-label="Profilim"
+                    className="grid size-10 place-items-center rounded-full bg-[#dbe8f2] text-sm font-bold text-[#315d83] transition-colors hover:bg-[#cddfee]"
+                  >
+                    {profile.initials}
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Arama */}
+            <div className="relative w-full lg:w-[380px]">
+              <Search className="pointer-events-none absolute left-3.5 top-1/2 size-[18px] -translate-y-1/2 text-[#8da0b2]" />
               <Input 
                 value={query} 
                 onChange={(e) => {
                   setQuery(e.target.value)
                   if (e.target.value.trim().length > 0) setActiveTab("İlanlar")
                 }} 
-                placeholder="İlan veya şehir ara..." 
-                className="h-10 border-[#e0e6ed] bg-white pl-10 text-sm shadow-none w-full" 
+                placeholder="Şehir, firma veya yük ara..." 
+                enterKeyHint="search"
+                className="h-11 w-full rounded-xl border-[#e0e6ed] bg-white pl-10 pr-10 text-base shadow-[0_1px_2px_rgba(18,44,74,0.04)] md:text-sm" 
               />
+              {query && (
+                <button
+                  type="button"
+                  aria-label="Aramayı temizle"
+                  onClick={() => setQuery("")}
+                  className="absolute right-2 top-1/2 grid size-7 -translate-y-1/2 place-items-center rounded-full bg-[#eef2f6] text-[#627d98] hover:bg-[#e2e8ef]"
+                >
+                  <X className="size-3.5" />
+                </button>
+              )}
             </div>
-          </div>
-          <div className="flex items-center justify-end gap-3 sm:gap-5">
-            <button aria-label="Bildirimler" className="relative cursor-pointer rounded-lg p-2 text-[#6d8194] hover:bg-white">
-              <Bell />
-              <span className="absolute right-1.5 top-1.5 size-2 rounded-full border-2 border-[#f5f7fa] bg-[#d64526]" />
-            </button>
-            <Separator orientation="vertical" className="hidden h-8 sm:block" />
-            
-            <button onClick={() => setActiveTab("Şirket Profili")} className="flex cursor-pointer items-center gap-2 rounded-lg p-1 hover:bg-white">
-              <div className="grid size-9 place-items-center rounded-full bg-[#dbe8f2] text-sm font-bold text-[#315d83]">{profile.initials}</div>
-              <div className="hidden text-left sm:block">
-                <div className="text-sm font-semibold">{profile.authorized_person}</div>
-                <div className="text-xs text-[#8da0b2]">{profile.company_name}</div>
-              </div>
-              <ChevronDown className="hidden text-[#8da0b2] sm:block" />
-            </button>
 
-            {isGuest && (
-              <button
-                onClick={handleLogout}
-                className="flex items-center gap-1.5 cursor-pointer text-xs font-semibold text-white bg-[#122c4a] hover:bg-[#1a3d68] px-3 py-2 rounded-lg transition-colors"
-                title="Giriş Yap / Kayıt Ol"
-              >
-                <LogIn className="size-4" />
-                <span className="hidden sm:inline">Giriş Yap</span>
+            {/* Masaüstü: aksiyonlar */}
+            <div className="hidden items-center gap-3 lg:flex">
+              <UrgentButton count={urgentTotal} onClick={openUrgent} />
+              <button onClick={() => setActiveTab("Şirket Profili")} className="flex items-center gap-2.5 rounded-xl p-1.5 pr-3 transition-colors hover:bg-white">
+                <div className="grid size-9 place-items-center rounded-full bg-[#dbe8f2] text-sm font-bold text-[#315d83]">{profile.initials}</div>
+                <div className="text-left">
+                  <div className="text-sm font-semibold leading-tight">{profile.authorized_person}</div>
+                  <div className="text-xs text-[#8da0b2]">{profile.company_name}</div>
+                </div>
               </button>
-            )}
+              {isGuest && (
+                <button
+                  onClick={handleLogout}
+                  className="flex items-center gap-1.5 rounded-xl bg-[#122c4a] px-4 py-2.5 text-xs font-semibold text-white transition-colors hover:bg-[#1a3d68]"
+                  title="Giriş Yap / Kayıt Ol"
+                >
+                  <LogIn className="size-4" />
+                  Giriş Yap
+                </button>
+              )}
+            </div>
           </div>
         </header>
 
-        <main className="mx-auto max-w-[1450px] px-4 py-7 sm:px-8 sm:py-9">
+        <main className="mx-auto max-w-[1450px] px-4 pb-[calc(6.5rem+env(safe-area-inset-bottom))] pt-4 sm:px-8 sm:pt-6 lg:pb-10 lg:pt-8">
           {effectiveTab === "__guest" && <GuestGate onLogin={handleLogout} />}
           {(effectiveTab === "Genel Bakış" || effectiveTab === "overview") && (
             <OverviewView 
@@ -518,6 +563,7 @@ export default function Page() {
               totalCount={totalActive}
               urgentCount={totals ? totals.urgent : undefined}
               currentUserId={currentUserId}
+              userName={isGuest ? undefined : profile.authorized_person}
               onOpenCreate={() => setIsCreateOpen(true)} 
               setActiveTab={setActiveTab} 
             />
@@ -549,35 +595,76 @@ export default function Page() {
               searchQuery={query}
             />
           )}
-          {effectiveTab === "Seferlerim" && <TripsView loads={visibleLoads} currentUserId={currentUserId} />}
+          {effectiveTab === "Seferlerim" && (
+            <TripsView
+              loads={visibleLoads}
+              currentUserId={currentUserId}
+              onChanged={() => {
+                fetchListings(queryRef.current, pageSizeRef.current)
+                fetchCounts()
+              }}
+            />
+          )}
           {effectiveTab === "Gelir Gider" && <FinanceView />}
           {effectiveTab === "Şirket Profili" && <CompanyProfileView onProfileUpdated={fetchProfile} />}
           {effectiveTab === "Sefer Hesapla" && <CalculatorView />}
           {effectiveTab === "Yardım Merkezi" && <HelpCenterView />}
         </main>
       </div>
+
+      <BottomNav
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        onOpenCreate={() => setIsCreateOpen(true)}
+        onOpenMenu={() => setIsSidebarOpen(true)}
+        favoritesCount={favoriteIds.length}
+      />
+
       <CreateListingModal 
         isOpen={isCreateOpen} 
         onClose={() => setIsCreateOpen(false)} 
         onSuccess={() => {
           setIsCreateOpen(false)
-          fetchListings(debouncedQuery)
+          setActiveTab("İlanlar")
+          fetchListings(queryRef.current, pageSizeRef.current)
+          fetchCounts()
         }} 
       />
     </div>
   )
 }
 
+function UrgentButton({ count, onClick }: { count: number; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      aria-label={count > 0 ? `${count} acil yük` : "Acil yükler"}
+      title="Acil yükler"
+      className="relative grid size-10 place-items-center rounded-full text-[#4a6178] transition-colors hover:bg-white"
+    >
+      <Bell className="size-[22px]" />
+      {count > 0 && (
+        <span className="absolute -right-0.5 -top-0.5 grid min-w-[18px] place-items-center rounded-full border-2 border-[#f5f7fa] bg-[#d64526] px-1 text-[9px] font-bold leading-[14px] text-white">
+          {count > 99 ? "99+" : count}
+        </span>
+      )}
+    </button>
+  )
+}
+
 function GuestGate({ onLogin }: { onLogin: () => void }) {
   return (
-    <div className="mx-auto max-w-md rounded-2xl border border-[#e4e9ef] bg-white p-8 text-center shadow-sm">
+    <div className="animate-rise mx-auto mt-6 max-w-md rounded-3xl border border-[#e4e9ef] bg-white p-8 text-center shadow-sm">
+      <div className="mx-auto mb-4 grid size-14 place-items-center rounded-2xl bg-[#eef4f8] text-[#315d83]">
+        <LogIn className="size-6" />
+      </div>
       <h2 className="text-lg font-bold text-[#122c4a]">Bu bölüm için giriş gerekiyor</h2>
-      <p className="mt-2 text-sm text-[#627d98]">
+      <p className="mt-2 text-sm leading-relaxed text-[#627d98]">
         Favoriler, seferler, gelir-gider ve profil özellikleri için ücretsiz üye olabilir veya giriş yapabilirsiniz.
       </p>
       <button
         onClick={onLogin}
-        className="mt-5 cursor-pointer rounded-xl bg-[#122c4a] px-6 py-2.5 text-sm font-semibold text-white hover:bg-[#1a3d68] transition-colors"
+        className="mt-6 h-12 w-full rounded-xl bg-[#122c4a] px-6 text-sm font-semibold text-white transition-colors hover:bg-[#1a3d68]"
       >
         Giriş Yap / Kayıt Ol
       </button>
