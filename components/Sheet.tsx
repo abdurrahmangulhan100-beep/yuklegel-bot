@@ -46,7 +46,7 @@ export function Sheet({ open, onClose, title, subtitle, children, footer, classN
         type="button"
         aria-label="Kapat"
         onClick={onClose}
-        className="animate-fade absolute inset-0 bg-[#0b1d33]/55 backdrop-blur-[2px]"
+        className="animate-fade absolute inset-0 bg-[#0b1d33]/55"
       />
 
       <div
