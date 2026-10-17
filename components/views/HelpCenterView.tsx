@@ -25,8 +25,12 @@ export function HelpCenterView() {
       a: "Şirket Profili sayfasının en altında yer alan 'Hesabı ve Tüm Verileri Sil' butonunu kullanarak veya destek e-posta adresimiz üzerinden talepte bulunarak verilerinizi sildirebilirsiniz."
     },
     {
+      q: "Saha Ağı ilanları nereden geliyor?",
+      a: "Saha Ağı ilanları, ilanı yayımlayan kişilerce kamuya açık alanlarda herkese açık şekilde paylaşılmış nakliye ilanlarından derlenir. Nakliye Cepte bu ilanların yayımcısı değildir ve içerik doğruluğunu garanti etmez. İlan size aitse ve kaldırılmasını istiyorsanız, ilan kartındaki ⋯ menüsünden 'İlanı bildir' seçeneğini kullanabilir veya destek e-posta adresimize yazabilirsiniz."
+    },
+    {
       q: "İlan veren firma veya taşıyıcıya nasıl ulaşırım?",
-      a: "İlan detaylarında veya Firmalar sekmesinde yer alan telefon numarası ve WhatsApp butonlarını kullanarak doğrudan iletişim kurabilirsiniz."
+      a: "İlan kartındaki Ara ve WhatsApp butonlarını kullanarak ilan sahibiyle doğrudan iletişim kurabilirsiniz."
     }
   ]
 
