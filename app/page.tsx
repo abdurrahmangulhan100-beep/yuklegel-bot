@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import { cn, timeAgo } from "@/lib/utils"
 import { supabase } from "@/lib/supabase"
 import { Load } from "@/components/LoadCard"
-import { mapUserListing, mapBotListing, dedupeLoads, type DatabaseListing } from "@/lib/listings"
+import { mapUserListing, mapBotListing, dedupeLoads, reuseLoads, type DatabaseListing } from "@/lib/listings"
 import { fold } from "@/lib/route"
 import { ListingsView } from "@/components/views/ListingsView"
 import { TripsView } from "@/components/views/TripsView"
@@ -233,7 +233,7 @@ export default function Page() {
       )
       // Aynı saha ilanı tekrar tekrar paylaşıldıysa tek karta indir
       const merged = dedupeLoads(sorted)
-      setLoads(merged)
+      setLoads((prev) => reuseLoads(prev, merged))
       setHasMore((userRes.data?.length ?? 0) >= size || (botRes.data?.length ?? 0) >= size)
     } catch (err) {
       console.error("Veri çekme hatası:", err)
@@ -388,7 +388,7 @@ export default function Page() {
       {isSidebarOpen && (
         <button 
           aria-label="Menüyü kapat" 
-          className="animate-fade fixed inset-0 z-[45] bg-[#0b1d33]/50 backdrop-blur-[2px] lg:hidden" 
+          className="animate-fade fixed inset-0 z-[45] bg-[#0b1d33]/55 lg:hidden" 
           onClick={() => setIsSidebarOpen(false)} 
         />
       )}
@@ -407,7 +407,7 @@ export default function Page() {
       />
 
       <div className={cn("min-h-dvh transition-[padding] duration-200 lg:pl-[272px]", isCollapsed && "lg:pl-[78px]")}>
-        <header className="sticky top-0 z-30 border-b border-[#e4e9ef] bg-[#f5f7fa]/90 pt-safe backdrop-blur-xl">
+        <header className="sticky top-0 z-30 border-b border-[#e4e9ef] bg-[#f5f7fa] pt-safe">
           <div className="flex flex-col gap-2.5 px-4 pb-3 pt-3 sm:px-8 lg:h-[76px] lg:flex-row lg:items-center lg:justify-between lg:gap-4 lg:py-0">
             {/* Mobil: marka + aksiyonlar */}
             <div className="flex items-center justify-between gap-3 lg:hidden">
@@ -510,7 +510,7 @@ export default function Page() {
               sourceFilter={sourceFilter} 
               setSourceFilter={setSourceFilter} 
               setIsCreateOpen={setIsCreateOpen} 
-              searchQuery={query}
+              searchQuery={debouncedQuery}
               favoriteIds={favoriteIds}
               onToggleFavorite={toggleFavorite}
               onUserBlocked={handleUserBlocked}
@@ -526,7 +526,7 @@ export default function Page() {
               onToggleFavorite={toggleFavorite} 
               onUserBlocked={handleUserBlocked}
               onCitySearch={handleCitySearch}
-              searchQuery={query}
+              searchQuery={debouncedQuery}
             />
           )}
           {effectiveTab === "Seferlerim" && (
