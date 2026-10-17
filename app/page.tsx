@@ -7,6 +7,8 @@ import { Input } from "@/components/ui/input"
 import { cn, timeAgo } from "@/lib/utils"
 import { supabase } from "@/lib/supabase"
 import { Load } from "@/components/LoadCard"
+import { mapUserListing, mapBotListing, dedupeLoads, type DatabaseListing } from "@/lib/listings"
+import { fold } from "@/lib/route"
 import { ListingsView } from "@/components/views/ListingsView"
 import { TripsView } from "@/components/views/TripsView"
 import { CalculatorView } from "@/components/views/CalculatorView"
@@ -19,54 +21,15 @@ import { CreateListingModal } from "@/components/CreateListingModal"
 import { Sidebar } from "@/components/Sidebar"
 import { BottomNav } from "@/components/BottomNav"
 
-interface DatabaseListing {
-  id: string | number
-  user_id?: string
-  company_name?: string
-  from_city?: string
-  to_city?: string
-  cargo_detail?: string
-  message?: string
-  text?: string
-  vehicle_type?: string
-  price?: number | string
-  urgent?: boolean
-  created_at?: string
-  phone?: string
-  is_bot?: boolean
-  profiles?: {
-    company_name?: string
-    phone?: string
-    authorized_person?: string
-  } | {
-    company_name?: string
-    phone?: string
-    authorized_person?: string
-  }[] | null
-}
-
 const PAGE_SIZE = 60
+
+// Araç filtresi: araç alanına ve ilan metnine bakar; "tir" gibi kısa kelimeler başka sözcüklerin içinde eşleşmesin diye kelime sınırı kullanır
+const matchesVehicle = (load: Load, filter: string) => {
+  const blob = fold(`${load.vehicle} ${load.cargo}`)
+  const word = fold(filter).replace(/[^a-z0-9 ]/g, "")
+  return new RegExp(`\\b${word}\\b`).test(blob)
+}
 const GUEST_BLOCKED_TABS = ["Favorilerim", "Seferlerim", "Gelir Gider", "Şirket Profili"]
-
-// Emoji/sembolleri temizler; ₺, tire, üç nokta ve Türkçe karakterlere dokunmaz
-const cleanText = (text?: string | null) => {
-  if (!text) return "-"
-  return text
-    .replace(/[*_~`]/g, "")
-    .replace(/[\uD83C-\uD83E][\uDC00-\uDFFF]|[\u231A-\u23FF]|[\u2600-\u27BF]|[\u2B00-\u2BFF]|\uFE0F|\u200D/g, "")
-    .replace(/\s+/g, " ")
-    .trim()
-}
-
-// +90 / 0 / boşluk, tire, nokta, parantez içeren cep telefonlarını yakalar; "05xxxxxxxxx" döner
-const extractPhone = (text?: string | null) => {
-  if (!text) return ""
-  const match = text.match(/(?:\+?90[\s.\-]*)?0?[\s.\-]*\(?5\d{2}\)?[\s.\-]*\d{3}[\s.\-]*\d{2}[\s.\-]*\d{2}/)
-  if (!match) return ""
-  const digits = match[0].replace(/\D/g, "")
-  if (digits.length < 10) return ""
-  return "0" + digits.slice(-10)
-}
 
 export default function Page() {
   const router = useRouter()
@@ -259,58 +222,14 @@ export default function Page() {
         if (!seen.has(String(r.id))) userRows.push(r)
       }
 
-      const formattedUserLoads: Load[] = userRows.map((item: DatabaseListing) => {
-        const profileObj = Array.isArray(item.profiles) ? item.profiles[0] : item.profiles
-        const companyName = cleanText(item.company_name || profileObj?.company_name || profileObj?.authorized_person || "Nakliye Cepte Kullanıcısı")
-        const initials = companyName.split(" ").filter(Boolean).map((n) => n[0]).join("").toUpperCase().substring(0, 2) || "NK"
+      const formattedUserLoads: Load[] = userRows.map(mapUserListing)
+      const formattedBotLoads: Load[] = (botRes.data || []).map((item: DatabaseListing) => mapBotListing(item))
 
-        return {
-          id: `user-${item.id}`,
-          userId: item.user_id,
-          company: companyName,
-          initials: initials,
-          from: cleanText(item.from_city),
-          to: cleanText(item.to_city),
-          cargo: cleanText(item.cargo_detail),
-          message: cleanText(item.message),
-          vehicle: cleanText(item.vehicle_type || "Damperli Tır"),
-          price: typeof item.price === "number" ? `₺${item.price.toLocaleString("tr-TR")}` : (item.price || "₺0"),
-          urgent: Boolean(item.urgent),
-          time: timeAgo(item.created_at),
-          createdAt: item.created_at,
-          color: "bg-[#d64526]",
-          source: "user",
-          phone: item.phone || profileObj?.phone || "Belirtilmedi"
-        }
-      })
-
-      const formattedBotLoads: Load[] = (botRes.data || []).map((item: DatabaseListing) => {
-        const rawDetail = cleanText(item.cargo_detail || "Saha İlanı")
-        let rawCompany = cleanText(item.company_name || "Nakliye Ağı")
-        if (rawCompany.toLowerCase().includes("whatsapp")) rawCompany = "Nakliye Ağı"
-
-        return {
-          id: `bot-${item.id}`,
-          company: rawCompany,
-          initials: "NA",
-          from: cleanText(item.from_city),
-          to: cleanText(item.to_city),
-          cargo: rawDetail,
-          message: "",
-          vehicle: cleanText(item.vehicle_type || "TIR / Kamyon"),
-          price: "",
-          urgent: Boolean(item.urgent),
-          time: timeAgo(item.created_at),
-          createdAt: item.created_at,
-          color: "bg-[#315d83]",
-          source: "bot",
-          phone: extractPhone(rawDetail) || item.phone || "Belirtilmedi"
-        }
-      })
-
-      const merged = [...formattedUserLoads, ...formattedBotLoads].sort(
+      const sorted = [...formattedUserLoads, ...formattedBotLoads].sort(
         (a, b) => (b.createdAt ? Date.parse(b.createdAt) : 0) - (a.createdAt ? Date.parse(a.createdAt) : 0)
       )
+      // Aynı saha ilanı tekrar tekrar paylaşıldıysa tek karta indir
+      const merged = dedupeLoads(sorted)
       setLoads(merged)
       setHasMore((userRes.data?.length ?? 0) >= size || (botRes.data?.length ?? 0) >= size)
     } catch (err) {
@@ -393,7 +312,7 @@ export default function Page() {
 
   const filteredLoads = useMemo(() => {
     return visibleLoads.filter((load) => {
-      const filterMatch = activeFilter === "Tümü" || (activeFilter === "Acil" ? load.urgent : load.vehicle.toLowerCase().includes(activeFilter.toLowerCase()))
+      const filterMatch = activeFilter === "Tümü" || (activeFilter === "Acil" ? load.urgent : matchesVehicle(load, activeFilter))
       const sourceMatch = sourceFilter === "all" || load.source === sourceFilter
       return filterMatch && sourceMatch
     })
@@ -432,6 +351,15 @@ export default function Page() {
 
   const openUrgent = () => {
     setActiveFilter("Acil")
+    setSourceFilter("all")
+    setActiveTab("İlanlar")
+  }
+
+  const handleCitySearch = (city: string) => {
+    setQuery(city)
+    setDebouncedQuery(city)
+    queryRef.current = city
+    setActiveFilter("Tümü")
     setSourceFilter("all")
     setActiveTab("İlanlar")
   }
@@ -566,6 +494,7 @@ export default function Page() {
               userName={isGuest ? undefined : profile.authorized_person}
               onOpenCreate={() => setIsCreateOpen(true)} 
               setActiveTab={setActiveTab} 
+              onSelectCity={handleCitySearch}
             />
           )}
           {effectiveTab === "İlanlar" && (
@@ -582,6 +511,7 @@ export default function Page() {
               favoriteIds={favoriteIds}
               onToggleFavorite={toggleFavorite}
               onUserBlocked={handleUserBlocked}
+              onCitySearch={handleCitySearch}
               hasMore={hasMore}
               onLoadMore={() => setPageSize((p) => p + PAGE_SIZE)}
             />
@@ -592,6 +522,7 @@ export default function Page() {
               favoriteIds={favoriteIds} 
               onToggleFavorite={toggleFavorite} 
               onUserBlocked={handleUserBlocked}
+              onCitySearch={handleCitySearch}
               searchQuery={query}
             />
           )}
