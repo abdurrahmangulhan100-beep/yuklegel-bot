@@ -1,8 +1,10 @@
 "use client"
 
-import { Phone, MessageSquare, Star, Building2, MapPin, ArrowRight, Truck, Clock, Copy, Check, Flag, Ban, X } from "lucide-react"
+import { Phone, MessageCircle, Star, Truck, Clock, Copy, Check, Flag, Ban, Zap, Package, ChevronDown } from "lucide-react"
 import { useState } from "react"
 import { supabase } from "@/lib/supabase"
+import { cn } from "@/lib/utils"
+import { Sheet } from "@/components/Sheet"
 
 export type Load = {
   id: string
@@ -32,30 +34,46 @@ type LoadCardProps = {
   onUserBlocked?: (userIdOrPhone: string) => void
 }
 
+const REPORT_REASONS = [
+  "Sahte veya Yanıltıcı İlan",
+  "Uygunsuz / Hakaret İçeren Dil",
+  "Spam / Tekrarlanan İçerik",
+  "Hatalı Telefon Numarası",
+]
+
 const highlightMatch = (text: string, query: string) => {
   if (!query || !text) return text
 
   const escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
   const regex = new RegExp(`(${escapedQuery})`, "gi")
   const parts = text.split(regex)
+  const q = query.toLocaleLowerCase('tr-TR')
 
   return parts.map((part, i) => {
-    const isMatch = part.toLocaleLowerCase('tr-TR') === query.toLocaleLowerCase('tr-TR')
+    const isMatch = part.toLocaleLowerCase('tr-TR') === q
 
     return isMatch ? (
-      <span key={i} className="bg-[#eef4f8] text-[#122c4a] border border-[#cbd5e1] font-semibold px-1.5 py-0.5 rounded-md mx-0.5 inline-block text-xs">
+      <mark key={i} className="rounded bg-[#fff1c2] px-0.5 font-semibold text-[#122c4a]">
         {part}
-      </span>
+      </mark>
     ) : (
       part
     )
   })
 }
 
+// 05321234567 -> 0532 123 45 67
+const formatPhone = (phone: string) => {
+  const d = phone.replace(/\D/g, "")
+  if (d.length === 11) return `${d.slice(0, 4)} ${d.slice(4, 7)} ${d.slice(7, 9)} ${d.slice(9)}`
+  return phone
+}
+
 export function LoadCard({ load, searchQuery = "", isFavorite = false, onToggleFavorite, onUserBlocked }: LoadCardProps) {
   const [copied, setCopied] = useState(false)
+  const [expanded, setExpanded] = useState(false)
   const [isReportOpen, setIsReportOpen] = useState(false)
-  const [reportReason, setReportReason] = useState("Sahte veya Yanıltıcı İlan")
+  const [reportReason, setReportReason] = useState(REPORT_REASONS[0])
   const [isSubmittingReport, setIsSubmittingReport] = useState(false)
   const [reportSuccess, setReportSuccess] = useState(false)
   const [isFavLoading, setIsFavLoading] = useState(false)
@@ -70,18 +88,27 @@ export function LoadCard({ load, searchQuery = "", isFavorite = false, onToggleF
     ? (load.company || "İsimsiz Firma")
     : (load.company && !load.company.toLowerCase().includes("whatsapp") ? load.company : "Saha Lojistik Ağı")
 
-  const copyPhone = () => {
-    if (!load.phone || load.phone === "Belirtilmedi") return
-    navigator.clipboard.writeText(load.phone)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+  const hasFrom = Boolean(load.from) && load.from !== "-"
+  const hasTo = Boolean(load.to) && load.to !== "-"
+  const showRoute = hasFrom && hasTo
+  const hasPrice = Boolean(load.price) && load.price !== "₺0"
+  const cargoText = load.cargo && load.cargo !== "-" ? load.cargo : "Yük detayı belirtilmedi."
+  const isLongCargo = cargoText.length > 160
+  const showMessage = Boolean(load.message) && load.message !== "-" && load.message !== load.cargo
+
+  const copyPhone = async () => {
+    if (!hasPhone) return
+    try {
+      await navigator.clipboard.writeText(load.phone)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      // Pano erişimi yoksa sessizce geç
+    }
   }
 
   const handleWhatsApp = () => {
-    if (!load.phone || load.phone === "Belirtilmedi") {
-      alert("Bu ilan için telefon numarası bulunamadı.")
-      return
-    }
+    if (!hasPhone) return
 
     const cleanPhone = load.phone.replace(/\D/g, "")
     const formattedPhone = cleanPhone.startsWith("0") 
@@ -98,11 +125,7 @@ export function LoadCard({ load, searchQuery = "", isFavorite = false, onToggleF
   }
 
   const handleCall = () => {
-    if (load.phone && load.phone !== "Belirtilmedi") {
-      window.location.href = `tel:${load.phone}`
-    } else {
-      alert("Bu ilan için telefon numarası bulunamadı.")
-    }
+    if (hasPhone) window.location.href = `tel:${load.phone}`
   }
 
   const handleFavoriteClick = async (e: React.MouseEvent) => {
@@ -123,7 +146,6 @@ export function LoadCard({ load, searchQuery = "", isFavorite = false, onToggleF
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) {
         alert("Favorilere eklemek için oturum açmanız gerekmektedir.")
-        setIsFavLoading(false)
         return
       }
 
@@ -206,222 +228,245 @@ export function LoadCard({ load, searchQuery = "", isFavorite = false, onToggleF
   }
 
   return (
-    <div className="group relative flex flex-col justify-between rounded-xl border border-[#e4e9ef] bg-white p-5 shadow-sm transition-all duration-200 hover:border-[#cbd5e1] hover:shadow-md">
-      <div>
-        <div className="flex items-center justify-between pb-3.5 border-b border-[#f0f4f8]">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className={`grid size-10 shrink-0 place-items-center rounded-xl text-white font-bold text-sm shadow-xs ${load.color || (isUserLoad ? "bg-[#d64526]" : "bg-[#315d83]")}`}>
+    <article className="animate-rise group relative flex flex-col overflow-hidden rounded-2xl border border-[#e4e9ef] bg-white shadow-[0_1px_3px_rgba(18,44,74,0.05)] transition-shadow duration-200 hover:shadow-[0_8px_24px_rgba(18,44,74,0.08)]">
+      {load.urgent && <div className="h-1 w-full bg-gradient-to-r from-[#d64526] via-[#ef6a3a] to-[#f4a259]" />}
+
+      <div className="flex flex-1 flex-col gap-3.5 p-4">
+        {/* Üst: firma + aksiyonlar */}
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className={cn(
+              "grid size-11 shrink-0 place-items-center rounded-2xl text-sm font-bold text-white",
+              isUserLoad ? "bg-gradient-to-br from-[#e5522f] to-[#c13a1c]" : "bg-gradient-to-br from-[#3f7199] to-[#274f73]"
+            )}>
               {isUserLoad ? (load.initials || "NK") : "SL"}
             </div>
-            <div className="min-w-0 truncate">
-              <div className="flex items-center gap-1.5 truncate">
-                <span className="font-semibold text-sm text-[#122c4a] truncate">
-                  {highlightMatch(displayCompany, cleanQuery)}
-                </span>
+            <div className="min-w-0">
+              <div className="truncate text-[15px] font-bold leading-tight text-[#122c4a]">
+                {highlightMatch(displayCompany, cleanQuery)}
               </div>
-              <div className="text-xs text-[#8da0b2] flex items-center gap-1 mt-0.5">
-                <Building2 className="size-3 shrink-0" /> 
-                <span className="truncate">
-                  {isUserLoad ? "Nakliye Cepte İlanı" : "Saha Lojistik İlanı"}
-                </span>
+              <div className="mt-1 flex items-center gap-1.5 text-xs text-[#8da0b2]">
+                <Clock className="size-3 shrink-0" />
+                <span>{load.time}</span>
+                <span className="text-[#cbd5e1]">•</span>
+                <span className="truncate">{isUserLoad ? "Nakliye Cepte" : "Saha Lojistik"}</span>
               </div>
             </div>
           </div>
 
-          <div className="flex items-center gap-1.5 shrink-0 ml-2">
+          <div className="-mr-1 -mt-1 flex shrink-0 items-center">
+            <button
+              onClick={handleFavoriteClick}
+              disabled={isFavLoading}
+              aria-pressed={isFavorite}
+              aria-label={isFavorite ? "Favorilerden çıkar" : "Favorilere ekle"}
+              className={cn(
+                "grid size-10 place-items-center rounded-full transition-all active:scale-90",
+                isFavLoading && "opacity-50",
+                isFavorite ? "text-amber-500" : "text-[#b4c1ce] hover:text-amber-500"
+              )}
+            >
+              <Star className={cn("size-[22px]", isFavorite && "fill-amber-400")} />
+            </button>
+            <button
+              onClick={() => setIsReportOpen(true)}
+              aria-label="İlanı şikayet et veya engelle"
+              className="grid size-10 place-items-center rounded-full text-[#b4c1ce] transition-colors hover:bg-red-50 hover:text-red-500"
+            >
+              <Flag className="size-[18px]" />
+            </button>
+          </div>
+        </div>
+
+        {/* Rozetler */}
+        {(load.urgent || (load.vehicle && load.vehicle !== "-")) && (
+          <div className="flex flex-wrap items-center gap-1.5">
             {load.urgent && (
-              <span className="rounded-full bg-red-50 px-2.5 py-0.5 text-xs font-bold text-red-600 border border-red-200 animate-pulse">
+              <span className="inline-flex items-center gap-1 rounded-full bg-[#fff0ec] px-2.5 py-1 text-[11px] font-bold text-[#d64526]">
+                <Zap className="size-3 fill-[#d64526]" />
                 ACİL YÜK
               </span>
             )}
-            <span className="text-xs font-medium text-[#8da0b2] bg-[#f5f7fa] px-2 py-1 rounded-md flex items-center gap-1">
-              <Clock className="size-3" />
-              {load.time}
-            </span>
-            <button
-              onClick={() => setIsReportOpen(true)}
-              className="p-1 text-gray-400 hover:text-red-500 rounded-md hover:bg-red-50 transition-colors"
-              title="İlanı Şikayet Et veya Engelle"
-            >
-              <Flag className="size-3.5" />
-            </button>
-          </div>
-        </div>
-
-        {isUserLoad && (
-          <div className="my-4 rounded-xl bg-[#f8fafc] p-3.5 border border-[#edf2f7]">
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex-1 min-w-0">
-                <span className="block text-[10px] font-bold tracking-wider text-[#8da0b2] uppercase">Nereden</span>
-                <div className="flex items-center gap-1.5 mt-0.5">
-                  <MapPin className="size-4 text-emerald-600 shrink-0" />
-                  <span className="font-bold text-[#122c4a] text-sm sm:text-base truncate">
-                    {load.from && load.from !== "-" ? highlightMatch(load.from, cleanQuery) : "Belirtilmedi"}
-                  </span>
-                </div>
-              </div>
-
-              <div className="flex flex-col items-center justify-center px-2 shrink-0">
-                <div className="flex items-center gap-1 text-[#cbd5e1]">
-                  <div className="h-0.5 w-3 bg-[#cbd5e1] rounded-full hidden sm:block" />
-                  <ArrowRight className="size-4 text-[#8da0b2]" />
-                  <div className="h-0.5 w-3 bg-[#cbd5e1] rounded-full hidden sm:block" />
-                </div>
-                {load.distance && load.distance !== "Belirtilmemiş" && (
-                  <span className="text-[10px] font-medium text-[#8da0b2] mt-0.5">{load.distance}</span>
-                )}
-              </div>
-
-              <div className="flex-1 min-w-0 text-right">
-                <span className="block text-[10px] font-bold tracking-wider text-[#8da0b2] uppercase">Nereye</span>
-                <div className="flex items-center justify-end gap-1.5 mt-0.5">
-                  <span className="font-bold text-[#122c4a] text-sm sm:text-base truncate">
-                    {load.to && load.to !== "-" ? highlightMatch(load.to, cleanQuery) : "Belirtilmedi"}
-                  </span>
-                  <MapPin className="size-4 text-red-500 shrink-0" />
-                </div>
-              </div>
-            </div>
+            {load.vehicle && load.vehicle !== "-" && (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-[#eef4f8] px-2.5 py-1 text-[11px] font-semibold text-[#315d83]">
+                <Truck className="size-3.5" />
+                {highlightMatch(load.vehicle, cleanQuery)}
+              </span>
+            )}
           </div>
         )}
 
-        <div className="space-y-2 my-3">
-          <div className="bg-[#f8fafc] p-3 rounded-lg border border-[#edf2f7]">
-            <span className="text-[10px] uppercase tracking-wider text-[#8da0b2] block font-semibold mb-1">
-              İlan İçeriği / Yük Detayı
-            </span>
-            <p className="text-sm text-[#334e68] leading-relaxed font-normal break-words">
-              {highlightMatch(load.cargo || "Yük detayı belirtilmedi.", cleanQuery)}
-            </p>
+        {/* Güzergah + fiyat */}
+        {showRoute && (
+          <div className="flex items-stretch justify-between gap-3 rounded-2xl bg-[#f6f9fc] p-3.5">
+            <div className="flex min-w-0 flex-1 items-stretch gap-3">
+              <div className="flex flex-col items-center py-1.5" aria-hidden>
+                <span className="size-3 rounded-full border-[3px] border-emerald-500 bg-white" />
+                <span className="my-1 w-px flex-1 border-l-2 border-dashed border-[#c4d0dc]" />
+                <span className="size-3 rounded-full bg-[#d64526]" />
+              </div>
+              <div className="flex min-w-0 flex-1 flex-col justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-[#8da0b2]">Yükleme</div>
+                  <div className="truncate text-[15px] font-bold text-[#122c4a]">{highlightMatch(load.from, cleanQuery)}</div>
+                </div>
+                <div className="min-w-0">
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-[#8da0b2]">Teslimat</div>
+                  <div className="truncate text-[15px] font-bold text-[#122c4a]">{highlightMatch(load.to, cleanQuery)}</div>
+                </div>
+              </div>
+            </div>
+
+            {(hasPrice || (load.distance && load.distance !== "Belirtilmemiş")) && (
+              <div className="flex shrink-0 flex-col items-end justify-center text-right">
+                {hasPrice && (
+                  <>
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-[#8da0b2]">Fiyat</div>
+                    <div className="text-xl font-extrabold leading-tight text-emerald-600">{load.price}</div>
+                  </>
+                )}
+                {load.distance && load.distance !== "Belirtilmemiş" && (
+                  <div className="mt-1 text-[11px] font-medium text-[#8da0b2]">{load.distance}</div>
+                )}
+              </div>
+            )}
           </div>
+        )}
 
-          {load.message && load.message !== "-" && load.message !== load.cargo && (
-            <p className="text-xs text-[#627d98] bg-[#f0f4f8] p-2.5 rounded-lg border border-[#e2e8f0] italic line-clamp-2">
-              "{highlightMatch(load.message, cleanQuery)}"
-            </p>
-          )}
-        </div>
+        {/* Fiyat güzergah olmadan geldiyse */}
+        {!showRoute && hasPrice && (
+          <div className="inline-flex w-fit items-center rounded-xl bg-emerald-50 px-3 py-1.5 text-sm font-extrabold text-emerald-700">
+            {load.price}
+          </div>
+        )}
 
-        <div className="flex flex-wrap items-center gap-2 mb-2">
-          {load.vehicle && load.vehicle !== "-" && (
-            <span className="inline-flex items-center gap-1 text-xs bg-[#eef4f8] text-[#315d83] font-semibold px-2.5 py-1 rounded-md border border-[#cbd5e1]/40">
-              <Truck className="size-3.5" />
-              {highlightMatch(load.vehicle, cleanQuery)}
-            </span>
-          )}
-
-          {load.price && load.price !== "₺0" && (
-            <span className="text-xs bg-emerald-50 text-emerald-700 font-bold px-3 py-1 rounded-md ml-auto border border-emerald-200 shadow-2xs">
-              {load.price}
-            </span>
-          )}
-        </div>
-      </div>
-
-      <div className="flex items-center justify-between pt-3 border-t border-[#f0f4f8] mt-3">
-        <div className="flex items-center gap-1.5 text-xs text-[#8da0b2]">
-          <span>İletişim:</span>
-          <span className="font-bold text-[#122c4a]">{load.phone || "Belirtilmedi"}</span>
-          {load.phone && load.phone !== "Belirtilmedi" && (
+        {/* Yük detayı */}
+        <div>
+          <div className="mb-1 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-[#8da0b2]">
+            <Package className="size-3" />
+            Yük detayı
+          </div>
+          <p className={cn("break-words text-sm leading-relaxed text-[#334e68]", !expanded && "line-clamp-3")}>
+            {highlightMatch(cargoText, cleanQuery)}
+          </p>
+          {isLongCargo && (
             <button
-              onClick={copyPhone}
-              className="p-1 hover:bg-gray-100 rounded transition-colors text-gray-500"
-              title="Numarayı Kopyala"
+              type="button"
+              onClick={() => setExpanded((v) => !v)}
+              className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-[#315d83]"
             >
-              {copied ? <Check className="size-3.5 text-green-600" /> : <Copy className="size-3.5" />}
+              {expanded ? "Daha az göster" : "Devamını oku"}
+              <ChevronDown className={cn("size-3.5 transition-transform", expanded && "rotate-180")} />
             </button>
           )}
         </div>
 
-        <div className="flex items-center gap-2">
-          <button 
-            onClick={handleWhatsApp} 
-            title="WhatsApp ile Mesaj Gönder" 
-            className="grid size-9 place-items-center rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white transition-all cursor-pointer shadow-2xs"
+        {showMessage && (
+          <p className="line-clamp-2 rounded-xl border-l-4 border-[#cfdceb] bg-[#f6f9fc] px-3 py-2 text-xs italic leading-relaxed text-[#627d98]">
+            {highlightMatch(load.message as string, cleanQuery)}
+          </p>
+        )}
+      </div>
+
+      {/* Alt: iletişim */}
+      <div className="border-t border-[#edf0f3] bg-[#fbfcfd] p-3">
+        {hasPhone ? (
+          <div className="mb-2.5 flex items-center justify-between gap-2 px-1">
+            <span className="text-[13px] font-semibold tabular-nums text-[#122c4a]">{formatPhone(load.phone)}</span>
+            <button
+              onClick={copyPhone}
+              className="inline-flex h-8 items-center gap-1.5 rounded-lg px-2 text-xs font-semibold text-[#627d98] transition-colors hover:bg-[#eef2f6]"
+            >
+              {copied ? <Check className="size-3.5 text-emerald-600" /> : <Copy className="size-3.5" />}
+              {copied ? "Kopyalandı" : "Kopyala"}
+            </button>
+          </div>
+        ) : (
+          <p className="mb-2.5 px-1 text-xs font-medium text-[#8da0b2]">Bu ilan için telefon numarası belirtilmemiş.</p>
+        )}
+
+        <div className="grid grid-cols-2 gap-2.5">
+          <button
+            onClick={handleCall}
+            disabled={!hasPhone}
+            className="flex h-12 items-center justify-center gap-2 rounded-xl bg-[#122c4a] text-sm font-semibold text-white shadow-sm transition-all hover:bg-[#1a3d68] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
           >
-            <MessageSquare className="size-4" />
+            <Phone className="size-[18px]" />
+            Ara
           </button>
-          <button 
-            onClick={handleCall} 
-            title="Hemen Ara" 
-            className="grid size-9 place-items-center rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white transition-all cursor-pointer shadow-2xs"
+          <button
+            onClick={handleWhatsApp}
+            disabled={!hasPhone}
+            className="flex h-12 items-center justify-center gap-2 rounded-xl bg-emerald-600 text-sm font-semibold text-white shadow-sm transition-all hover:bg-emerald-700 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
           >
-            <Phone className="size-4" />
-          </button>
-          <button 
-            onClick={handleFavoriteClick}
-            disabled={isFavLoading}
-            title={isFavorite ? "Favorilerden Çıkar" : "Favorilere Ekle"} 
-            className={`grid size-9 place-items-center rounded-lg transition-colors cursor-pointer ${
-              isFavLoading ? "opacity-50 cursor-not-allowed" : ""
-            } ${
-              isFavorite 
-                ? "bg-amber-50 text-amber-500 hover:bg-amber-100" 
-                : "bg-gray-50 text-gray-400 hover:bg-gray-100 hover:text-amber-500"
-            }`}
-          >
-            <Star className={`size-4 ${isFavorite ? "fill-amber-500 text-amber-500" : ""}`} />
+            <MessageCircle className="size-[18px]" />
+            WhatsApp
           </button>
         </div>
       </div>
 
-      {isReportOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs">
-          <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl border border-gray-100 animate-in fade-in zoom-in duration-150">
-            <div className="flex items-center justify-between pb-3 border-b border-gray-100">
-              <div className="flex items-center gap-2 text-red-600 font-bold text-sm">
-                <Flag className="size-4" />
-                <span>İlanı Bildir veya Engelle</span>
-              </div>
-              <button onClick={() => setIsReportOpen(false)} className="text-gray-400 hover:text-gray-600">
-                <X className="size-4" />
+      {/* Şikayet / engelle */}
+      <Sheet
+        open={isReportOpen}
+        onClose={() => setIsReportOpen(false)}
+        title="İlanı bildir veya engelle"
+        subtitle="Şikayetiniz incelenmek üzere ekibimize iletilir."
+        footer={
+          !reportSuccess ? (
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={handleSendReport}
+                disabled={isSubmittingReport}
+                className="h-12 w-full rounded-xl bg-[#d64526] text-sm font-semibold text-white transition-colors hover:bg-[#b93820] disabled:opacity-60"
+              >
+                {isSubmittingReport ? "Gönderiliyor..." : "İlanı Şikayet Et"}
               </button>
+              {blockTarget && (
+                <button
+                  onClick={handleBlockUser}
+                  className="flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-[#dbe3ec] text-sm font-semibold text-[#334e68] transition-colors hover:bg-[#f5f7fa]"
+                >
+                  <Ban className="size-4 text-red-500" />
+                  Bu Kullanıcıyı Engelle
+                </button>
+              )}
             </div>
-
-            {reportSuccess ? (
-              <div className="py-6 text-center text-emerald-600 font-semibold text-sm">
-                Şikayetiniz incelenmek üzere iletildi.
-              </div>
-            ) : (
-              <div className="space-y-4 pt-3">
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Şikayet Sebebi Seçin:</label>
-                  <select
-                    value={reportReason}
-                    onChange={(e) => setReportReason(e.target.value)}
-                    className="w-full rounded-lg border border-gray-200 p-2 text-xs bg-gray-50 text-gray-800"
-                  >
-                    <option value="Sahte veya Yanıltıcı İlan">Sahte veya Yanıltıcı İlan</option>
-                    <option value="Uygunsuz / Hakaret İçeren Dil">Uygunsuz / Hakaret İçeren Dil</option>
-                    <option value="Spam / Tekrarlanan İçerik">Spam / Tekrarlanan İçerik</option>
-                    <option value="Hatalı Telefon Numarası">Hatalı Telefon Numarası</option>
-                  </select>
-                </div>
-
-                <div className="flex flex-col gap-2 pt-2">
-                  <button
-                    onClick={handleSendReport}
-                    disabled={isSubmittingReport}
-                    className="w-full rounded-xl bg-red-600 py-2.5 text-xs font-semibold text-white hover:bg-red-700 transition-colors cursor-pointer"
-                  >
-                    {isSubmittingReport ? "Gönderiliyor..." : "İlanı Şikayet Et"}
-                  </button>
-
-                  {blockTarget && (
-                    <button
-                      onClick={handleBlockUser}
-                      className="w-full flex items-center justify-center gap-1.5 rounded-xl border border-gray-200 py-2.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer"
-                    >
-                      <Ban className="size-3.5 text-red-500" />
-                      <span>Bu Kullanıcıyı Engelle</span>
-                    </button>
-                  )}
-                </div>
-              </div>
-            )}
+          ) : undefined
+        }
+      >
+        {reportSuccess ? (
+          <div className="py-8 text-center">
+            <div className="mx-auto mb-3 grid size-14 place-items-center rounded-full bg-emerald-50 text-emerald-600">
+              <Check className="size-7" />
+            </div>
+            <p className="text-sm font-semibold text-emerald-700">Şikayetiniz incelenmek üzere iletildi.</p>
           </div>
-        </div>
-      )}
-    </div>
+        ) : (
+          <div role="radiogroup" aria-label="Şikayet sebebi" className="space-y-2 pt-1">
+            {REPORT_REASONS.map((reason) => {
+              const selected = reportReason === reason
+              return (
+                <button
+                  key={reason}
+                  type="button"
+                  role="radio"
+                  aria-checked={selected}
+                  onClick={() => setReportReason(reason)}
+                  className={cn(
+                    "flex min-h-12 w-full items-center gap-3 rounded-xl border px-4 py-3 text-left text-sm font-medium transition-colors",
+                    selected ? "border-[#122c4a] bg-[#122c4a]/5 text-[#122c4a]" : "border-[#e4e9ef] text-[#334e68] hover:bg-[#f9fafc]"
+                  )}
+                >
+                  <span className={cn("grid size-5 shrink-0 place-items-center rounded-full border-2", selected ? "border-[#122c4a]" : "border-[#c4d0dc]")}>
+                    {selected && <span className="size-2.5 rounded-full bg-[#122c4a]" />}
+                  </span>
+                  {reason}
+                </button>
+              )
+            })}
+          </div>
+        )}
+      </Sheet>
+    </article>
   )
 }
