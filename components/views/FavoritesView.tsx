@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { Star } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { LoadCard, Load } from "@/components/LoadCard"
+import { mapUserListing, mapBotListing, type DatabaseListing } from "@/lib/listings"
 
 interface FavoritesViewProps {
   loads?: Load[]
@@ -11,13 +12,15 @@ interface FavoritesViewProps {
   onToggleFavorite?: (id: string) => void
   searchQuery?: string
   onUserBlocked?: (key: string) => void
+  onCitySearch?: (city: string) => void
 }
 
 export function FavoritesView({ 
   loads = [], 
   onToggleFavorite, 
   searchQuery = "",
-  onUserBlocked
+  onUserBlocked,
+  onCitySearch
 }: FavoritesViewProps) {
   const [favoriteLoads, setFavoriteLoads] = useState<Load[]>([])
   const [favoriteIds, setFavoriteIds] = useState<string[]>([])
@@ -71,7 +74,39 @@ export function FavoritesView({
           })
         })
 
-        setFavoriteLoads(matchedLoads)
+        // Ana listede (son 60 ilan) görünmeyen eski favorileri veritabanından tamamla
+        const matchedKeys = new Set(matchedLoads.map((l) => String(l.id)))
+        const matchedClean = new Set(matchedLoads.map((l) => String(l.id).replace(/^(user-|bot-)/, "")))
+        const userIds: string[] = []
+        const botIds: string[] = []
+        for (const favId of userFavIds) {
+          const clean = favId.replace(/^(user-|bot-)/, "")
+          if (favId.startsWith("user-")) {
+            if (!matchedKeys.has(favId)) userIds.push(clean)
+          } else if (favId.startsWith("bot-")) {
+            if (!matchedKeys.has(favId)) botIds.push(clean)
+          } else if (!matchedClean.has(clean)) {
+            userIds.push(clean)
+            botIds.push(clean)
+          }
+        }
+
+        let extraLoads: Load[] = []
+        if (userIds.length > 0 || botIds.length > 0) {
+          const [u, b] = await Promise.all([
+            userIds.length > 0 ? supabase.from("listings").select("*").in("id", userIds) : Promise.resolve({ data: [] as DatabaseListing[] }),
+            botIds.length > 0 ? supabase.from("bot_listings").select("*").in("id", botIds) : Promise.resolve({ data: [] as DatabaseListing[] }),
+          ])
+          extraLoads = [
+            ...((u.data || []) as DatabaseListing[]).map(mapUserListing),
+            ...((b.data || []) as DatabaseListing[]).map(mapBotListing),
+          ]
+        }
+
+        const all = [...matchedLoads, ...extraLoads].sort(
+          (a, b) => (b.createdAt ? Date.parse(b.createdAt) : 0) - (a.createdAt ? Date.parse(a.createdAt) : 0)
+        )
+        setFavoriteLoads(all)
       } catch (err) {
         console.error("Favoriler yüklenirken hata:", err)
       } finally {
@@ -145,6 +180,7 @@ export function FavoritesView({
               isFavorite={true}
               onToggleFavorite={handleToggleFavorite}
               onUserBlocked={onUserBlocked}
+              onCitySearch={onCitySearch}
             />
           ))}
         </div>
