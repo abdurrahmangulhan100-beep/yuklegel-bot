@@ -44,6 +44,7 @@ export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   viewportFit: 'cover', // çentik / alt çubuk güvenli alanları için
+  interactiveWidget: 'resizes-content', // Android'de klavye açılınca arama/form alanları ekrandan taşmasın
   colorScheme: 'light',
   themeColor: '#122c4a', // PWA tema rengi uygulamanın ana rengiyle eşleştirildi
 }
