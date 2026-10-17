@@ -167,7 +167,6 @@
     min-height: 100dvh;
     -webkit-tap-highlight-color: transparent;
     overscroll-behavior-y: none;
-    text-rendering: optimizeLegibility;
   }
   button,
   a,
