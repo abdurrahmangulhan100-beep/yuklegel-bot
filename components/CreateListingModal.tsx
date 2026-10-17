@@ -3,7 +3,9 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
-import { ShieldAlert, ShieldCheck } from "lucide-react"
+import { ShieldAlert, ShieldCheck, LogIn } from "lucide-react"
+import { Sheet } from "@/components/Sheet"
+import { cn } from "@/lib/utils"
 
 interface CreateListingModalProps {
   isOpen: boolean
@@ -58,6 +60,7 @@ export function CreateListingModal({ isOpen, onClose, onSuccess }: CreateListing
     if (!isOpen) return
     setErrorMsg(null)
     setAcceptedTerms(false)
+    setFormData((prev) => ({ ...prev, fromDistrict: "", toDistrict: "", price: "", priceType: "total", description: "", distance: "", isUrgent: false }))
 
     // 1. MİSAFİR KULLANICI KONTROLÜ
     const checkGuest = typeof window !== 'undefined' ? localStorage.getItem("is_guest") === "true" : false
@@ -98,8 +101,6 @@ export function CreateListingModal({ isOpen, onClose, onSuccess }: CreateListing
 
     loadUserProfile()
   }, [isOpen])
-
-  if (!isOpen) return null
 
   const handleClose = () => {
     setErrorMsg(null)
@@ -143,22 +144,38 @@ export function CreateListingModal({ isOpen, onClose, onSuccess }: CreateListing
       return
     }
 
+    // Telefonu 05XXXXXXXXX biçimine getir
+    const normalizedPhone = "0" + cleanPhone.replace(/^0/, "")
+
+    // Ton başı fiyat ve mesafe bilgisi ayrı sütun olmadığından açıklamaya eklenir
+    const extras: string[] = []
+    if (formData.price && formData.priceType === "ton") extras.push("Ton başı fiyat")
+    if (formData.distance.trim()) extras.push(`Mesafe: ${formData.distance.trim()}`)
+    const finalMessage = [formData.description.trim(), extras.join(" · ")].filter(Boolean).join(" | ")
+
+    const priceNumber = Number(formData.price)
+
     setLoading(true)
 
     try {
+      if (!supabase) {
+        setErrorMsg("Veritabanı bağlantısı kurulamadı.")
+        return
+      }
+
       const { error } = await supabase
         .from('listings')
         .insert([
           {
             user_id: userId,
             company_name: formData.companyName,
-            phone: cleanPhone,
+            phone: normalizedPhone,
             from_city: formData.fromDistrict ? `${formData.fromCity} - ${formData.fromDistrict}` : formData.fromCity,
             to_city: formData.toDistrict ? `${formData.toCity} - ${formData.toDistrict}` : formData.toCity,
             cargo_detail: formData.cargoType,
             vehicle_type: formData.vehicleType,
-            price: formData.price ? Number(formData.price) : null,
-            message: formData.description,
+            price: Number.isFinite(priceNumber) && priceNumber > 0 ? priceNumber : null,
+            message: finalMessage,
             urgent: formData.isUrgent
           }
         ])
@@ -179,262 +196,237 @@ export function CreateListingModal({ isOpen, onClose, onSuccess }: CreateListing
     }
   }
 
-  return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4">
-      <div 
-        className="relative w-full max-w-2xl bg-white text-[#122c4a] rounded-xl shadow-2xl p-6 max-h-[90vh] overflow-y-auto"
-        onClick={(e) => e.stopPropagation()}
-      >
+  const fieldClass =
+    "h-12 w-full rounded-xl border border-[#dbe3ec] bg-white px-3.5 text-base text-[#122c4a] outline-none transition-colors placeholder:text-[#a3b1c0] focus:border-[#122c4a] focus:ring-4 focus:ring-[#122c4a]/10 disabled:opacity-50 md:text-sm"
+  const labelClass = "mb-1.5 block text-xs font-semibold text-[#334e68]"
+  const sectionClass = "space-y-3.5 rounded-2xl border border-[#edf0f3] bg-[#fafbfd] p-4"
+
+  const footer = isGuestUser ? (
+    <button
+      type="button"
+      onClick={() => { handleClose(); router.push("/login") }}
+      className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#122c4a] text-sm font-semibold text-white transition-colors hover:bg-[#1a3d68]"
+    >
+      <LogIn className="size-4" />
+      Giriş Yap / Kayıt Ol
+    </button>
+  ) : (
+    <div className="space-y-2.5">
+      {errorMsg && (
+        <div className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 p-3 text-xs font-semibold text-red-700">
+          <ShieldAlert className="mt-0.5 size-4 shrink-0 text-red-600" />
+          <span>{errorMsg}</span>
+        </div>
+      )}
+      <div className="grid grid-cols-[1fr_2fr] gap-2.5">
         <button
           type="button"
           onClick={handleClose}
-          className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-xl font-bold p-1 rounded-lg hover:bg-gray-100 transition-colors"
+          className="h-12 rounded-xl border border-[#dbe3ec] text-sm font-semibold text-[#334e68] transition-colors hover:bg-[#f5f7fa]"
         >
-          ✕
+          İptal
         </button>
+        <button
+          type="submit"
+          form="create-listing-form"
+          disabled={loading || !acceptedTerms}
+          className="flex h-12 items-center justify-center gap-2 rounded-xl bg-[#d64526] text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#b93820] disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          <ShieldCheck className="size-4" />
+          <span>{loading ? "Yayınlanıyor..." : "İlanı Yayınla"}</span>
+        </button>
+      </div>
+    </div>
+  )
 
-        <div className="border-b pb-3 pr-8">
-          <h2 className="text-xl font-bold text-[#122c4a]">Yeni İlan Oluştur</h2>
-          <p className="text-xs text-gray-500 mt-0.5">
-            Firma ve iletişim bilgileriniz profilinizden otomatik çekilir. Ayrıntıları doldurarak ilanınızı hemen paylaşın.
+  return (
+    <Sheet
+      open={isOpen}
+      onClose={handleClose}
+      title="Yeni İlan Oluştur"
+      subtitle="Firma ve iletişim bilgileriniz profilinizden otomatik çekilir."
+      footer={footer}
+    >
+      {isGuestUser ? (
+        <div className="py-8 text-center">
+          <div className="mx-auto mb-4 grid size-16 place-items-center rounded-2xl bg-[#eef4f8] text-[#315d83]">
+            <ShieldAlert className="size-8" />
+          </div>
+          <p className="text-base font-bold text-[#122c4a]">İlan vermek için giriş yapın</p>
+          <p className="mx-auto mt-1.5 max-w-xs text-sm leading-relaxed text-[#627d98]">
+            Misafir hesaplar ilan ekleyemez. Ücretsiz üye olarak dakikalar içinde ilan yayınlayabilirsiniz.
           </p>
         </div>
-
-        {errorMsg && (
-          <div className="mt-4 p-3 rounded-lg bg-red-50 border border-red-200 flex items-center gap-2 text-red-700 text-xs font-semibold">
-            <ShieldAlert className="size-4 shrink-0 text-red-600" />
-            <span>{errorMsg}</span>
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="space-y-4 pt-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-1">
-              <label className="text-xs font-semibold block text-[#122c4a]">Firma Adı</label>
+      ) : (
+        <form id="create-listing-form" onSubmit={handleSubmit} className="space-y-4 pt-1">
+          {/* İletişim */}
+          <div className={sectionClass}>
+            <div>
+              <label className={labelClass} htmlFor="cl-company">Firma Adı</label>
               <input
+                id="cl-company"
                 type="text"
+                autoComplete="organization"
                 value={formData.companyName}
                 onChange={(e) => setFormData({ ...formData, companyName: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-xs bg-gray-50 focus:outline-none focus:border-[#d64526]"
+                className={fieldClass}
                 required
-                disabled={isGuestUser}
               />
             </div>
-            <div className="space-y-1">
-              <label className="text-xs font-semibold block text-[#122c4a]">Telefon Numarası (Örn: 05321234567)</label>
+            <div>
+              <label className={labelClass} htmlFor="cl-phone">Cep Telefonu</label>
               <input
-                type="text"
+                id="cl-phone"
+                type="tel"
+                inputMode="tel"
+                autoComplete="tel"
                 value={formData.phone}
                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                 placeholder="05XX XXX XX XX"
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-xs bg-gray-50 focus:outline-none focus:border-[#d64526]"
+                className={fieldClass}
                 required
-                disabled={isGuestUser}
               />
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-1">
-              <label className="text-xs font-semibold block text-[#122c4a]">Çıkış Şehri</label>
-              <select
-                value={formData.fromCity}
-                onChange={(e) => setFormData({ ...formData, fromCity: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-xs bg-white focus:outline-none focus:border-[#d64526]"
-                disabled={isGuestUser}
-              >
-                {SEHIRLER.map((sehir) => (
-                  <option key={sehir} value={sehir}>{sehir}</option>
-                ))}
-              </select>
-            </div>
-            <div className="space-y-1">
-              <label className="text-xs font-semibold block text-[#122c4a]">Çıkış İlçesi / Bölge (Opsiyonel)</label>
-              <input
-                type="text"
-                placeholder="Örn: Çayıran, Meram vb."
-                value={formData.fromDistrict}
-                onChange={(e) => setFormData({ ...formData, fromDistrict: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-xs bg-white focus:outline-none focus:border-[#d64526]"
-                disabled={isGuestUser}
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-1">
-              <label className="text-xs font-semibold block text-[#122c4a]">Varış Şehri</label>
-              <select
-                value={formData.toCity}
-                onChange={(e) => setFormData({ ...formData, toCity: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-xs bg-white focus:outline-none focus:border-[#d64526]"
-                disabled={isGuestUser}
-              >
-                {SEHIRLER.map((sehir) => (
-                  <option key={sehir} value={sehir}>{sehir}</option>
-                ))}
-              </select>
-            </div>
-            <div className="space-y-1">
-              <label className="text-xs font-semibold block text-[#122c4a]">Varış İlçesi / Bölge (Opsiyonel)</label>
-              <input
-                type="text"
-                placeholder="Örn: Ilgın, Merkez vb."
-                value={formData.toDistrict}
-                onChange={(e) => setFormData({ ...formData, toDistrict: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-xs bg-white focus:outline-none focus:border-[#d64526]"
-                disabled={isGuestUser}
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-1">
-              <label className="text-xs font-semibold block text-[#122c4a]">Yük Cinsi</label>
-              <select
-                value={formData.cargoType}
-                onChange={(e) => setFormData({ ...formData, cargoType: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-xs bg-white focus:outline-none focus:border-[#d64526]"
-                disabled={isGuestUser}
-              >
-                {YUK_CİNSLERİ.map((yuk) => (
-                  <option key={yuk} value={yuk}>{yuk}</option>
-                ))}
-              </select>
-            </div>
-            <div className="space-y-1">
-              <label className="text-xs font-semibold block text-[#122c4a]">Araç Tipi</label>
-              <select
-                value={formData.vehicleType}
-                onChange={(e) => setFormData({ ...formData, vehicleType: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-xs bg-white focus:outline-none focus:border-[#d64526]"
-                disabled={isGuestUser}
-              >
-                {ARAÇ_TİPLERİ.map((arac) => (
-                  <option key={arac} value={arac}>{arac}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <div className="p-3 bg-gray-50 rounded-lg border border-gray-100 space-y-3">
-            <div className="flex items-center justify-between">
-              <label className="text-xs font-bold text-[#122c4a]">Fiyatlandırma Türü</label>
-              <div className="flex items-center gap-4 text-xs">
-                <label className="flex items-center gap-1.5 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="priceType"
-                    value="ton"
-                    checked={formData.priceType === "ton"}
-                    onChange={(e) => setFormData({ ...formData, priceType: e.target.value })}
-                    className="accent-[#d64526]"
-                    disabled={isGuestUser}
-                  />
-                  <span>Ton Başı Fiyat</span>
-                </label>
-                <label className="flex items-center gap-1.5 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="priceType"
-                    value="total"
-                    checked={formData.priceType === "total"}
-                    onChange={(e) => setFormData({ ...formData, priceType: e.target.value })}
-                    className="accent-[#d64526]"
-                    disabled={isGuestUser}
-                  />
-                  <span>Götürü / Toplam Fiyat</span>
-                </label>
+          {/* Güzergah */}
+          <div className={sectionClass}>
+            <div className="text-[11px] font-bold uppercase tracking-wider text-[#8da0b2]">Güzergah</div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className={labelClass} htmlFor="cl-from">Çıkış Şehri</label>
+                <select id="cl-from" value={formData.fromCity} onChange={(e) => setFormData({ ...formData, fromCity: e.target.value })} className={fieldClass}>
+                  {SEHIRLER.map((sehir) => (<option key={sehir} value={sehir}>{sehir}</option>))}
+                </select>
+              </div>
+              <div>
+                <label className={labelClass} htmlFor="cl-from-d">İlçe (ops.)</label>
+                <input id="cl-from-d" type="text" placeholder="Örn: Meram" value={formData.fromDistrict} onChange={(e) => setFormData({ ...formData, fromDistrict: e.target.value })} className={fieldClass} />
+              </div>
+              <div>
+                <label className={labelClass} htmlFor="cl-to">Varış Şehri</label>
+                <select id="cl-to" value={formData.toCity} onChange={(e) => setFormData({ ...formData, toCity: e.target.value })} className={fieldClass}>
+                  {SEHIRLER.map((sehir) => (<option key={sehir} value={sehir}>{sehir}</option>))}
+                </select>
+              </div>
+              <div>
+                <label className={labelClass} htmlFor="cl-to-d">İlçe (ops.)</label>
+                <input id="cl-to-d" type="text" placeholder="Örn: Merkez" value={formData.toDistrict} onChange={(e) => setFormData({ ...formData, toDistrict: e.target.value })} className={fieldClass} />
               </div>
             </div>
+            <div>
+              <label className={labelClass} htmlFor="cl-distance">Mesafe (ops.)</label>
+              <input id="cl-distance" type="text" placeholder="Örn: 500 km" value={formData.distance} onChange={(e) => setFormData({ ...formData, distance: e.target.value })} className={fieldClass} />
+            </div>
+          </div>
 
-            <div className="space-y-1">
-              <label className="text-xs font-medium block text-[#122c4a]">Toplam Fiyat (TL)</label>
+          {/* Yük & araç */}
+          <div className={sectionClass}>
+            <div className="text-[11px] font-bold uppercase tracking-wider text-[#8da0b2]">Yük ve Araç</div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className={labelClass} htmlFor="cl-cargo">Yük Cinsi</label>
+                <select id="cl-cargo" value={formData.cargoType} onChange={(e) => setFormData({ ...formData, cargoType: e.target.value })} className={fieldClass}>
+                  {YUK_CİNSLERİ.map((yuk) => (<option key={yuk} value={yuk}>{yuk}</option>))}
+                </select>
+              </div>
+              <div>
+                <label className={labelClass} htmlFor="cl-vehicle">Araç Tipi</label>
+                <select id="cl-vehicle" value={formData.vehicleType} onChange={(e) => setFormData({ ...formData, vehicleType: e.target.value })} className={fieldClass}>
+                  {ARAÇ_TİPLERİ.map((arac) => (<option key={arac} value={arac}>{arac}</option>))}
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Fiyat */}
+          <div className={sectionClass}>
+            <div className="text-[11px] font-bold uppercase tracking-wider text-[#8da0b2]">Fiyatlandırma</div>
+            <div className="grid grid-cols-2 gap-1 rounded-xl bg-[#eaeff4] p-1" role="radiogroup" aria-label="Fiyatlandırma türü">
+              {[
+                { value: "total", label: "Götürü / Toplam" },
+                { value: "ton", label: "Ton Başı" },
+              ].map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  role="radio"
+                  aria-checked={formData.priceType === opt.value}
+                  onClick={() => setFormData({ ...formData, priceType: opt.value })}
+                  className={cn(
+                    "h-10 rounded-lg text-[13px] font-semibold transition-all",
+                    formData.priceType === opt.value ? "bg-white text-[#122c4a] shadow-sm" : "text-[#627d98]"
+                  )}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+            <div>
+              <label className={labelClass} htmlFor="cl-price">
+                {formData.priceType === "ton" ? "Ton Başı Fiyat (TL)" : "Toplam Fiyat (TL)"}
+              </label>
               <input
-                type="number"
+                id="cl-price"
+                type="text"
+                inputMode="numeric"
                 placeholder="Örn: 18000"
                 value={formData.price}
-                onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-xs bg-white focus:outline-none focus:border-[#d64526]"
-                disabled={isGuestUser}
+                onChange={(e) => setFormData({ ...formData, price: e.target.value.replace(/\D/g, "").slice(0, 9) })}
+                className={fieldClass}
               />
             </div>
           </div>
 
-          <div className="space-y-1">
-            <label className="text-xs font-semibold block text-[#122c4a]">İlan Açıklaması / Özel Notlar (Opsiyonel)</label>
+          {/* Açıklama + acil */}
+          <div>
+            <label className={labelClass} htmlFor="cl-desc">Açıklama / Özel Notlar (ops.)</label>
             <input
+              id="cl-desc"
               type="text"
               placeholder="Örn: Yükleme saati 14:00, kapalı kasa tercih sebebidir..."
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-xs bg-white focus:outline-none focus:border-[#d64526]"
-              disabled={isGuestUser}
+              className={fieldClass}
             />
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center">
-            <div className="space-y-1">
-              <label className="text-xs font-semibold block text-[#122c4a]">Mesafe (İsteğe Bağlı)</label>
-              <input
-                type="text"
-                placeholder="Örn: 500 km"
-                value={formData.distance}
-                onChange={(e) => setFormData({ ...formData, distance: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-xs bg-white focus:outline-none focus:border-[#d64526]"
-                disabled={isGuestUser}
-              />
-            </div>
-            <div className="flex items-center gap-2 sm:pt-5">
-              <input
-                type="checkbox"
-                id="urgent"
-                checked={formData.isUrgent}
-                onChange={(e) => setFormData({ ...formData, isUrgent: e.target.checked })}
-                className="w-4 h-4 accent-[#d64526] rounded cursor-pointer"
-                disabled={isGuestUser}
-              />
-              <label htmlFor="urgent" className="text-xs font-semibold text-[#122c4a] cursor-pointer">
-                Acil İlan Olarak İşaretle
-              </label>
-            </div>
-          </div>
+          <label
+            htmlFor="urgent"
+            className={cn(
+              "flex min-h-14 cursor-pointer items-center gap-3 rounded-2xl border p-3.5 transition-colors",
+              formData.isUrgent ? "border-[#d64526] bg-[#fff6f3]" : "border-[#e4e9ef] bg-white"
+            )}
+          >
+            <input
+              type="checkbox"
+              id="urgent"
+              checked={formData.isUrgent}
+              onChange={(e) => setFormData({ ...formData, isUrgent: e.target.checked })}
+              className="size-5 shrink-0 cursor-pointer accent-[#d64526]"
+            />
+            <span>
+              <span className="block text-sm font-semibold text-[#122c4a]">Acil ilan olarak işaretle</span>
+              <span className="block text-xs text-[#718397]">İlanınız öne çıkarılır ve acil yükler arasında görünür.</span>
+            </span>
+          </label>
 
           {/* GOOGLE PLAY UGC POLİTİKA ONAY KUTUSU (EULA & ŞARTLAR) */}
-          <div className="p-3 bg-amber-50/60 rounded-xl border border-amber-200/80 mt-2">
-            <label className="flex items-start gap-2.5 cursor-pointer">
+          <div className="rounded-2xl border border-amber-200/80 bg-amber-50/60 p-3.5">
+            <label className="flex cursor-pointer items-start gap-3">
               <input
                 type="checkbox"
                 checked={acceptedTerms}
                 onChange={(e) => setAcceptedTerms(e.target.checked)}
-                className="w-4 h-4 mt-0.5 accent-[#d64526] rounded cursor-pointer shrink-0"
-                disabled={isGuestUser}
+                className="mt-0.5 size-5 shrink-0 cursor-pointer accent-[#d64526]"
               />
-              <span className="text-[11px] text-gray-700 leading-tight">
-                İlanımda <strong>yasalara aykırı, yanıltıcı veya genel ahlaka uymayan</strong> içerik bulunmadığını, aksi takdirde ilanımın silineceğini ve hesabımın engellenebileceğini bildiren <a href="/privacy" target="_blank" className="text-[#d64526] underline font-semibold">Kullanım Koşulları & Topluluk Kurallarını</a> okudum ve kabul ediyorum.
+              <span className="text-xs leading-relaxed text-[#4a5568]">
+                İlanımda <strong>yasalara aykırı, yanıltıcı veya genel ahlaka uymayan</strong> içerik bulunmadığını, aksi takdirde ilanımın silineceğini ve hesabımın engellenebileceğini bildiren <a href="/privacy" target="_blank" rel="noopener noreferrer" className="font-semibold text-[#d64526] underline">Kullanım Koşulları & Topluluk Kurallarını</a> okudum ve kabul ediyorum.
               </span>
             </label>
           </div>
-
-          <div className="flex justify-end gap-2 pt-4 border-t mt-4">
-            <button
-              type="button"
-              onClick={handleClose}
-              className="px-4 py-2 border border-gray-300 rounded-lg text-xs font-medium text-gray-700 hover:bg-gray-100 transition-colors"
-            >
-              İptal
-            </button>
-            <button
-              type="submit"
-              disabled={loading || isGuestUser || !acceptedTerms}
-              className="px-4 py-2 bg-[#d64526] hover:bg-[#b93820] text-white rounded-lg text-xs font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
-            >
-              <ShieldCheck className="size-3.5" />
-              <span>{loading ? "Yayınlanıyor..." : "İlanı Yayınla"}</span>
-            </button>
-          </div>
         </form>
-      </div>
-    </div>
+      )}
+    </Sheet>
   )
 }
