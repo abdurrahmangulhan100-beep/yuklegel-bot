@@ -1,7 +1,8 @@
 "use client"
 
-import { Phone, MessageCircle, Star, Truck, Clock, Copy, Check, Flag, Ban, Zap, Package, ChevronDown } from "lucide-react"
+import { Phone, MessageCircle, Star, Truck, Clock, Copy, Check, Flag, Ban, Zap, Package, ChevronDown, Share2, MapPin, Ruler, Weight, Timer, Repeat, type LucideIcon } from "lucide-react"
 import { useState } from "react"
+import { isMissing } from "@/lib/route"
 import { supabase } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
 import { Sheet } from "@/components/Sheet"
@@ -24,6 +25,16 @@ export type Load = {
   source: "user" | "bot"
   phone: string
   createdAt?: string
+  /** İl bazlı şehir (filtre / arama için). Bulunamadıysa tanımsız. */
+  fromCity?: string
+  toCity?: string
+  /** Metinde geçen ama yükleme/teslimat olarak ayrılamayan diğer şehirler */
+  extraCities?: string[]
+  trailer?: string
+  tonnage?: string
+  timing?: string
+  /** Aynı saha ilanı kaç kez paylaşılmış (tekrarlar tek kartta birleştirilir) */
+  repeatCount?: number
 }
 
 type LoadCardProps = {
@@ -32,6 +43,8 @@ type LoadCardProps = {
   isFavorite?: boolean
   onToggleFavorite?: (listingId?: string) => void
   onUserBlocked?: (userIdOrPhone: string) => void
+  /** Şehir adına dokununca o şehre ait ilanları aramak için */
+  onCitySearch?: (city: string) => void
 }
 
 const REPORT_REASONS = [
@@ -69,7 +82,7 @@ const formatPhone = (phone: string) => {
   return phone
 }
 
-export function LoadCard({ load, searchQuery = "", isFavorite = false, onToggleFavorite, onUserBlocked }: LoadCardProps) {
+export function LoadCard({ load, searchQuery = "", isFavorite = false, onToggleFavorite, onUserBlocked, onCitySearch }: LoadCardProps) {
   const [copied, setCopied] = useState(false)
   const [expanded, setExpanded] = useState(false)
   const [isReportOpen, setIsReportOpen] = useState(false)
@@ -77,6 +90,7 @@ export function LoadCard({ load, searchQuery = "", isFavorite = false, onToggleF
   const [isSubmittingReport, setIsSubmittingReport] = useState(false)
   const [reportSuccess, setReportSuccess] = useState(false)
   const [isFavLoading, setIsFavLoading] = useState(false)
+  const [shared, setShared] = useState(false)
 
   const cleanQuery = searchQuery.trim()
   const isUserLoad = load.source === "user"
@@ -88,11 +102,14 @@ export function LoadCard({ load, searchQuery = "", isFavorite = false, onToggleF
     ? (load.company || "İsimsiz Firma")
     : (load.company && !load.company.toLowerCase().includes("whatsapp") ? load.company : "Saha Lojistik Ağı")
 
-  const hasFrom = Boolean(load.from) && load.from !== "-"
-  const hasTo = Boolean(load.to) && load.to !== "-"
+  const hasFrom = !isMissing(load.from)
+  const hasTo = !isMissing(load.to)
   const showRoute = hasFrom && hasTo
+  const hasVehicle = !isMissing(load.vehicle)
+  const hasDistance = !isMissing(load.distance)
+  const routeText = showRoute ? `${load.from} → ${load.to}` : hasFrom ? `${load.from} çıkışlı` : hasTo ? `${load.to} varışlı` : ""
   const hasPrice = Boolean(load.price) && load.price !== "₺0"
-  const cargoText = load.cargo && load.cargo !== "-" ? load.cargo : "Yük detayı belirtilmedi."
+  const cargoText = !isMissing(load.cargo) ? load.cargo : "Yük detayı belirtilmedi."
   const isLongCargo = cargoText.length > 160
   const showMessage = Boolean(load.message) && load.message !== "-" && load.message !== load.cargo
 
@@ -117,11 +134,34 @@ export function LoadCard({ load, searchQuery = "", isFavorite = false, onToggleF
         ? cleanPhone 
         : `90${cleanPhone}`
 
-    const message = isUserLoad 
-      ? `Merhaba, ${load.from} -> ${load.to} güzergahındaki (${load.cargo || 'Yük'}) ilanınız için yazıyorum.`
-      : `Merhaba, saha ağında paylaştığınız ilanınız için görüşmek istiyorum.`
+    const message = isUserLoad
+      ? `Merhaba, Nakliye Cepte'deki${routeText ? ` ${routeText}` : ""} (${!isMissing(load.cargo) ? load.cargo : "Yük"}) ilanınız için yazıyorum. Yük hâlâ müsait mi?`
+      : `Merhaba, Nakliye Cepte'de gördüğüm${routeText ? ` ${routeText}` : ""} ilanınız için yazıyorum. Yük hâlâ müsait mi?`
 
     window.open(`https://wa.me/${formattedPhone}?text=${encodeURIComponent(message)}`, "_blank")
+  }
+
+  const handleShare = async () => {
+    const parts = [
+      routeText,
+      hasVehicle ? load.vehicle : "",
+      load.trailer,
+      load.tonnage,
+      cargoText.length > 140 ? cargoText.slice(0, 140) + "…" : cargoText,
+      hasPhone ? `Tel: ${formatPhone(load.phone)}` : "",
+    ].filter(Boolean)
+    const text = `${parts.join(" • ")}\n— Nakliye Cepte`
+    try {
+      if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
+        await navigator.share({ text })
+        return
+      }
+      await navigator.clipboard.writeText(text)
+      setShared(true)
+      setTimeout(() => setShared(false), 2000)
+    } catch {
+      // Kullanıcı paylaşımı iptal etti veya pano erişimi yok
+    }
   }
 
   const handleCall = () => {
@@ -227,6 +267,20 @@ export function LoadCard({ load, searchQuery = "", isFavorite = false, onToggleF
     }
   }
 
+  const renderPlace = (label: string, city?: string) =>
+    city && onCitySearch ? (
+      <button
+        type="button"
+        onClick={() => onCitySearch(city)}
+        title={`${city} ilanlarını ara`}
+        className="block max-w-full truncate text-left hover:underline"
+      >
+        {highlightMatch(label, cleanQuery)}
+      </button>
+    ) : (
+      highlightMatch(label, cleanQuery)
+    )
+
   return (
     <article className="animate-rise group relative flex flex-col overflow-hidden rounded-2xl border border-[#e4e9ef] bg-white shadow-[0_1px_3px_rgba(18,44,74,0.05)] transition-shadow duration-200 hover:shadow-[0_8px_24px_rgba(18,44,74,0.08)]">
       {load.urgent && <div className="h-1 w-full bg-gradient-to-r from-[#d64526] via-[#ef6a3a] to-[#f4a259]" />}
@@ -269,6 +323,13 @@ export function LoadCard({ load, searchQuery = "", isFavorite = false, onToggleF
               <Star className={cn("size-[22px]", isFavorite && "fill-amber-400")} />
             </button>
             <button
+              onClick={handleShare}
+              aria-label="İlanı paylaş"
+              className="grid size-10 place-items-center rounded-full text-[#b4c1ce] transition-colors hover:bg-[#eef4f8] hover:text-[#315d83]"
+            >
+              {shared ? <Check className="size-[18px] text-emerald-600" /> : <Share2 className="size-[18px]" />}
+            </button>
+            <button
               onClick={() => setIsReportOpen(true)}
               aria-label="İlanı şikayet et veya engelle"
               className="grid size-10 place-items-center rounded-full text-[#b4c1ce] transition-colors hover:bg-red-50 hover:text-red-500"
@@ -278,8 +339,8 @@ export function LoadCard({ load, searchQuery = "", isFavorite = false, onToggleF
           </div>
         </div>
 
-        {/* Rozetler */}
-        {(load.urgent || (load.vehicle && load.vehicle !== "-")) && (
+        {/* Rozetler: sadece bilinen bilgiler gösterilir */}
+        {(load.urgent || hasVehicle || load.trailer || load.tonnage || load.timing || (load.repeatCount ?? 0) > 1) && (
           <div className="flex flex-wrap items-center gap-1.5">
             {load.urgent && (
               <span className="inline-flex items-center gap-1 rounded-full bg-[#fff0ec] px-2.5 py-1 text-[11px] font-bold text-[#d64526]">
@@ -287,16 +348,15 @@ export function LoadCard({ load, searchQuery = "", isFavorite = false, onToggleF
                 ACİL YÜK
               </span>
             )}
-            {load.vehicle && load.vehicle !== "-" && (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-[#eef4f8] px-2.5 py-1 text-[11px] font-semibold text-[#315d83]">
-                <Truck className="size-3.5" />
-                {highlightMatch(load.vehicle, cleanQuery)}
-              </span>
-            )}
+            {hasVehicle && <Chip icon={Truck} tone="bg-[#eef4f8] text-[#315d83]">{highlightMatch(load.vehicle, cleanQuery)}</Chip>}
+            {load.trailer && <Chip icon={Ruler} tone="bg-[#f3f0fa] text-[#5b4a99]">{load.trailer}</Chip>}
+            {load.tonnage && <Chip icon={Weight} tone="bg-[#f3f0fa] text-[#5b4a99]">{load.tonnage}</Chip>}
+            {load.timing && <Chip icon={Timer} tone="bg-amber-50 text-amber-700">{load.timing}</Chip>}
+            {(load.repeatCount ?? 0) > 1 && <Chip icon={Repeat} tone="bg-[#f1f5f9] text-[#627d98]">{load.repeatCount} kez paylaşıldı</Chip>}
           </div>
         )}
 
-        {/* Güzergah + fiyat */}
+        {/* Güzergah: iki uç da biliniyorsa tam rota, tek uç biliniyorsa tek satır, hiçbiri yoksa hiç gösterme */}
         {showRoute && (
           <div className="flex items-stretch justify-between gap-3 rounded-2xl bg-[#f6f9fc] p-3.5">
             <div className="flex min-w-0 flex-1 items-stretch gap-3">
@@ -308,16 +368,16 @@ export function LoadCard({ load, searchQuery = "", isFavorite = false, onToggleF
               <div className="flex min-w-0 flex-1 flex-col justify-between gap-3">
                 <div className="min-w-0">
                   <div className="text-[10px] font-bold uppercase tracking-wider text-[#8da0b2]">Yükleme</div>
-                  <div className="truncate text-[15px] font-bold text-[#122c4a]">{highlightMatch(load.from, cleanQuery)}</div>
+                  <div className="truncate text-[15px] font-bold text-[#122c4a]">{renderPlace(load.from, load.fromCity)}</div>
                 </div>
                 <div className="min-w-0">
                   <div className="text-[10px] font-bold uppercase tracking-wider text-[#8da0b2]">Teslimat</div>
-                  <div className="truncate text-[15px] font-bold text-[#122c4a]">{highlightMatch(load.to, cleanQuery)}</div>
+                  <div className="truncate text-[15px] font-bold text-[#122c4a]">{renderPlace(load.to, load.toCity)}</div>
                 </div>
               </div>
             </div>
 
-            {(hasPrice || (load.distance && load.distance !== "Belirtilmemiş")) && (
+            {(hasPrice || hasDistance) && (
               <div className="flex shrink-0 flex-col items-end justify-center text-right">
                 {hasPrice && (
                   <>
@@ -325,16 +385,45 @@ export function LoadCard({ load, searchQuery = "", isFavorite = false, onToggleF
                     <div className="text-xl font-extrabold leading-tight text-emerald-600">{load.price}</div>
                   </>
                 )}
-                {load.distance && load.distance !== "Belirtilmemiş" && (
-                  <div className="mt-1 text-[11px] font-medium text-[#8da0b2]">{load.distance}</div>
-                )}
+                {hasDistance && <div className="mt-1 text-[11px] font-medium text-[#8da0b2]">{load.distance}</div>}
               </div>
             )}
           </div>
         )}
 
+        {!showRoute && (hasFrom || hasTo) && (
+          <div className="flex items-center gap-3 rounded-2xl bg-[#f6f9fc] px-3.5 py-3">
+            <span className={cn(
+              "grid size-9 shrink-0 place-items-center rounded-xl",
+              hasFrom ? "bg-emerald-50 text-emerald-600" : "bg-[#fff0ec] text-[#d64526]"
+            )}>
+              <MapPin className="size-[18px]" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-[#8da0b2]">{hasFrom ? "Yükleme noktası" : "Teslimat noktası"}</div>
+              <div className="truncate text-[15px] font-bold text-[#122c4a]">
+                {hasFrom ? renderPlace(load.from, load.fromCity) : renderPlace(load.to, load.toCity)}
+              </div>
+            </div>
+            {hasPrice && <div className="shrink-0 text-lg font-extrabold text-emerald-600">{load.price}</div>}
+          </div>
+        )}
+
+        {(load.extraCities?.length ?? 0) > 0 && (
+          <div className="flex flex-wrap items-center gap-1.5 text-xs text-[#627d98]">
+            <span className="font-semibold">Metinde geçen diğer şehirler:</span>
+            {load.extraCities!.map((c) => (
+              onCitySearch ? (
+                <button key={c} type="button" onClick={() => onCitySearch(c)} className="rounded-full bg-[#eef4f8] px-2 py-0.5 font-semibold text-[#315d83] hover:bg-[#dfeaf3]">{c}</button>
+              ) : (
+                <span key={c} className="rounded-full bg-[#eef4f8] px-2 py-0.5 font-semibold text-[#315d83]">{c}</span>
+              )
+            ))}
+          </div>
+        )}
+
         {/* Fiyat güzergah olmadan geldiyse */}
-        {!showRoute && hasPrice && (
+        {!showRoute && !hasFrom && !hasTo && hasPrice && (
           <div className="inline-flex w-fit items-center rounded-xl bg-emerald-50 px-3 py-1.5 text-sm font-extrabold text-emerald-700">
             {load.price}
           </div>
@@ -468,5 +557,14 @@ export function LoadCard({ load, searchQuery = "", isFavorite = false, onToggleF
         )}
       </Sheet>
     </article>
+  )
+}
+
+function Chip({ icon: Icon, tone, children }: { icon: LucideIcon; tone: string; children: React.ReactNode }) {
+  return (
+    <span className={cn("inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold", tone)}>
+      <Icon className="size-3.5" />
+      {children}
+    </span>
   )
 }
