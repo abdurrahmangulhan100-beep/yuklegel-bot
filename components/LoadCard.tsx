@@ -1,7 +1,7 @@
 "use client"
 
-import { Phone, MessageCircle, Star, Truck, Clock, Copy, Check, Flag, Ban, Zap, Package, ChevronDown, Share2, MapPin, Ruler, Weight, Timer, Repeat, type LucideIcon } from "lucide-react"
-import { useState } from "react"
+import { Phone, MessageCircle, Star, Truck, Clock, Copy, Check, Flag, Ban, Zap, Package, ChevronDown, Share2, MapPin, ArrowRight, Ruler, Weight, Timer, Repeat, type LucideIcon } from "lucide-react"
+import { memo, useState } from "react"
 import { isMissing } from "@/lib/route"
 import { supabase } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
@@ -28,7 +28,7 @@ export type Load = {
   /** İl bazlı şehir (filtre / arama için). Bulunamadıysa tanımsız. */
   fromCity?: string
   toCity?: string
-  /** Metinde geçen ama yükleme/teslimat olarak ayrılamayan diğer şehirler */
+  /** Metinde geçen ama çıkış/varış olarak ayrılamayan diğer şehirler */
   extraCities?: string[]
   trailer?: string
   tonnage?: string
@@ -82,7 +82,7 @@ const formatPhone = (phone: string) => {
   return phone
 }
 
-export function LoadCard({ load, searchQuery = "", isFavorite = false, onToggleFavorite, onUserBlocked, onCitySearch }: LoadCardProps) {
+export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavorite = false, onToggleFavorite, onUserBlocked, onCitySearch }: LoadCardProps) {
   const [copied, setCopied] = useState(false)
   const [expanded, setExpanded] = useState(false)
   const [isReportOpen, setIsReportOpen] = useState(false)
@@ -282,7 +282,10 @@ export function LoadCard({ load, searchQuery = "", isFavorite = false, onToggleF
     )
 
   return (
-    <article className="animate-rise group relative flex flex-col overflow-hidden rounded-2xl border border-[#e4e9ef] bg-white shadow-[0_1px_3px_rgba(18,44,74,0.05)] transition-shadow duration-200 hover:shadow-[0_8px_24px_rgba(18,44,74,0.08)]">
+    <article
+      style={{ contentVisibility: "auto", containIntrinsicSize: "auto 300px" }}
+      className="group relative flex flex-col overflow-hidden rounded-2xl border border-[#e4e9ef] bg-white shadow-[0_1px_3px_rgba(18,44,74,0.05)] transition-shadow duration-200 hover:shadow-[0_8px_24px_rgba(18,44,74,0.08)]"
+    >
       {load.urgent && <div className="h-1 w-full bg-gradient-to-r from-[#d64526] via-[#ef6a3a] to-[#f4a259]" />}
 
       <div className="flex flex-1 flex-col gap-3.5 p-4">
@@ -356,56 +359,23 @@ export function LoadCard({ load, searchQuery = "", isFavorite = false, onToggleF
           </div>
         )}
 
-        {/* Güzergah: iki uç da biliniyorsa tam rota, tek uç biliniyorsa tek satır, hiçbiri yoksa hiç gösterme */}
-        {showRoute && (
-          <div className="flex items-stretch justify-between gap-3 rounded-2xl bg-[#f6f9fc] p-3.5">
-            <div className="flex min-w-0 flex-1 items-stretch gap-3">
-              <div className="flex flex-col items-center py-1.5" aria-hidden>
-                <span className="size-3 rounded-full border-[3px] border-emerald-500 bg-white" />
-                <span className="my-1 w-px flex-1 border-l-2 border-dashed border-[#c4d0dc]" />
-                <span className="size-3 rounded-full bg-[#d64526]" />
-              </div>
-              <div className="flex min-w-0 flex-1 flex-col justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="text-[10px] font-bold uppercase tracking-wider text-[#8da0b2]">Yükleme</div>
-                  <div className="truncate text-[15px] font-bold text-[#122c4a]">{renderPlace(load.from, load.fromCity)}</div>
-                </div>
-                <div className="min-w-0">
-                  <div className="text-[10px] font-bold uppercase tracking-wider text-[#8da0b2]">Teslimat</div>
-                  <div className="truncate text-[15px] font-bold text-[#122c4a]">{renderPlace(load.to, load.toCity)}</div>
-                </div>
-              </div>
+        {/* Güzergah: tek satır. İki uç biliniyorsa "Konya → Kırşehir", tek uç biliniyorsa o şehir, hiçbiri yoksa hiç gösterme */}
+        {(hasFrom || hasTo) && (
+          <div className="flex items-center gap-2.5 rounded-xl bg-[#f6f9fc] px-3 py-2.5">
+            <MapPin className="size-4 shrink-0 text-[#d64526]" aria-hidden />
+            <div className="flex min-w-0 flex-1 items-center gap-1.5 text-[15px] font-bold text-[#122c4a]">
+              {!hasFrom && <ArrowRight className="size-4 shrink-0 text-[#d64526]" aria-hidden />}
+              {hasFrom && <span className="min-w-0 truncate">{renderPlace(load.from, load.fromCity)}</span>}
+              {showRoute && <ArrowRight className="size-4 shrink-0 text-[#d64526]" aria-hidden />}
+              {hasTo && <span className="min-w-0 truncate">{renderPlace(load.to, load.toCity)}</span>}
+              {!showRoute && hasFrom && <span className="shrink-0 text-xs font-semibold text-[#8da0b2]">çıkışlı</span>}
             </div>
-
             {(hasPrice || hasDistance) && (
-              <div className="flex shrink-0 flex-col items-end justify-center text-right">
-                {hasPrice && (
-                  <>
-                    <div className="text-[10px] font-bold uppercase tracking-wider text-[#8da0b2]">Fiyat</div>
-                    <div className="text-xl font-extrabold leading-tight text-emerald-600">{load.price}</div>
-                  </>
-                )}
-                {hasDistance && <div className="mt-1 text-[11px] font-medium text-[#8da0b2]">{load.distance}</div>}
+              <div className="shrink-0 text-right leading-tight">
+                {hasPrice && <div className="text-base font-extrabold text-emerald-600">{load.price}</div>}
+                {hasDistance && <div className="text-[11px] font-medium text-[#8da0b2]">{load.distance}</div>}
               </div>
             )}
-          </div>
-        )}
-
-        {!showRoute && (hasFrom || hasTo) && (
-          <div className="flex items-center gap-3 rounded-2xl bg-[#f6f9fc] px-3.5 py-3">
-            <span className={cn(
-              "grid size-9 shrink-0 place-items-center rounded-xl",
-              hasFrom ? "bg-emerald-50 text-emerald-600" : "bg-[#fff0ec] text-[#d64526]"
-            )}>
-              <MapPin className="size-[18px]" />
-            </span>
-            <div className="min-w-0 flex-1">
-              <div className="text-[10px] font-bold uppercase tracking-wider text-[#8da0b2]">{hasFrom ? "Yükleme noktası" : "Teslimat noktası"}</div>
-              <div className="truncate text-[15px] font-bold text-[#122c4a]">
-                {hasFrom ? renderPlace(load.from, load.fromCity) : renderPlace(load.to, load.toCity)}
-              </div>
-            </div>
-            {hasPrice && <div className="shrink-0 text-lg font-extrabold text-emerald-600">{load.price}</div>}
           </div>
         )}
 
@@ -494,7 +464,8 @@ export function LoadCard({ load, searchQuery = "", isFavorite = false, onToggleF
         </div>
       </div>
 
-      {/* Şikayet / engelle */}
+      {/* Şikayet / engelle (sadece açıkken oluşturulur) */}
+      {isReportOpen && (
       <Sheet
         open={isReportOpen}
         onClose={() => setIsReportOpen(false)}
@@ -556,9 +527,10 @@ export function LoadCard({ load, searchQuery = "", isFavorite = false, onToggleF
           </div>
         )}
       </Sheet>
+      )}
     </article>
   )
-}
+})
 
 function Chip({ icon: Icon, tone, children }: { icon: LucideIcon; tone: string; children: React.ReactNode }) {
   return (
