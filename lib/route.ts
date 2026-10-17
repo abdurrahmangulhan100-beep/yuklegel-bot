@@ -1,0 +1,359 @@
+/**
+ * İlan metninden güzergah, araç, zaman gibi bilgileri çıkaran yardımcılar.
+ *
+ * Amaç: veritabanında "Belirtilmedi" / "-" gibi boş değerler olsa bile ilan metninden
+ * (örn. "Konya'dan Kırşehir'e 13.60 açık tır") şehirleri bulmak ve bulunamayan bilgiyi
+ * ekranda HİÇ göstermemek. Dışarıya sadece bulunabilen bilgi döner.
+ */
+
+export type Place = {
+  /** Ekranda gösterilecek metin: "Konya" veya "Konya / Beyşehir" */
+  label: string
+  /** İl adı (biliniyorsa) - filtre ve arama için */
+  city?: string
+  district?: string
+}
+
+export type ListingAnalysis = {
+  from?: Place
+  to?: Place
+  /** Güzergahta geçen ama yükleme/teslimat olarak ayrılamayan diğer şehirler */
+  extraCities: string[]
+  vehicle?: string
+  trailer?: string
+  tonnage?: string
+  timing?: string
+  /** Telefon numaraları ayıklanmış, okunur yük metni */
+  cargoText: string
+}
+
+const CITIES = [
+  "Adana", "Adıyaman", "Afyonkarahisar", "Ağrı", "Aksaray", "Amasya", "Ankara", "Antalya", "Ardahan", "Artvin",
+  "Aydın", "Balıkesir", "Bartın", "Batman", "Bayburt", "Bilecik", "Bingöl", "Bitlis", "Bolu", "Burdur",
+  "Bursa", "Çanakkale", "Çankırı", "Çorum", "Denizli", "Diyarbakır", "Düzce", "Edirne", "Elazığ", "Erzincan",
+  "Erzurum", "Eskişehir", "Gaziantep", "Giresun", "Gümüşhane", "Hakkari", "Hatay", "Iğdır", "Isparta", "İstanbul",
+  "İzmir", "Kahramanmaraş", "Karabük", "Karaman", "Kars", "Kastamonu", "Kayseri", "Kilis", "Kırıkkale", "Kırklareli",
+  "Kırşehir", "Kocaeli", "Konya", "Kütahya", "Malatya", "Manisa", "Mardin", "Mersin", "Muğla", "Muş",
+  "Nevşehir", "Niğde", "Ordu", "Osmaniye", "Rize", "Sakarya", "Samsun", "Şanlıurfa", "Siirt", "Sinop",
+  "Sivas", "Şırnak", "Tekirdağ", "Tokat", "Trabzon", "Tunceli", "Uşak", "Van", "Yalova", "Yozgat", "Zonguldak",
+]
+
+/** Yaygın kısa adlar / ağız kullanımları */
+const ALIAS_TO_CITY: Record<string, string> = {
+  afyon: "Afyonkarahisar",
+  antep: "Gaziantep",
+  maras: "Kahramanmaraş",
+  urfa: "Şanlıurfa",
+  izmit: "Kocaeli",
+  adapazari: "Sakarya",
+  icel: "Mersin",
+}
+
+/** Günlük dilde başka anlamları olan adlar: ek alıyorsa kesme işareti, çıplaksa büyük harf şart */
+const WEAK = new Set(["van", "mus", "ordu", "kilis", "tokat", "agri"])
+
+const FOLD_MAP: Record<string, string> = {
+  "ı": "i", "İ": "i", "I": "i", "ş": "s", "Ş": "s", "ğ": "g", "Ğ": "g",
+  "ü": "u", "Ü": "u", "ö": "o", "Ö": "o", "ç": "c", "Ç": "c",
+}
+
+/** Küçük harf + Türkçe karakterleri sadeleştirir. Uzunluk korunur (indeksler aynı kalır). */
+export function fold(s: string): string {
+  let out = ""
+  for (let i = 0; i < s.length; i++) {
+    const ch = s[i]
+    const mapped = FOLD_MAP[ch]
+    if (mapped) { out += mapped; continue }
+    const low = ch.toLowerCase()
+    out += low.length === 1 ? low : ch
+  }
+  return out
+}
+
+const CANON: Map<string, string> = new Map()
+for (const c of CITIES) CANON.set(fold(c), c)
+for (const [alias, city] of Object.entries(ALIAS_TO_CITY)) CANON.set(alias, city)
+
+type SuffixKind = "from" | "to" | "at"
+const SUFFIXES: [string, SuffixKind][] = [
+  ["dan", "from"], ["den", "from"], ["tan", "from"], ["ten", "from"],
+  ["ya", "to"], ["ye", "to"], ["na", "to"], ["ne", "to"], ["a", "to"], ["e", "to"],
+  ["da", "at"], ["de", "at"], ["ta", "at"], ["te", "at"],
+]
+const SUFFIX_MAP = new Map(SUFFIXES)
+const SUFFIXES_LONGEST_FIRST = [...SUFFIXES].sort((a, b) => b[0].length - a[0].length)
+
+type Mention = {
+  city: string
+  /** from: -dan/-den, to: -a/-e, at: -da/-de, bare: ek yok */
+  kind: SuffixKind | "bare"
+  start: number
+  end: number
+}
+
+const TOKEN_RE = /[A-Za-zÇĞİıÖŞÜçğöşü0-9]+(?:['’´`][A-Za-zÇĞİıÖŞÜçğöşü]+)?/g
+
+function findMentions(text: string): Mention[] {
+  const tokens: { raw: string; start: number; end: number }[] = []
+  for (const m of text.matchAll(TOKEN_RE)) {
+    tokens.push({ raw: m[0], start: m.index ?? 0, end: (m.index ?? 0) + m[0].length })
+  }
+
+  const result: Mention[] = []
+  for (let i = 0; i < tokens.length; i++) {
+    const { raw, start, end } = tokens[i]
+    const aposIdx = raw.search(/['’´`]/)
+    const hasApos = aposIdx > 0
+    const base = fold(hasApos ? raw.slice(0, aposIdx) : raw)
+    const suffixPart = hasApos ? fold(raw.slice(aposIdx + 1)) : ""
+
+    let city: string | undefined
+    let kind: Mention["kind"] = "bare"
+    let weakKey = ""
+
+    if (hasApos) {
+      const c = CANON.get(base)
+      const k = SUFFIX_MAP.get(suffixPart)
+      if (c && k) { city = c; kind = k; weakKey = base }
+    } else {
+      const direct = CANON.get(base)
+      if (direct) {
+        city = direct; weakKey = base
+      } else {
+        for (const [suf, k] of SUFFIXES_LONGEST_FIRST) {
+          if (base.length > suf.length && base.endsWith(suf)) {
+            const stem = base.slice(0, -suf.length)
+            const c = CANON.get(stem)
+            if (c) { city = c; kind = k; weakKey = stem; break }
+          }
+        }
+      }
+    }
+    if (!city) continue
+
+    if (WEAK.has(weakKey)) {
+      // "Van'a" geçerli; "vana" / "van" (küçük harf) geçersiz
+      const firstChar = raw[0]
+      const isCapital = firstChar !== firstChar.toLocaleLowerCase("tr-TR")
+      if (kind !== "bare" && !hasApos) continue
+      if (kind === "bare" && !isCapital) continue
+    }
+
+    // "Konya dan Urfa" - ek ayrı yazılmış
+    if (kind === "bare" && i + 1 < tokens.length) {
+      const next = fold(tokens[i + 1].raw)
+      if (next === "dan" || next === "den") {
+        kind = "from"
+        result.push({ city, kind, start, end: tokens[i + 1].end })
+        i++
+        continue
+      }
+    }
+
+    // Aynı şehir arka arkaya geçiyorsa tekrar ekleme
+    const prev = result[result.length - 1]
+    if (prev && prev.city === city && prev.kind === kind) continue
+    result.push({ city, kind, start, end })
+  }
+  return result
+}
+
+const SEPARATOR_RE = /^\s*(?:[-–—>→»~/+]+|=>|->)\s*$/
+
+type TextRoute = { from?: Mention; to?: Mention; explicit: boolean }
+
+function routeFromMentions(text: string, ms: Mention[]): TextRoute {
+  if (ms.length === 0) return { explicit: false }
+
+  // 1) "Konya - Adana", "Konya > Adana"
+  for (let i = 0; i < ms.length - 1; i++) {
+    if (ms[i].city === ms[i + 1].city) continue
+    if (SEPARATOR_RE.test(text.slice(ms[i].end, ms[i + 1].start))) {
+      return { from: ms[i], to: ms[i + 1], explicit: true }
+    }
+  }
+
+  // 2) -dan / -e ekleriyle
+  let from = ms.find((m) => m.kind === "from")
+  let to = ms.find((m) => m.kind === "to" && m.city !== from?.city)
+  const explicit = Boolean(from && to)
+
+  // 3) Eksik tarafı sıraya bakarak tamamla
+  if (from && !to) {
+    to = ms.find((m) => m.city !== from!.city && m.start > from!.start) ?? ms.find((m) => m.city !== from!.city)
+  } else if (!from && to) {
+    from = ms.find((m) => m.city !== to!.city && m.kind !== "to" && m.start < to!.start) ?? ms.find((m) => m.city !== to!.city && m.kind !== "to")
+  } else if (!from && !to) {
+    from = ms.find((m) => m.kind !== "to")
+    if (from) to = ms.find((m) => m.city !== from!.city && m.kind !== "from")
+    else to = ms[0]
+  }
+  return { from, to, explicit }
+}
+
+const MISSING = new Set(["", "-", "--", "?", "belirtilmedi", "belirtilmemis", "belirsiz", "bilinmiyor", "yok", "null", "undefined", "none", "n/a", "nan"])
+
+export function isMissing(v?: string | null): boolean {
+  if (v === null || v === undefined) return true
+  return MISSING.has(fold(String(v)).trim())
+}
+
+function tidy(s: string): string {
+  return s.replace(/[*_~`]/g, "").replace(/\s+/g, " ").trim()
+}
+
+function trimSeparators(s: string): string {
+  return s.replace(/^[\s\-–—/,.:;()>]+|[\s\-–—/,.:;()>]+$/g, "").replace(/\s+/g, " ")
+}
+
+/** "Konya / Beyşehir", "Afyonkarahisar - Merkez", "Dazkırı" gibi alanları Place'e çevirir */
+function placeFromField(raw?: string | null): Place | undefined {
+  if (isMissing(raw)) return undefined
+  const text = tidy(String(raw))
+  if (isMissing(text)) return undefined
+
+  const first = findMentions(text)[0]
+  if (first) {
+    const rest = trimSeparators(text.slice(0, first.start) + " " + text.slice(first.end))
+    const district = rest && fold(rest) !== "merkez" ? rest.slice(0, 30) : undefined
+    return { label: district ? `${first.city} / ${district}` : first.city, city: first.city, district }
+  }
+  return { label: text.slice(0, 40) }
+}
+
+const PHONE_RE_G = /(?:\+?90[\s.\-]*)?0?[\s.\-]*\(?5\d{2}\)?[\s.\-]*\d{3}[\s.\-]*\d{2}[\s.\-]*\d{2}/g
+const DANGLING = new Set(["tel", "telefon", "iletisim", "irtibat", "ara", "arayin", "whatsapp", "wp", "no", "numara"])
+
+/** Telefon numaralarını ve "Tel:" gibi artıkları metinden çıkarır */
+export function stripPhones(text: string): string {
+  let t = text.replace(PHONE_RE_G, " ").replace(/\s+/g, " ").trim()
+  for (;;) {
+    const m = t.match(/(.*?)[\s:.\-–,]*([^\s:.\-–,]+)[\s:.\-–,]*$/)
+    if (!m) break
+    if (DANGLING.has(fold(m[2]))) t = m[1].trim()
+    else break
+  }
+  return t.replace(/^[\s:.\-–,]+|[\s:.\-–,]+$/g, "")
+}
+
+const VEHICLE_RULES: [RegExp, (m: RegExpMatchArray) => string][] = [
+  [/\bkirkayak\b/, () => "Kırkayak"],
+  [/\b(frigo|frigorifik|soguk zincir|termokin)\b/, () => "Frigo"],
+  [/\bdamperli\b/, () => "Damperli Tır"],
+  [/\blow ?be[dt]\b/, () => "Lowbed"],
+  [/\bdorse\b/, () => "Dorse"],
+  [/\b(acik|kapali|tenteli|perdeli)\s+tir\b/, (m) => ({ acik: "Açık", kapali: "Kapalı", tenteli: "Tenteli", perdeli: "Perdeli" } as Record<string, string>)[m[1]] + " Tır"],
+  [/\btir\b/, () => "Tır"],
+  [/\b(10|on)\s*teker\b/, () => "10 Teker"],
+  [/\b(8|sekiz)\s*teker\b/, () => "8 Teker"],
+  [/\b(6|alti)\s*teker\b/, () => "6 Teker"],
+  [/\bkamyonet\b/, () => "Kamyonet"],
+  [/\bkamyon\b/, () => "Kamyon"],
+  [/\bpanel ?van\b/, () => "Panelvan"],
+  [/\b(pikap|pick ?up)\b/, () => "Pikap"],
+]
+
+function inferVehicle(f: string): string | undefined {
+  for (const [re, label] of VEHICLE_RULES) {
+    const m = f.match(re)
+    if (m) return label(m)
+  }
+  return undefined
+}
+
+function inferTrailer(f: string): string | undefined {
+  if (/\b13[\s.,]60\b/.test(f)) return "13,60 m"
+  if (/\b13[.,]20\b/.test(f)) return "13,20 m"
+  return undefined
+}
+
+function inferTonnage(f: string): string | undefined {
+  const m = f.match(/\b(\d{1,2}(?:[.,]\d)?)\s*(?:ton|tonluk)\b/)
+  return m ? `${m[1].replace(".", ",")} ton` : undefined
+}
+
+function inferTiming(f: string): string | undefined {
+  const m = f.match(/\b(sabah|gece|ogle|aksam)\s*(\d{1,2})(?:[:.](\d{2}))?(\s*kadar)?/)
+  if (m) {
+    const name = { sabah: "Sabah", gece: "Gece", ogle: "Öğle", aksam: "Akşam" }[m[1] as "sabah"]
+    return `${name} ${m[2]}${m[3] ? `:${m[3]}` : ""}${m[4] ? " kadar" : ""}`
+  }
+  if (/\b(yarin)\b/.test(f)) return "Yarın"
+  if (/\b(bugun|bu gun)\b/.test(f)) return "Bugün"
+  if (/\b7\s*\/\s*24\b/.test(f)) return "7/24 yükleme"
+  if (/\b(hemen|aninda)\b/.test(f)) return "Hemen"
+  return undefined
+}
+
+export type AnalyzeInput = {
+  from?: string | null
+  to?: string | null
+  cargo?: string | null
+  message?: string | null
+  vehicle?: string | null
+  /** true: alanlar kullanıcı tarafından seçildi (güvenilir). false: bot / ham metin */
+  trustFields?: boolean
+}
+
+export function analyzeListing(input: AnalyzeInput): ListingAnalysis {
+  const rawText = [input.cargo, input.message]
+    .filter((v): v is string => !isMissing(v))
+    .map((v) => tidy(v))
+    .join(" ")
+  const text = rawText.replace(PHONE_RE_G, " ")
+  const folded = fold(text)
+
+  let from = placeFromField(input.from)
+  let to = placeFromField(input.to)
+
+  const ms = findMentions(text)
+  const tr = routeFromMentions(text, ms)
+
+  if (input.trustFields) {
+    // Kullanıcı seçimi: sadece eksik tarafı metinden tamamla
+    if (!from && tr.from && tr.from.city !== to?.city) from = { label: tr.from.city, city: tr.from.city }
+    if (!to && tr.to && tr.to.city !== from?.city) to = { label: tr.to.city, city: tr.to.city }
+  } else if (tr.explicit && tr.from && tr.to) {
+    // Bot ilanı: metindeki "A'dan B'ye" ifadesi, alanlardan daha güvenilirdir
+    from = from?.city === tr.from.city ? from : { label: tr.from.city, city: tr.from.city }
+    to = to?.city === tr.to.city ? to : { label: tr.to.city, city: tr.to.city }
+  } else {
+    if (!from && tr.from && tr.from.city !== to?.city) from = { label: tr.from.city, city: tr.from.city }
+    if (!to && tr.to && tr.to.city !== from?.city) to = { label: tr.to.city, city: tr.to.city }
+  }
+
+  // Sadece bir uç biliniyorsa ve yön "-e" ekiyle belirlenmişse yanlış tarafta durmasın
+  if (from && !to && tr.to && !tr.from && tr.to.kind === "to" && from.city === tr.to.city) {
+    to = from
+    from = undefined
+  }
+
+  const used = new Set([from?.city, to?.city].filter(Boolean) as string[])
+  const extraCities = Array.from(new Set(ms.map((m) => m.city))).filter((c) => !used.has(c)).slice(0, 3)
+
+  const fieldVehicle = isMissing(input.vehicle) ? undefined : tidy(String(input.vehicle)).slice(0, 24)
+  const inferred = inferVehicle(folded)
+
+  return {
+    from,
+    to,
+    extraCities,
+    vehicle: input.trustFields ? (fieldVehicle ?? inferred) : (inferred ?? fieldVehicle),
+    trailer: inferTrailer(folded),
+    tonnage: inferTonnage(folded),
+    timing: inferTiming(folded),
+    cargoText: stripPhones(rawText),
+  }
+}
+
+/** Liste satırlarında kullanılacak kısa güzergah metni; hiçbir şey yoksa null */
+export function shortRoute(from?: string, to?: string): string | null {
+  const f = from && from !== "-" ? from : ""
+  const t = to && to !== "-" ? to : ""
+  if (f && t) return `${f} → ${t}`
+  if (f) return `${f} çıkışlı`
+  if (t) return `${t} varışlı`
+  return null
+}
+
+export const CITY_NAMES = CITIES
