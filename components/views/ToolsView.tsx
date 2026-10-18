@@ -1,20 +1,24 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { ArrowLeft, Boxes, CalendarClock, ChevronRight, Route as RouteIcon, Timer, type LucideIcon } from "lucide-react"
+import { ArrowLeft, Boxes, CalendarClock, ChevronRight, ClipboardCheck, Fuel, Route as RouteIcon, Timer, type LucideIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { TachographTool } from "@/components/tools/TachographTool"
 import { TripPlannerTool } from "@/components/tools/TripPlannerTool"
 import { DocumentsTool, docsAlertCount, loadDocs } from "@/components/tools/DocumentsTool"
 import { VolumeTool } from "@/components/tools/VolumeTool"
+import { ChecklistTool, checklistProgress } from "@/components/tools/ChecklistTool"
+import { FuelLogTool } from "@/components/tools/FuelLogTool"
 import { loadSegments } from "@/lib/tachograph"
 
-type ToolKey = "tacho" | "planner" | "docs" | "volume"
+type ToolKey = "tacho" | "planner" | "docs" | "volume" | "check" | "fuel"
 
 const TOOLS: { key: ToolKey; title: string; desc: string; icon: LucideIcon; tone: string }[] = [
   { key: "tacho", title: "Takograf Sayacı", desc: "4,5 saat mola, günlük 9 saat ve haftalık 56 saat sürüş limitlerini canlı takip edin.", icon: Timer, tone: "bg-amber-50 text-amber-600" },
   { key: "planner", title: "Varış Süresi Planlayıcı", desc: "Zorunlu mola ve dinlenmeler dahil, yola çıkış saatinize göre tahmini varışı görün.", icon: RouteIcon, tone: "bg-[#eef4f8] text-[#315d83]" },
   { key: "docs", title: "Belge Hatırlatıcı", desc: "Muayene, sigorta, SRC, takograf kalibrasyonu gibi bitiş tarihlerini takip edin.", icon: CalendarClock, tone: "bg-[#fff0ec] text-[#d64526]" },
+  { key: "check", title: "Sefer Öncesi Kontrol", desc: "Araç, evrak, yük ve güvenlik ekipmanı için günlük kontrol listesi; kendi maddelerinizi de ekleyin.", icon: ClipboardCheck, tone: "bg-sky-50 text-sky-600" },
+  { key: "fuel", title: "Yakıt Defteri", desc: "Yakıt alımlarını kaydedin; ortalama L/100 km tüketiminizi hesaplayıp Sefer Hesapla'ya aktarın.", icon: Fuel, tone: "bg-violet-50 text-violet-600" },
   { key: "volume", title: "Hacim, Desi & Ladin Metre", desc: "Palet ve koli ölçülerinden m³, desi ve LDM hesaplayın; tıra ne kadar sığdığını görün.", icon: Boxes, tone: "bg-emerald-50 text-emerald-600" },
 ]
 
@@ -31,6 +35,8 @@ export function ToolsView() {
       const n = docsAlertCount()
       if (n > 0) next.docs = { text: `${n} uyarı`, tone: "bg-red-100 text-red-700" }
       else if (loadDocs().length > 0) next.docs = { text: "Güncel", tone: "bg-emerald-100 text-emerald-700" }
+      const cp = checklistProgress()
+      if (cp.done > 0) next.check = { text: cp.done === cp.total ? "Hazır" : `${cp.done}/${cp.total}`, tone: cp.done === cp.total ? "bg-emerald-100 text-emerald-700" : "bg-sky-100 text-sky-700" }
     } catch {
       // depolama erişilemiyorsa rozet göstermeyiz
     }
@@ -56,6 +62,8 @@ export function ToolsView() {
         {active === "planner" && <TripPlannerTool />}
         {active === "docs" && <DocumentsTool />}
         {active === "volume" && <VolumeTool />}
+        {active === "check" && <ChecklistTool />}
+        {active === "fuel" && <FuelLogTool />}
       </div>
     )
   }
@@ -65,7 +73,7 @@ export function ToolsView() {
       <div>
         <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-[#d64526]">Yolda yanınızda</p>
         <h1 className="text-2xl font-extrabold tracking-tight text-[#122c4a] sm:text-3xl">Şoför Araçları</h1>
-        <p className="mt-1 text-sm text-[#627d98]">Sürüş, evrak ve yük planlaması için pratik hesaplayıcılar. Veriler yalnızca cihazınızda saklanır.</p>
+        <p className="mt-1 text-sm text-[#627d98]">Sürüş, evrak, yakıt ve yük planlaması için pratik araçlar. Veriler yalnızca cihazınızda saklanır.</p>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2">
