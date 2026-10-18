@@ -4,7 +4,6 @@ import { useMemo } from "react"
 import { Truck, Package, Zap, ArrowRight, Plus, Calculator, WalletCards, CircleHelp, ChevronRight, MapPin, TrendingUp, Timer } from "lucide-react"
 import { Load } from "@/components/LoadCard"
 import { cn } from "@/lib/utils"
-import { shortRoute } from "@/lib/route"
 
 type OverviewProps = {
   loads: Load[];
@@ -16,9 +15,18 @@ type OverviewProps = {
   userName?: string;
   /** Şehir çipine dokununca o şehrin ilanlarını açar */
   onSelectCity?: (city: string) => void;
+  /** Acil yük kartına dokununca "Acil" filtresiyle ilanları açar */
+  onOpenUrgent?: () => void;
 }
 
-export function OverviewView({ loads, currentUserId, onOpenCreate, setActiveTab, totalCount, urgentCount, userName, onSelectCity }: OverviewProps) {
+/** Kart başlığı: ilanın ilk satırı (saha ilanında ham mesajın ilk satırı) */
+const headline = (l: Load) => {
+  const first = (l.cargo || "").split("\n").find((x) => x.trim()) ?? ""
+  return first.trim() || "İlan"
+}
+const subline = (l: Load) => [(l.cities ?? []).slice(0, 3).join(" · "), l.vehicle, l.time].filter(Boolean).join(" • ")
+
+export function OverviewView({ loads, currentUserId, onOpenCreate, setActiveTab, totalCount, urgentCount, userName, onSelectCity, onOpenUrgent }: OverviewProps) {
   // SADECE O ANKİ KULLANICININ İLANLARINI FİLTRELE
   const userLoads = loads.filter(
     (l) => l.source === "user" && l.userId && currentUserId && l.userId === currentUserId
@@ -30,23 +38,11 @@ export function OverviewView({ loads, currentUserId, onOpenCreate, setActiveTab,
   const urgent = (urgentCount ?? urgentLoads.length).toLocaleString("tr-TR")
   const firstName = userName ? userName.split(" ")[0] : ""
 
-  // Elimizdeki ilanlardan: en çok yük çıkan şehirler ve en sık görülen rotalar
+  // Elimizdeki ilanlarda en sık geçen şehirler
   const hot = useMemo(() => {
-    const from = new Map<string, number>()
-    const routes = new Map<string, { from: string; to: string; n: number }>()
-    for (const l of loads) {
-      if (l.fromCity) from.set(l.fromCity, (from.get(l.fromCity) ?? 0) + 1)
-      if (l.fromCity && l.toCity) {
-        const k = `${l.fromCity}>${l.toCity}`
-        const cur = routes.get(k)
-        if (cur) cur.n++
-        else routes.set(k, { from: l.fromCity, to: l.toCity, n: 1 })
-      }
-    }
-    return {
-      cities: Array.from(from.entries()).sort((a, b) => b[1] - a[1]).slice(0, 8),
-      routes: Array.from(routes.values()).sort((a, b) => b.n - a.n).slice(0, 4),
-    }
+    const counts = new Map<string, number>()
+    for (const l of loads) for (const c of l.cities ?? []) counts.set(c, (counts.get(c) ?? 0) + 1)
+    return { cities: Array.from(counts.entries()).sort((a, b) => b[1] - a[1]).slice(0, 8) }
   }, [loads])
 
   const quickActions = [
@@ -97,7 +93,7 @@ export function OverviewView({ loads, currentUserId, onOpenCreate, setActiveTab,
       {hot.cities.length > 0 && (
         <section className="rounded-3xl border border-[#e4e9ef] bg-white p-4 shadow-[0_1px_2px_rgba(18,44,74,0.04)] sm:p-6">
           <h2 className="mb-3 flex items-center gap-1.5 text-base font-bold text-[#122c4a]">
-            <TrendingUp className="size-4 text-[#315d83]" /> Yük Çıkan Şehirler
+            <TrendingUp className="size-4 text-[#315d83]" /> İlanı Çok Olan Şehirler
           </h2>
           <div className="flex flex-wrap gap-2">
             {hot.cities.map(([city, n]) => (
@@ -112,20 +108,6 @@ export function OverviewView({ loads, currentUserId, onOpenCreate, setActiveTab,
               </button>
             ))}
           </div>
-          {hot.routes.length > 0 && (
-            <ul className="mt-4 divide-y divide-[#edf0f3] border-t border-[#edf0f3]">
-              {hot.routes.map((r) => (
-                <li key={`${r.from}>${r.to}`}>
-                  <button onClick={() => onSelectCity?.(r.from)} className="flex w-full items-center gap-2 py-2.5 text-left text-sm font-semibold text-[#122c4a]">
-                    <span className="truncate">{r.from}</span>
-                    <ArrowRight className="size-4 shrink-0 text-[#d64526]" />
-                    <span className="truncate">{r.to}</span>
-                    <span className="ml-auto shrink-0 rounded-full bg-[#eef4f8] px-2 py-0.5 text-[11px] font-bold text-[#315d83]">{r.n} ilan</span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
         </section>
       )}
 
@@ -155,7 +137,7 @@ export function OverviewView({ loads, currentUserId, onOpenCreate, setActiveTab,
             <h2 className="flex items-center gap-1.5 text-base font-bold text-[#122c4a]">
               <Zap className="size-4 fill-[#d64526] text-[#d64526]" /> Acil Yükler
             </h2>
-            <button onClick={() => setActiveTab("İlanlar")} className="flex items-center gap-1 text-xs font-semibold text-[#315d83]">
+            <button onClick={() => (onOpenUrgent ? onOpenUrgent() : setActiveTab("İlanlar"))} className="flex items-center gap-1 text-xs font-semibold text-[#315d83]">
               Tümü <ArrowRight className="size-3.5" />
             </button>
           </div>
@@ -164,7 +146,7 @@ export function OverviewView({ loads, currentUserId, onOpenCreate, setActiveTab,
               {urgentLoads.slice(0, 8).map((l) => (
                 <button
                   key={l.id}
-                  onClick={() => setActiveTab("İlanlar")}
+                  onClick={() => (onOpenUrgent ? onOpenUrgent() : setActiveTab("İlanlar"))}
                   className="w-[260px] shrink-0 snap-start rounded-2xl border border-[#f6d6cc] bg-gradient-to-br from-[#fff7f4] to-white p-4 text-left shadow-[0_1px_2px_rgba(214,69,38,0.08)] transition-transform active:scale-[0.98]"
                 >
                   <div className="flex items-center justify-between">
@@ -172,11 +154,11 @@ export function OverviewView({ loads, currentUserId, onOpenCreate, setActiveTab,
                     <span className="text-[11px] font-medium text-[#8da0b2]">{l.time}</span>
                   </div>
                   <div className="mt-3 line-clamp-2 text-[15px] font-bold leading-snug text-[#122c4a]">
-                    {shortRoute(l.from, l.to) ?? l.cargo}
+                    {headline(l)}
                   </div>
                   <div className="mt-1.5 flex items-center gap-1.5 text-xs text-[#627d98]">
-                    <Truck className="size-3.5 shrink-0" />
-                    <span className="truncate">{l.vehicle || "Araç belirtilmemiş"}</span>
+                    <MapPin className="size-3.5 shrink-0" />
+                    <span className="truncate">{(l.cities ?? []).slice(0, 3).join(" · ") || l.vehicle || "Detay için ilana dokunun"}</span>
                   </div>
                 </button>
               ))}
@@ -198,8 +180,8 @@ export function OverviewView({ loads, currentUserId, onOpenCreate, setActiveTab,
             {userLoads.slice(0, 3).map((load) => (
               <li key={load.id} className="flex items-center justify-between gap-3 py-3">
                 <div className="min-w-0">
-                  <div className="truncate text-sm font-bold text-[#122c4a]">{shortRoute(load.from, load.to) ?? load.cargo}</div>
-                  <div className="mt-0.5 truncate text-xs text-[#718397]">{load.cargo}</div>
+                  <div className="truncate text-sm font-bold text-[#122c4a]">{headline(load)}</div>
+                  <div className="mt-0.5 truncate text-xs text-[#718397]">{subline(load)}</div>
                 </div>
                 {load.price && load.price !== "₺0" && (
                   <div className="shrink-0 text-sm font-extrabold text-[#d64526]">{load.price}</div>
@@ -244,9 +226,9 @@ export function OverviewView({ loads, currentUserId, onOpenCreate, setActiveTab,
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-sm font-bold text-[#122c4a]">
-                      {shortRoute(l.from, l.to) ?? l.cargo}
+                      {headline(l)}
                     </span>
-                    <span className="mt-0.5 block truncate text-xs text-[#718397]">{[l.vehicle, l.time].filter(Boolean).join(" • ")}</span>
+                    <span className="mt-0.5 block truncate text-xs text-[#718397]">{subline(l)}</span>
                   </span>
                   <ChevronRight className="size-4 shrink-0 text-[#b4c1ce]" />
                 </button>
