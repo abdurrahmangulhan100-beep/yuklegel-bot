@@ -4,6 +4,7 @@ import { Calculator, ChevronLeft, ChevronRight, CircleHelp, FileText, LayoutDash
 import { cn } from "@/lib/utils"
 import { supabase } from "@/lib/supabase"
 import Link from "next/link"
+import { LogoMark } from "@/components/Logo"
 
 type SidebarProps = {
   activeTab: string;
@@ -50,7 +51,7 @@ export function Sidebar({
       isCollapsed && "lg:w-[78px]"
     )}>
       <div className="flex h-[76px] shrink-0 items-center gap-3.5 px-5 pt-safe">
-        <div className="grid size-11 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-[#e5522f] to-[#c13a1c] text-xl font-bold shadow-md text-white">N</div>
+        <LogoMark size={48} className="-ml-1 shrink-0 drop-shadow-md" />
         {!isCollapsed && (
           <div>
             <div className="text-[19px] font-bold tracking-tight">Nakliye Cepte</div>
