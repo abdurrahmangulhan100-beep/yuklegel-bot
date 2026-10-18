@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
 import { Eye, EyeOff, Truck, ShieldCheck, Zap } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { LogoMark } from "@/components/Logo"
 
 export default function LoginPage() {
   const router = useRouter()
@@ -146,7 +147,7 @@ export default function LoginPage() {
         <div className="pointer-events-none absolute -right-8 top-4 size-40 rounded-full bg-[#d64526]/25 blur-3xl" />
         <div className="pointer-events-none absolute -left-10 top-24 size-36 rounded-full bg-[#315d83]/40 blur-3xl" />
         <div className="relative">
-          <div className="mx-auto mb-4 grid size-16 place-items-center rounded-3xl bg-gradient-to-br from-[#e5522f] to-[#c13a1c] text-3xl font-bold shadow-xl shadow-black/25">N</div>
+          <LogoMark size={92} className="mx-auto mb-3 drop-shadow-[0_12px_24px_rgba(0,0,0,0.35)]" />
           <h1 className="text-[26px] font-extrabold tracking-tight">Nakliye Cepte</h1>
           <p className="mt-1.5 text-sm text-white/65">Türkiye&apos;nin yük ve taşıma ilan platformu</p>
 
