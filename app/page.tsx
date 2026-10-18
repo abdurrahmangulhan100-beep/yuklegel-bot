@@ -21,6 +21,7 @@ import { ToolsView } from "@/components/views/ToolsView"
 import { CreateListingModal } from "@/components/CreateListingModal"
 import { Sidebar } from "@/components/Sidebar"
 import { BottomNav } from "@/components/BottomNav"
+import { LogoMark } from "@/components/Logo"
 
 const PAGE_SIZE = 60
 
@@ -372,7 +373,7 @@ export default function Page() {
   if (isCheckingAuth) {
     return (
       <div className="flex h-dvh flex-col items-center justify-center gap-4 bg-gradient-to-b from-[#122c4a] to-[#0b1d33] text-white">
-        <div className="grid size-16 animate-pulse place-items-center rounded-3xl bg-gradient-to-br from-[#e5522f] to-[#c13a1c] text-3xl font-bold shadow-xl">N</div>
+        <LogoMark size={96} className="animate-pulse drop-shadow-[0_12px_24px_rgba(0,0,0,0.35)]" />
         <div className="text-center">
           <div className="text-lg font-bold tracking-tight">Nakliye Cepte</div>
           <div className="mt-1 text-xs text-white/60">Oturum kontrol ediliyor...</div>
@@ -412,7 +413,7 @@ export default function Page() {
             {/* Mobil: marka + aksiyonlar */}
             <div className="flex items-center justify-between gap-3 lg:hidden">
               <button onClick={() => setActiveTab("Genel Bakış")} className="flex items-center gap-2.5" aria-label="Ana sayfa">
-                <span className="grid size-9 place-items-center rounded-xl bg-gradient-to-br from-[#e5522f] to-[#c13a1c] text-base font-bold text-white shadow-sm">N</span>
+                <LogoMark size={38} tile className="shrink-0 rounded-[10px] shadow-sm" />
                 <span className="text-[17px] font-bold tracking-tight">Nakliye Cepte</span>
               </button>
               <div className="flex items-center gap-1.5">
@@ -498,6 +499,7 @@ export default function Page() {
               onOpenCreate={() => setIsCreateOpen(true)} 
               setActiveTab={setActiveTab} 
               onSelectCity={handleCitySearch}
+              onOpenUrgent={openUrgent}
             />
           )}
           {effectiveTab === "İlanlar" && (
