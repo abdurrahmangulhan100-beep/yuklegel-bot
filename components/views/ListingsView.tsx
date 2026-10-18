@@ -2,10 +2,10 @@
 
 import { useEffect, useMemo, useRef, useState } from "react"
 import { Load, LoadCard } from "@/components/LoadCard"
-import { PackageSearch, Plus, Zap, Phone, X } from "lucide-react"
+import { PackageSearch, Plus, Zap, Phone, X, MapPin } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { isMissing } from "@/lib/route"
-import { PublicSourceNotice } from "@/components/PublicSourceNotice"
+import { SourceInfoButton } from "@/components/SourceInfo"
 
 type ListingsViewProps = {
   loads: Load[]
@@ -57,38 +57,31 @@ export function ListingsView({
 }: ListingsViewProps) {
   const fmt = (n: number) => n.toLocaleString("tr-TR")
 
-  // Rota filtreleri: ilan metninden çözümlenen şehirlerle çalışır
-  const [fromCity, setFromCity] = useState("")
-  const [toCity, setToCity] = useState("")
+  // Şehir filtresi: ilanda herhangi bir yerde geçen şehre göre (yön ayrımı yok)
+  const [city, setCity] = useState("")
   const [onlyPhone, setOnlyPhone] = useState(false)
 
   const cityOptions = useMemo(() => {
-    const f = new Map<string, number>()
-    const t = new Map<string, number>()
-    for (const l of loads) {
-      if (l.fromCity) f.set(l.fromCity, (f.get(l.fromCity) ?? 0) + 1)
-      if (l.toCity) t.set(l.toCity, (t.get(l.toCity) ?? 0) + 1)
-    }
-    const toList = (m: Map<string, number>) => Array.from(m.entries()).sort((a, b) => b[1] - a[1] || byTr(a[0], b[0]))
-    return { from: toList(f), to: toList(t) }
+    const m = new Map<string, number>()
+    for (const l of loads) for (const c of l.cities ?? []) m.set(c, (m.get(c) ?? 0) + 1)
+    return Array.from(m.entries()).sort((a, b) => b[1] - a[1] || byTr(a[0], b[0]))
   }, [loads])
 
   const visibleLoads = useMemo(
     () =>
       loads.filter((l) => {
-        if (fromCity && l.fromCity !== fromCity) return false
-        if (toCity && l.toCity !== toCity) return false
+        if (city && !(l.cities ?? []).includes(city)) return false
         if (onlyPhone && isMissing(l.phone)) return false
         return true
       }),
-    [loads, fromCity, toCity, onlyPhone]
+    [loads, city, onlyPhone]
   )
 
   // Uzun listeyi tek seferde çizmek mobilde kasmaya yol açar: ekran kaydıkça parça parça ekle
   const CHUNK = 20
   const [shown, setShown] = useState(CHUNK)
   const sentinelRef = useRef<HTMLDivElement | null>(null)
-  const filterKey = `${activeFilter}|${sourceFilter}|${fromCity}|${toCity}|${onlyPhone}|${searchQuery}`
+  const filterKey = `${activeFilter}|${sourceFilter}|${city}|${onlyPhone}|${searchQuery}`
   useEffect(() => { setShown(CHUNK) }, [filterKey])
 
   const renderedLoads = useMemo(() => visibleLoads.slice(0, shown), [visibleLoads, shown])
@@ -107,8 +100,8 @@ export function ListingsView({
 
   const favoriteSet = useMemo(() => new Set(favoriteIds), [favoriteIds])
 
-  const hasExtraFilters = Boolean(fromCity || toCity || onlyPhone)
-  const clearAll = () => { setActiveFilter("Tümü"); setSourceFilter("all"); setFromCity(""); setToCity(""); setOnlyPhone(false) }
+  const hasExtraFilters = Boolean(city || onlyPhone)
+  const clearAll = () => { setActiveFilter("Tümü"); setSourceFilter("all"); setCity(""); setOnlyPhone(false) }
 
   const sources: { key: "all" | "user" | "bot"; label: string; count?: number; active: string }[] = [
     { key: "all", label: "Tümü", count: stats.activeTotal, active: "bg-[#122c4a] text-white shadow-sm" },
@@ -126,6 +119,7 @@ export function ListingsView({
           <p className="mt-1 hidden text-sm text-[#627d98] sm:block">
             Saha ve kullanıcı ilanları güncel esas alınarak listelenmektedir.
           </p>
+          <SourceInfoButton className="mt-1 -ml-0.5 inline-flex min-h-9 items-center gap-1.5 rounded-full px-1 text-xs font-semibold text-[#315d83] active:opacity-70" />
         </div>
         <button
           onClick={() => setIsCreateOpen(true)}
@@ -158,9 +152,6 @@ export function ListingsView({
         ))}
       </div>
 
-      {/* Kamuya açık kaynak bilgilendirmesi (Saha Ağı ilanları görünürken) */}
-      {sourceFilter !== "user" && <PublicSourceNotice />}
-
       {/* Araç / tip çipleri (yatay kaydırma) */}
       <div className="-mx-4 sm:mx-0">
         <div className="no-scrollbar flex items-center gap-2 overflow-x-auto px-4 pb-1 sm:flex-wrap sm:px-0">
@@ -186,21 +177,18 @@ export function ListingsView({
         </div>
       </div>
 
-      {/* Rota filtreleri */}
-      {(cityOptions.from.length > 0 || cityOptions.to.length > 0) && (
+      {/* Şehir filtresi */}
+      {(cityOptions.length > 0 || onlyPhone) && (
         <div className="flex flex-wrap items-center gap-2">
-          <select aria-label="Çıkış şehri" value={fromCity} onChange={(e) => setFromCity(e.target.value)} className={selectClass}>
-            <option value="">Nereden: Tüm şehirler</option>
-            {cityOptions.from.map(([c, n]) => (
-              <option key={c} value={c}>{c} ({n})</option>
-            ))}
-          </select>
-          <select aria-label="Varış şehri" value={toCity} onChange={(e) => setToCity(e.target.value)} className={selectClass}>
-            <option value="">Nereye: Tüm şehirler</option>
-            {cityOptions.to.map(([c, n]) => (
-              <option key={c} value={c}>{c} ({n})</option>
-            ))}
-          </select>
+          <div className="relative min-w-0 flex-1 sm:flex-none sm:min-w-[200px]">
+            <MapPin aria-hidden className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[#8da0b2]" />
+            <select aria-label="Şehir" value={city} onChange={(e) => setCity(e.target.value)} className={cn(selectClass, "w-full pl-9")}>
+              <option value="">Şehir: Tümü</option>
+              {cityOptions.map(([c, n]) => (
+                <option key={c} value={c}>{c} ({n})</option>
+              ))}
+            </select>
+          </div>
           <button
             type="button"
             onClick={() => setOnlyPhone((v) => !v)}
@@ -216,7 +204,7 @@ export function ListingsView({
           {hasExtraFilters && (
             <button
               type="button"
-              onClick={() => { setFromCity(""); setToCity(""); setOnlyPhone(false) }}
+              onClick={() => { setCity(""); setOnlyPhone(false) }}
               className="inline-flex h-10 items-center gap-1 rounded-xl px-2 text-xs font-semibold text-[#d64526] hover:bg-[#fff0ec]"
             >
               <X className="size-3.5" /> Temizle
