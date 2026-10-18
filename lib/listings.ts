@@ -36,6 +36,19 @@ export const cleanText = (text?: string | null) => {
     .trim()
 }
 
+// cleanText ile aynı temizlik, ama satır sonlarını korur (bot mesajı "ham" haliyle okunabilsin)
+export const cleanRaw = (text?: string | null) => {
+  if (!text) return ""
+  return text
+    .replace(/\r\n?/g, "\n")
+    .replace(/[*_~`]/g, "")
+    .replace(/[\uD83C-\uD83E][\uDC00-\uDFFF]|[\u231A-\u23FF]|[\u2600-\u27BF]|[\u2B00-\u2BFF]|\uFE0F|\u200D/g, "")
+    .replace(/[ \t\u00A0]+/g, " ")
+    .replace(/ *\n */g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim()
+}
+
 // +90 / 0 / boşluk, tire, nokta, parantez içeren cep telefonlarını yakalar; "05xxxxxxxxx" döner
 export const extractPhone = (text?: string | null) => {
   if (!text) return ""
@@ -46,7 +59,6 @@ export const extractPhone = (text?: string | null) => {
   return "0" + digits.slice(-10)
 }
 
-const orEmpty = (v: string) => (v === "-" ? "" : v)
 
 export function mapUserListing(item: DatabaseListing): Load {
   const profileObj = Array.isArray(item.profiles) ? item.profiles[0] : item.profiles
@@ -72,6 +84,7 @@ export function mapUserListing(item: DatabaseListing): Load {
     to: a.to?.label ?? "-",
     fromCity: a.from?.city,
     toCity: a.to?.city,
+    cities: a.cities,
     extraCities: a.extraCities,
     cargo: cleanText(item.cargo_detail),
     message: cleanText(item.message),
@@ -90,11 +103,12 @@ export function mapUserListing(item: DatabaseListing): Load {
 }
 
 export function mapBotListing(item: DatabaseListing): Load {
-  const rawDetail = cleanText(item.cargo_detail || "Saha İlanı")
+  // Saha ilanları ham mesaj olarak gösterilir; yalnızca emoji/biçim işaretleri temizlenir ve satır sonları korunur
+  const rawDetail = cleanRaw(item.cargo_detail) || "Saha İlanı"
   let rawCompany = cleanText(item.company_name || "Nakliye Ağı")
   if (rawCompany.toLowerCase().includes("whatsapp")) rawCompany = "Nakliye Ağı"
 
-  // Saha ilanları serbest metindir: "Konya'dan Kırşehir'e..." ifadesi alanlardan daha güvenilirdir
+  // Metinden şehirleri, araç / dorse / tonaj / zaman bilgisini ayrıştırırız (ekrana yön olarak değil, etiket olarak)
   const a = analyzeListing({
     from: item.from_city,
     to: item.to_city,
@@ -107,12 +121,10 @@ export function mapBotListing(item: DatabaseListing): Load {
     id: `bot-${item.id}`,
     company: rawCompany,
     initials: "NA",
-    from: a.from?.label ?? "-",
-    to: a.to?.label ?? "-",
-    fromCity: a.from?.city,
-    toCity: a.to?.city,
-    extraCities: a.extraCities,
-    cargo: orEmpty(a.cargoText) || "Yük detayı belirtilmedi.",
+    from: "",
+    to: "",
+    cities: a.cities,
+    cargo: rawDetail,
     message: "",
     vehicle: a.vehicle ?? "",
     trailer: a.trailer,
