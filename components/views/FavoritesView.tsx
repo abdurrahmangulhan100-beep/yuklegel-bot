@@ -140,6 +140,7 @@ export function FavoritesView({
       load.company.toLowerCase().includes(q) ||
       load.from.toLowerCase().includes(q) ||
       load.to.toLowerCase().includes(q) ||
+      (load.cities ?? []).some((c) => c.toLowerCase().includes(q)) ||
       load.cargo.toLowerCase().includes(q) ||
       (load.message && load.message.toLowerCase().includes(q))
     )
