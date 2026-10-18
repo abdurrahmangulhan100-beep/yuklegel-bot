@@ -15,6 +15,11 @@ export type Place = {
 }
 
 export type ListingAnalysis = {
+  /**
+   * İlan metninde geçen tüm şehirler (metindeki sırayla, tekrarsız, en fazla 6).
+   * Ekranda yön (nereden → nereye) göstermek yerine şehir etiketi olarak kullanılır.
+   */
+  cities: string[]
   from?: Place
   to?: Place
   /** Güzergahta geçen ama yükleme/teslimat olarak ayrılamayan diğer şehirler */
@@ -328,6 +333,20 @@ export function analyzeListing(input: AnalyzeInput): ListingAnalysis {
     from = undefined
   }
 
+  // Şehir etiketleri: önce metindeki sıraya göre, sonra alanlardan gelenler
+  const cityList: string[] = []
+  const pushCity = (c?: string) => { if (c && !cityList.includes(c)) cityList.push(c) }
+  if (input.trustFields) {
+    // Kullanıcı ilanı: formdaki çıkış ve varış şehri önce gelir
+    pushCity(from?.city)
+    pushCity(to?.city)
+    ms.forEach((m) => pushCity(m.city))
+  } else {
+    ms.forEach((m) => pushCity(m.city))
+    pushCity(from?.city)
+    pushCity(to?.city)
+  }
+
   const used = new Set([from?.city, to?.city].filter(Boolean) as string[])
   const extraCities = Array.from(new Set(ms.map((m) => m.city))).filter((c) => !used.has(c)).slice(0, 3)
 
@@ -335,6 +354,7 @@ export function analyzeListing(input: AnalyzeInput): ListingAnalysis {
   const inferred = inferVehicle(folded)
 
   return {
+    cities: cityList.slice(0, 6),
     from,
     to,
     extraCities,
@@ -357,3 +377,10 @@ export function shortRoute(from?: string, to?: string): string | null {
 }
 
 export const CITY_NAMES = CITIES
+
+/** Serbest metindeki şehir adlarını (metindeki sırayla, tekrarsız) döndürür */
+export function detectCities(text: string, limit = 6): string[] {
+  const out: string[] = []
+  for (const m of findMentions(text)) if (!out.includes(m.city)) out.push(m.city)
+  return out.slice(0, limit)
+}
