@@ -1,6 +1,7 @@
 import { Analytics } from '@vercel/analytics/next'
 import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
+import { OfflineNotice } from '@/components/OfflineNotice'
 import './globals.css'
 
 // Türkçe karakterler (ğ, ş, ı, İ...) için latin-ext alt kümesi gerekli
@@ -57,6 +58,9 @@ export default function RootLayout({
   return (
     <html lang="tr" className={`light ${inter.variable}`}>
       <body className="antialiased">
+        {/* İnternet bağlantısı koptuğunda otomatik beliren çevrimdışı uyarı ekranı */}
+        <OfflineNotice />
+        
         {children}
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>
