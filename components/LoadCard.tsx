@@ -1,6 +1,6 @@
 "use client"
 
-import { Phone, MessageCircle, Star, Check, Ban, Zap, ChevronDown, Share2, ArrowRight, Copy, Flag, MoreHorizontal } from "lucide-react"
+import { Phone, MessageCircle, Star, Check, Ban, Zap, ChevronDown, Share2, Copy, Flag, MoreHorizontal, MapPin } from "lucide-react"
 import { memo, useState } from "react"
 import { isMissing } from "@/lib/route"
 import { supabase } from "@/lib/supabase"
@@ -28,6 +28,8 @@ export type Load = {
   /** İl bazlı şehir (filtre / arama için). Bulunamadıysa tanımsız. */
   fromCity?: string
   toCity?: string
+  /** İlan metninde geçen şehirler (etiket olarak gösterilir, yön belirtmez) */
+  cities?: string[]
   /** Metinde geçen ama çıkış/varış olarak ayrılamayan diğer şehirler */
   extraCities?: string[]
   trailer?: string
@@ -104,15 +106,28 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
     ? (load.company || "İsimsiz Firma")
     : (load.company && !load.company.toLowerCase().includes("whatsapp") ? load.company : "Saha Lojistik Ağı")
 
-  const hasFrom = !isMissing(load.from)
-  const hasTo = !isMissing(load.to)
-  const showRoute = hasFrom && hasTo
   const hasVehicle = !isMissing(load.vehicle)
   const hasDistance = !isMissing(load.distance)
-  const routeText = showRoute ? `${load.from} → ${load.to}` : hasFrom ? `${load.from} çıkışlı` : hasTo ? `${load.to} varışlı` : ""
   const hasPrice = Boolean(load.price) && load.price !== "₺0"
   const cargoText = !isMissing(load.cargo) ? load.cargo : "Yük detayı belirtilmedi."
-  const isLongCargo = cargoText.length > 110
+  const isLongCargo = cargoText.length > 140 || cargoText.split("\n").length > 3
+
+  // Şehir etiketleri. "Nereden → nereye" başlığı yok: saha ilanında ham mesaj gösterilir,
+  // metinden bulunan şehirler dokunulabilir etiket olur. Formla açılan ilanlarda çıkış / varış etiketle belirtilir.
+  const cityTags: { label: string; city: string; role?: string }[] = []
+  const seenCities = new Set<string>()
+  const addTag = (label: string, city?: string, role?: string) => {
+    const key = (city ?? label).toLocaleLowerCase("tr-TR")
+    if (!label || seenCities.has(key)) return
+    seenCities.add(key)
+    cityTags.push({ label, city: city ?? label, role })
+  }
+  if (isUserLoad) {
+    if (!isMissing(load.from)) addTag(load.from, load.fromCity, "Çıkış")
+    if (!isMissing(load.to)) addTag(load.to, load.toCity, "Varış")
+  }
+  for (const c of load.cities ?? []) addTag(c, c)
+  const cityText = cityTags.map((t) => t.label).join(" · ")
   const showMessage = Boolean(load.message) && load.message !== "-" && load.message !== load.cargo
 
   const copyPhone = async () => {
@@ -137,15 +152,15 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
         : `90${cleanPhone}`
 
     const message = isUserLoad
-      ? `Merhaba, Nakliye Cepte'deki${routeText ? ` ${routeText}` : ""} (${!isMissing(load.cargo) ? load.cargo : "Yük"}) ilanınız için yazıyorum. Yük hâlâ müsait mi?`
-      : `Merhaba, Nakliye Cepte'de gördüğüm${routeText ? ` ${routeText}` : ""} ilanınız için yazıyorum. Yük hâlâ müsait mi?`
+      ? `Merhaba, Nakliye Cepte'deki${cityText ? ` ${cityText}` : ""} (${!isMissing(load.cargo) ? load.cargo : "Yük"}) ilanınız için yazıyorum. Yük hâlâ müsait mi?`
+      : `Merhaba, Nakliye Cepte'de gördüğüm${cityText ? ` ${cityText}` : ""} ilanınız için yazıyorum. Yük hâlâ müsait mi?`
 
     window.open(`https://wa.me/${formattedPhone}?text=${encodeURIComponent(message)}`, "_blank")
   }
 
   const handleShare = async () => {
     const parts = [
-      routeText,
+      cityText,
       hasVehicle ? load.vehicle : "",
       load.trailer,
       load.tonnage,
@@ -269,21 +284,7 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
     }
   }
 
-  const place = (label: string, city?: string) =>
-    city && onCitySearch ? (
-      <button
-        type="button"
-        onClick={() => onCitySearch(city)}
-        className="min-w-0 max-w-full truncate text-left active:underline"
-      >
-        {highlightMatch(label, cleanQuery)}
-      </button>
-    ) : (
-      <span className="min-w-0 max-w-full truncate">{highlightMatch(label, cleanQuery)}</span>
-    )
-
-  const extraCities = load.extraCities ?? []
-  const showHeadline = hasFrom || hasTo || extraCities.length > 0 || hasPrice
+  const hasChips = cityTags.length > 0 || hasPrice
   const hasTags = load.urgent || hasVehicle || load.trailer || load.tonnage || load.timing || (load.repeatCount ?? 0) > 1
 
   const accent = load.urgent
@@ -340,7 +341,7 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
                 <span className="shrink-0">{load.time}</span>
                 <span className="text-[#cbd5e1]">•</span>
                 <span className={cn("truncate font-medium", isUserLoad ? "text-[#d64526]" : "text-[#3f7199]")}>
-                  {isUserLoad ? "Nakliye Cepte" : "Kamuya açık ilan"}
+                  {isUserLoad ? "Nakliye Cepte" : "Saha Ağı"}
                 </span>
               </div>
             </div>
@@ -370,33 +371,18 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
           </div>
         </div>
 
-        {/* Güzergah: kutusuz, sade başlık. Fiyat sağda */}
-        {showHeadline && (
+        {/* Şehir etiketleri (dokununca o şehrin ilanları) ve fiyat */}
+        {hasChips && (
           <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0 flex-1 text-[17px] font-extrabold leading-snug tracking-tight text-[#122c4a]">
-              {hasFrom || hasTo ? (
-                <div className="flex min-w-0 flex-wrap items-center gap-x-1.5">
-                  {hasFrom && place(load.from, load.fromCity)}
-                  {showRoute && <ArrowRight aria-hidden className="size-4 shrink-0 text-[#e5522f]" strokeWidth={3} />}
-                  {hasTo && place(load.to, load.toCity)}
-                  {!showRoute && (
-                    <span className="text-xs font-semibold text-[#8da0b2]">{hasFrom ? "çıkışlı" : "varışlı"}</span>
-                  )}
-                </div>
-              ) : extraCities.length > 0 ? (
-                <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
-                  {extraCities.map((c, i) => (
-                    <span key={c} className="inline-flex items-center gap-1.5">
-                      {i > 0 && <span className="text-[#cbd5e1]">·</span>}
-                      {onCitySearch ? (
-                        <button type="button" onClick={() => onCitySearch(c)} className="active:underline">{c}</button>
-                      ) : (
-                        c
-                      )}
-                    </span>
-                  ))}
-                </div>
-              ) : null}
+            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
+              {cityTags.map((t) => (
+                <CityChip
+                  key={t.city}
+                  label={highlightMatch(t.label, cleanQuery)}
+                  role={t.role}
+                  onClick={onCitySearch ? () => onCitySearch(t.city) : undefined}
+                />
+              ))}
             </div>
 
             {(hasPrice || hasDistance) && (
@@ -431,7 +417,7 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
 
         {/* Yük detayı */}
         <div>
-          <p className={cn("break-words text-[13.5px] leading-relaxed text-[#4a6178]", !expanded && "line-clamp-2")}>
+          <p className={cn("whitespace-pre-line break-words text-[13.5px] leading-relaxed text-[#334e68]", !expanded && "line-clamp-3")}>
             {highlightMatch(cargoText, cleanQuery)}
           </p>
           {isLongCargo && (
@@ -484,7 +470,7 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
           title={sheetView === "menu" ? "İlan işlemleri" : "İlanı bildir"}
           subtitle={
             sheetView === "menu"
-              ? routeText || displayCompany
+              ? cityText || displayCompany
               : "Bildiriminiz incelenmek üzere ekibimize iletilir."
           }
           footer={
@@ -516,12 +502,6 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
                 <MenuItem icon={Ban} onClick={handleBlockUser} danger>
                   Bu kullanıcıyı engelle
                 </MenuItem>
-              )}
-              {!isUserLoad && (
-                <p className="px-1 pt-3 text-[11px] leading-relaxed text-[#8da0b2]">
-                  Bu ilan kamuya açık bir alanda paylaşılmış olup Nakliye Cepte tarafından listelenmiştir. İlan size aitse
-                  &quot;İlanı bildir&quot; bölümünden kaldırma talebinde bulunabilirsiniz.
-                </p>
               )}
             </div>
           ) : reportSuccess ? (
@@ -568,6 +548,24 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
     </article>
   )
 })
+
+function CityChip({ label, role, onClick }: { label: React.ReactNode; role?: string; onClick?: () => void }) {
+  const inner = (
+    <>
+      <MapPin aria-hidden className="size-3.5 shrink-0 text-[#315d83]" />
+      {role && <span className="text-[10px] font-semibold uppercase tracking-wide text-[#8da0b2]">{role}</span>}
+      <span className="min-w-0 truncate">{label}</span>
+    </>
+  )
+  const cls = "inline-flex h-8 max-w-full items-center gap-1.5 rounded-full border border-[#dbe8f2] bg-[#f1f7fc] px-3 text-[13px] font-bold text-[#122c4a]"
+  return onClick ? (
+    <button type="button" onClick={onClick} className={cn(cls, "active:scale-95 active:bg-[#e3eef8]")}>
+      {inner}
+    </button>
+  ) : (
+    <span className={cls}>{inner}</span>
+  )
+}
 
 function Tag({ tone, children }: { tone: string; children: React.ReactNode }) {
   return (
