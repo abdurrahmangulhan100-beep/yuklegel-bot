@@ -25,6 +25,10 @@ import { LogoMark } from "@/components/Logo"
 
 const PAGE_SIZE = 60
 
+// Saha (bot) ilanları bu günden eskiyse listelenmez; eski ilan yığılmasını ve yanlış yük aramasını önler
+const BOT_MAX_AGE_DAYS = 14
+const botCutoff = () => new Date(Date.now() - BOT_MAX_AGE_DAYS * 86400000).toISOString()
+
 // Araç filtresi: araç alanına ve ilan metnine bakar; "tir" gibi kısa kelimeler başka sözcüklerin içinde eşleşmesin diye kelime sınırı kullanır
 const matchesVehicle = (load: Load, filter: string) => {
   const blob = fold(`${load.vehicle} ${load.cargo}`)
@@ -127,6 +131,10 @@ export default function Page() {
         const isGuest = typeof window !== 'undefined' ? localStorage.getItem("is_guest") === "true" : false
         if (session) setCurrentUserId(session.user.id)
         else setCurrentUserId(null)
+        if (event === "SIGNED_OUT") {
+          try { localStorage.removeItem("blocked_users") } catch {}
+          setBlockedKeys([])
+        }
         if (!session && !isGuest && event === "SIGNED_OUT") router.push("/login")
       })
       authSubscription = data.subscription
@@ -158,11 +166,12 @@ export default function Page() {
     if (!supabase) return
     try {
       const head = { count: "exact" as const, head: true }
+      const cutoff = botCutoff()
       const [u, b, uu, bu] = await Promise.all([
         supabase.from("listings").select("id", head),
-        supabase.from("bot_listings").select("id", head),
+        supabase.from("bot_listings").select("id", head).gte("created_at", cutoff),
         supabase.from("listings").select("id", head).eq("urgent", true),
-        supabase.from("bot_listings").select("id", head).eq("urgent", true),
+        supabase.from("bot_listings").select("id", head).eq("urgent", true).gte("created_at", cutoff),
       ])
       setTotals({ user: u.count ?? 0, bot: b.count ?? 0, urgent: (uu.count ?? 0) + (bu.count ?? 0) })
     } catch (e) {
@@ -177,7 +186,7 @@ export default function Page() {
       if (!supabase) return
 
       let userReq = supabase.from("listings").select("*")
-      let botReq = supabase.from("bot_listings").select("*")
+      let botReq = supabase.from("bot_listings").select("*").gte("created_at", botCutoff())
 
       // PostgREST filtre sözdizimini bozan karakterleri temizle
       const s = searchStr.replace(/[,()\\"%_*:]/g, " ").replace(/\s+/g, " ").trim()
@@ -260,7 +269,42 @@ export default function Page() {
 
   const handleUserBlocked = useCallback((key: string) => {
     setBlockedKeys((prev) => (prev.includes(key) ? prev : [...prev, key]))
+    // Giriş yapmış kullanıcının engelleri hesabına kaydedilir (cihaz değişince / uygulama silinince kaybolmaz)
+    const uid = currentUserIdRef.current
+    if (uid && supabase) {
+      supabase
+        .from("blocked_users")
+        .upsert({ user_id: uid, target: key }, { onConflict: "user_id,target" })
+        .then(({ error }) => { if (error) console.error("Engelleme kaydedilemedi:", error.message) })
+    }
   }, [])
+
+  // Oturum açılınca hesaptaki engelleri çek, bu cihazdakilerle birleştir; sadece cihazda olanları hesaba yükle
+  useEffect(() => {
+    if (!currentUserId || !supabase) return
+    let cancelled = false
+    ;(async () => {
+      try {
+        const { data, error } = await supabase.from("blocked_users").select("target").eq("user_id", currentUserId)
+        if (error || !data || cancelled) return
+        const remote = data.map((r: { target: string }) => String(r.target))
+        let local: string[] = []
+        try { local = JSON.parse(localStorage.getItem("blocked_users") || "[]") } catch { local = [] }
+        const merged = Array.from(new Set([...local, ...remote]))
+        localStorage.setItem("blocked_users", JSON.stringify(merged))
+        if (!cancelled) setBlockedKeys(merged)
+        const missing = merged.filter((k) => !remote.includes(k))
+        if (missing.length > 0) {
+          await supabase
+            .from("blocked_users")
+            .upsert(missing.map((target) => ({ user_id: currentUserId, target })), { onConflict: "user_id,target" })
+        }
+      } catch (e) {
+        console.error("Engellenenler senkronlanamadı:", e)
+      }
+    })()
+    return () => { cancelled = true }
+  }, [currentUserId])
 
   useEffect(() => {
     if (isCheckingAuth) return
