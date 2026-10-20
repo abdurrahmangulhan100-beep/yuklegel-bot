@@ -1,7 +1,8 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState } from "react"
+import { Fragment, useEffect, useMemo, useRef, useState } from "react"
 import { Load, LoadCard } from "@/components/LoadCard"
+import { AdSlot } from "@/components/AdSlot"
 import { PackageSearch, Plus, Zap, Phone, X, MapPin } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { isMissing } from "@/lib/route"
@@ -261,16 +262,18 @@ export function ListingsView({
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4 xl:grid-cols-3">
-          {renderedLoads.map((load) => (
-            <LoadCard
-              key={load.id}
-              load={load}
-              searchQuery={searchQuery}
-              isFavorite={favoriteSet.has(load.id)}
-              onToggleFavorite={onToggleFavorite}
-              onUserBlocked={onUserBlocked}
-              onCitySearch={onCitySearch}
-            />
+          {renderedLoads.map((load, i) => (
+            <Fragment key={load.id}>
+              <LoadCard
+                load={load}
+                searchQuery={searchQuery}
+                isFavorite={favoriteSet.has(load.id)}
+                onToggleFavorite={onToggleFavorite}
+                onUserBlocked={onUserBlocked}
+                onCitySearch={onCitySearch}
+              />
+              {(i + 1) % 8 === 0 && <AdSlot className="col-span-full" />}
+            </Fragment>
           ))}
         </div>
       )}
