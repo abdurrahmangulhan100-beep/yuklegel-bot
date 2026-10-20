@@ -90,7 +90,13 @@ export async function POST(req: Request) {
       cache: "no-store",
     })
     const sub = await res.json()
-    if (!res.ok) return NextResponse.json({ error: "Satın alma doğrulanamadı" }, { status: 400 })
+    if (!res.ok) {
+      console.error("Google Play hata:", res.status, JSON.stringify(sub))
+      return NextResponse.json(
+        { error: `Satın alma doğrulanamadı (${res.status}: ${sub?.error?.message || "bilinmiyor"})` },
+        { status: 400 }
+      )
+    }
 
     const item = (sub.lineItems || []).find((l: { productId?: string }) => l.productId === SKU)
     if (!item) return NextResponse.json({ error: "Ürün eşleşmedi" }, { status: 400 })
