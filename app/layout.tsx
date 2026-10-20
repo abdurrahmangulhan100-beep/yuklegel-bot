@@ -1,4 +1,3 @@
-import { Analytics } from '@vercel/analytics/next'
 import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
 import { OfflineNotice } from '@/components/OfflineNotice'
@@ -65,7 +64,6 @@ export default function RootLayout({
         <ServiceWorkerRegister />
         
         <PremiumProvider>{children}</PremiumProvider>
-        {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>
     </html>
   )
