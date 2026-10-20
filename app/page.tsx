@@ -23,6 +23,7 @@ import { Sidebar } from "@/components/Sidebar"
 import { BottomNav } from "@/components/BottomNav"
 import { LogoMark } from "@/components/Logo"
 import { PremiumView } from "@/components/views/PremiumView"
+import { PremiumLock } from "@/components/PremiumLock"
 import { usePremium } from "@/components/PremiumProvider"
 import { AdSlot } from "@/components/AdSlot"
 import { FREE_LIMITS, OPEN_PREMIUM_EVENT } from "@/lib/premium"
@@ -43,7 +44,7 @@ const GUEST_BLOCKED_TABS = ["Favorilerim", "Seferlerim", "Gelir Gider", "Şirket
 
 export default function Page() {
   const router = useRouter()
-  const { isPremium } = usePremium()
+  const { isPremium, loading: premiumLoading } = usePremium()
   const [isCheckingAuth, setIsCheckingAuth] = useState(true)
   const [loads, setLoads] = useState<Load[]>([])
   const [favoriteIds, setFavoriteIds] = useState<string[]>([])
@@ -607,7 +608,7 @@ export default function Page() {
               }}
             />
           )}
-          {effectiveTab === "Gelir Gider" && <FinanceView />}
+          {effectiveTab === "Gelir Gider" && (premiumLoading ? null : isPremium ? <FinanceView /> : <PremiumLock title="Gelir-Gider Premium'a özel" description="Kazanç ve masraflarınızı takip etmek, raporları görmek için Premium aboneliğe geçin." />)}
           {effectiveTab === "Şirket Profili" && <CompanyProfileView onProfileUpdated={fetchProfile} />}
           {effectiveTab === "Sefer Hesapla" && <CalculatorView />}
           {effectiveTab === "Araçlar" && <ToolsView />}
