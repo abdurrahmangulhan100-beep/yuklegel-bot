@@ -1,10 +1,11 @@
 "use client"
 
-import { Calculator, ChevronLeft, ChevronRight, CircleHelp, FileText, LayoutDashboard, LogIn, LogOut, ShieldCheck, Star, Truck, User, UserX, WalletCards, Wrench, X } from "lucide-react"
+import { Calculator, ChevronLeft, Crown, ChevronRight, CircleHelp, FileText, LayoutDashboard, LogIn, LogOut, ShieldCheck, Star, Truck, User, UserX, WalletCards, Wrench, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { supabase } from "@/lib/supabase"
 import Link from "next/link"
 import { LogoMark } from "@/components/Logo"
+import { usePremium } from "@/components/PremiumProvider"
 
 type SidebarProps = {
   activeTab: string;
@@ -31,6 +32,7 @@ export function Sidebar({
   isGuest = false,
   profile
 }: SidebarProps) {
+  const { isPremium } = usePremium()
   const go = (tab: string) => { 
     setActiveTab(tab); 
     setIsSidebarOpen(false); 
@@ -88,6 +90,7 @@ export function Sidebar({
         <NavItem icon={WalletCards} label="Gelir & Gider" active={activeTab === "Gelir Gider"} onClick={() => go("Gelir Gider")} collapsed={isCollapsed} />
         <NavItem icon={Calculator} label="Sefer Hesapla" active={activeTab === "Sefer Hesapla"} onClick={() => go("Sefer Hesapla")} collapsed={isCollapsed} />
         <NavItem icon={Wrench} label="Şoför Araçları" active={activeTab === "Araçlar"} badge="YENİ" onClick={() => go("Araçlar")} collapsed={isCollapsed} />
+        <NavItem icon={Crown} label="Premium" active={activeTab === "Premium"} badge={isPremium ? "AKTİF" : "PRO"} onClick={() => go("Premium")} collapsed={isCollapsed} />
 
         <div className="my-3 h-px bg-white/10" />
         <p className={cn("px-3 pb-1 text-[10px] font-bold uppercase tracking-[0.2em] text-white/40", isCollapsed && "sr-only")}>Hesabım</p>
