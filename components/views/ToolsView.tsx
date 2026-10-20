@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { ArrowLeft, Boxes, CalendarClock, ChevronRight, ClipboardCheck, Fuel, Route as RouteIcon, Timer, type LucideIcon } from "lucide-react"
+import { ArrowLeft, Boxes, Crown, CalendarClock, ChevronRight, ClipboardCheck, Fuel, Route as RouteIcon, Timer, type LucideIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { TachographTool } from "@/components/tools/TachographTool"
 import { TripPlannerTool } from "@/components/tools/TripPlannerTool"
@@ -10,6 +10,8 @@ import { VolumeTool } from "@/components/tools/VolumeTool"
 import { ChecklistTool, checklistProgress } from "@/components/tools/ChecklistTool"
 import { FuelLogTool } from "@/components/tools/FuelLogTool"
 import { loadSegments } from "@/lib/tachograph"
+import { usePremium } from "@/components/PremiumProvider"
+import { PREMIUM_ONLY_TOOLS, openPremium } from "@/lib/premium"
 
 type ToolKey = "tacho" | "planner" | "docs" | "volume" | "check" | "fuel"
 
@@ -23,6 +25,7 @@ const TOOLS: { key: ToolKey; title: string; desc: string; icon: LucideIcon; tone
 ]
 
 export function ToolsView() {
+  const { isPremium } = usePremium()
   const [active, setActive] = useState<ToolKey | null>(null)
   const [badges, setBadges] = useState<Partial<Record<ToolKey, { text: string; tone: string }>>>({})
 
@@ -79,10 +82,11 @@ export function ToolsView() {
       <div className="grid gap-3 sm:grid-cols-2">
         {TOOLS.map((t) => {
           const b = badges[t.key]
+          const locked = !isPremium && PREMIUM_ONLY_TOOLS.includes(t.key)
           return (
             <button
               key={t.key}
-              onClick={() => setActive(t.key)}
+              onClick={() => (locked ? openPremium() : setActive(t.key))}
               className="group flex items-start gap-4 rounded-2xl border border-[#e4e9ef] bg-white p-4 text-left shadow-[0_1px_2px_rgba(18,44,74,0.04)] transition-all hover:shadow-md active:scale-[0.99] sm:p-5"
             >
               <span className={cn("grid size-12 shrink-0 place-items-center rounded-2xl", t.tone)}>
@@ -91,7 +95,11 @@ export function ToolsView() {
               <span className="min-w-0 flex-1">
                 <span className="flex items-center gap-2">
                   <span className="text-[15px] font-bold text-[#122c4a]">{t.title}</span>
-                  {b && <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-bold", b.tone)}>{b.text}</span>}
+                  {locked ? (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-[#fff1cf] px-2 py-0.5 text-[10px] font-bold text-[#b58200]"><Crown className="size-3" />PREMIUM</span>
+                  ) : (
+                    b && <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-bold", b.tone)}>{b.text}</span>
+                  )}
                 </span>
                 <span className="mt-1 block text-xs leading-relaxed text-[#718397]">{t.desc}</span>
               </span>
