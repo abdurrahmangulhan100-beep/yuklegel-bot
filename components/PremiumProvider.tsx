@@ -67,9 +67,15 @@ export function PremiumProvider({ children }: { children: React.ReactNode }) {
     if (!supabase) return null
     const { data: { session } } = await supabase.auth.getSession()
     if (!session) return null
-    const res = await fetch("/api/premium/verify", {
+    // Statik yayında sunucu rotası yok: doğrulama Supabase Edge Function üzerinden yapılır
+    const base = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const res = await fetch(`${base}/functions/v1/premium-verify`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.access_token}`,
+        apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "",
+      },
       body: JSON.stringify(purchaseToken ? { purchaseToken } : {}),
     })
     const json = await res.json().catch(() => ({}))
