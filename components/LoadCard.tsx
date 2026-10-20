@@ -6,6 +6,8 @@ import { isMissing } from "@/lib/route"
 import { supabase } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
 import { Sheet } from "@/components/Sheet"
+import { usePremium } from "@/components/PremiumProvider"
+import { FREE_LIMITS, consumeContact, contactLimitMessage, openPremium } from "@/lib/premium"
 
 export type Load = {
   id: string
@@ -86,6 +88,7 @@ const formatPhone = (phone: string) => {
 }
 
 export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavorite = false, onToggleFavorite, onUserBlocked, onCitySearch }: LoadCardProps) {
+  const { isPremium } = usePremium()
   const [copied, setCopied] = useState(false)
   const [expanded, setExpanded] = useState(false)
   const [isReportOpen, setIsReportOpen] = useState(false)
@@ -130,8 +133,17 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
   const cityText = cityTags.map((t) => t.label).join(" · ")
   const showMessage = Boolean(load.message) && load.message !== "-" && load.message !== load.cargo
 
+  // Ücretsiz planda günlük iletişim limiti (aynı ilan gün içinde bir kez sayılır)
+  const allowContact = () => {
+    if (consumeContact(String(load.id), isPremium)) return true
+    alert(contactLimitMessage())
+    openPremium()
+    return false
+  }
+
   const copyPhone = async () => {
     if (!hasPhone) return
+    if (!allowContact()) return
     try {
       await navigator.clipboard.writeText(load.phone)
       setCopied(true)
@@ -143,6 +155,7 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
 
   const handleWhatsApp = () => {
     if (!hasPhone) return
+    if (!allowContact()) return
 
     const cleanPhone = load.phone.replace(/\D/g, "")
     const formattedPhone = cleanPhone.startsWith("0") 
@@ -182,7 +195,7 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
   }
 
   const handleCall = () => {
-    if (hasPhone) window.location.href = `tel:${load.phone}`
+    if (hasPhone && allowContact()) window.location.href = `tel:${load.phone}`
   }
 
   const handleFavoriteClick = async (e: React.MouseEvent) => {
@@ -219,6 +232,18 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
 
         if (error) throw error
       } else {
+        // Ücretsiz planda favori limiti
+        if (!isPremium) {
+          const { count } = await supabase
+            .from("favorites")
+            .select("listing_id", { count: "exact", head: true })
+            .eq("user_id", user.id)
+          if ((count ?? 0) >= FREE_LIMITS.favorites) {
+            alert(`Ücretsiz planda en fazla ${FREE_LIMITS.favorites} favori ekleyebilirsiniz. Sınırsız favori için Premium'a geçin.`)
+            openPremium()
+            return
+          }
+        }
         // Ekleme işlemi (Kullanıcı veritabanına ekler)
         const { error } = await supabase
           .from("favorites")
