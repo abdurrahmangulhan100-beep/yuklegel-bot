@@ -118,8 +118,9 @@ export function PremiumProvider({ children }: { children: React.ReactNode }) {
       const r = await callVerify(mine.purchaseToken)
       if (r?.ok && r.premium) { setMessage("Premium aboneliğiniz geri yüklendi."); await load() }
       else setMessage(r?.error || "Abonelik doğrulanamadı.")
-    } catch {
-      setMessage("Geri yükleme başarısız oldu. Lütfen tekrar deneyin.")
+    } catch (e) {
+      const err = e as { name?: string; message?: string }
+      setMessage(`Geri yükleme başarısız: ${err?.name || ""} ${err?.message || ""}`)
     } finally {
       setBusy(false)
     }
