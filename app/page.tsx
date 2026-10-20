@@ -24,6 +24,7 @@ import { BottomNav } from "@/components/BottomNav"
 import { LogoMark } from "@/components/Logo"
 import { PremiumView } from "@/components/views/PremiumView"
 import { PremiumLock } from "@/components/PremiumLock"
+import { SavedRoutes } from "@/components/SavedRoutes"
 import { usePremium } from "@/components/PremiumProvider"
 import { AdSlot } from "@/components/AdSlot"
 import { FREE_LIMITS, OPEN_PREMIUM_EVENT } from "@/lib/premium"
@@ -577,6 +578,8 @@ export default function Page() {
             />
           )}
           {effectiveTab === "İlanlar" && (
+            <>
+            <SavedRoutes loads={visibleLoads} onCitySearch={handleCitySearch} />
             <ListingsView 
               loads={filteredLoads} 
               stats={stats} 
@@ -594,6 +597,7 @@ export default function Page() {
               hasMore={hasMore}
               onLoadMore={() => setPageSize((p) => p + PAGE_SIZE)}
             />
+            </>
           )}
           {effectiveTab === "Favorilerim" && (
             <FavoritesView 
