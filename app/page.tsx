@@ -22,6 +22,10 @@ import { CreateListingModal } from "@/components/CreateListingModal"
 import { Sidebar } from "@/components/Sidebar"
 import { BottomNav } from "@/components/BottomNav"
 import { LogoMark } from "@/components/Logo"
+import { PremiumView } from "@/components/views/PremiumView"
+import { usePremium } from "@/components/PremiumProvider"
+import { AdSlot } from "@/components/AdSlot"
+import { FREE_LIMITS, OPEN_PREMIUM_EVENT } from "@/lib/premium"
 
 const PAGE_SIZE = 60
 
@@ -35,10 +39,11 @@ const matchesVehicle = (load: Load, filter: string) => {
   const word = fold(filter).replace(/[^a-z0-9 ]/g, "")
   return new RegExp(`\\b${word}\\b`).test(blob)
 }
-const GUEST_BLOCKED_TABS = ["Favorilerim", "Seferlerim", "Gelir Gider", "Şirket Profili"]
+const GUEST_BLOCKED_TABS = ["Favorilerim", "Seferlerim", "Gelir Gider", "Şirket Profili", "Premium"]
 
 export default function Page() {
   const router = useRouter()
+  const { isPremium } = usePremium()
   const [isCheckingAuth, setIsCheckingAuth] = useState(true)
   const [loads, setLoads] = useState<Load[]>([])
   const [favoriteIds, setFavoriteIds] = useState<string[]>([])
@@ -412,6 +417,23 @@ export default function Page() {
     setActiveTab("İlanlar")
   }, [])
 
+  // Premium sekmesini dışarıdan (reklam kartı, kilitli özellik) açma
+  useEffect(() => {
+    const open = () => { setActiveTab("Premium"); setIsSidebarOpen(false) }
+    window.addEventListener(OPEN_PREMIUM_EVENT, open)
+    return () => window.removeEventListener(OPEN_PREMIUM_EVENT, open)
+  }, [])
+
+  // Ücretsiz planda aynı anda en fazla N aktif ilan
+  const requestCreate = () => {
+    if (!isPremium && !isGuest && stats.pendingTrips >= FREE_LIMITS.activeListings) {
+      alert(`Ücretsiz planda aynı anda en fazla ${FREE_LIMITS.activeListings} aktif ilanınız olabilir. Sınırsız ilan için Premium'a geçin.`)
+      setActiveTab("Premium")
+      return
+    }
+    setIsCreateOpen(true)
+  }
+
   const effectiveTab = isGuest && GUEST_BLOCKED_TABS.includes(activeTab) ? "__guest" : activeTab
 
   if (isCheckingAuth) {
@@ -540,7 +562,7 @@ export default function Page() {
               urgentCount={totals ? totals.urgent : undefined}
               currentUserId={currentUserId}
               userName={isGuest ? undefined : profile.authorized_person}
-              onOpenCreate={() => setIsCreateOpen(true)} 
+              onOpenCreate={requestCreate} 
               setActiveTab={setActiveTab} 
               onSelectCity={handleCitySearch}
               onOpenUrgent={openUrgent}
@@ -555,7 +577,7 @@ export default function Page() {
               setActiveFilter={setActiveFilter} 
               sourceFilter={sourceFilter} 
               setSourceFilter={setSourceFilter} 
-              setIsCreateOpen={setIsCreateOpen} 
+              setIsCreateOpen={(open: boolean) => (open ? requestCreate() : setIsCreateOpen(false))} 
               searchQuery={debouncedQuery}
               favoriteIds={favoriteIds}
               onToggleFavorite={toggleFavorite}
@@ -590,13 +612,14 @@ export default function Page() {
           {effectiveTab === "Sefer Hesapla" && <CalculatorView />}
           {effectiveTab === "Araçlar" && <ToolsView />}
           {effectiveTab === "Yardım Merkezi" && <HelpCenterView />}
+          {effectiveTab === "Premium" && <PremiumView />}
         </main>
       </div>
 
       <BottomNav
         activeTab={activeTab}
         setActiveTab={setActiveTab}
-        onOpenCreate={() => setIsCreateOpen(true)}
+        onOpenCreate={requestCreate}
         onOpenMenu={() => setIsSidebarOpen(true)}
         favoritesCount={favoriteIds.length}
       />
