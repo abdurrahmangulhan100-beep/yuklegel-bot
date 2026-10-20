@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
 import { OfflineNotice } from '@/components/OfflineNotice'
 import { ServiceWorkerRegister } from '@/components/ServiceWorkerRegister'
+import { PremiumProvider } from '@/components/PremiumProvider'
 import './globals.css'
 
 // Türkçe karakterler (ğ, ş, ı, İ...) için latin-ext alt kümesi gerekli
@@ -63,7 +64,7 @@ export default function RootLayout({
         <OfflineNotice />
         <ServiceWorkerRegister />
         
-        {children}
+        <PremiumProvider>{children}</PremiumProvider>
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>
     </html>
