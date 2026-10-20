@@ -12,6 +12,10 @@ type BottomNavProps = {
 }
 
 /** Yalnızca mobilde (lg altı) görünen alt sekme çubuğu */
+const tap = () => {
+  if (typeof navigator !== "undefined" && "vibrate" in navigator) navigator.vibrate(8)
+}
+
 export function BottomNav({ activeTab, setActiveTab, onOpenCreate, onOpenMenu, favoritesCount = 0 }: BottomNavProps) {
   const isHome = activeTab === "Genel Bakış" || activeTab === "overview"
   const isListings = activeTab === "İlanlar"
@@ -21,7 +25,7 @@ export function BottomNav({ activeTab, setActiveTab, onOpenCreate, onOpenMenu, f
   return (
     <nav
       aria-label="Ana gezinme"
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-[#e4e9ef] bg-white pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_16px_rgba(18,44,74,0.06)] lg:hidden"
+      className="fixed inset-x-0 bottom-0 z-40 border-t border-[#e4e9ef] bg-white/90 backdrop-blur-md pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_16px_rgba(18,44,74,0.06)] lg:hidden"
     >
       <div className="mx-auto grid h-16 max-w-xl grid-cols-5 items-stretch px-1">
         <Tab icon={LayoutDashboard} label="Ana Sayfa" active={isHome} onClick={() => setActiveTab("Genel Bakış")} />
@@ -30,7 +34,7 @@ export function BottomNav({ activeTab, setActiveTab, onOpenCreate, onOpenMenu, f
         <div className="relative flex flex-col items-center justify-end pb-1.5">
           <button
             type="button"
-            onClick={onOpenCreate}
+            onClick={() => { tap(); onOpenCreate() }}
             aria-label="Yeni ilan oluştur"
             className="absolute -top-5 grid size-14 place-items-center rounded-full bg-gradient-to-br from-[#e5522f] to-[#c13a1c] text-white shadow-[0_8px_20px_rgba(214,69,38,0.45)] ring-4 ring-white transition-transform active:scale-95"
           >
@@ -62,7 +66,7 @@ function Tab({
   return (
     <button
       type="button"
-      onClick={onClick}
+      onClick={() => { tap(); onClick() }}
       aria-current={active ? "page" : undefined}
       className="relative flex flex-col items-center justify-center gap-1 transition-colors active:scale-95"
     >
