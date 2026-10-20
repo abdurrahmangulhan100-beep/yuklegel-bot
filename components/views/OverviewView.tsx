@@ -4,6 +4,7 @@ import { useMemo } from "react"
 import { Truck, Package, Zap, ArrowRight, Plus, Calculator, WalletCards, CircleHelp, ChevronRight, MapPin, TrendingUp, Timer } from "lucide-react"
 import { Load } from "@/components/LoadCard"
 import { cn } from "@/lib/utils"
+import { AdSlot } from "@/components/AdSlot"
 
 type OverviewProps = {
   loads: Load[];
@@ -237,6 +238,8 @@ export function OverviewView({ loads, currentUserId, onOpenCreate, setActiveTab,
           </ul>
         </section>
       )}
+
+      <AdSlot />
 
       <button
         onClick={() => setActiveTab("Yardım Merkezi")}
