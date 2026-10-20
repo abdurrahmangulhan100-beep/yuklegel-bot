@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "online.nakliyecepte.twa",
+        "sha256_cert_fingerprints": ["B6:E7:10:54:41:E0:BB:0F:C5:DA:33:CE:A3:E5:CB:4B:7A:DC:4A:C1:A9:EA:81:F7:CE:E4:09:A0:21:A6:A9:CC"]
+      }
+    }]
