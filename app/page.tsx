@@ -244,9 +244,16 @@ export default function Page() {
       const formattedUserLoads: Load[] = userRows.map(mapUserListing)
       const formattedBotLoads: Load[] = (botRes.data || []).map((item: DatabaseListing) => mapBotListing(item))
 
-      const sorted = [...formattedUserLoads, ...formattedBotLoads].sort(
-        (a, b) => (b.createdAt ? Date.parse(b.createdAt) : 0) - (a.createdAt ? Date.parse(a.createdAt) : 0)
-      )
+      // Acil ilanlar ilk 24 saat boyunca en üstte durur, sonrasında normal tarih sırasına döner
+      const nowMs = Date.now()
+      const isFreshUrgent = (l: Load) =>
+        Boolean(l.urgent) && !!l.createdAt && nowMs - Date.parse(l.createdAt) < 24 * 60 * 60 * 1000
+      const sorted = [...formattedUserLoads, ...formattedBotLoads].sort((a, b) => {
+        const ua = isFreshUrgent(a) ? 1 : 0
+        const ub = isFreshUrgent(b) ? 1 : 0
+        if (ua !== ub) return ub - ua
+        return (b.createdAt ? Date.parse(b.createdAt) : 0) - (a.createdAt ? Date.parse(a.createdAt) : 0)
+      })
       // Aynı saha ilanı tekrar tekrar paylaşıldıysa tek karta indir
       const merged = dedupeLoads(sorted)
       setLoads((prev) => reuseLoads(prev, merged))
