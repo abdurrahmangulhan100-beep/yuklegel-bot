@@ -28,3 +28,29 @@
 - https://nakliyecepte.online ve /login, /privacy, /delete-account açılıyor mu
 - https://nakliyecepte.online/.well-known/assetlinks.json JSON döndürüyor mu
 - Giriş + premium kontrolü çalışıyor mu (tarayıcı konsolunda CORS hatası olmamalı)
+
+---
+
+# Bildirimler (Web Push) kurulumu
+
+## A) Anahtar üret (bir kez)
+Bilgisayarda: `npx web-push generate-vapid-keys`  -> "Public Key" ve "Private Key" çıkar.
+
+## B) Supabase SQL
+1. `supabase/002_bildirimler.sql` (daha önce çalıştırdıysanız atlayın)
+2. `supabase/003_bildirim_gonder.sql` -> içindeki **PROJE_REF** ve **GIZLI_ANAHTAR** yerlerini değiştirip çalıştırın.
+
+## C) Edge Function
+    supabase secrets set VAPID_PUBLIC_KEY=<public> VAPID_PRIVATE_KEY=<private> VAPID_SUBJECT=mailto:siz@ornek.com NOTIFY_WEBHOOK_SECRET=<003 SQL'deki GIZLI_ANAHTAR ile AYNI>
+    supabase functions deploy notify-listing --no-verify-jwt
+
+## D) Cloudflare
+Build variables'a ekle: `NEXT_PUBLIC_VAPID_PUBLIC_KEY=<public>` (private anahtarı ASLA girme). Sonra yeniden yayınla.
+
+## E) Deneme
+1. Uygulama > Şirket Profili > "İlan Bildirimleri" > Aç (izin ver) > bir güzergâh ekle.
+2. Başka bir hesaptan (ya da Supabase Table Editor'den) o güzergâha uygun ilan ekle.
+3. Gelmezse: Supabase > Edge Functions > notify-listing > Logs bölümüne bakın.
+
+Notlar: Aynı güzergâh için en fazla 10 dakikada bir bildirim gider. Kendi ilanınız için bildirim almazsınız.
+Ücretsiz 1, Premium 5 güzergâh (sunucuda zorlanır). iPhone'da bildirim için uygulamanın ana ekrana eklenmiş olması gerekir.
