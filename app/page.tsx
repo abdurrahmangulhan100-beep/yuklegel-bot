@@ -356,8 +356,22 @@ export default function Page() {
       })
       .subscribe()
 
+    // Realtime sessizce düşebilir ya da tabloda yayın kapalı olabilir. Yedek olarak: sekme açıkken
+    // dakikada bir yenile; sekmeye dönünce / internet gelince hemen yenile (elle yenileme gerekmesin).
+    const tick = () => {
+      if (document.visibilityState !== "visible") return
+      fetchListings(queryRef.current, pageSizeRef.current)
+      fetchCounts()
+    }
+    const poll = setInterval(tick, 60000)
+    document.addEventListener("visibilitychange", tick)
+    window.addEventListener("online", tick)
+
     return () => {
       if (timer) clearTimeout(timer)
+      clearInterval(poll)
+      document.removeEventListener("visibilitychange", tick)
+      window.removeEventListener("online", tick)
       supabase.removeChannel(channel)
     }
   }, [isCheckingAuth, currentUserId, fetchListings, fetchCounts])
