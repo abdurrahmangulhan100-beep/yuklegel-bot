@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { AlertTriangle, Trash2 } from "lucide-react"
+import { NotificationSettings } from "@/components/NotificationSettings"
 
 export function CompanyProfileView({ onProfileUpdated }: { onProfileUpdated?: () => void }) {
   const [loading, setLoading] = useState(true)
@@ -150,6 +151,8 @@ export function CompanyProfileView({ onProfileUpdated }: { onProfileUpdated?: ()
           {msg}
         </div>
       )}
+
+      <NotificationSettings />
 
       <form onSubmit={handleSave} className="space-y-4 rounded-2xl border border-[#e4e9ef] bg-white p-6 shadow-sm">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
