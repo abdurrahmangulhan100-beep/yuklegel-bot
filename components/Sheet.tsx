@@ -1,6 +1,7 @@
 "use client"
 
-import { useEffect, type ReactNode } from "react"
+import { useEffect, useRef, type ReactNode } from "react"
+import { createPortal } from "react-dom"
 import { X } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -16,9 +17,31 @@ type SheetProps = {
 
 /**
  * Mobilde alttan açılan (bottom sheet), geniş ekranda ortada duran pencere.
- * Arka plan kaydırmasını kilitler, ESC ve dış alana tıklamayla kapanır.
+ * Arka plan kaydırmasını kilitler; ESC, dış alana tıklama ve telefonun GERİ tuşuyla kapanır.
+ * document.body'ye taşınarak (portal) çizilir: kart içinde çizilirse kartın `content-visibility`
+ * kuralı "fixed" konumu kartın içine hapseder; pencere kayar, kırpılır ve kapatılamaz hale gelirdi.
  */
 export function Sheet({ open, onClose, title, subtitle, children, footer, className }: SheetProps) {
+  const onCloseRef = useRef(onClose)
+  onCloseRef.current = onClose
+
+  // Geri tuşu: pencere açılınca bir geçmiş kaydı eklenir; geri basınca sayfadan çıkmak yerine pencere kapanır.
+  useEffect(() => {
+    if (!open) return
+    let closedByBack = false
+    window.history.pushState({ ...(window.history.state ?? {}), __sheet: true }, "")
+    const onPop = () => {
+      closedByBack = true
+      onCloseRef.current()
+    }
+    window.addEventListener("popstate", onPop)
+    return () => {
+      window.removeEventListener("popstate", onPop)
+      // Pencere geri tuşuyla değil (X, dış alan, işlem sonrası) kapandıysa eklediğimiz kaydı geri al
+      if (!closedByBack && window.history.state?.__sheet) window.history.back()
+    }
+  }, [open])
+
   useEffect(() => {
     if (!open) return
     const prevOverflow = document.body.style.overflow
@@ -33,9 +56,9 @@ export function Sheet({ open, onClose, title, subtitle, children, footer, classN
     }
   }, [open, onClose])
 
-  if (!open) return null
+  if (!open || typeof document === "undefined") return null
 
-  return (
+  return createPortal(
     <div
       className="fixed inset-0 z-[100] flex items-end justify-center sm:items-center sm:p-4"
       role="dialog"
@@ -46,7 +69,7 @@ export function Sheet({ open, onClose, title, subtitle, children, footer, classN
         type="button"
         aria-label="Kapat"
         onClick={onClose}
-        className="animate-fade absolute inset-0 bg-[#0b1d33]/55"
+        className="animate-fade absolute inset-0 touch-none bg-[#0b1d33]/55"
       />
 
       <div
@@ -82,6 +105,7 @@ export function Sheet({ open, onClose, title, subtitle, children, footer, classN
           </div>
         )}
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
