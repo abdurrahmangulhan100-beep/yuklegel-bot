@@ -23,6 +23,10 @@ export const metadata: Metadata = {
     statusBarStyle: 'default',
   },
   formatDetection: { telephone: false },
+  // AdSense site doğrulaması için (NEXT_PUBLIC_ADSENSE_CLIENT tanımlıysa eklenir)
+  other: process.env.NEXT_PUBLIC_ADSENSE_CLIENT
+    ? { 'google-adsense-account': process.env.NEXT_PUBLIC_ADSENSE_CLIENT }
+    : undefined,
   icons: {
     icon: [
       {
