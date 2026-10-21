@@ -54,7 +54,7 @@ export async function enablePush(): Promise<{ ok: boolean; error?: string }> {
     return { ok: true }
   } catch (e) {
     console.error("Push aboneliği başarısız:", e)
-    return { ok: false, error: "Bildirim açılamadı." }
+    return { ok: false, error: "Bildirim açılamadı: " + ((e as Error)?.name || "") + " " + ((e as Error)?.message || "") }
   }
 }
 
