@@ -154,10 +154,10 @@ export function PremiumProvider({ children }: { children: React.ReactNode }) {
         await response.complete("fail")
         setMessage(r?.error || "Satın alma doğrulanamadı. Ücret alındıysa birkaç dakika sonra 'Satın alımı geri yükle' deneyin.")
       }
-    } } catch (e) {
-  const err = e as { name?: string; message?: string }
-  if (err?.name !== "AbortError" && err?.name !== "NotAllowedError") {
-    setMessage(`Satın alma başlatılamadı: ${err?.name || ""} ${err?.message || ""}`)
+    }  catch (e) {
+        const err = e as { name?: string; message?: string }
+        if (err?.name !== "AbortError" && err?.name !== "NotAllowedError") {
+        setMessage(`Satın alma başlatılamadı: ${err?.name || ""} ${err?.message || ""}`)
   }
 }
     } finally {
