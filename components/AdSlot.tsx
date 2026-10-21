@@ -1,12 +1,29 @@
 "use client"
 
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Crown } from "lucide-react"
 import { usePremium } from "@/components/PremiumProvider"
 import { openPremium } from "@/lib/premium"
 
 const CLIENT = process.env.NEXT_PUBLIC_ADSENSE_CLIENT
 const SLOT = process.env.NEXT_PUBLIC_ADSENSE_SLOT
+// Uygulama (Play Store / TWA) içinde AdSense reklamı göstermek için "true" yapın.
+// Varsayılan: kapalı. Uygulama içinde "Premium'a geç" kartı gösterilir, reklam sadece tarayıcıda çıkar.
+const ADS_IN_APP = process.env.NEXT_PUBLIC_ADS_IN_APP === "true"
+
+/** Sayfa Play Store uygulaması (TWA) veya yüklü PWA içinde mi açıldı? */
+function detectApp(): boolean {
+  try {
+    if (sessionStorage.getItem("is_app") === "1") return true
+    const fromTwa = (document.referrer || "").startsWith("android-app://")
+    const standalone = window.matchMedia("(display-mode: standalone)").matches
+    if (fromTwa || standalone) {
+      sessionStorage.setItem("is_app", "1")
+      return true
+    }
+  } catch {}
+  return false
+}
 
 let scriptAdded = false
 function ensureAdsScript() {
@@ -26,10 +43,15 @@ function ensureAdsScript() {
 export function AdSlot({ className = "" }: { className?: string }) {
   const { isPremium, loading } = usePremium()
   const pushed = useRef(false)
-  const useAdsense = Boolean(CLIENT && SLOT)
+  const [inApp, setInApp] = useState<boolean | null>(null)
+  const useAdsense = Boolean(CLIENT && SLOT) && (inApp === false || ADS_IN_APP)
 
   useEffect(() => {
-    if (loading || isPremium || !useAdsense || pushed.current) return
+    setInApp(detectApp())
+  }, [])
+
+  useEffect(() => {
+    if (loading || isPremium || inApp === null || !useAdsense || pushed.current) return
     ensureAdsScript()
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -37,9 +59,9 @@ export function AdSlot({ className = "" }: { className?: string }) {
       ;(w.adsbygoogle = w.adsbygoogle || []).push({})
       pushed.current = true
     } catch {}
-  }, [loading, isPremium, useAdsense])
+  }, [loading, isPremium, inApp, useAdsense])
 
-  if (loading || isPremium) return null
+  if (loading || isPremium || inApp === null) return null
 
   return (
     <div className={className}>
