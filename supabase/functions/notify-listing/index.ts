@@ -198,6 +198,22 @@ const canonCity = (s: unknown): string | undefined => {
   return CANON.get(fold(t)) ?? findMentions(t)[0]?.city
 }
 
+// Bildirim için metin temizliği (emoji, *_~` işaretleri, fazla boşluk)
+function cleanForPush(t: string): string {
+  return (t || "")
+    .replace(/[*_~`]/g, "")
+    .replace(/[\uD83C-\uD83E][\uDC00-\uDFFF]|[\u231A-\u23FF]|[\u2600-\u27BF]|[\u2B00-\u2BFF]|\uFE0F|\u200D/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+}
+// Metindeki telefon numaralarını (ve başlarındaki "tel:" gibi etiketleri) çıkarır
+function stripPhoneText(t: string): string {
+  return t
+    .replace(/(?:\b(?:tel|telefon|iletisim|iletişim|irtibat|ara|whatsapp|wp|no)\b[\s:.\-]*)?(?:\+?90[\s.\-]*)?0?[\s.\-]*\(?5\d{2}\)?[\s.\-]*\d{3}[\s.\-]*\d{2}[\s.\-]*\d{2}/gi, "")
+    .replace(/\s+/g, " ")
+    .trim()
+}
+
 // İlanın çıkış / varış / geçen şehirleri. Kullanıcı ilanında form alanlarına güvenilir, eksikse metinden tamamlanır.
 function analyze(rec: Row, isUser: boolean) {
   const text = [rec.cargo_detail, rec.message, rec.text].filter(Boolean).join(" ")
@@ -294,13 +310,14 @@ Deno.serve(async (req: Request) => {
 
   const { data: subs } = await db.from("push_subscriptions").select("id,endpoint,p256dh,auth,user_id").in("user_id", targets)
 
-  const from = String(rec.from_city ?? "").trim()
-  const to = String(rec.to_city ?? "").trim()
-  const detail = String(rec.cargo_detail ?? rec.message ?? rec.text ?? "").replace(/\s+/g, " ").trim().slice(0, 110)
+  // Bildirim metni: emoji / *kalın* işaretleri / telefon numarası temizlenir (numara "Ara" düğmesinde)
+  const rawText = String(rec.cargo_detail ?? rec.message ?? rec.text ?? "")
+  const phone = extractPhone(String(rec.phone ?? "")) || extractPhone(rawText)
+  const detail = stripPhoneText(cleanForPush(rawText)).slice(0, 110).trim()
+  // Rota satırı yalnızca kullanıcı ilanında (formdan seçilen, eksiksiz şehirler) gösterilir; "Belirtilmedi" asla yazılmaz
+  const fromC = canonCity(rec.from_city), toC = canonCity(rec.to_city)
+  const line = isUser && fromC && toC ? `${fromC} → ${toC}` : ""
   const title = rec.urgent ? "Acil yeni ilan" : "Yeni ilan"
-  const line = from && to && from !== "-" && to !== "-" ? `${from} → ${to}` : ""
-  // Bildirimde "Ara" düğmesi: ilandaki telefon (kullanıcı ilanında phone alanı, saha ilanında metinden)
-  const phone = extractPhone(String(rec.phone ?? "")) || extractPhone(String(rec.cargo_detail ?? rec.message ?? rec.text ?? ""))
   const payload = JSON.stringify({
     title,
     body: [line, detail].filter(Boolean).join(" · ") || "Seçtiğiniz şehre uygun yeni bir ilan var.",
