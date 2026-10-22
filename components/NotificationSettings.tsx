@@ -1,57 +1,54 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
-import { Bell, BellOff, Crown, Plus, Trash2 } from "lucide-react"
+import { Bell, BellOff, Crown, Lock, Pencil, Trash2 } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { usePremium } from "@/components/PremiumProvider"
 import { openPremium } from "@/lib/premium"
 import { CITY_NAMES } from "@/lib/route"
 import { disablePush, enablePush, getPushState, type PushState } from "@/lib/push"
 
-type Route = { id: string; from_city: string | null; to_city: string | null; vehicle: string | null; urgent_only: boolean }
+type Direction = "from" | "to" | "both"
+type Route = { id: string; from_city: string | null; vehicle: string | null; urgent_only: boolean; direction: Direction }
+
+const DIRECTIONS: { value: Direction; label: string; short: string }[] = [
+  { value: "from", label: "Bu şehirden çıkan yükler", short: "çıkış" },
+  { value: "to", label: "Bu şehre giden yükler", short: "varış" },
+  { value: "both", label: "İkisi de", short: "çıkış + varış" },
+]
 
 const VEHICLES = ["Tır", "Kamyon", "Kamyonet", "Frigo", "Kırkayak", "Dorse", "Damperli"]
-const FREE_ROUTES = 1
-const PREMIUM_ROUTES = 5
 
 const selectClass =
   "h-11 w-full rounded-xl border border-[#e0e6ed] bg-white px-3 text-base text-[#122c4a] md:text-sm"
 
-const routeLabel = (r: Route) => {
-  const parts = [r.from_city && r.to_city ? `${r.from_city} → ${r.to_city}` : r.from_city ? `${r.from_city} çıkışlı` : r.to_city ? `${r.to_city} varışlı` : "Tüm güzergâhlar"]
-  if (r.vehicle) parts.push(r.vehicle)
-  if (r.urgent_only) parts.push("Sadece acil")
-  return parts.join(" · ")
-}
-
-/** Profil sayfasındaki "Bildirimler" kartı: cihaz bildirimini aç/kapat + bildirim istenen güzergâhlar. */
+/** Profil sayfasındaki "Bildirimler" kartı. Premium'a özel; tek şehir seçilir (o şehirden veya o şehre ilan gelince bildirim). */
 export function NotificationSettings() {
-  const { isPremium } = usePremium()
+  const { isPremium, loading: premiumLoading } = usePremium()
   const [state, setState] = useState<PushState>("off")
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null)
-  const [routes, setRoutes] = useState<Route[]>([])
-  const [adding, setAdding] = useState(false)
-  const [from, setFrom] = useState("")
-  const [to, setTo] = useState("")
+  const [route, setRoute] = useState<Route | null>(null)
+  const [editing, setEditing] = useState(false)
+  const [city, setCity] = useState("")
+  const [direction, setDirection] = useState<Direction>("from")
   const [vehicle, setVehicle] = useState("")
   const [urgentOnly, setUrgentOnly] = useState(false)
 
-  const limit = isPremium ? PREMIUM_ROUTES : FREE_ROUTES
-
-  const loadRoutes = useCallback(async () => {
+  const loadRoute = useCallback(async () => {
     if (!supabase) return
     const { data, error } = await supabase
       .from("notification_routes")
-      .select("id,from_city,to_city,vehicle,urgent_only")
+      .select("id,from_city,vehicle,urgent_only,direction")
       .order("created_at", { ascending: true })
-    if (!error && data) setRoutes(data as Route[])
+      .limit(1)
+    if (!error) setRoute((data?.[0] as Route | undefined) ?? null)
   }, [])
 
   useEffect(() => {
     getPushState().then(setState)
-    loadRoutes()
-  }, [loadRoutes])
+    loadRoute()
+  }, [loadRoute])
 
   const toggle = async () => {
     setBusy(true)
@@ -68,42 +65,90 @@ export function NotificationSettings() {
     setBusy(false)
   }
 
-  const addRoute = async () => {
+  const startEdit = () => {
+    setCity(route?.from_city ?? "")
+    setDirection(route?.direction ?? "from")
+    setVehicle(route?.vehicle ?? "")
+    setUrgentOnly(route?.urgent_only ?? false)
+    setEditing(true)
+    setMsg(null)
+  }
+
+  const saveRoute = async () => {
     if (!supabase) return
-    if (!from && !to && !urgentOnly) {
-      setMsg({ text: "En az bir şehir seçin veya \"sadece acil\" seçeneğini işaretleyin.", ok: false })
+    if (!city) {
+      setMsg({ text: "Lütfen bir şehir seçin.", ok: false })
       return
     }
     setBusy(true)
     setMsg(null)
+    // Tek şehir kuralı: varsa eskisini sil, yenisini ekle
+    if (route) {
+      const { error: delError } = await supabase.from("notification_routes").delete().eq("id", route.id)
+      if (delError) {
+        setBusy(false)
+        setMsg({ text: "Şehir güncellenemedi, tekrar deneyin.", ok: false })
+        return
+      }
+    }
     const { error } = await supabase.from("notification_routes").insert({
-      from_city: from || null,
-      to_city: to || null,
+      from_city: city,
+      to_city: null,
+      direction,
       vehicle: vehicle || null,
       urgent_only: urgentOnly,
     })
     setBusy(false)
     if (error) {
       setMsg({
-        text: error.message.includes("route_limit")
-          ? `Ücretsiz planda ${FREE_ROUTES} bildirim güzergâhı eklenebilir. ${PREMIUM_ROUTES} güzergâh için Premium'a geçin.`
-          : "Güzergâh eklenemedi, tekrar deneyin.",
+        text: error.message.includes("premium_required")
+          ? "İlan bildirimleri Premium'a özeldir."
+          : "Şehir kaydedilemedi, tekrar deneyin.",
         ok: false,
       })
+      loadRoute()
       return
     }
-    setFrom(""); setTo(""); setVehicle(""); setUrgentOnly(false); setAdding(false)
-    loadRoutes()
+    setEditing(false)
+    loadRoute()
   }
 
-  const removeRoute = async (id: string) => {
-    if (!supabase) return
-    setRoutes((prev) => prev.filter((r) => r.id !== id))
-    const { error } = await supabase.from("notification_routes").delete().eq("id", id)
-    if (error) loadRoutes()
+  const removeRoute = async () => {
+    if (!supabase || !route) return
+    const old = route
+    setRoute(null)
+    const { error } = await supabase.from("notification_routes").delete().eq("id", old.id)
+    if (error) setRoute(old)
   }
 
   const on = state === "on"
+  const pushUsable = state !== "unsupported" && state !== "denied"
+
+  // Ücretsiz kullanıcı: kilitli kart
+  if (!premiumLoading && !isPremium) {
+    return (
+      <div className="space-y-3 rounded-2xl border border-[#f3dfb0] bg-[#fff9ec] p-5 shadow-sm">
+        <div className="flex items-start gap-3">
+          <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-[#fdecc4] text-[#8a5a00]">
+            <Lock className="size-5" />
+          </span>
+          <div className="min-w-0">
+            <h2 className="text-base font-bold text-[#122c4a]">İlan Bildirimleri · Premium</h2>
+            <p className="text-xs leading-relaxed text-[#8a5a00]">
+              Seçtiğiniz şehre yeni ilan düştüğü anda telefonunuza bildirim alın. Ücretsiz planda ilanlar listede gecikmeyle görünür.
+            </p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={openPremium}
+          className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#d64526] text-sm font-bold text-white active:scale-[0.99]"
+        >
+          <Crown className="size-4" /> Premium'a Geç
+        </button>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-4 rounded-2xl border border-[#e4e9ef] bg-white p-5 shadow-sm">
@@ -115,11 +160,11 @@ export function NotificationSettings() {
           <div className="min-w-0">
             <h2 className="text-base font-bold text-[#122c4a]">İlan Bildirimleri</h2>
             <p className="text-xs leading-relaxed text-[#627d98]">
-              Seçtiğiniz güzergâha yeni ilan eklenince telefonunuza bildirim gelir.
+              Seçtiğiniz şehir ve yöne uyan yeni ilan eklenince telefonunuza bildirim gelir; bildirimden tek dokunuşla arayabilirsiniz.
             </p>
           </div>
         </div>
-        {state !== "unsupported" && state !== "denied" && (
+        {pushUsable && (
           <button
             type="button"
             onClick={toggle}
@@ -144,70 +189,53 @@ export function NotificationSettings() {
       )}
 
       <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <span className="text-xs font-semibold text-[#6d8194]">
-            Bildirim güzergâhları ({routes.length}/{limit})
-          </span>
-          {!adding && routes.length < limit && (
-            <button
-              type="button"
-              onClick={() => setAdding(true)}
-              className="inline-flex items-center gap-1 rounded-lg bg-[#f1f5f9] px-2.5 py-1.5 text-xs font-semibold text-[#122c4a] active:scale-95"
-            >
-              <Plus className="size-3.5" /> Ekle
-            </button>
-          )}
-        </div>
+        <span className="text-xs font-semibold text-[#6d8194]">Bildirim şehri</span>
 
-        {routes.length === 0 && !adding && (
-          <p className="text-xs text-[#8da0b2]">Henüz güzergâh eklemediniz. Bildirim almak için bir güzergâh ekleyin.</p>
-        )}
-
-        {routes.map((r) => (
-          <div key={r.id} className="flex items-center justify-between gap-2 rounded-xl bg-[#f5f7fa] px-3 py-2.5">
-            <span className="min-w-0 truncate text-sm font-medium text-[#122c4a]">{routeLabel(r)}</span>
-            <button
-              type="button"
-              onClick={() => removeRoute(r.id)}
-              aria-label="Güzergâhı sil"
-              className="grid size-8 shrink-0 place-items-center rounded-full text-[#8da0b2] hover:bg-white hover:text-[#d64526]"
-            >
-              <Trash2 className="size-4" />
-            </button>
-          </div>
-        ))}
-
-        {!isPremium && routes.length >= FREE_ROUTES && (
+        {!editing && !route && (
           <button
             type="button"
-            onClick={openPremium}
-            className="flex w-full items-center gap-2 rounded-xl border border-[#f3dfb0] bg-[#fff9ec] px-3 py-2.5 text-left text-xs font-semibold text-[#8a5a00] active:scale-[0.99]"
+            onClick={startEdit}
+            className="flex h-11 w-full items-center justify-center rounded-xl bg-[#122c4a] text-sm font-semibold text-white active:scale-[0.99]"
           >
-            <Crown className="size-4 shrink-0" />
-            Premium ile {PREMIUM_ROUTES} güzergâha kadar bildirim alın
+            Şehir seç
           </button>
         )}
 
-        {adding && (
-          <div className="space-y-3 rounded-xl border border-[#e4e9ef] p-3">
-            <div className="grid grid-cols-2 gap-2">
-              <label className="block text-[11px] font-semibold text-[#6d8194]">
-                Nereden
-                <select value={from} onChange={(e) => setFrom(e.target.value)} className={`${selectClass} mt-1`}>
-                  <option value="">Herhangi</option>
-                  {CITY_NAMES.map((c) => <option key={c} value={c}>{c}</option>)}
-                </select>
-              </label>
-              <label className="block text-[11px] font-semibold text-[#6d8194]">
-                Nereye
-                <select value={to} onChange={(e) => setTo(e.target.value)} className={`${selectClass} mt-1`}>
-                  <option value="">Herhangi</option>
-                  {CITY_NAMES.map((c) => <option key={c} value={c}>{c}</option>)}
-                </select>
-              </label>
+        {!editing && route && (
+          <div className="flex items-center justify-between gap-2 rounded-xl bg-[#f5f7fa] px-3 py-2.5">
+            <span className="min-w-0 truncate text-sm font-medium text-[#122c4a]">
+              {route.from_city} ({DIRECTIONS.find((d) => d.value === route.direction)?.short ?? "çıkış"})
+              {route.vehicle ? ` · ${route.vehicle}` : ""}
+              {route.urgent_only ? " · Sadece acil" : ""}
+            </span>
+            <div className="flex shrink-0 items-center">
+              <button type="button" onClick={startEdit} aria-label="Şehri değiştir" className="grid size-8 place-items-center rounded-full text-[#8da0b2] hover:bg-white hover:text-[#122c4a]">
+                <Pencil className="size-4" />
+              </button>
+              <button type="button" onClick={removeRoute} aria-label="Şehri sil" className="grid size-8 place-items-center rounded-full text-[#8da0b2] hover:bg-white hover:text-[#d64526]">
+                <Trash2 className="size-4" />
+              </button>
             </div>
+          </div>
+        )}
+
+        {editing && (
+          <div className="space-y-3 rounded-xl border border-[#e4e9ef] p-3">
             <label className="block text-[11px] font-semibold text-[#6d8194]">
-              Araç tipi
+              Şehir
+              <select value={city} onChange={(e) => setCity(e.target.value)} className={`${selectClass} mt-1`}>
+                <option value="">Şehir seçin</option>
+                {CITY_NAMES.map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </label>
+            <label className="block text-[11px] font-semibold text-[#6d8194]">
+              Hangi ilanlar?
+              <select value={direction} onChange={(e) => setDirection(e.target.value as Direction)} className={`${selectClass} mt-1`}>
+                {DIRECTIONS.map((d) => <option key={d.value} value={d.value}>{d.label}</option>)}
+              </select>
+            </label>
+            <label className="block text-[11px] font-semibold text-[#6d8194]">
+              Araç tipi (isteğe bağlı)
               <select value={vehicle} onChange={(e) => setVehicle(e.target.value)} className={`${selectClass} mt-1`}>
                 <option value="">Tümü</option>
                 {VEHICLES.map((v) => <option key={v} value={v}>{v}</option>)}
@@ -218,19 +246,10 @@ export function NotificationSettings() {
               Sadece acil ilanlar
             </label>
             <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={addRoute}
-                disabled={busy}
-                className="h-11 flex-1 rounded-xl bg-[#122c4a] text-sm font-semibold text-white disabled:opacity-60"
-              >
+              <button type="button" onClick={saveRoute} disabled={busy} className="h-11 flex-1 rounded-xl bg-[#122c4a] text-sm font-semibold text-white disabled:opacity-60">
                 Kaydet
               </button>
-              <button
-                type="button"
-                onClick={() => setAdding(false)}
-                className="h-11 rounded-xl bg-[#f0f4f8] px-4 text-sm font-semibold text-[#122c4a]"
-              >
+              <button type="button" onClick={() => setEditing(false)} className="h-11 rounded-xl bg-[#f0f4f8] px-4 text-sm font-semibold text-[#122c4a]">
                 Vazgeç
               </button>
             </div>
@@ -238,8 +257,8 @@ export function NotificationSettings() {
         )}
       </div>
 
-      {routes.length > 0 && !on && state !== "unsupported" && state !== "denied" && (
-        <p className="text-[11px] text-[#8da0b2]">Güzergâh kaydettiniz ancak bu cihazda bildirim kapalı. Yukarıdan "Aç" düğmesine dokunun.</p>
+      {route && !on && pushUsable && (
+        <p className="text-[11px] text-[#8da0b2]">Şehir kaydettiniz ancak bu cihazda bildirim kapalı. Yukarıdan "Aç" düğmesine dokunun.</p>
       )}
     </div>
   )
