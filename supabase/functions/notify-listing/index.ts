@@ -215,20 +215,31 @@ function stripPhoneText(t: string): string {
 }
 
 // İlanın çıkış / varış / geçen şehirleri. Kullanıcı ilanında form alanlarına güvenilir, eksikse metinden tamamlanır.
+// Bir mesajda birden fazla güzergâh olabilir ("Konya-Ankara" satırı, "Adana-İzmir" satırı): açık güzergâh içeren satırların hepsi eklenir.
 function analyze(rec: Row, isUser: boolean) {
   const text = [rec.cargo_detail, rec.message, rec.text].filter(Boolean).join(" ")
   const ms = findMentions(text)
   const tr = routeFromMentions(text, ms)
-  let from = tr.from?.city
-  let to = tr.to?.city
+  const froms = new Set<string>()
+  const tos = new Set<string>()
+  if (tr.from) froms.add(tr.from.city)
+  if (tr.to) tos.add(tr.to.city)
+  for (const line of text.split(/\n+/)) {
+    if (!line.trim() || line.trim() === text.trim()) continue
+    const lm = findMentions(line)
+    if (lm.length < 2) continue
+    const lr = routeFromMentions(line, lm)
+    if (lr.explicit && lr.from && lr.to) { froms.add(lr.from.city); tos.add(lr.to.city) }
+  }
   if (isUser) {
-    from = canonCity(rec.from_city) ?? from
-    to = canonCity(rec.to_city) ?? to
+    const f = canonCity(rec.from_city), t = canonCity(rec.to_city)
+    if (f) { froms.clear(); froms.add(f) }
+    if (t) { tos.clear(); tos.add(t) }
   }
   const any = new Set<string>(ms.map((m) => m.city))
-  if (from) any.add(from)
-  if (to) any.add(to)
-  return { text, from, to, any }
+  froms.forEach((c) => any.add(c))
+  tos.forEach((c) => any.add(c))
+  return { text, froms, tos, any }
 }
 
 function routeMatches(r: Route, rec: Row, isUser: boolean): boolean {
@@ -241,11 +252,11 @@ function routeMatches(r: Route, rec: Row, isUser: boolean): boolean {
     if (r.to_city) {
       // Eski iki şehirli kayıtlar: çıkış ve varış ikisi de tutmalı
       const dest = CANON.get(fold(r.to_city)) ?? r.to_city
-      if (a.from !== city || a.to !== dest) return false
+      if (!a.froms.has(city) || !a.tos.has(dest)) return false
     } else {
       const dir = r.direction || "from"
-      if (dir === "from" && a.from !== city) return false
-      if (dir === "to" && a.to !== city) return false
+      if (dir === "from" && !a.froms.has(city)) return false
+      if (dir === "to" && !a.tos.has(city)) return false
       if (dir === "both" && !a.any.has(city)) return false
     }
   }
@@ -301,10 +312,12 @@ Deno.serve(async (req: Request) => {
   if (hits.size === 0) return new Response("no premium", { status: 200 })
 
   // Kısa tekrar koruması (003/004 SQL'deki claim süresi): rota için çok yakın zamanda bildirim gittiyse atla
+  // claim_route_notification: izin yoksa 0 döner (ve bekleyen sayacı artar); izin varsa bu ilan + bekleyenlerin toplamını döner
   const targets: string[] = []
+  const counts = new Map<string, number>()
   for (const [uid, routeId] of hits) {
-    const { data: ok } = await db.rpc("claim_route_notification", { p_route: routeId })
-    if (ok) targets.push(uid)
+    const { data: n } = await db.rpc("claim_route_notification", { p_route: routeId })
+    if (typeof n === "number" && n > 0) { targets.push(uid); counts.set(uid, n) }
   }
   if (targets.length === 0) return new Response("throttled", { status: 200 })
 
@@ -318,19 +331,22 @@ Deno.serve(async (req: Request) => {
   const fromC = canonCity(rec.from_city), toC = canonCity(rec.to_city)
   const line = isUser && fromC && toC ? `${fromC} → ${toC}` : ""
   const title = rec.urgent ? "Acil yeni ilan" : "Yeni ilan"
-  const payload = JSON.stringify({
-    title,
-    body: [line, detail].filter(Boolean).join(" · ") || "Seçtiğiniz şehre uygun yeni bir ilan var.",
-    url: "/",
-    tag: "yeni-ilan",
-    phone: phone || undefined,
-  })
+  const body = [line, detail].filter(Boolean).join(" · ") || "Seçtiğiniz şehre uygun yeni bir ilan var."
+  // Kısa sürede birden fazla ilan geldiyse tek bildirimde toplanır ("+2 ilan daha")
+  const payloadFor = (n: number) =>
+    JSON.stringify({
+      title: n > 1 ? `${n} yeni ilan` : title,
+      body: n > 1 ? `${body} · +${n - 1} ilan daha` : body,
+      url: "/",
+      tag: "yeni-ilan",
+      phone: n > 1 ? undefined : phone || undefined, // birden fazla ilanda tek numara belirsiz: Ara düğmesi gösterilmez
+    })
 
   const dead: string[] = []
   await Promise.all(
     (subs || []).map(async (s) => {
       try {
-        await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, payload, { TTL: 3600 })
+        await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, payloadFor(counts.get(s.user_id) ?? 1), { TTL: 3600 })
       } catch (e) {
         const code = (e as { statusCode?: number }).statusCode
         if (code === 404 || code === 410) dead.push(s.id) // cihaz aboneliği iptal edilmiş
