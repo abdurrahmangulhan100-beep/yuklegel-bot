@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react"
 import { supabase } from "@/lib/supabase"
 import { PLAY_BILLING, PREMIUM_SKU } from "@/lib/premium"
+import { syncPush } from "@/lib/push"
 
 type PremiumState = {
   isPremium: boolean
@@ -62,6 +63,8 @@ export function PremiumProvider({ children }: { children: React.ReactNode }) {
   const [message, setMessage] = useState<string | null>(null)
   const [price, setPrice] = useState<string | null>(null)
   const restoredFor = useRef<string | null>(null)
+  const loadingRef = useRef(false) // aynı anda birden fazla doğrulama isteği gitmesin
+  const lastLoad = useRef(0)
 
   const callVerify = useCallback(async (purchaseToken?: string) => {
     if (!supabase) return null
@@ -84,6 +87,9 @@ export function PremiumProvider({ children }: { children: React.ReactNode }) {
 
   const load = useCallback(async () => {
     if (!supabase) { setLoading(false); return }
+    if (loadingRef.current) return
+    loadingRef.current = true
+    lastLoad.current = Date.now()
     try {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) { setIsPremium(false); setStatus(null); setExpiresAt(null); return }
@@ -92,7 +98,8 @@ export function PremiumProvider({ children }: { children: React.ReactNode }) {
         .select("status,expires_at")
         .eq("user_id", session.user.id)
         .maybeSingle()
-      setIsPremium(isEntitled(data))
+      let entitled = isEntitled(data)
+      setIsPremium(entitled)
       setStatus(data?.status ?? null)
       setExpiresAt(data?.expires_at ?? null)
 
@@ -100,14 +107,18 @@ export function PremiumProvider({ children }: { children: React.ReactNode }) {
       if (data && (!data.expires_at || new Date(data.expires_at).getTime() - Date.now() < 86400000)) {
         const r = await callVerify()
         if (r?.ok) {
-          setIsPremium(!!r.premium)
+          entitled = !!r.premium
+          setIsPremium(entitled)
           setStatus(r.status ?? null)
           setExpiresAt(r.expiresAt ?? null)
         }
       }
+      // Premium ise bu cihazın bildirim kaydını sessizce güncel tut
+      if (entitled) void syncPush()
     } catch (e) {
       console.error("Premium durumu alınamadı:", e)
     } finally {
+      loadingRef.current = false
       setLoading(false)
     }
   }, [callVerify])
@@ -173,6 +184,24 @@ export function PremiumProvider({ children }: { children: React.ReactNode }) {
       if (session) load()
     })
     return () => data.subscription.unsubscribe()
+  }, [load])
+
+  // Süre dolduğu anda (oturum açıkken) Premium'u kapat / yenilenmişse yeni süreyi al
+  useEffect(() => {
+    if (!isPremium || !expiresAt) return
+    const id = setInterval(() => {
+      if (new Date(expiresAt).getTime() <= Date.now() + 1000) load()
+    }, 15000)
+    return () => clearInterval(id)
+  }, [isPremium, expiresAt, load])
+
+  // Uygulamaya geri dönülünce (arka plandan) durumu tazele
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === "visible" && Date.now() - lastLoad.current > 60_000) load()
+    }
+    document.addEventListener("visibilitychange", onVisible)
+    return () => document.removeEventListener("visibilitychange", onVisible)
   }, [load])
 
   // Play içinde: fiyatı çek, yeni cihazda/oturumda mevcut aboneliği otomatik geri yükle
