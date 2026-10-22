@@ -63,7 +63,7 @@ export function OverviewView({ loads, currentUserId, onOpenCreate, setActiveTab,
         <div className="relative">
           <p className="text-sm font-medium text-white/65">{firstName ? `Merhaba, ${firstName}` : "Hoş geldiniz"}</p>
           <h1 className="mt-1 text-[22px] font-extrabold leading-tight tracking-tight sm:text-3xl">
-            Bugün <span className="text-[#ff8a65]">{total}</span> aktif yük<br className="sm:hidden" /> sizi bekliyor
+            <span className="text-[#ff8a65]">{total}</span> aktif yük<br className="sm:hidden" /> sizi bekliyor
           </h1>
 
           <div className="mt-5 grid grid-cols-2 gap-2.5 sm:flex sm:max-w-md">
