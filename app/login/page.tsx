@@ -267,7 +267,9 @@ export default function LoginPage() {
             Misafir Olarak Göz At
           </button>
 
-          <div className="mt-6 flex justify-center gap-5 text-[11px] font-medium text-[#8da0b2]">
+          <div className="mt-6 flex flex-wrap justify-center gap-x-5 gap-y-2 text-[11px] font-medium text-[#8da0b2]">
+            <Link href="/hakkimizda" className="hover:underline">Hakkımızda</Link>
+            <Link href="/rehber" className="hover:underline">Rehber</Link>
             <Link href="/privacy" className="hover:underline">Gizlilik Politikası</Link>
             <Link href="/delete-account" className="hover:underline">Hesap Silme</Link>
           </div>
