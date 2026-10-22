@@ -239,7 +239,7 @@ export function OverviewView({ loads, currentUserId, onOpenCreate, setActiveTab,
         </section>
       )}
 
-      <AdSlot />
+      <AdSlot promoOnly />
 
       <button
         onClick={() => setActiveTab("Yardım Merkezi")}
