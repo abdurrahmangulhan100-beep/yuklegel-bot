@@ -6,7 +6,7 @@ import { supabase } from "@/lib/supabase"
 import { usePremium } from "@/components/PremiumProvider"
 import { openPremium } from "@/lib/premium"
 import { CITY_NAMES } from "@/lib/route"
-import { disablePush, enablePush, getPushState, type PushState } from "@/lib/push"
+import { disablePush, enablePush, getPushState, sendTestPush, type PushState } from "@/lib/push"
 
 type Direction = "from" | "to" | "both"
 type Route = { id: string; from_city: string | null; vehicle: string | null; urgent_only: boolean; direction: Direction }
@@ -82,22 +82,11 @@ export function NotificationSettings() {
     }
     setBusy(true)
     setMsg(null)
-    // Tek şehir kuralı: varsa eskisini sil, yenisini ekle
-    if (route) {
-      const { error: delError } = await supabase.from("notification_routes").delete().eq("id", route.id)
-      if (delError) {
-        setBusy(false)
-        setMsg({ text: "Şehir güncellenemedi, tekrar deneyin.", ok: false })
-        return
-      }
-    }
-    const { error } = await supabase.from("notification_routes").insert({
-      from_city: city,
-      to_city: null,
-      direction,
-      vehicle: vehicle || null,
-      urgent_only: urgentOnly,
-    })
+    // Tek şehir kuralı: kayıt varsa GÜNCELLE (silip eklemek, ekleme başarısız olursa mevcut ayarı kaybettiriyordu)
+    const fields = { from_city: city, to_city: null, direction, vehicle: vehicle || null, urgent_only: urgentOnly }
+    const { error } = route
+      ? await supabase.from("notification_routes").update(fields).eq("id", route.id)
+      : await supabase.from("notification_routes").insert(fields)
     setBusy(false)
     if (error) {
       setMsg({
@@ -119,6 +108,14 @@ export function NotificationSettings() {
     setRoute(null)
     const { error } = await supabase.from("notification_routes").delete().eq("id", old.id)
     if (error) setRoute(old)
+  }
+
+  const sendTest = async () => {
+    setBusy(true)
+    setMsg(null)
+    const r = await sendTestPush()
+    setMsg({ text: r.message, ok: r.ok })
+    setBusy(false)
   }
 
   const on = state === "on"
@@ -256,6 +253,17 @@ export function NotificationSettings() {
           </div>
         )}
       </div>
+
+      {on && (
+        <button
+          type="button"
+          onClick={sendTest}
+          disabled={busy}
+          className="h-10 w-full rounded-xl bg-[#f0f4f8] text-xs font-semibold text-[#122c4a] disabled:opacity-60"
+        >
+          Test bildirimi gönder
+        </button>
+      )}
 
       {route && !on && pushUsable && (
         <p className="text-[11px] text-[#8da0b2]">Şehir kaydettiniz ancak bu cihazda bildirim kapalı. Yukarıdan "Aç" düğmesine dokunun.</p>
