@@ -1,12 +1,10 @@
-// Supabase Edge Function: Google Play aboneliğini doğrular (eski /api/premium/verify rotasının yerine)
+// Supabase Edge Function: Google Play aboneliğini doğrular
 // Deploy: supabase functions deploy premium-verify --no-verify-jwt
 // Secrets: supabase secrets set GOOGLE_PLAY_SERVICE_ACCOUNT_JSON='...' PLAY_PACKAGE_NAME=...
+// NOT: ../_shared kullanır -> Dashboard'dan değil, Supabase CLI ile deploy edin.
 import { createClient } from "npm:@supabase/supabase-js@2"
-import { createSign } from "node:crypto"
-import { Buffer } from "node:buffer"
+import { PACKAGE, SKU, acknowledge, evaluate, fetchSubscription } from "../_shared/play.ts"
 
-const SKU = "nakliye_premium_aylik"
-const PACKAGE = Deno.env.get("PLAY_PACKAGE_NAME") || ""
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || ""
 const ANON = Deno.env.get("SUPABASE_ANON_KEY") || ""
 const SERVICE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || ""
@@ -32,46 +30,6 @@ function json(req: Request, body: unknown, status = 200) {
     status,
     headers: { ...corsHeaders(req), "Content-Type": "application/json" },
   })
-}
-
-const b64u = (v: string | Uint8Array) => Buffer.from(v).toString("base64url")
-
-async function googleAccessToken(): Promise<string> {
-  const sa = JSON.parse(Deno.env.get("GOOGLE_PLAY_SERVICE_ACCOUNT_JSON") || "{}")
-  if (!sa.client_email || !sa.private_key) throw new Error("GOOGLE_PLAY_SERVICE_ACCOUNT_JSON eksik")
-  const now = Math.floor(Date.now() / 1000)
-  const header = b64u(JSON.stringify({ alg: "RS256", typ: "JWT" }))
-  const claim = b64u(
-    JSON.stringify({
-      iss: sa.client_email,
-      scope: "https://www.googleapis.com/auth/androidpublisher",
-      aud: "https://oauth2.googleapis.com/token",
-      iat: now,
-      exp: now + 3600,
-    }),
-  )
-  const signature = createSign("RSA-SHA256").update(`${header}.${claim}`).sign(sa.private_key).toString("base64url")
-  const res = await fetch("https://oauth2.googleapis.com/token", {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({
-      grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
-      assertion: `${header}.${claim}.${signature}`,
-    }),
-  })
-  const j = await res.json()
-  if (!res.ok || !j.access_token) throw new Error("Google yetkilendirme hatası")
-  return j.access_token as string
-}
-
-const STATE_MAP: Record<string, { status: string; entitled: boolean }> = {
-  SUBSCRIPTION_STATE_ACTIVE: { status: "active", entitled: true },
-  SUBSCRIPTION_STATE_IN_GRACE_PERIOD: { status: "grace", entitled: true },
-  SUBSCRIPTION_STATE_CANCELED: { status: "canceled", entitled: true }, // süre bitene kadar geçerli
-  SUBSCRIPTION_STATE_ON_HOLD: { status: "on_hold", entitled: false },
-  SUBSCRIPTION_STATE_PAUSED: { status: "on_hold", entitled: false },
-  SUBSCRIPTION_STATE_EXPIRED: { status: "expired", entitled: false },
-  SUBSCRIPTION_STATE_PENDING: { status: "expired", entitled: false },
 }
 
 Deno.serve(async (req: Request) => {
@@ -109,33 +67,24 @@ Deno.serve(async (req: Request) => {
     }
 
     // 4) Google Play'de doğrula
-    const access = await googleAccessToken()
-    const base = `https://androidpublisher.googleapis.com/androidpublisher/v3/applications/${encodeURIComponent(PACKAGE)}`
-    const res = await fetch(`${base}/purchases/subscriptionsv2/tokens/${encodeURIComponent(token)}`, {
-      headers: { Authorization: `Bearer ${access}` },
-    })
-    const sub = await res.json()
-    if (!res.ok) {
-      console.error("Google Play hata:", res.status, JSON.stringify(sub))
-      // Ayrıntıyı istemciye sızdırma, sadece durum kodunu ver
-      return json(req, { error: `Satın alma doğrulanamadı (${res.status})` }, 400)
+    const play = await fetchSubscription(token)
+    if (!play.ok) {
+      // 404/410: token artık Google'da yok (çok eski, süresi dolmuş) -> kaydı "expired" yap, hata verme
+      if ((play.status === 404 || play.status === 410) && owner?.user_id === userId) {
+        await admin
+          .from("subscriptions")
+          .update({ status: "expired", updated_at: new Date().toISOString() })
+          .eq("user_id", userId)
+        return json(req, { premium: false, status: "expired", expiresAt: null })
+      }
+      return json(req, { error: `Satın alma doğrulanamadı (${play.status})` }, 400)
     }
 
-    const item = (sub.lineItems || []).find((l: { productId?: string }) => l.productId === SKU)
-    if (!item) return json(req, { error: "Ürün eşleşmedi" }, 400)
+    const ev = evaluate(play.sub)
+    if (!ev) return json(req, { error: "Ürün eşleşmedi" }, 400)
 
-    const mapped = STATE_MAP[sub.subscriptionState as string] || { status: "expired", entitled: false }
-    const expiresAt: string | null = item.expiryTime || null
-    const entitled = mapped.entitled && (!expiresAt || new Date(expiresAt).getTime() > Date.now())
-
-    // 5) Onaylanmamışsa 3 gün içinde acknowledge et (yoksa Google otomatik iade eder)
-    if (entitled && sub.acknowledgementState === "ACKNOWLEDGEMENT_STATE_PENDING") {
-      await fetch(`${base}/purchases/subscriptions/${SKU}/tokens/${encodeURIComponent(token)}:acknowledge`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${access}`, "Content-Type": "application/json" },
-        body: "{}",
-      })
-    }
+    // 5) Onaylanmamışsa onayla
+    if (ev.needsAck) await acknowledge(token, play.access)
 
     // 6) Kaydet (sadece service role yazabilir)
     const { error: upErr } = await admin.from("subscriptions").upsert(
@@ -143,16 +92,19 @@ Deno.serve(async (req: Request) => {
         user_id: userId,
         product_id: SKU,
         purchase_token: token,
-        status: entitled ? mapped.status : mapped.status === "active" ? "expired" : mapped.status,
-        expires_at: expiresAt,
-        order_id: sub.latestOrderId || null,
+        status: ev.status,
+        expires_at: ev.expiresAt,
+        order_id: ev.orderId,
         updated_at: new Date().toISOString(),
       },
       { onConflict: "user_id" },
     )
-    if (upErr) return json(req, { error: "Kayıt hatası" }, 500)
+    if (upErr) {
+      console.error("subscriptions upsert hatası:", upErr.message)
+      return json(req, { error: "Kayıt hatası" }, 500)
+    }
 
-    return json(req, { premium: entitled, status: mapped.status, expiresAt })
+    return json(req, { premium: ev.entitled, status: ev.status, expiresAt: ev.expiresAt })
   } catch (e) {
     console.error("premium verify hatası:", e)
     return json(req, { error: "Sunucu hatası" }, 500)
