@@ -15,34 +15,224 @@ webpush.setVapidDetails(
   Deno.env.get("VAPID_PRIVATE_KEY") || "",
 )
 
-const MAP: Record<string, string> = { "ı": "i", "İ": "i", "I": "i", "ş": "s", "Ş": "s", "ğ": "g", "Ğ": "g", "ü": "u", "Ü": "u", "ö": "o", "Ö": "o", "ç": "c", "Ç": "c" }
-const fold = (s: string) => Array.from(s || "").map((c) => MAP[c] ?? c.toLowerCase()).join("")
-// Günlük dilde başka anlamı olan şehir adları: yalnızca "Van'a", "Muş'tan" gibi ekli yazımda sayılır
-const WEAK = new Set(["van", "mus", "ordu", "kilis", "tokat", "agri"])
+// --- İlan metninden şehir / yön ayrıştırma (lib/route.ts ile aynı mantık) ---
+const CITIES = [
+  "Adana", "Adıyaman", "Afyonkarahisar", "Ağrı", "Aksaray", "Amasya", "Ankara", "Antalya", "Ardahan", "Artvin",
+  "Aydın", "Balıkesir", "Bartın", "Batman", "Bayburt", "Bilecik", "Bingöl", "Bitlis", "Bolu", "Burdur",
+  "Bursa", "Çanakkale", "Çankırı", "Çorum", "Denizli", "Diyarbakır", "Düzce", "Edirne", "Elazığ", "Erzincan",
+  "Erzurum", "Eskişehir", "Gaziantep", "Giresun", "Gümüşhane", "Hakkari", "Hatay", "Iğdır", "Isparta", "İstanbul",
+  "İzmir", "Kahramanmaraş", "Karabük", "Karaman", "Kars", "Kastamonu", "Kayseri", "Kilis", "Kırıkkale", "Kırklareli",
+  "Kırşehir", "Kocaeli", "Konya", "Kütahya", "Malatya", "Manisa", "Mardin", "Mersin", "Muğla", "Muş",
+  "Nevşehir", "Niğde", "Ordu", "Osmaniye", "Rize", "Sakarya", "Samsun", "Şanlıurfa", "Siirt", "Sinop",
+  "Sivas", "Şırnak", "Tekirdağ", "Tokat", "Trabzon", "Tunceli", "Uşak", "Van", "Yalova", "Yozgat", "Zonguldak",
+]
 
-function mentions(text: string, city: string): boolean {
-  const c = fold(city).trim()
-  if (!c) return false
-  const f = fold(text)
-  const re = WEAK.has(c) ? new RegExp(`(^|[^a-z0-9])${c}['’]`) : new RegExp(`(^|[^a-z0-9])${c}`)
-  return re.test(f)
+/** Yaygın kısa adlar / ağız kullanımları */
+const ALIAS_TO_CITY: Record<string, string> = {
+  afyon: "Afyonkarahisar",
+  antep: "Gaziantep",
+  maras: "Kahramanmaraş",
+  urfa: "Şanlıurfa",
+  izmit: "Kocaeli",
+  adapazari: "Sakarya",
+  icel: "Mersin",
 }
 
+/** Günlük dilde başka anlamları olan adlar: ek alıyorsa kesme işareti, çıplaksa büyük harf şart */
+const WEAK = new Set(["van", "mus", "ordu", "kilis", "tokat", "agri"])
+
+const FOLD_MAP: Record<string, string> = {
+  "ı": "i", "İ": "i", "I": "i", "ş": "s", "Ş": "s", "ğ": "g", "Ğ": "g",
+  "ü": "u", "Ü": "u", "ö": "o", "Ö": "o", "ç": "c", "Ç": "c",
+}
+
+/** Küçük harf + Türkçe karakterleri sadeleştirir. Uzunluk korunur (indeksler aynı kalır). */
+function fold(s: string): string {
+  let out = ""
+  for (let i = 0; i < s.length; i++) {
+    const ch = s[i]
+    const mapped = FOLD_MAP[ch]
+    if (mapped) { out += mapped; continue }
+    const low = ch.toLowerCase()
+    out += low.length === 1 ? low : ch
+  }
+  return out
+}
+
+const CANON: Map<string, string> = new Map()
+for (const c of CITIES) CANON.set(fold(c), c)
+for (const [alias, city] of Object.entries(ALIAS_TO_CITY)) CANON.set(alias, city)
+
+type SuffixKind = "from" | "to" | "at"
+const SUFFIXES: [string, SuffixKind][] = [
+  ["dan", "from"], ["den", "from"], ["tan", "from"], ["ten", "from"],
+  ["ya", "to"], ["ye", "to"], ["na", "to"], ["ne", "to"], ["a", "to"], ["e", "to"],
+  ["da", "at"], ["de", "at"], ["ta", "at"], ["te", "at"],
+]
+const SUFFIX_MAP = new Map(SUFFIXES)
+const SUFFIXES_LONGEST_FIRST = [...SUFFIXES].sort((a, b) => b[0].length - a[0].length)
+
+type Mention = {
+  city: string
+  /** from: -dan/-den, to: -a/-e, at: -da/-de, bare: ek yok */
+  kind: SuffixKind | "bare"
+  start: number
+  end: number
+}
+
+const TOKEN_RE = /[A-Za-zÇĞİıÖŞÜçğöşü0-9]+(?:['’´`][A-Za-zÇĞİıÖŞÜçğöşü]+)?/g
+
+function findMentions(text: string): Mention[] {
+  const tokens: { raw: string; start: number; end: number }[] = []
+  for (const m of text.matchAll(TOKEN_RE)) {
+    tokens.push({ raw: m[0], start: m.index ?? 0, end: (m.index ?? 0) + m[0].length })
+  }
+
+  const result: Mention[] = []
+  for (let i = 0; i < tokens.length; i++) {
+    const { raw, start, end } = tokens[i]
+    const aposIdx = raw.search(/['’´`]/)
+    const hasApos = aposIdx > 0
+    const base = fold(hasApos ? raw.slice(0, aposIdx) : raw)
+    const suffixPart = hasApos ? fold(raw.slice(aposIdx + 1)) : ""
+
+    let city: string | undefined
+    let kind: Mention["kind"] = "bare"
+    let weakKey = ""
+
+    if (hasApos) {
+      const c = CANON.get(base)
+      const k = SUFFIX_MAP.get(suffixPart)
+      if (c && k) { city = c; kind = k; weakKey = base }
+    } else {
+      const direct = CANON.get(base)
+      if (direct) {
+        city = direct; weakKey = base
+      } else {
+        for (const [suf, k] of SUFFIXES_LONGEST_FIRST) {
+          if (base.length > suf.length && base.endsWith(suf)) {
+            const stem = base.slice(0, -suf.length)
+            const c = CANON.get(stem)
+            if (c) { city = c; kind = k; weakKey = stem; break }
+          }
+        }
+      }
+    }
+    if (!city) continue
+
+    if (WEAK.has(weakKey)) {
+      // "Van'a" geçerli; "vana" / "van" (küçük harf) geçersiz
+      const firstChar = raw[0]
+      const isCapital = firstChar !== firstChar.toLocaleLowerCase("tr-TR")
+      if (kind !== "bare" && !hasApos) continue
+      if (kind === "bare" && !isCapital) continue
+    }
+
+    // "Konya dan Urfa" - ek ayrı yazılmış
+    if (kind === "bare" && i + 1 < tokens.length) {
+      const next = fold(tokens[i + 1].raw)
+      if (next === "dan" || next === "den") {
+        kind = "from"
+        result.push({ city, kind, start, end: tokens[i + 1].end })
+        i++
+        continue
+      }
+    }
+
+    // Aynı şehir arka arkaya geçiyorsa tekrar ekleme
+    const prev = result[result.length - 1]
+    if (prev && prev.city === city && prev.kind === kind) continue
+    result.push({ city, kind, start, end })
+  }
+  return result
+}
+
+const SEPARATOR_RE = /^\s*(?:[-–—>→»~/+]+|=>|->)\s*$/
+
+type TextRoute = { from?: Mention; to?: Mention; explicit: boolean }
+
+function routeFromMentions(text: string, ms: Mention[]): TextRoute {
+  if (ms.length === 0) return { explicit: false }
+
+  // 1) "Konya - Adana", "Konya > Adana"
+  for (let i = 0; i < ms.length - 1; i++) {
+    if (ms[i].city === ms[i + 1].city) continue
+    if (SEPARATOR_RE.test(text.slice(ms[i].end, ms[i + 1].start))) {
+      return { from: ms[i], to: ms[i + 1], explicit: true }
+    }
+  }
+
+  // 2) -dan / -e ekleriyle
+  let from = ms.find((m) => m.kind === "from")
+  let to = ms.find((m) => m.kind === "to" && m.city !== from?.city)
+  const explicit = Boolean(from && to)
+
+  // 3) Eksik tarafı sıraya bakarak tamamla
+  if (from && !to) {
+    to = ms.find((m) => m.city !== from!.city && m.start > from!.start) ?? ms.find((m) => m.city !== from!.city)
+  } else if (!from && to) {
+    from = ms.find((m) => m.city !== to!.city && m.kind !== "to" && m.start < to!.start) ?? ms.find((m) => m.city !== to!.city && m.kind !== "to")
+  } else if (!from && !to) {
+    from = ms.find((m) => m.kind !== "to")
+    if (from) to = ms.find((m) => m.city !== from!.city && m.kind !== "from")
+    else to = ms[0]
+  }
+  return { from, to, explicit }
+}
+
+
 type Row = Record<string, unknown>
-type Route = { id: string; user_id: string; from_city: string | null; to_city: string | null; vehicle: string | null; urgent_only: boolean }
+type Route = { id: string; user_id: string; from_city: string | null; to_city: string | null; vehicle: string | null; urgent_only: boolean; direction: string | null }
+
+// 05xx telefon numarasını yakalar ("05xxxxxxxxx" döner)
+function extractPhone(text: string): string {
+  const m = (text || "").match(/(?:\+?90[\s.\-]*)?0?[\s.\-]*\(?5\d{2}\)?[\s.\-]*\d{3}[\s.\-]*\d{2}[\s.\-]*\d{2}/)
+  if (!m) return ""
+  const d = m[0].replace(/\D/g, "")
+  return d.length < 10 ? "" : "0" + d.slice(-10)
+}
+
+const canonCity = (s: unknown): string | undefined => {
+  const t = String(s ?? "").trim()
+  if (!t || t === "-") return undefined
+  return CANON.get(fold(t)) ?? findMentions(t)[0]?.city
+}
+
+// İlanın çıkış / varış / geçen şehirleri. Kullanıcı ilanında form alanlarına güvenilir, eksikse metinden tamamlanır.
+function analyze(rec: Row, isUser: boolean) {
+  const text = [rec.cargo_detail, rec.message, rec.text].filter(Boolean).join(" ")
+  const ms = findMentions(text)
+  const tr = routeFromMentions(text, ms)
+  let from = tr.from?.city
+  let to = tr.to?.city
+  if (isUser) {
+    from = canonCity(rec.from_city) ?? from
+    to = canonCity(rec.to_city) ?? to
+  }
+  const any = new Set<string>(ms.map((m) => m.city))
+  if (from) any.add(from)
+  if (to) any.add(to)
+  return { text, from, to, any }
+}
 
 function routeMatches(r: Route, rec: Row, isUser: boolean): boolean {
-  const text = [rec.cargo_detail, rec.message, rec.text].filter(Boolean).join(" ")
-  const vehicleText = [rec.vehicle_type, text].filter(Boolean).join(" ")
   if (r.urgent_only && !rec.urgent) return false
+  const a = analyze(rec, isUser)
+  const vehicleText = [rec.vehicle_type, a.text].filter(Boolean).join(" ")
 
-  const cityOk = (route: string | null, field: unknown) => {
-    if (!route) return true
-    if (isUser && field && String(field).trim() && fold(String(field)).includes(fold(route))) return true
-    return mentions(text, route) || mentions(String(field ?? ""), route)
+  const city = r.from_city ? (CANON.get(fold(r.from_city)) ?? r.from_city) : ""
+  if (city) {
+    if (r.to_city) {
+      // Eski iki şehirli kayıtlar: çıkış ve varış ikisi de tutmalı
+      const dest = CANON.get(fold(r.to_city)) ?? r.to_city
+      if (a.from !== city || a.to !== dest) return false
+    } else {
+      const dir = r.direction || "from"
+      if (dir === "from" && a.from !== city) return false
+      if (dir === "to" && a.to !== city) return false
+      if (dir === "both" && !a.any.has(city)) return false
+    }
   }
-  if (!cityOk(r.from_city, rec.from_city)) return false
-  if (!cityOk(r.to_city, rec.to_city)) return false
 
   if (r.vehicle) {
     const v = fold(r.vehicle).replace(/[^a-z0-9 ]/g, "")
@@ -68,7 +258,7 @@ Deno.serve(async (req: Request) => {
 
   const { data: routes, error } = await db
     .from("notification_routes")
-    .select("id,user_id,from_city,to_city,vehicle,urgent_only")
+    .select("id,user_id,from_city,to_city,vehicle,urgent_only,direction")
   if (error || !routes) return new Response("routes error", { status: 500 })
 
   // Rotası uyan, ilan sahibi olmayan kullanıcılar (kullanıcı başına tek bildirim)
@@ -80,7 +270,21 @@ Deno.serve(async (req: Request) => {
   }
   if (hits.size === 0) return new Response("no match", { status: 200 })
 
-  // 10 dakika kuralı: rota için yakın zamanda bildirim gittiyse atla
+  // Bildirim yalnızca Premium: abonelik süresi bitmiş / olmayan kullanıcılar elenir
+  const { data: subRows } = await db
+    .from("subscriptions")
+    .select("user_id,status,expires_at")
+    .in("user_id", Array.from(hits.keys()))
+  const premiumIds = new Set(
+    (subRows || [])
+      .filter((x: { status: string; expires_at: string | null }) =>
+        ["active", "grace", "canceled"].includes(x.status) && (!x.expires_at || Date.parse(x.expires_at) > Date.now()))
+      .map((x: { user_id: string }) => x.user_id),
+  )
+  for (const uid of Array.from(hits.keys())) if (!premiumIds.has(uid)) hits.delete(uid)
+  if (hits.size === 0) return new Response("no premium", { status: 200 })
+
+  // Kısa tekrar koruması (003/004 SQL'deki claim süresi): rota için çok yakın zamanda bildirim gittiyse atla
   const targets: string[] = []
   for (const [uid, routeId] of hits) {
     const { data: ok } = await db.rpc("claim_route_notification", { p_route: routeId })
@@ -95,11 +299,14 @@ Deno.serve(async (req: Request) => {
   const detail = String(rec.cargo_detail ?? rec.message ?? rec.text ?? "").replace(/\s+/g, " ").trim().slice(0, 110)
   const title = rec.urgent ? "Acil yeni ilan" : "Yeni ilan"
   const line = from && to && from !== "-" && to !== "-" ? `${from} → ${to}` : ""
+  // Bildirimde "Ara" düğmesi: ilandaki telefon (kullanıcı ilanında phone alanı, saha ilanında metinden)
+  const phone = extractPhone(String(rec.phone ?? "")) || extractPhone(String(rec.cargo_detail ?? rec.message ?? rec.text ?? ""))
   const payload = JSON.stringify({
     title,
-    body: [line, detail].filter(Boolean).join(" · ") || "Rotanıza uygun yeni bir ilan var.",
+    body: [line, detail].filter(Boolean).join(" · ") || "Seçtiğiniz şehre uygun yeni bir ilan var.",
     url: "/",
     tag: "yeni-ilan",
+    phone: phone || undefined,
   })
 
   const dead: string[] = []
