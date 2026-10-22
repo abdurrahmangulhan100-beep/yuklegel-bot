@@ -3,7 +3,9 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from "react"
 import { Load, LoadCard } from "@/components/LoadCard"
 import { AdSlot } from "@/components/AdSlot"
-import { PackageSearch, Plus, Zap, Phone, X, MapPin } from "lucide-react"
+import { PackageSearch, Plus, Zap, Phone, X, MapPin, Crown } from "lucide-react"
+import { usePremium } from "@/components/PremiumProvider"
+import { FREE_DELAY_MINUTES, openPremium } from "@/lib/premium"
 import { cn } from "@/lib/utils"
 import { isMissing } from "@/lib/route"
 import { SourceInfoButton } from "@/components/SourceInfo"
@@ -30,6 +32,8 @@ type ListingsViewProps = {
   onCitySearch?: (city: string) => void
   hasMore?: boolean
   onLoadMore?: () => void
+  /** Ücretsiz kullanıcı için: son gecikme penceresinde gelen ama henüz gösterilmeyen ilan sayısı */
+  lockedCount?: number
 }
 
 const FILTER_OPTIONS = ["Tümü", "Acil", "Tır", "Kamyon", "Frigo", "Kırkayak", "Dorse", "Damperli"]
@@ -54,9 +58,11 @@ export function ListingsView({
   onUserBlocked,
   onCitySearch,
   hasMore = false,
-  onLoadMore
+  onLoadMore,
+  lockedCount = 0
 }: ListingsViewProps) {
   const fmt = (n: number) => n.toLocaleString("tr-TR")
+  const { isPremium, loading: premiumLoading } = usePremium()
 
   // Şehir filtresi: ilanda herhangi bir yerde geçen şehre göre (yön ayrımı yok)
   const [city, setCity] = useState("")
@@ -112,6 +118,20 @@ export function ListingsView({
 
   return (
     <div className="space-y-4 sm:space-y-5">
+      {/* Ücretsiz plan: gecikme bilgisi + Premium'a yönlendirme */}
+      {!premiumLoading && !isPremium && (
+        <button
+          type="button"
+          onClick={openPremium}
+          className="flex w-full items-center gap-2 rounded-xl border border-[#f3dfb0] bg-[#fff9ec] px-3 py-2.5 text-left text-xs font-semibold text-[#8a5a00] active:scale-[0.99]"
+        >
+          <Crown className="size-4 shrink-0" />
+          {lockedCount > 0
+            ? `Son ${FREE_DELAY_MINUTES} dakikada ${lockedCount} yeni ilan eklendi. Premium üyeler bunları şu an görüyor, siz ${FREE_DELAY_MINUTES} dk sonra göreceksiniz. Anında görmek için Premium'a geçin.`
+            : `Ücretsiz planda yeni ilanlar ${FREE_DELAY_MINUTES} dakika gecikmeyle görünür. Anında görmek için Premium'a geçin.`}
+        </button>
+      )}
+
       {/* Başlık */}
       <div className="flex items-end justify-between gap-4">
         <div>
