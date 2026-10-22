@@ -27,12 +27,15 @@ import { PremiumLock } from "@/components/PremiumLock"
 import { SavedRoutes } from "@/components/SavedRoutes"
 import { usePremium } from "@/components/PremiumProvider"
 import { AdSlot } from "@/components/AdSlot"
-import { FREE_LIMITS, OPEN_PREMIUM_EVENT } from "@/lib/premium"
+import { FREE_DELAY_MINUTES, FREE_LIMITS, OPEN_PREMIUM_EVENT } from "@/lib/premium"
 
 const PAGE_SIZE = 60
 
 // Saha (bot) ilanları bu günden eskiyse listelenmez; eski ilan yığılmasını ve yanlış yük aramasını önler
 const BOT_MAX_AGE_DAYS = 14
+// Ücretsiz kullanıcı: son FREE_DELAY_MINUTES dakikadaki ilanlar gizlenir. Premium'da null (filtre yok).
+const delayCutoff = (premium: boolean) =>
+  premium ? null : new Date(Date.now() - FREE_DELAY_MINUTES * 60000).toISOString()
 const botCutoff = () => new Date(Date.now() - BOT_MAX_AGE_DAYS * 86400000).toISOString()
 
 // Araç filtresi: araç alanına ve ilan metnine bakar; "tir" gibi kısa kelimeler başka sözcüklerin içinde eşleşmesin diye kelime sınırı kullanır
@@ -66,11 +69,13 @@ export default function Page() {
   const [totals, setTotals] = useState<{ user: number; bot: number; urgent: number } | null>(null)
   const [pageSize, setPageSize] = useState(PAGE_SIZE)
   const [hasMore, setHasMore] = useState(false)
+  const [lockedCount, setLockedCount] = useState(0) // ücretsiz kullanıcının henüz göremediği (son 10 dk) ilan sayısı
   const [blockedKeys, setBlockedKeys] = useState<string[]>([])
   const hasLoadedRef = useRef(false)
   const reqIdRef = useRef(0)
   const pageSizeRef = useRef(PAGE_SIZE)
   const currentUserIdRef = useRef<string | null>(null)
+  const isPremiumRef = useRef(false) // premium doğrulanana kadar false: ücretsiz gibi (gecikmeli) davranır
 
   const [profile, setProfile] = useState({
     company_name: "Nakliye Cepte Kullanıcısı",
@@ -174,13 +179,23 @@ export default function Page() {
     try {
       const head = { count: "exact" as const, head: true }
       const cutoff = botCutoff()
+      const dc = delayCutoff(isPremiumRef.current)
+      const late = <T extends { lte: (c: string, v: string) => T }>(q: T) => (dc ? q.lte("created_at", dc) : q)
       const [u, b, uu, bu] = await Promise.all([
-        supabase.from("listings").select("id", head),
-        supabase.from("bot_listings").select("id", head).gte("created_at", cutoff),
-        supabase.from("listings").select("id", head).eq("urgent", true),
-        supabase.from("bot_listings").select("id", head).eq("urgent", true).gte("created_at", cutoff),
+        late(supabase.from("listings").select("id", head)),
+        late(supabase.from("bot_listings").select("id", head).gte("created_at", cutoff)),
+        late(supabase.from("listings").select("id", head).eq("urgent", true)),
+        late(supabase.from("bot_listings").select("id", head).eq("urgent", true).gte("created_at", cutoff)),
       ])
       setTotals({ user: u.count ?? 0, bot: b.count ?? 0, urgent: (uu.count ?? 0) + (bu.count ?? 0) })
+
+      // Ücretsiz plan: gecikme penceresindeki (henüz gösterilmeyen) ilan sayısı -> "Premium üyeler şu an görüyor" uyarısı
+      if (dc) {
+        const { data: n, error: rpcErr } = await supabase.rpc("recent_listing_count", { p_since: dc })
+        setLockedCount(!rpcErr && typeof n === "number" ? n : 0)
+      } else {
+        setLockedCount(0)
+      }
     } catch (e) {
       console.error("Sayaçlar alınamadı:", e)
     }
@@ -194,6 +209,13 @@ export default function Page() {
 
       let userReq = supabase.from("listings").select("*")
       let botReq = supabase.from("bot_listings").select("*").gte("created_at", botCutoff())
+
+      // Ücretsiz plan: yeni ilanlar FREE_DELAY_MINUTES dakika sonra görünür (kendi ilanların aşağıda ayrıca gelir)
+      const dc = delayCutoff(isPremiumRef.current)
+      if (dc) {
+        userReq = userReq.lte("created_at", dc)
+        botReq = botReq.lte("created_at", dc)
+      }
 
       // PostgREST filtre sözdizimini bozan karakterleri temizle
       const s = searchStr.replace(/[,()\\"%_*:]/g, " ").replace(/\s+/g, " ").trim()
@@ -272,6 +294,14 @@ export default function Page() {
   useEffect(() => { setPageSize(PAGE_SIZE) }, [debouncedQuery])
   useEffect(() => { pageSizeRef.current = pageSize }, [pageSize])
   useEffect(() => { currentUserIdRef.current = currentUserId }, [currentUserId])
+  useEffect(() => { isPremiumRef.current = isPremium }, [isPremium])
+
+  // Premium durumu netleşince (ya da değişince) listeyi doğru kurala göre yeniden çek
+  useEffect(() => {
+    if (isCheckingAuth || premiumLoading) return
+    fetchListings(queryRef.current, pageSizeRef.current)
+    fetchCounts()
+  }, [isPremium, premiumLoading, isCheckingAuth, fetchListings, fetchCounts])
 
   useEffect(() => {
     try {
@@ -610,6 +640,7 @@ export default function Page() {
               onCitySearch={handleCitySearch}
               hasMore={hasMore}
               onLoadMore={() => setPageSize((p) => p + PAGE_SIZE)}
+              lockedCount={lockedCount}
             />
             </>
           )}
