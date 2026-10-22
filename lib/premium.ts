@@ -11,10 +11,15 @@ export const FREE_LIMITS = {
   contactsPerDay: 15,   // günde kaç farklı ilanda Ara / WhatsApp / Kopyala
 }
 
+/** Ücretsiz kullanıcılar yeni ilanları bu kadar dakika gecikmeyle görür (Premium anında görür) */
+export const FREE_DELAY_MINUTES = 10
+
 /** Yalnızca premium kullanıcıların açabildiği Şoför Araçları (ToolsView anahtarları) */
 export const PREMIUM_ONLY_TOOLS = ["planner", "docs", "fuel"]
 
 export const PREMIUM_FEATURES = [
+  "Yeni ilanları anında görme (ücretsiz planda 10 dk gecikmeli)",
+  "Seçtiğiniz şehir için anlık ilan bildirimi",
   "Reklamsız kullanım",
   "Sınırsız Ara / WhatsApp ile iletişim",
   "Sınırsız favori ve aynı anda sınırsız aktif ilan",
@@ -22,6 +27,8 @@ export const PREMIUM_FEATURES = [
 ]
 
 export const FREE_FEATURES = [
+  `Yeni ilanlar ${FREE_DELAY_MINUTES} dakika gecikmeli görünür`,
+  "İlan bildirimi yok",
   `Günde ${FREE_LIMITS.contactsPerDay} ilanda iletişim`,
   `${FREE_LIMITS.favorites} favori, ${FREE_LIMITS.activeListings} aktif ilan`,
   "Takograf, Hacim ve Kontrol Listesi araçları",
