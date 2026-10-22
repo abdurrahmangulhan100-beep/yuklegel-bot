@@ -14,8 +14,10 @@ self.addEventListener("push", (event) => {
   const options = {
     body: data.body || "",
     icon: "/icon-192.png",
-    data: { url: data.url || "/" },
+    data: { url: data.url || "/", phone: data.phone || "" },
   }
+  // Telefon varsa bildirimde "Ara" düğmesi göster
+  if (data.phone) options.actions = [{ action: "call", title: "Ara" }]
   if (data.tag) { options.tag = data.tag; options.renotify = true } // aynı etiket = eskisinin yerine geçer
   event.waitUntil(self.registration.showNotification(data.title || "Nakliye Cepte", options))
 })
@@ -24,6 +26,12 @@ self.addEventListener("push", (event) => {
 self.addEventListener("notificationclick", (event) => {
   event.notification.close()
   const url = (event.notification.data && event.notification.data.url) || "/"
+  const phone = (event.notification.data && event.notification.data.phone) || ""
+  // "Ara" düğmesi: doğrudan arama ekranını aç (olmazsa uygulamayı açar)
+  if (event.action === "call" && phone) {
+    event.waitUntil(self.clients.openWindow("tel:" + phone).catch(() => self.clients.openWindow(url)))
+    return
+  }
   event.waitUntil(
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((list) => {
       for (const c of list) {
