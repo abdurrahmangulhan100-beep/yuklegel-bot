@@ -39,12 +39,14 @@ function ensureAdsScript() {
 /**
  * Reklam alanı. Premium kullanıcıda hiç görünmez.
  * AdSense tanımlıysa reklam, değilse "Premium'a geç" kartı gösterir.
+ * promoOnly: Google reklamı ASLA yüklenmez, yalnızca Premium kartı gösterilir (uygulama içi / içeriksiz ekranlar için).
+ * AdSense politikası: reklam yalnızca yeterli yayıncı içeriği olan sayfalarda (rehber makaleleri) gösterilir.
  */
-export function AdSlot({ className = "" }: { className?: string }) {
+export function AdSlot({ className = "", promoOnly = false }: { className?: string; promoOnly?: boolean }) {
   const { isPremium, loading } = usePremium()
   const pushed = useRef(false)
   const [inApp, setInApp] = useState<boolean | null>(null)
-  const useAdsense = Boolean(CLIENT && SLOT) && (inApp === false || ADS_IN_APP)
+  const useAdsense = !promoOnly && Boolean(CLIENT && SLOT) && (inApp === false || ADS_IN_APP)
 
   useEffect(() => {
     setInApp(detectApp())
