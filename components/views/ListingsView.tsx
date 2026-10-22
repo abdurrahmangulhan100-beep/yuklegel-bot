@@ -292,7 +292,7 @@ export function ListingsView({
                 onUserBlocked={onUserBlocked}
                 onCitySearch={onCitySearch}
               />
-              {(i + 1) % 8 === 0 && <AdSlot className="col-span-full" />}
+              {(i + 1) % 8 === 0 && <AdSlot promoOnly className="col-span-full" />}
             </Fragment>
           ))}
         </div>
