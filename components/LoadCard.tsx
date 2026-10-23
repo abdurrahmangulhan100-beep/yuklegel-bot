@@ -1,6 +1,6 @@
 "use client"
 
-import { Phone, MessageCircle, Star, Check, Ban, Zap, ChevronDown, Share2, Copy, Flag, MoreHorizontal, MapPin } from "lucide-react"
+import { Phone, MessageCircle, Star, Check, Ban, Zap, ChevronDown, Share2, Copy, Flag, MoreHorizontal, MapPin, ArrowRight } from "lucide-react"
 import { memo, useState } from "react"
 import { isMissing } from "@/lib/route"
 import { supabase } from "@/lib/supabase"
@@ -309,7 +309,15 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
     }
   }
 
-  const hasChips = cityTags.length > 0 || hasPrice
+  // Çıkış ve varış şehri ikisi de biliniyorsa net bir güzergâh satırı göster; diğer şehirler etiket olarak kalır
+  const route =
+    load.fromCity && load.toCity && load.fromCity !== load.toCity ? { from: load.fromCity, to: load.toCity } : null
+  const chipTags = route ? cityTags.filter((t) => t.city !== route.from && t.city !== route.to) : cityTags
+  const hasChips = chipTags.length > 0 || hasPrice
+
+  // İlanın tazeliği: ilk dakikalar en değerli, rengiyle anlaşılır
+  const ageMin = load.createdAt ? (Date.now() - Date.parse(load.createdAt)) / 60000 : NaN
+  const fresh = Number.isFinite(ageMin) && ageMin >= 0 ? (ageMin < 15 ? "hot" : ageMin < 60 ? "warm" : "") : ""
   const hasTags = load.urgent || hasVehicle || load.trailer || load.tonnage || load.timing || (load.repeatCount ?? 0) > 1
 
   const accent = load.urgent
@@ -363,7 +371,16 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
                 {highlightMatch(displayCompany, cleanQuery)}
               </div>
               <div className="mt-0.5 flex items-center gap-1.5 text-xs text-[#8da0b2]">
-                <span className="shrink-0">{load.time}</span>
+                <span
+                  className={cn(
+                    "inline-flex shrink-0 items-center gap-1",
+                    fresh === "hot" && "font-semibold text-emerald-600",
+                    fresh === "warm" && "font-medium text-amber-600"
+                  )}
+                >
+                  {fresh && <span aria-hidden className={cn("size-1.5 rounded-full", fresh === "hot" ? "bg-emerald-500" : "bg-amber-500")} />}
+                  {load.time}
+                </span>
                 <span className="text-[#cbd5e1]">•</span>
                 <span className={cn("truncate font-medium", isUserLoad ? "text-[#d64526]" : "text-[#3f7199]")}>
                   {isUserLoad ? "Nakliye Cepte" : "Saha Ağı"}
@@ -396,11 +413,25 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
           </div>
         </div>
 
+        {/* Güzergâh: nereden → nereye (dokununca o şehrin ilanları) */}
+        {route && (
+          <div className="flex items-center gap-2 text-[15px] font-extrabold leading-tight text-[#122c4a]">
+            <MapPin aria-hidden className="size-4 shrink-0 text-[#d64526]" />
+            <button type="button" onClick={onCitySearch ? () => onCitySearch(route.from) : undefined} className="min-w-0 truncate text-left">
+              {highlightMatch(route.from, cleanQuery)}
+            </button>
+            <ArrowRight aria-hidden className="size-4 shrink-0 text-[#8da0b2]" />
+            <button type="button" onClick={onCitySearch ? () => onCitySearch(route.to) : undefined} className="min-w-0 truncate text-left">
+              {highlightMatch(route.to, cleanQuery)}
+            </button>
+          </div>
+        )}
+
         {/* Şehir etiketleri (dokununca o şehrin ilanları) ve fiyat */}
         {hasChips && (
           <div className="flex items-start justify-between gap-3">
             <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
-              {cityTags.map((t) => (
+              {chipTags.map((t) => (
                 <CityChip
                   key={t.city}
                   label={highlightMatch(t.label, cleanQuery)}
