@@ -119,6 +119,26 @@ export default function LoginPage() {
     }
   }
 
+  const handleGoogleLogin = async () => {
+    setErrorMsg("")
+    setSuccessMsg("")
+    if (!supabase) { setErrorMsg("Veritabanı bağlantısı kurulamadı."); return }
+    setLoading(true)
+    try {
+      localStorage.removeItem("is_guest")
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: { redirectTo: `${window.location.origin}/` },
+      })
+      if (error) { setErrorMsg("Google ile giriş başlatılamadı. Lütfen tekrar deneyin."); setLoading(false) }
+      // Başarılıysa tarayıcı Google'a yönlenir; dönüşte oturum otomatik açılır.
+    } catch (err) {
+      console.error("Google giriş hatası:", err)
+      setErrorMsg("Google ile giriş başlatılamadı. Lütfen tekrar deneyin.")
+      setLoading(false)
+    }
+  }
+
   const handleGuestLogin = async () => {
     setLoading(true)
     try {
@@ -256,6 +276,24 @@ export default function LoginPage() {
           <div className="my-5 flex items-center gap-3 text-[11px] font-semibold uppercase tracking-wider text-[#a3b1c0]">
             <span className="h-px flex-1 bg-[#e4e9ef]" /> veya <span className="h-px flex-1 bg-[#e4e9ef]" />
           </div>
+
+          <button
+            type="button"
+            onClick={handleGoogleLogin}
+            disabled={loading}
+            className="mb-3 flex h-12 w-full items-center justify-center gap-3 rounded-xl border border-[#dbe3ec] bg-white text-sm font-semibold text-[#122c4a] transition-colors hover:bg-[#f5f7fa] disabled:opacity-60"
+          >
+            <svg viewBox="0 0 48 48" className="size-5" aria-hidden="true">
+              <path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.9 6.1C12.4 13.6 17.7 9.5 24 9.5z"/>
+              <path fill="#4285F4" d="M46.1 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.4c-.5 2.9-2.2 5.3-4.6 6.9l7.1 5.5c4.2-3.9 7.2-9.6 7.2-16.9z"/>
+              <path fill="#FBBC05" d="M10.5 28.7c-.5-1.4-.8-2.9-.8-4.7s.3-3.2.8-4.7l-7.9-6.1C.9 16.4 0 20.1 0 24s.9 7.6 2.6 10.8l7.9-6.1z"/>
+              <path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.1-5.5c-2 1.4-4.9 2.3-8.8 2.3-6.3 0-11.6-4.1-13.5-9.8l-7.9 6.1C6.5 42.6 14.6 48 24 48z"/>
+            </svg>
+            Google ile devam et
+          </button>
+          <p className="mb-3 text-center text-[11px] text-[#8da0b2]">
+            Google ile devam ederek <Link href="/privacy" target="_blank" className="underline">Gizlilik Politikası</Link>&apos;nı kabul etmiş olursunuz.
+          </p>
 
           <button
             type="button"
