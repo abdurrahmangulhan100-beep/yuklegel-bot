@@ -3,6 +3,7 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from "react"
 import { Load, LoadCard } from "@/components/LoadCard"
 import { AdSlot } from "@/components/AdSlot"
+import { VehicleIcon, type VehicleKind } from "@/components/VehicleIcon"
 import { PackageSearch, Plus, Zap, Phone, X, MapPin, Crown, Clock, ArrowRight, Bell } from "lucide-react"
 import { usePremium } from "@/components/PremiumProvider"
 import { FREE_DELAY_MINUTES, openPremium } from "@/lib/premium"
@@ -36,6 +37,7 @@ type ListingsViewProps = {
   lockedCount?: number
 }
 
+const FILTER_ICON: Record<string, VehicleKind> = { "Tır": "tir", Kamyon: "kamyon", Frigo: "frigo", "Kırkayak": "kirkayak", Dorse: "dorse", Damperli: "damperli" }
 const FILTER_OPTIONS = ["Tümü", "Acil", "Tır", "Kamyon", "Frigo", "Kırkayak", "Dorse", "Damperli"]
 
 const selectClass =
@@ -223,6 +225,7 @@ export function ListingsView({
                     : "border-[#e0e6ed] bg-white text-[#4a6178] hover:border-[#c4d0dc]"
                 )}
               >
+                {FILTER_ICON[option] && <VehicleIcon kind={FILTER_ICON[option]} className="size-4" />}
                 {option === "Acil" && <Zap className={cn("size-3.5", active ? "fill-white" : "fill-[#d64526] text-[#d64526]")} />}
                 {option}
               </button>
