@@ -155,6 +155,12 @@ export function CreateListingModal({ isOpen, onClose, onSuccess }: CreateListing
 
     const priceNumber = Number(formData.price)
 
+    // Yükleme ve teslimat aynı yer olamaz (ilçe farklıysa şehir içi taşıma serbest)
+    if (formData.fromCity === formData.toCity && formData.fromDistrict.trim().toLowerCase() === formData.toDistrict.trim().toLowerCase()) {
+      setErrorMsg("Yükleme ve teslimat yeri aynı olamaz. Farklı bir şehir veya ilçe seçin.")
+      return
+    }
+
     setLoading(true)
 
     try {
@@ -182,7 +188,12 @@ export function CreateListingModal({ isOpen, onClose, onSuccess }: CreateListing
 
       if (error) {
         console.error("Kayıt Hatası:", error)
-        setErrorMsg("İlan kaydedilemedi: " + error.message)
+        // Teknik veritabanı mesajını kullanıcıya göstermeyiz (konsola yazıldı)
+        setErrorMsg(
+          error.code === "42501"
+            ? "Bu işlem için yetkiniz yok. Çıkış yapıp tekrar giriş yapmayı deneyin."
+            : "İlan şu an kaydedilemedi. İnternet bağlantınızı kontrol edip tekrar deneyin."
+        )
         return
       }
 
@@ -385,6 +396,7 @@ export function CreateListingModal({ isOpen, onClose, onSuccess }: CreateListing
               id="cl-desc"
               type="text"
               placeholder="Örn: Yükleme saati 14:00, kapalı kasa tercih sebebidir..."
+              maxLength={500}
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               className={fieldClass}
