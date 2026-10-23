@@ -91,7 +91,7 @@ export function CreateListingModal({ isOpen, onClose, onSuccess }: CreateListing
 
         setFormData((prev) => ({
           ...prev,
-          companyName: profile?.company_name || user.email?.split("@")[0] || "Şirket Adı",
+          companyName: profile?.company_name || user.email?.split("@")[0] || "Nakliye Cepte Kullanıcısı",
           phone: profile?.phone || user.user_metadata?.phone || ""
         }))
       } catch (err) {
@@ -132,7 +132,7 @@ export function CreateListingModal({ isOpen, onClose, onSuccess }: CreateListing
     // Telefon Validasyonu
     const cleanPhone = formData.phone.replace(/\s+/g, "")
     const phoneRegex = /^(0?5\d{9})$/
-    const isFakePhone = /^0?5(\d)\1{8,}$/.test(cleanPhone) // 05323333333 / 05555555555 engeli
+    const isFakePhone = /^0?5(\d)\1{8,}$/.test(cleanPhone)
 
     if (!phoneRegex.test(cleanPhone) || isFakePhone) {
       setErrorMsg("Lütfen geçerli bir cep telefonu numarası giriniz (Örn: 0532 123 45 67).")
@@ -144,10 +144,9 @@ export function CreateListingModal({ isOpen, onClose, onSuccess }: CreateListing
       return
     }
 
-    // Telefonu 05XXXXXXXXX biçimine getir
     const normalizedPhone = "0" + cleanPhone.replace(/^0/, "")
 
-    // Ton başı fiyat ve mesafe bilgisi ayrı sütun olmadığından açıklamaya eklenir
+    // Ton başı fiyat ve mesafe bilgisi açıklamaya işleniyor
     const extras: string[] = []
     if (formData.price && formData.priceType === "ton") extras.push("Ton başı fiyat")
     if (formData.distance.trim()) extras.push(`Mesafe: ${formData.distance.trim()}`)
@@ -155,7 +154,6 @@ export function CreateListingModal({ isOpen, onClose, onSuccess }: CreateListing
 
     const priceNumber = Number(formData.price)
 
-    // Yükleme ve teslimat aynı yer olamaz (ilçe farklıysa şehir içi taşıma serbest)
     if (formData.fromCity === formData.toCity && formData.fromDistrict.trim().toLowerCase() === formData.toDistrict.trim().toLowerCase()) {
       setErrorMsg("Yükleme ve teslimat yeri aynı olamaz. Farklı bir şehir veya ilçe seçin.")
       return
@@ -188,7 +186,6 @@ export function CreateListingModal({ isOpen, onClose, onSuccess }: CreateListing
 
       if (error) {
         console.error("Kayıt Hatası:", error)
-        // Teknik veritabanı mesajını kullanıcıya göstermeyiz (konsola yazıldı)
         setErrorMsg(
           error.code === "42501"
             ? "Bu işlem için yetkiniz yok. Çıkış yapıp tekrar giriş yapmayı deneyin."
