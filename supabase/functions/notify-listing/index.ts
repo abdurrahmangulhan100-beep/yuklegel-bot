@@ -19,6 +19,7 @@ const VAPID_PRIVATE = Deno.env.get("VAPID_PRIVATE_KEY") || ""
 const VAPID_SUBJECT = Deno.env.get("VAPID_SUBJECT") || ""
 const WEBHOOK_SECRET = Deno.env.get("NOTIFY_WEBHOOK_SECRET") || ""
 
+const VERSION = "2026-10-23-premium-gate"
 const FLUSH_DELAY_MS = 62_000 // 003/006 SQL'deki 1 dakikalık throttle penceresi + pay
 
 const ALLOWED_ORIGINS = ["https://nakliyecepte.online", "https://www.nakliyecepte.online", "http://localhost:3000"]
@@ -65,7 +66,7 @@ function initVapid() {
   vapidReady = true
 }
 
-/** Cihazlara gönderir; süresi dolmuş (404/410) abonelikleri veritabanından siler.[cite: 4] */
+/** Cihazlara gönderir; süresi dolmuş (404/410) abonelikleri veritabanından siler. */
 async function sendAll(db: SupabaseClient, subs: Sub[], payload: Record<string, unknown>) {
   initVapid()
   const body = JSON.stringify(payload)
@@ -92,24 +93,30 @@ async function sendAll(db: SupabaseClient, subs: Sub[], payload: Record<string, 
   return { sent, removed: dead.length }
 }
 
+/** Şu an GEÇERLİ Premium hakkı olan kullanıcılar (süresi dolmuş / iptal sonrası bitmiş olanlar dahil EDİLMEZ). */
+async function premiumSet(db: SupabaseClient, userIds: string[]): Promise<Set<string>> {
+  const out = new Set<string>()
+  if (!userIds.length) return out
+  const now = new Date().toISOString()
+  const { data, error } = await db
+    .from("subscriptions")
+    .select("user_id")
+    .in("user_id", userIds)
+    .in("status", ["active", "grace", "canceled"])
+    .gt("expires_at", now) // expires_at boşsa Premium SAYILMAZ (eski kodda boş süre = sınırsız Premium idi)
+  if (error) { console.error("premiumSet hatası:", error.message); return out }
+  for (const r of (data || []) as { user_id: string }[]) out.add(r.user_id)
+  return out
+}
+
 /** Yalnızca aktif/geçerli premium aboneliği olan kullanıcıların cihaz token'larını getirir. */
 async function subsOf(db: SupabaseClient, userIds: string[]): Promise<Map<string, Sub[]>> {
   const map = new Map<string, Sub[]>()
   if (!userIds.length) return map
 
-  // 1. Abonelik süresi dolmamış/aktif olan kullanıcıları filtrele
-  const now = new Date().toISOString()
-  const { data: activeSubs } = await db
-    .from("subscriptions")
-    .select("user_id")
-    .in("user_id", userIds)
-    .in("status", ["active", "grace", "canceled"])
-    .or(`expires_at.is.null,expires_at.gt.${now}`)
-
-  const entitledUserIds = new Set((activeSubs || []).map((s: { user_id: string }) => s.user_id))
-  if (!entitledUserIds.size) return map
-
-  const validIds = userIds.filter((id) => entitledUserIds.has(id))
+  // 1. Yalnızca şu an geçerli Premium hakkı olan kullanıcılar
+  const entitled = await premiumSet(db, userIds)
+  const validIds = userIds.filter((id) => entitled.has(id))
   if (!validIds.length) return map
 
   // 2. Yalnızca bu doğrulanmış premium kullanıcıların push aboneliklerini çek
@@ -128,7 +135,7 @@ const stripEmoji = (t: string) =>
   t.replace(/[\uD83C-\uD83E][\uDC00-\uDFFF]|[\u231A-\u23FF]|[\u2600-\u27BF]|[\u2B00-\u2BFF]|\uFE0F|\u200D/g, "")
 const clip = (t: string, n: number) => (t.length > n ? t.slice(0, n - 1).trimEnd() + "…" : t)
 
-/** Bot ilanları aynı metinle tekrar tekrar gelir; son 6 saatte aynısı varsa bildirim atma.[cite: 4] */
+/** Bot ilanları aynı metinle tekrar tekrar gelir; son 6 saatte aynısı varsa bildirim atma. */
 async function isRepeatedBot(db: SupabaseClient, rec: Rec): Promise<boolean> {
   if (!rec.cargo_detail || !rec.created_at) return false
   const since = new Date(new Date(rec.created_at).getTime() - 6 * 3600_000).toISOString()
@@ -187,6 +194,11 @@ async function handleListing(db: SupabaseClient, table: string, rec: Rec) {
     if (seenUser.has(matches[i].user_id)) matches.splice(i, 1)
     else seenUser.add(matches[i].user_id)
   }
+  if (!matches.length) return
+
+  // Premium olmayan / Premium'u bitmiş kullanıcıya hiçbir şey gönderme (ve bekleyen sayaç da tutma)
+  const okUsers = await premiumSet(db, matches.map((m) => m.user_id))
+  for (let i = matches.length - 1; i >= 0; i--) if (!okUsers.has(matches[i].user_id)) matches.splice(i, 1)
   if (!matches.length) return
 
   const place = fromCity && toCity ? `${fromCity} → ${toCity}` : fromCity ? `${fromCity} çıkışlı` : toCity ? `${toCity} varışlı` : "Yeni ilan"
@@ -277,10 +289,11 @@ Deno.serve(async (req: Request) => {
     const { data: u } = await createClient(SUPABASE_URL, ANON, { auth: { persistSession: false } }).auth.getUser(jwt)
     if (!u?.user) return json(req, { ok: false, error: "unauthorized" }, 401)
     const body = await req.json().catch(() => ({}))
+    if (body?.ping) return json(req, { ok: true, version: VERSION })
     if (!body?.test) return json(req, { ok: false, error: "bad_request" }, 400)
 
     const { data: prem } = await db.rpc("is_premium", { uid: u.user.id })
-    if (!prem) return json(req, { ok: false, error: "premium_required" }, 403)
+    if (!prem) return json(req, { ok: false, error: "premium_required", version: VERSION }, 403)
 
     const subs = (await subsOf(db, [u.user.id])).get(u.user.id) || []
     if (!subs.length) return json(req, { ok: false, error: "no_device", devices: 0 })
@@ -290,10 +303,9 @@ Deno.serve(async (req: Request) => {
       url: "/",
       tag: "test",
     })
-    return json(req, { ok: r.sent > 0, devices: subs.length, ...r })
+    return json(req, { ok: r.sent > 0, devices: subs.length, version: VERSION, ...r })
   } catch (e) {
     console.error("notify-listing hatası:", e)
     return json(req, { ok: false, error: "exception" }, 500)
   }
 })
-```[cite: 4]
