@@ -17,6 +17,8 @@ const DIRECTIONS: { value: Direction; label: string; short: string }[] = [
   { value: "both", label: "İkisi de", short: "çıkış + varış" },
 ]
 
+const MAX_ROUTES = 3
+
 const VEHICLES = ["Tır", "Kamyon", "Kamyonet", "Frigo", "Kırkayak", "Dorse", "Damperli"]
 
 const selectClass =
@@ -28,8 +30,8 @@ export function NotificationSettings() {
   const [state, setState] = useState<PushState>("off")
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null)
-  const [route, setRoute] = useState<Route | null>(null)
-  const [editing, setEditing] = useState(false)
+  const [routes, setRoutes] = useState<Route[]>([])
+  const [editingId, setEditingId] = useState<string | null>(null) // "new" = yeni şehir, aksi halde düzenlenen kayıt
   const [city, setCity] = useState("")
   const [direction, setDirection] = useState<Direction>("from")
   const [vehicle, setVehicle] = useState("")
@@ -41,8 +43,7 @@ export function NotificationSettings() {
       .from("notification_routes")
       .select("id,from_city,vehicle,urgent_only,direction")
       .order("created_at", { ascending: true })
-      .limit(1)
-    if (!error) setRoute((data?.[0] as Route | undefined) ?? null)
+    if (!error) setRoutes((data as Route[] | null) ?? [])
   }, [])
 
   useEffect(() => {
@@ -55,8 +56,8 @@ export function NotificationSettings() {
     if (!supabase) return
     const { data } = supabase.auth.onAuthStateChange((event) => {
       if (event === "SIGNED_OUT") {
-        setRoute(null)
-        setEditing(false)
+        setRoutes([])
+        setEditingId(null)
         setMsg(null)
         setState("off")
       } else if (event === "SIGNED_IN") {
@@ -82,49 +83,51 @@ export function NotificationSettings() {
     setBusy(false)
   }
 
-  const startEdit = () => {
-    setCity(route?.from_city ?? "")
-    setDirection(route?.direction ?? "from")
-    setVehicle(route?.vehicle ?? "")
-    setUrgentOnly(route?.urgent_only ?? false)
-    setEditing(true)
+  const startEdit = (r?: Route) => {
+    setCity(r?.from_city ?? "")
+    setDirection(r?.direction ?? "from")
+    setVehicle(r?.vehicle ?? "")
+    setUrgentOnly(r?.urgent_only ?? false)
+    setEditingId(r ? r.id : "new")
     setMsg(null)
   }
 
   const saveRoute = async () => {
-    if (!supabase) return
+    if (!supabase || !editingId) return
     if (!city) {
       setMsg({ text: "Lütfen bir şehir seçin.", ok: false })
       return
     }
     setBusy(true)
     setMsg(null)
-    // Tek şehir kuralı: kayıt varsa GÜNCELLE (silip eklemek, ekleme başarısız olursa mevcut ayarı kaybettiriyordu)
+    // Mevcut kaydı GÜNCELLE (silip eklemek, ekleme başarısız olursa ayarı kaybettirirdi)
     const fields = { from_city: city, to_city: null, direction, vehicle: vehicle || null, urgent_only: urgentOnly }
-    const { error } = route
-      ? await supabase.from("notification_routes").update(fields).eq("id", route.id)
-      : await supabase.from("notification_routes").insert(fields)
+    const { error } = editingId === "new"
+      ? await supabase.from("notification_routes").insert(fields)
+      : await supabase.from("notification_routes").update(fields).eq("id", editingId)
     setBusy(false)
     if (error) {
       setMsg({
         text: error.message.includes("premium_required")
           ? "İlan bildirimleri Premium'a özeldir."
-          : "Şehir kaydedilemedi, tekrar deneyin.",
+          : error.message.includes("route_limit")
+            ? `En fazla ${MAX_ROUTES} şehir ekleyebilirsiniz.`
+            : "Şehir kaydedilemedi, tekrar deneyin.",
         ok: false,
       })
       loadRoute()
       return
     }
-    setEditing(false)
+    setEditingId(null)
     loadRoute()
   }
 
-  const removeRoute = async () => {
-    if (!supabase || !route) return
-    const old = route
-    setRoute(null)
-    const { error } = await supabase.from("notification_routes").delete().eq("id", old.id)
-    if (error) setRoute(old)
+  const removeRoute = async (r: Route) => {
+    if (!supabase) return
+    const before = routes
+    setRoutes(routes.filter((x) => x.id !== r.id))
+    const { error } = await supabase.from("notification_routes").delete().eq("id", r.id)
+    if (error) setRoutes(before)
   }
 
   const sendTest = async () => {
@@ -203,37 +206,39 @@ export function NotificationSettings() {
       )}
 
       <div className="space-y-2">
-        <span className="text-xs font-semibold text-[#6d8194]">Bildirim şehri</span>
+        <span className="text-xs font-semibold text-[#6d8194]">Bildirim şehirleri ({routes.length}/{MAX_ROUTES})</span>
 
-        {!editing && !route && (
+        {routes.map((route) => (
+          editingId === route.id ? null : (
+            <div key={route.id} className="flex items-center justify-between gap-2 rounded-xl bg-[#f5f7fa] px-3 py-2.5">
+              <span className="min-w-0 truncate text-sm font-medium text-[#122c4a]">
+                {route.from_city} ({DIRECTIONS.find((d) => d.value === route.direction)?.short ?? "çıkış"})
+                {route.vehicle ? ` · ${route.vehicle}` : ""}
+                {route.urgent_only ? " · Sadece acil" : ""}
+              </span>
+              <div className="flex shrink-0 items-center">
+                <button type="button" onClick={() => startEdit(route)} aria-label="Şehri değiştir" className="grid size-8 place-items-center rounded-full text-[#8da0b2] hover:bg-white hover:text-[#122c4a]">
+                  <Pencil className="size-4" />
+                </button>
+                <button type="button" onClick={() => removeRoute(route)} aria-label="Şehri sil" className="grid size-8 place-items-center rounded-full text-[#8da0b2] hover:bg-white hover:text-[#d64526]">
+                  <Trash2 className="size-4" />
+                </button>
+              </div>
+            </div>
+          )
+        ))}
+
+        {!editingId && routes.length < MAX_ROUTES && (
           <button
             type="button"
-            onClick={startEdit}
+            onClick={() => startEdit()}
             className="flex h-11 w-full items-center justify-center rounded-xl bg-[#122c4a] text-sm font-semibold text-white active:scale-[0.99]"
           >
-            Şehir seç
+            {routes.length ? "Şehir ekle" : "Şehir seç"}
           </button>
         )}
 
-        {!editing && route && (
-          <div className="flex items-center justify-between gap-2 rounded-xl bg-[#f5f7fa] px-3 py-2.5">
-            <span className="min-w-0 truncate text-sm font-medium text-[#122c4a]">
-              {route.from_city} ({DIRECTIONS.find((d) => d.value === route.direction)?.short ?? "çıkış"})
-              {route.vehicle ? ` · ${route.vehicle}` : ""}
-              {route.urgent_only ? " · Sadece acil" : ""}
-            </span>
-            <div className="flex shrink-0 items-center">
-              <button type="button" onClick={startEdit} aria-label="Şehri değiştir" className="grid size-8 place-items-center rounded-full text-[#8da0b2] hover:bg-white hover:text-[#122c4a]">
-                <Pencil className="size-4" />
-              </button>
-              <button type="button" onClick={removeRoute} aria-label="Şehri sil" className="grid size-8 place-items-center rounded-full text-[#8da0b2] hover:bg-white hover:text-[#d64526]">
-                <Trash2 className="size-4" />
-              </button>
-            </div>
-          </div>
-        )}
-
-        {editing && (
+        {editingId && (
           <div className="space-y-3 rounded-xl border border-[#e4e9ef] p-3">
             <label className="block text-[11px] font-semibold text-[#6d8194]">
               Şehir
@@ -263,7 +268,7 @@ export function NotificationSettings() {
               <button type="button" onClick={saveRoute} disabled={busy} className="h-11 flex-1 rounded-xl bg-[#122c4a] text-sm font-semibold text-white disabled:opacity-60">
                 Kaydet
               </button>
-              <button type="button" onClick={() => setEditing(false)} className="h-11 rounded-xl bg-[#f0f4f8] px-4 text-sm font-semibold text-[#122c4a]">
+              <button type="button" onClick={() => setEditingId(null)} className="h-11 rounded-xl bg-[#f0f4f8] px-4 text-sm font-semibold text-[#122c4a]">
                 Vazgeç
               </button>
             </div>
@@ -282,7 +287,7 @@ export function NotificationSettings() {
         </button>
       )}
 
-      {route && !on && pushUsable && (
+      {routes.length > 0 && !on && pushUsable && (
         <p className="text-[11px] text-[#8da0b2]">Şehir kaydettiniz ancak bu cihazda bildirim kapalı. Yukarıdan "Aç" düğmesine dokunun.</p>
       )}
     </div>
