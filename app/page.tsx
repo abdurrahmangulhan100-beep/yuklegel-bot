@@ -1,5 +1,6 @@
 "use client"
 
+import { realName } from "@/lib/names"
 import { useEffect, useMemo, useState, useRef, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { Bell, Search, LogIn, X } from "lucide-react"
@@ -171,7 +172,7 @@ export default function Page() {
         const created = {
           id: user.id,
           email: user.email,
-          company_name: fullName || "Nakliye Cepte Kullanıcısı",
+          company_name: fullName || "",
           authorized_person: fullName || user.email?.split("@")[0] || "Kullanıcı",
           updated_at: new Date().toISOString(),
         }
@@ -179,7 +180,7 @@ export default function Page() {
         if (!upErr) data = created as typeof data
       }
       if (data && !error) {
-        const cName = data.company_name || data.authorized_person || "Nakliye Cepte Kullanıcısı"
+        const cName = realName(data.company_name) || data.authorized_person || "Nakliye Cepte Kullanıcısı"
         const aPerson = data.authorized_person || user.email?.split("@")[0] || "Kullanıcı"
         const initials = aPerson.split(" ").map((n: string) => n[0]).join("").toUpperCase().substring(0, 2)
         setProfile({ company_name: cName, authorized_person: aPerson, initials: initials || "NK" })
