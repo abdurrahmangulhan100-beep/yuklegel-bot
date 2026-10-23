@@ -85,16 +85,23 @@ export function ListingsView({
   const matchFrom = (l: Load, c: string) => (l.fromCity ? l.fromCity === c : (l.cities ?? []).includes(c))
   const matchTo = (l: Load, c: string) => (l.toCity ? l.toCity === c : (l.cities ?? []).includes(c))
 
+  // Seçenek sayıları diğer seçime göre hesaplanır: "Nereden: Konya" seçiliyken Nereye listesinde yalnızca Konya çıkışlı yüklerin gittiği şehirler görünür
   const fromOptions = useMemo(() => {
     const m = new Map<string, number>()
-    for (const l of loads) for (const c of Array.from(new Set([l.fromCity, ...(l.fromCity ? [] : l.cities ?? [])].filter(Boolean) as string[]))) m.set(c, (m.get(c) ?? 0) + 1)
+    for (const l of loads) {
+      if (to && !matchTo(l, to)) continue
+      for (const c of Array.from(new Set([l.fromCity, ...(l.fromCity ? [] : l.cities ?? [])].filter(Boolean) as string[]))) m.set(c, (m.get(c) ?? 0) + 1)
+    }
     return Array.from(m.entries()).sort((a, b) => b[1] - a[1] || byTr(a[0], b[0]))
-  }, [loads])
+  }, [loads, to])
   const toOptions = useMemo(() => {
     const m = new Map<string, number>()
-    for (const l of loads) for (const c of Array.from(new Set([l.toCity, ...(l.toCity ? [] : l.cities ?? [])].filter(Boolean) as string[]))) m.set(c, (m.get(c) ?? 0) + 1)
+    for (const l of loads) {
+      if (from && !matchFrom(l, from)) continue
+      for (const c of Array.from(new Set([l.toCity, ...(l.toCity ? [] : l.cities ?? [])].filter(Boolean) as string[]))) m.set(c, (m.get(c) ?? 0) + 1)
+    }
     return Array.from(m.entries()).sort((a, b) => b[1] - a[1] || byTr(a[0], b[0]))
-  }, [loads])
+  }, [loads, from])
 
   const visibleLoads = useMemo(() => {
     const now = Date.now()
@@ -328,7 +335,21 @@ export function ListingsView({
             <PackageSearch className="size-8" />
           </div>
           <p className="text-base font-bold text-[#122c4a]">Aramanıza uygun aktif ilan bulunamadı</p>
-          <p className="mx-auto mt-1 max-w-xs text-sm text-[#627d98]">Filtrelerinizi değiştirmeyi veya arama teriminizi temizlemeyi deneyin.</p>
+          <p className="mx-auto mt-1 max-w-xs text-sm text-[#627d98]">
+            {from && to
+              ? `${from} → ${to} güzergâhında şu an ilan yok.`
+              : "Filtrelerinizi değiştirmeyi veya arama teriminizi temizlemeyi deneyin."}
+          </p>
+          {from && to && (
+            <div className="mt-4 flex flex-wrap justify-center gap-2">
+              <button onClick={() => setTo("")} className="h-10 rounded-xl border border-[#cbd5e1] bg-white px-4 text-[13px] font-semibold text-[#122c4a]">
+                Tüm {from} çıkışlı ilanlar
+              </button>
+              <button onClick={() => setFrom("")} className="h-10 rounded-xl border border-[#cbd5e1] bg-white px-4 text-[13px] font-semibold text-[#122c4a]">
+                Tüm {to} ilanları
+              </button>
+            </div>
+          )}
           {(activeFilter !== "Tümü" || sourceFilter !== "all" || hasExtraFilters) && (
             <button
               onClick={clearAll}
