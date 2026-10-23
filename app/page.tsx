@@ -6,6 +6,7 @@ import { Bell, Search, LogIn, X } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { cn, timeAgo } from "@/lib/utils"
 import { supabase } from "@/lib/supabase"
+import { signOutClean } from "@/lib/push"
 import { Load } from "@/components/LoadCard"
 import { mapUserListing, mapBotListing, dedupeLoads, reuseLoads, type DatabaseListing } from "@/lib/listings"
 import { fold } from "@/lib/route"
@@ -441,7 +442,7 @@ export default function Page() {
     try {
       localStorage.removeItem("favorite_loads")
       localStorage.removeItem("is_guest")
-      if (supabase) await supabase.auth.signOut()
+      await signOutClean()
       setCurrentUserId(null)
       setFavoriteIds([])
       router.push("/login")
