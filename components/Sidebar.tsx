@@ -104,6 +104,10 @@ export function Sidebar({
           <ShieldCheck className="size-5 shrink-0 text-emerald-400" />
           {!isCollapsed && <span>Gizlilik Politikası</span>}
         </Link>
+        <Link href="/kullanim-kosullari" onClick={() => setIsSidebarOpen(false)} className={cn("flex min-h-12 w-full items-center gap-3.5 rounded-xl px-3.5 py-3 text-sm font-medium text-white/70 transition-all hover:bg-white/10 hover:text-white", isCollapsed && "justify-center px-0")} title={isCollapsed ? "Kullanım Koşulları" : undefined}>
+          <FileText className="size-5 shrink-0 text-sky-300" />
+          {!isCollapsed && <span>Kullanım Koşulları</span>}
+        </Link>
 
         {!isGuest && <NavItem icon={UserX} label="Hesabımı Sil" active={false} onClick={() => go("Şirket Profili")} collapsed={isCollapsed} />}
 
