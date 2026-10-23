@@ -64,6 +64,8 @@ const PERIODS: { key: Period; label: string }[] = [
 
 const PALETTE = ["#d64526", "#315d83", "#f4a259", "#10b981", "#8b5cf6", "#0ea5e9", "#94a3b8"]
 const BUDGET_KEY = "fin_budget_v1"
+const PLATE_KEY = "fin_last_plate_v1"
+const QUICK_AMOUNTS = [100, 250, 500, 1000, 2500]
 const PAGE = 40
 
 // ---------- yardımcılar ----------
@@ -183,9 +185,13 @@ export function FinanceView() {
   const [editingItem, setEditingItem] = useState<FinanceItem | null>(null)
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
-  const [showReports, setShowReports] = useState(true)
+  const [showReports, setShowReports] = useState(false)
   const [reportKind, setReportKind] = useState<"expense" | "income">("expense")
   const [visible, setVisible] = useState(PAGE)
+  const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [otherCat, setOtherCat] = useState(false)
+  const [otherPlate, setOtherPlate] = useState(false)
+  const [showNote, setShowNote] = useState(false)
 
   // Filtreler
   const [period, setPeriod] = useState<Period>("month")
@@ -286,10 +292,21 @@ export function FinanceView() {
   }, [period, customStart, customEnd, filterType, searchQuery, selectedPlate])
 
   // ---------- form işlemleri ----------
+  const defaultPlate = () => {
+    if (selectedPlate !== "all") return selectedPlate
+    let last = ""
+    try { last = localStorage.getItem(PLATE_KEY) || "" } catch { /* depolama kapalı */ }
+    if (last && uniquePlates.includes(last)) return last
+    return uniquePlates.length === 1 ? uniquePlates[0] : ""
+  }
+
   const resetForm = () => {
     setCategory("")
     setAmount("")
-    setPlate(selectedPlate !== "all" ? selectedPlate : "")
+    setOtherCat(false)
+    setOtherPlate(false)
+    setShowNote(false)
+    setPlate(defaultPlate())
     setDescription("")
     setDate(localISO(new Date()))
     setFormError(null)
@@ -315,6 +332,9 @@ export function FinanceView() {
     setPlate(item.plate || "")
     setDate(dayOf(item.date) || localISO(new Date()))
     setDescription(item.description || "")
+    setOtherCat(Boolean(item.category) && !CATEGORY_SUGGESTIONS[item.type].includes(item.category))
+    setOtherPlate(Boolean(item.plate) && !uniquePlates.includes(item.plate))
+    setShowNote(Boolean(item.description))
     setFormError(null)
     setSheetOpen(true)
   }
@@ -328,6 +348,9 @@ export function FinanceView() {
     setPlate(item.plate || "")
     setDate(localISO(new Date()))
     setDescription(item.description || "")
+    setOtherCat(Boolean(item.category) && !CATEGORY_SUGGESTIONS[item.type].includes(item.category))
+    setOtherPlate(Boolean(item.plate) && !uniquePlates.includes(item.plate))
+    setShowNote(Boolean(item.description))
     setFormError(null)
     setSheetOpen(true)
   }
@@ -376,6 +399,7 @@ export function FinanceView() {
       setFormError("Kaydedilemedi: " + error.message)
       return
     }
+    try { if (payload.plate) localStorage.setItem(PLATE_KEY, String(payload.plate)) } catch { /* depolama kapalı */ }
     closeSheet()
     fetchFinances()
   }
@@ -393,6 +417,21 @@ export function FinanceView() {
 
   // ---------- türetilmiş veriler ----------
   const uniquePlates = useMemo(() => Array.from(new Set(items.map((i) => i.plate).filter(Boolean))), [items])
+
+  /** Son kullanılan (kategori + tutar + plaka) kombinasyonları: tek dokunuşla doldurmak için */
+  const recent = useMemo(() => {
+    const seen = new Set<string>()
+    const out: FinanceItem[] = []
+    for (const it of items) {
+      if (it.type !== type) continue
+      const k = `${it.category}|${it.amount}|${it.plate}`
+      if (seen.has(k)) continue
+      seen.add(k)
+      out.push(it)
+      if (out.length >= 4) break
+    }
+    return out
+  }, [items, type])
 
   const range = useMemo(() => rangeFor(period, customStart, customEnd), [period, customStart, customEnd])
   const prevRange = useMemo(() => prevRangeFor(period, range), [period, range])
@@ -870,8 +909,8 @@ export function FinanceView() {
                     const isIncome = item.type === "income"
                     const meta = catMeta(item.category, item.type)
                     return (
-                      <div key={item.id} className="p-3.5 transition-colors hover:bg-[#f8fafc]">
-                        <div className="flex items-center gap-3">
+                      <div key={item.id} className="transition-colors hover:bg-[#f8fafc]">
+                        <button type="button" onClick={() => setExpandedId(expandedId === item.id ? null : item.id)} aria-expanded={expandedId === item.id} className="flex w-full items-center gap-3 p-3.5 text-left">
                           <span className={cn("grid size-10 shrink-0 place-items-center rounded-xl", meta.tone)}>
                             <meta.icon className="size-5" />
                           </span>
@@ -885,13 +924,13 @@ export function FinanceView() {
                                 </span>
                               )}
                             </div>
-                            {item.description && <p className="mt-0.5 line-clamp-1 text-xs text-[#718397]">{item.description}</p>}
+                            {item.description && <p className={cn("mt-0.5 text-xs text-[#718397]", expandedId !== item.id && "line-clamp-1")}>{item.description}</p>}
                           </div>
                           <div className={cn("shrink-0 text-right text-sm font-extrabold tabular-nums sm:text-base", isIncome ? "text-emerald-600" : "text-red-600")}>
                             {isIncome ? "+" : "-"}{TL(item.amount)}
                           </div>
-                        </div>
-                        <div className="mt-1.5 flex justify-end gap-0.5">
+                        </button>
+                        {expandedId === item.id && <div className="flex justify-end gap-0.5 px-3.5 pb-3">
                           <button onClick={() => openRepeat(item)} className="inline-flex h-8 items-center gap-1 rounded-lg px-2 text-[11px] font-semibold text-[#8da0b2] hover:bg-[#eef4f8] hover:text-[#315d83]" title="Bugünün tarihiyle tekrarla">
                             <Copy className="size-3.5" /> Tekrarla
                           </button>
@@ -901,7 +940,7 @@ export function FinanceView() {
                           <button onClick={() => handleDelete(item)} className="inline-flex h-8 items-center gap-1 rounded-lg px-2 text-[11px] font-semibold text-[#8da0b2] hover:bg-red-50 hover:text-red-600" aria-label="Sil">
                             <Trash2 className="size-3.5" /> Sil
                           </button>
-                        </div>
+                        </div>}
                       </div>
                     )
                   })}
@@ -917,6 +956,11 @@ export function FinanceView() {
           </div>
         )}
       </section>
+
+      <p className="px-2 text-center text-[11px] leading-relaxed text-[#8da0b2]">
+        Bu bölüm yalnızca kişisel takip içindir; fatura, defter veya mali müşavirlik hizmeti yerine geçmez. Vergi ve yasal kayıt yükümlülükleri kullanıcıya aittir.{" "}
+        <a href="/kullanim-kosullari" className="font-semibold underline">Kullanım Koşulları</a>
+      </p>
 
       {/* Kayıt formu */}
       <Sheet
@@ -934,13 +978,27 @@ export function FinanceView() {
           </button>
         }
       >
-        <form id="fin-form" onSubmit={handleSaveRecord} className="space-y-4 pt-1">
+        <form id="fin-form" onSubmit={handleSaveRecord} className="space-y-5 pt-1">
           {formError && <div className="rounded-lg border border-red-200 bg-red-50 p-2.5 text-xs font-semibold text-red-700">{formError}</div>}
 
           <div className="grid grid-cols-2 gap-1 rounded-xl bg-[#eaeff4] p-1">
-            <button type="button" onClick={() => setType("income")} className={cn("h-10 rounded-lg text-sm font-semibold transition-colors", type === "income" ? "bg-emerald-600 text-white shadow-sm" : "text-[#627d98]")}>Gelir</button>
-            <button type="button" onClick={() => setType("expense")} className={cn("h-10 rounded-lg text-sm font-semibold transition-colors", type === "expense" ? "bg-[#d64526] text-white shadow-sm" : "text-[#627d98]")}>Gider</button>
+            <button type="button" onClick={() => { setType("income"); setCategory(""); setOtherCat(false) }} className={cn("h-10 rounded-lg text-sm font-semibold transition-colors", type === "income" ? "bg-emerald-600 text-white shadow-sm" : "text-[#627d98]")}>Gelir</button>
+            <button type="button" onClick={() => { setType("expense"); setCategory(""); setOtherCat(false) }} className={cn("h-10 rounded-lg text-sm font-semibold transition-colors", type === "expense" ? "bg-[#d64526] text-white shadow-sm" : "text-[#627d98]")}>Gider</button>
           </div>
+
+          {!editingItem && recent.length > 0 && (
+            <div>
+              <p className="mb-1.5 text-xs font-semibold text-[#334e68]">Son kullanılanlar · tek dokunuşla doldur</p>
+              <div className="no-scrollbar -mx-1 flex gap-1.5 overflow-x-auto px-1">
+                {recent.map((r) => (
+                  <button key={r.id} type="button" onClick={() => { setCategory(r.category); setAmount(String(r.amount)); setPlate(r.plate); setOtherCat(!CATEGORY_SUGGESTIONS[type].includes(r.category)) }} className="shrink-0 rounded-xl border border-[#e0e6ed] bg-white px-3 py-2 text-left active:scale-95">
+                    <span className="block text-xs font-bold text-[#122c4a]">{r.category}</span>
+                    <span className="block text-[11px] tabular-nums text-[#718397]">{TL(r.amount)}{r.plate ? ` · ${r.plate}` : ""}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div>
             <label className="mb-1.5 block text-xs font-semibold text-[#334e68]" htmlFor="fin-amount">Tutar</label>
@@ -950,68 +1008,82 @@ export function FinanceView() {
                 id="fin-amount"
                 inputMode="decimal"
                 autoComplete="off"
+                autoFocus={!editingItem}
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
                 placeholder="0,00"
                 className="h-14 w-full rounded-xl border border-[#dbe3ec] bg-white pl-10 pr-4 text-2xl font-extrabold tabular-nums text-[#122c4a] outline-none transition-colors focus:border-[#122c4a] focus:ring-4 focus:ring-[#122c4a]/10"
               />
             </div>
-          </div>
-
-          <div>
-            <label className="mb-1.5 block text-xs font-semibold text-[#334e68]" htmlFor="fin-cat">Kategori</label>
-            <div className="mb-2 flex flex-wrap gap-1.5">
-              {CATEGORY_SUGGESTIONS[type].map((cat) => (
-                <button
-                  key={cat}
-                  type="button"
-                  onClick={() => setCategory(cat)}
-                  className={cn("rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors", category === cat ? "border-[#122c4a] bg-[#122c4a] text-white" : "border-[#e0e6ed] bg-white text-[#4a6178] hover:border-[#c4d0dc]")}
-                >
-                  {cat}
-                </button>
+            <div className="no-scrollbar -mx-1 mt-2 flex gap-1.5 overflow-x-auto px-1">
+              {QUICK_AMOUNTS.map((n) => (
+                <button key={n} type="button" onClick={() => setAmount((cur0) => String((Number(String(cur0).replace(",", ".")) || 0) + n))} className="h-9 shrink-0 rounded-full border border-[#e0e6ed] bg-white px-3.5 text-xs font-semibold text-[#4a6178] active:scale-95">+{n.toLocaleString("tr-TR")}</button>
               ))}
+              {amount && <button type="button" onClick={() => setAmount("")} className="h-9 shrink-0 rounded-full px-3 text-xs font-semibold text-[#8da0b2]">Sıfırla</button>}
             </div>
-            <Input id="fin-cat" value={category} onChange={(e) => setCategory(e.target.value)} placeholder="Kategori adı..." className="h-11 text-base md:text-sm" />
           </div>
 
           <div>
-            <label className="mb-1.5 block text-xs font-semibold text-[#334e68]" htmlFor="fin-plate">Araç plakası (ops.)</label>
-            {uniquePlates.length > 0 && (
-              <div className="mb-2 flex flex-wrap gap-1.5">
-                {uniquePlates.map((p) => (
-                  <button key={p} type="button" onClick={() => setPlate(p)} className={cn("rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors", plate === p ? "border-[#122c4a] bg-[#122c4a] text-white" : "border-[#e0e6ed] bg-white text-[#4a6178] hover:border-[#c4d0dc]")}>
-                    {p}
+            <p className="mb-1.5 text-xs font-semibold text-[#334e68]">Kategori</p>
+            <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+              {CATEGORY_SUGGESTIONS[type].map((cat) => {
+                const m = catMeta(cat, type)
+                const on = category === cat && !otherCat
+                return (
+                  <button key={cat} type="button" onClick={() => { setCategory(cat); setOtherCat(false) }} aria-pressed={on} className={cn("flex flex-col items-center gap-1.5 rounded-2xl border px-1.5 py-2.5 text-center transition-all active:scale-95", on ? "border-[#122c4a] bg-[#122c4a]/[0.04] ring-2 ring-[#122c4a]/15" : "border-[#e4e9ef] bg-white")}>
+                    <span className={cn("grid size-9 place-items-center rounded-xl", m.tone)}><m.icon className="size-[18px]" /></span>
+                    <span className="text-[11px] font-semibold leading-tight text-[#122c4a]">{cat}</span>
                   </button>
-                ))}
-              </div>
-            )}
-            <Input id="fin-plate" value={plate} onChange={(e) => setPlate(e.target.value)} placeholder="Örn: 42 DLB 59" className="h-11 text-base uppercase md:text-sm" />
-          </div>
-
-          <div>
-            <label className="mb-1.5 block text-xs font-semibold text-[#334e68]" htmlFor="fin-date">Tarih</label>
-            <div className="flex items-center gap-2">
-              <Input id="fin-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} className="h-11 flex-1 text-base md:text-sm" />
-              <button type="button" onClick={() => setDate(localISO(new Date()))} className="h-11 rounded-xl border border-[#e0e6ed] px-3 text-xs font-semibold text-[#4a6178] hover:bg-[#f5f7fa]">Bugün</button>
-              <button
-                type="button"
-                onClick={() => {
-                  const d = new Date()
-                  d.setDate(d.getDate() - 1)
-                  setDate(localISO(d))
-                }}
-                className="h-11 rounded-xl border border-[#e0e6ed] px-3 text-xs font-semibold text-[#4a6178] hover:bg-[#f5f7fa]"
-              >
-                Dün
+                )
+              })}
+              <button type="button" onClick={() => { setOtherCat(true); setCategory("") }} aria-pressed={otherCat} className={cn("flex flex-col items-center justify-center gap-1.5 rounded-2xl border border-dashed px-1.5 py-2.5 text-center text-[11px] font-semibold text-[#4a6178] active:scale-95", otherCat ? "border-[#122c4a] bg-[#122c4a]/[0.04]" : "border-[#cbd5e1] bg-white")}>
+                <Pencil className="size-[18px]" />
+                Başka…
               </button>
             </div>
+            {otherCat && <Input autoFocus value={category} onChange={(e) => setCategory(e.target.value)} placeholder="Kategori adı" className="mt-2 h-11 text-base md:text-sm" />}
           </div>
 
           <div>
-            <label className="mb-1.5 block text-xs font-semibold text-[#334e68]" htmlFor="fin-desc">Açıklama / not (ops.)</label>
-            <Input id="fin-desc" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Örn: Konya → Adana seferi, 320 lt" className="h-11 text-base md:text-sm" />
+            <p className="mb-1.5 text-xs font-semibold text-[#334e68]">Araç (ops.)</p>
+            <div className="flex flex-wrap gap-1.5">
+              {uniquePlates.map((p) => (
+                <button key={p} type="button" onClick={() => { setPlate(plate === p ? "" : p); setOtherPlate(false) }} aria-pressed={plate === p} className={cn("inline-flex items-center gap-1.5 rounded-full border px-3 py-2 text-xs font-semibold transition-colors", plate === p ? "border-[#122c4a] bg-[#122c4a] text-white" : "border-[#e0e6ed] bg-white text-[#4a6178]")}>
+                  <Truck className="size-3.5" />{p}
+                </button>
+              ))}
+              {(uniquePlates.length === 0 || otherPlate) ? null : (
+                <button type="button" onClick={() => { setOtherPlate(true); setPlate("") }} className="rounded-full border border-dashed border-[#cbd5e1] px-3 py-2 text-xs font-semibold text-[#4a6178]">+ Yeni plaka</button>
+              )}
+            </div>
+            {(uniquePlates.length === 0 || otherPlate) && <Input id="fin-plate" value={plate} onChange={(e) => setPlate(e.target.value)} placeholder="Örn: 42 DLB 59" className="mt-2 h-11 text-base uppercase md:text-sm" />}
           </div>
+
+          <div>
+            <p className="mb-1.5 text-xs font-semibold text-[#334e68]">Tarih</p>
+            {(() => {
+              const t0 = localISO(new Date())
+              const yd = new Date(); yd.setDate(yd.getDate() - 1)
+              const y0 = localISO(yd)
+              const chip = (on: boolean) => cn("h-10 flex-1 rounded-xl border text-xs font-semibold transition-colors", on ? "border-[#122c4a] bg-[#122c4a] text-white" : "border-[#e0e6ed] bg-white text-[#4a6178]")
+              return (
+                <div className="flex items-center gap-2">
+                  <button type="button" onClick={() => setDate(t0)} className={chip(date === t0)}>Bugün</button>
+                  <button type="button" onClick={() => setDate(y0)} className={chip(date === y0)}>Dün</button>
+                  <Input id="fin-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} aria-label="Başka tarih" className={cn("h-10 flex-[1.4] text-base md:text-sm", date !== t0 && date !== y0 && "border-[#122c4a]")} />
+                </div>
+              )
+            })()}
+          </div>
+
+          {showNote ? (
+            <div>
+              <label className="mb-1.5 block text-xs font-semibold text-[#334e68]" htmlFor="fin-desc">Not</label>
+              <Input id="fin-desc" autoFocus value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Örn: Konya → Adana seferi, 320 lt" className="h-11 text-base md:text-sm" />
+            </div>
+          ) : (
+            <button type="button" onClick={() => setShowNote(true)} className="text-xs font-semibold text-[#315d83] hover:underline">+ Not ekle</button>
+          )}
         </form>
       </Sheet>
     </div>
