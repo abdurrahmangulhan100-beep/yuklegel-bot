@@ -1,7 +1,7 @@
 "use client"
 
-import { Phone, MessageCircle, Star, Check, Ban, Zap, ChevronDown, Share2, Copy, Flag, MoreHorizontal, MapPin, ArrowRight } from "lucide-react"
-import { memo, useState } from "react"
+import { Phone, MessageCircle, Star, Check, Ban, Zap, ChevronDown, Share2, Copy, Flag, MoreHorizontal, MapPin, Truck } from "lucide-react"
+import { Fragment, memo, useState } from "react"
 import { isMissing } from "@/lib/route"
 import { supabase } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
@@ -312,19 +312,12 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
   // Çıkış ve varış şehri ikisi de biliniyorsa net bir güzergâh satırı göster; diğer şehirler etiket olarak kalır
   const route =
     load.fromCity && load.toCity && load.fromCity !== load.toCity ? { from: load.fromCity, to: load.toCity } : null
-  const chipTags = route ? cityTags.filter((t) => t.city !== route.from && t.city !== route.to) : cityTags
-  const hasChips = chipTags.length > 0 || hasPrice
-
+  // Güzergâh bilinmiyorsa şehirler tek satırda, sade metin olarak gösterilir (kutucuk / rozet yok)
+  const places = route ? [] : cityTags
   // İlanın tazeliği: ilk dakikalar en değerli, rengiyle anlaşılır
   const ageMin = load.createdAt ? (Date.now() - Date.parse(load.createdAt)) / 60000 : NaN
   const fresh = Number.isFinite(ageMin) && ageMin >= 0 ? (ageMin < 15 ? "hot" : ageMin < 60 ? "warm" : "") : ""
   const hasTags = load.urgent || hasVehicle || load.trailer || load.tonnage || load.timing || (load.repeatCount ?? 0) > 1
-
-  const accent = load.urgent
-    ? "bg-gradient-to-b from-[#e5522f] to-[#f4a259]"
-    : isUserLoad
-      ? "bg-[#e5522f]"
-      : "bg-[#3f7199]"
 
   const openMenu = () => {
     setSheetView("menu")
@@ -343,34 +336,36 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
     setTimeout(closeSheet, 700)
   }
 
+  const hasSpecs = hasTags || hasPrice || hasDistance
+
   return (
     <article
-      style={{ contentVisibility: "auto", containIntrinsicSize: "auto 220px" }}
+      style={{ contentVisibility: "auto", containIntrinsicSize: "auto 280px" }}
       className={cn(
-        "relative overflow-hidden rounded-2xl border shadow-[0_1px_2px_rgba(18,44,74,0.06)]",
-        load.urgent ? "border-[#f6d9cf] bg-[#fffaf7]" : "border-[#e4e9ef] bg-white"
+        "relative overflow-hidden rounded-[22px] border bg-white transition-shadow",
+        "shadow-[0_1px_2px_rgba(18,44,74,0.05),0_12px_28px_-18px_rgba(18,44,74,0.28)] hover:shadow-[0_2px_4px_rgba(18,44,74,0.06),0_18px_36px_-18px_rgba(18,44,74,0.34)]",
+        load.urgent ? "border-[#f4cdbf]" : "border-[#e8edf3]"
       )}
     >
-      {/* Sol renk şeridi: ilan türünü / aciliyeti belli eder */}
-      <span aria-hidden className={cn("absolute inset-y-0 left-0 w-1", accent)} />
+      {load.urgent && <span aria-hidden className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-[#e5522f] to-[#f4a259]" />}
 
-      <div className="flex flex-col gap-3 py-3.5 pl-5 pr-3.5">
-        {/* Üst: firma + aksiyonlar */}
+      <div className="flex flex-col gap-3.5 p-4">
+        {/* Üst: kaynak + zaman + aksiyonlar */}
         <div className="flex items-center justify-between gap-2">
-          <div className="flex min-w-0 items-center gap-2.5">
+          <div className="flex min-w-0 items-center gap-3">
             <div
               className={cn(
-                "grid size-10 shrink-0 place-items-center rounded-xl text-[13px] font-bold text-white",
+                "grid size-10 shrink-0 place-items-center rounded-full text-[12.5px] font-bold text-white",
                 isUserLoad ? "bg-gradient-to-br from-[#e5522f] to-[#c13a1c]" : "bg-gradient-to-br from-[#3f7199] to-[#274f73]"
               )}
             >
               {isUserLoad ? (load.initials || "NK") : "SL"}
             </div>
             <div className="min-w-0">
-              <div className="truncate text-sm font-bold leading-tight text-[#122c4a]">
+              <div className="truncate text-[14px] font-bold leading-tight text-[#122c4a]">
                 {highlightMatch(displayCompany, cleanQuery)}
               </div>
-              <div className="mt-0.5 flex items-center gap-1.5 text-xs text-[#8da0b2]">
+              <div className="mt-1 flex items-center gap-1.5 text-[11.5px] text-[#8da0b2]">
                 <span
                   className={cn(
                     "inline-flex shrink-0 items-center gap-1",
@@ -413,49 +408,42 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
           </div>
         </div>
 
-        {/* Güzergâh: nereden → nereye (dokununca o şehrin ilanları) */}
-        {route && (
-          <div className="flex items-center gap-2 text-[15px] font-extrabold leading-tight text-[#122c4a]">
-            <MapPin aria-hidden className="size-4 shrink-0 text-[#d64526]" />
-            <button type="button" onClick={onCitySearch ? () => onCitySearch(route.from) : undefined} className="min-w-0 truncate text-left">
-              {highlightMatch(route.from, cleanQuery)}
-            </button>
-            <ArrowRight aria-hidden className="size-4 shrink-0 text-[#8da0b2]" />
-            <button type="button" onClick={onCitySearch ? () => onCitySearch(route.to) : undefined} className="min-w-0 truncate text-left">
-              {highlightMatch(route.to, cleanQuery)}
-            </button>
-          </div>
-        )}
-
-        {/* Şehir etiketleri (dokununca o şehrin ilanları) ve fiyat */}
-        {hasChips && (
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
-              {chipTags.map((t) => (
-                <CityChip
-                  key={t.city}
-                  label={highlightMatch(t.label, cleanQuery)}
-                  role={t.role}
-                  onClick={onCitySearch ? () => onCitySearch(t.city) : undefined}
-                />
-              ))}
-            </div>
-
-            {(hasPrice || hasDistance) && (
-              <div className="shrink-0 text-right leading-tight">
-                {hasPrice && (
-                  <span className="inline-block rounded-lg bg-emerald-50 px-2.5 py-1 text-[15px] font-extrabold text-emerald-700">
-                    {load.price}
-                  </span>
-                )}
-                {hasDistance && <div className="mt-1 text-[11px] font-medium text-[#8da0b2]">{load.distance}</div>}
+        {/* Güzergâh: tek bakışta nereden → nereye */}
+        {route ? (
+          <div className="rounded-2xl bg-gradient-to-br from-[#f4f8fc] to-[#e9f0f7] px-4 py-3.5">
+            <div className="flex items-center gap-3">
+              <Place caption="Çıkış" label={highlightMatch(route.from, cleanQuery)} align="left" onClick={onCitySearch ? () => onCitySearch(route.from) : undefined} />
+              <div aria-hidden className="flex w-16 shrink-0 items-center gap-1.5 text-[#a9bacb]">
+                <span className="h-0 flex-1 border-t-2 border-dotted border-current" />
+                <Truck className="size-[18px] shrink-0 text-[#d64526]" />
+                <span className="h-0 flex-1 border-t-2 border-dotted border-current" />
               </div>
-            )}
+              <Place caption="Varış" label={highlightMatch(route.to, cleanQuery)} align="right" onClick={onCitySearch ? () => onCitySearch(route.to) : undefined} />
+            </div>
           </div>
-        )}
+        ) : places.length > 0 ? (
+          <div className="flex items-start gap-2.5 rounded-2xl bg-[#f4f8fc] px-3.5 py-3">
+            <MapPin aria-hidden className="mt-0.5 size-4 shrink-0 text-[#d64526]" />
+            <p className="min-w-0 text-[15px] font-bold leading-snug text-[#122c4a]">
+              {places.slice(0, 3).map((t, i) => (
+                <Fragment key={t.city}>
+                  {i > 0 && <span className="mx-1.5 font-normal text-[#b4c1ce]">·</span>}
+                  {onCitySearch ? (
+                    <button type="button" onClick={() => onCitySearch(t.city)} className="active:opacity-60">
+                      {highlightMatch(t.label, cleanQuery)}
+                    </button>
+                  ) : (
+                    <span>{highlightMatch(t.label, cleanQuery)}</span>
+                  )}
+                </Fragment>
+              ))}
+              {places.length > 3 && <span className="ml-1.5 text-xs font-semibold text-[#8da0b2]">+{places.length - 3}</span>}
+            </p>
+          </div>
+        ) : null}
 
-        {/* Etiketler: yalnızca bilinen bilgiler, renkle ayrışır */}
-        {hasTags && (
+        {/* Özellikler: tek tip, sakin görünüm; yalnızca acil ve zamanlama renkli */}
+        {hasSpecs && (
           <div className="flex flex-wrap items-center gap-1.5">
             {load.urgent && (
               <Tag tone="bg-[#e5522f] text-white">
@@ -463,17 +451,19 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
                 ACİL
               </Tag>
             )}
-            {hasVehicle && <Tag tone="bg-[#e8f0f7] text-[#274f73]">{highlightMatch(load.vehicle, cleanQuery)}</Tag>}
-            {load.trailer && <Tag tone="bg-[#efeafb] text-[#5b4a99]">{load.trailer}</Tag>}
-            {load.tonnage && <Tag tone="bg-amber-50 text-amber-700">{load.tonnage}</Tag>}
             {load.timing && <Tag tone="bg-emerald-50 text-emerald-700">{load.timing}</Tag>}
+            {hasVehicle && <Tag tone="bg-[#f1f5f9] text-[#3c566e]">{highlightMatch(load.vehicle, cleanQuery)}</Tag>}
+            {load.trailer && <Tag tone="bg-[#f1f5f9] text-[#3c566e]">{load.trailer}</Tag>}
+            {load.tonnage && <Tag tone="bg-[#f1f5f9] text-[#3c566e]">{load.tonnage}</Tag>}
+            {hasDistance && <Tag tone="bg-[#f1f5f9] text-[#3c566e]">{load.distance}</Tag>}
+            {hasPrice && <Tag tone="bg-emerald-600 text-white">{load.price}</Tag>}
             {(load.repeatCount ?? 0) > 1 && <Tag tone="bg-[#f1f5f9] text-[#627d98]">{load.repeatCount} kez paylaşıldı</Tag>}
           </div>
         )}
 
         {/* Yük detayı */}
         <div>
-          <p className={cn("whitespace-pre-line break-words text-[13.5px] leading-relaxed text-[#334e68]", !expanded && "line-clamp-3")}>
+          <p className={cn("whitespace-pre-line break-words text-[13.5px] leading-[1.6] text-[#425b73]", !expanded && "line-clamp-3")}>
             {highlightMatch(cargoText, cleanQuery)}
           </p>
           {isLongCargo && (
@@ -495,17 +485,17 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
 
         {/* İletişim */}
         {hasPhone ? (
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 gap-2.5">
             <button
               onClick={handleCall}
-              className="flex h-11 items-center justify-center gap-2 rounded-xl bg-[#122c4a] text-sm font-semibold text-white active:scale-[0.98] active:bg-[#1a3d68]"
+              className="flex h-12 items-center justify-center gap-2 rounded-2xl bg-[#122c4a] text-sm font-semibold text-white shadow-[0_6px_14px_-8px_rgba(18,44,74,0.7)] active:scale-[0.98] active:bg-[#1a3d68]"
             >
               <Phone className="size-[17px]" />
               Ara
             </button>
             <button
               onClick={handleWhatsApp}
-              className="flex h-11 items-center justify-center gap-2 rounded-xl bg-emerald-600 text-sm font-semibold text-white active:scale-[0.98] active:bg-emerald-700"
+              className="flex h-12 items-center justify-center gap-2 rounded-2xl bg-emerald-600 text-sm font-semibold text-white shadow-[0_6px_14px_-8px_rgba(5,150,105,0.8)] active:scale-[0.98] active:bg-emerald-700"
             >
               <MessageCircle className="size-[17px]" />
               WhatsApp
@@ -605,27 +595,23 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
   )
 })
 
-function CityChip({ label, role, onClick }: { label: React.ReactNode; role?: string; onClick?: () => void }) {
-  const inner = (
-    <>
-      <MapPin aria-hidden className="size-3.5 shrink-0 text-[#315d83]" />
-      {role && <span className="text-[10px] font-semibold uppercase tracking-wide text-[#8da0b2]">{role}</span>}
-      <span className="min-w-0 truncate">{label}</span>
-    </>
-  )
-  const cls = "inline-flex h-8 max-w-full items-center gap-1.5 rounded-full border border-[#dbe8f2] bg-[#f1f7fc] px-3 text-[13px] font-bold text-[#122c4a]"
-  return onClick ? (
-    <button type="button" onClick={onClick} className={cn(cls, "active:scale-95 active:bg-[#e3eef8]")}>
-      {inner}
+function Place({ caption, label, align, onClick }: { caption: string; label: React.ReactNode; align: "left" | "right"; onClick?: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={!onClick}
+      className={cn("min-w-0 flex-1 active:opacity-60", align === "right" ? "text-right" : "text-left")}
+    >
+      <span className="block text-[10px] font-bold uppercase tracking-[0.1em] text-[#8da0b2]">{caption}</span>
+      <span className="mt-0.5 block truncate text-[17px] font-extrabold leading-tight text-[#122c4a]">{label}</span>
     </button>
-  ) : (
-    <span className={cls}>{inner}</span>
   )
 }
 
 function Tag({ tone, children }: { tone: string; children: React.ReactNode }) {
   return (
-    <span className={cn("inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-semibold", tone)}>
+    <span className={cn("inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11.5px] font-semibold", tone)}>
       {children}
     </span>
   )
