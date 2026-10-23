@@ -167,6 +167,12 @@ async function handleListing(db: SupabaseClient, table: string, rec: Rec) {
     }
     return true
   })
+  // Aynı kullanıcının birden fazla şehri aynı ilana uyarsa tek bildirim gitsin
+  const seenUser = new Set<string>()
+  for (let i = matches.length - 1; i >= 0; i--) {
+    if (seenUser.has(matches[i].user_id)) matches.splice(i, 1)
+    else seenUser.add(matches[i].user_id)
+  }
   if (!matches.length) return
 
   const place = fromCity && toCity ? `${fromCity} → ${toCity}` : fromCity ? `${fromCity} çıkışlı` : toCity ? `${toCity} varışlı` : "Yeni ilan"
