@@ -6,6 +6,8 @@
  * ekranda HİÇ göstermemek. Dışarıya sadece bulunabilen bilgi döner.
  */
 
+import { DISTRICTS } from "./districts"
+
 export type Place = {
   /** Ekranda gösterilecek metin: "Konya" veya "Konya / Beyşehir" */
   label: string
@@ -20,6 +22,8 @@ export type ListingAnalysis = {
    * Ekranda yön (nereden → nereye) göstermek yerine şehir etiketi olarak kullanılır.
    */
   cities: string[]
+  /** il -> metinde geçen ilçe adı (varsa), etikette "Tekirdağ · Çerkezköy" göstermek için */
+  districtOf: Record<string, string>
   from?: Place
   to?: Place
   /** Güzergahta geçen ama yükleme/teslimat olarak ayrılamayan diğer şehirler */
@@ -59,7 +63,7 @@ const WEAK = new Set(["van", "mus", "ordu", "kilis", "tokat", "agri"])
 
 const FOLD_MAP: Record<string, string> = {
   "ı": "i", "İ": "i", "I": "i", "ş": "s", "Ş": "s", "ğ": "g", "Ğ": "g",
-  "ü": "u", "Ü": "u", "ö": "o", "Ö": "o", "ç": "c", "Ç": "c",
+  "ü": "u", "Ü": "u", "ö": "o", "Ö": "o", "ç": "c", "Ç": "c", "â": "a", "î": "i", "û": "u",
 }
 
 /** Küçük harf + Türkçe karakterleri sadeleştirir. Uzunluk korunur (indeksler aynı kalır). */
@@ -79,6 +83,14 @@ const CANON: Map<string, string> = new Map()
 for (const c of CITIES) CANON.set(fold(c), c)
 for (const [alias, city] of Object.entries(ALIAS_TO_CITY)) CANON.set(alias, city)
 
+/** katlanmış ad -> il (+ilçe). Önce il adı/takma ad, sonra ilçe sözlüğü */
+function resolveName(key: string): { city: string; district?: string } | undefined {
+  const c = CANON.get(key)
+  if (c) return { city: c }
+  const d = DISTRICTS.get(key)
+  return d ? { city: d.city, district: d.name } : undefined
+}
+
 type SuffixKind = "from" | "to" | "at"
 const SUFFIXES: [string, SuffixKind][] = [
   ["dan", "from"], ["den", "from"], ["tan", "from"], ["ten", "from"],
@@ -90,7 +102,7 @@ const SUFFIXES_LONGEST_FIRST = [...SUFFIXES].sort((a, b) => b[0].length - a[0].l
 
 /** Şehrin yanındaki kelimeden yönünü anlar: "Ankara teslim" -> varış, "Bursa yükleme" -> çıkış */
 const ORIGIN_KW = ["yukle", "cikis", "kalkis"]
-const DEST_KW = ["bosalt", "teslim", "varis", "inecek", "gidecek", "gidis"]
+const DEST_KW = ["bosalt", "teslim", "varis", "inecek", "gidecek", "gidis", "indir", "tahliye"]
 function roleOfWord(w: string): "from" | "to" | null {
   if (ORIGIN_KW.some((k) => w.startsWith(k))) return "from"
   if (DEST_KW.some((k) => w.startsWith(k))) return "to"
@@ -99,6 +111,7 @@ function roleOfWord(w: string): "from" | "to" | null {
 
 type Mention = {
   city: string
+  district?: string
   /** from: -dan/-den, to: -a/-e, at: -da/-de, bare: ek yok */
   kind: SuffixKind | "bare"
   start: number
@@ -122,23 +135,24 @@ function findMentions(text: string): Mention[] {
     const suffixPart = hasApos ? fold(raw.slice(aposIdx + 1)) : ""
 
     let city: string | undefined
+    let district: string | undefined
     let kind: Mention["kind"] = "bare"
     let weakKey = ""
 
     if (hasApos) {
-      const c = CANON.get(base)
+      const r = resolveName(base)
       const k = SUFFIX_MAP.get(suffixPart)
-      if (c && k) { city = c; kind = k; weakKey = base }
+      if (r && k) { city = r.city; district = r.district; kind = k; weakKey = base }
     } else {
-      const direct = CANON.get(base)
+      const direct = resolveName(base)
       if (direct) {
-        city = direct; weakKey = base
+        city = direct.city; district = direct.district; weakKey = base
       } else {
         for (const [suf, k] of SUFFIXES_LONGEST_FIRST) {
           if (base.length > suf.length && base.endsWith(suf)) {
             const stem = base.slice(0, -suf.length)
-            const c = CANON.get(stem)
-            if (c) { city = c; kind = k; weakKey = stem; break }
+            const r = resolveName(stem)
+            if (r) { city = r.city; district = r.district; kind = k; weakKey = stem; break }
           }
         }
       }
@@ -158,7 +172,7 @@ function findMentions(text: string): Mention[] {
       const next = fold(tokens[i + 1].raw)
       if (next === "dan" || next === "den") {
         kind = "from"
-        result.push({ city, kind, start, end: tokens[i + 1].end })
+        result.push({ city, district, kind, start, end: tokens[i + 1].end })
         i++
         continue
       }
@@ -176,11 +190,15 @@ function findMentions(text: string): Mention[] {
       // "Boşaltma: Ankara" biçiminde önceki kelime (iki nokta/tire ile bağlıysa) önceliklidir
       if (!role && i > 0) {
         const pv = tokens[i - 1]
-        if (/^\s*[:=\-–]\s*$/.test(text.slice(pv.end, start))) role = roleOfWord(fold(pv.raw))
+        if (/^\s*[:=\-–]\s*$/.test(text.slice(pv.end, start))) {
+          role = roleOfWord(fold(pv.raw))
+          // "Yükleme Yeri : ÇORLU" / "İndirme Adresi: ..." -> iki kelime geriye bak
+          if (!role && i > 1 && /^(yeri|adresi|yer|adres|noktasi|nokta)$/.test(fold(pv.raw))) role = roleOfWord(fold(tokens[i - 2].raw))
+        }
       }
       if (!role && nxt) role = roleOfWord(fold(nxt.raw))
       if (role) {
-        result.push({ city, kind: role, start, end: consumed ? nxt.end : end })
+        result.push({ city, district, kind: role, start, end: consumed ? nxt.end : end })
         i += consumed
         continue
       }
@@ -189,7 +207,7 @@ function findMentions(text: string): Mention[] {
     // Aynı şehir arka arkaya geçiyorsa tekrar ekleme
     const prev = result[result.length - 1]
     if (prev && prev.city === city && prev.kind === kind) continue
-    result.push({ city, kind, start, end })
+    result.push({ city, district, kind, start, end })
   }
   return result
 }
@@ -280,9 +298,9 @@ const VEHICLE_RULES: [RegExp, (m: RegExpMatchArray) => string][] = [
   [/\bdorse\b/, () => "Dorse"],
   [/\b(acik|kapali|tenteli|perdeli)\s+tir\b/, (m) => ({ acik: "Açık", kapali: "Kapalı", tenteli: "Tenteli", perdeli: "Perdeli" } as Record<string, string>)[m[1]] + " Tır"],
   [/\btir\b/, () => "Tır"],
-  [/\b(10|on)\s*teker\b/, () => "10 Teker"],
-  [/\b(8|sekiz)\s*teker\b/, () => "8 Teker"],
-  [/\b(6|alti)\s*teker\b/, () => "6 Teker"],
+  [/\b(10|on)[\s.]*teker\b/, () => "10 Teker"],
+  [/\b(8|sekiz)[\s.]*teker\b/, () => "8 Teker"],
+  [/\b(6|alti)[\s.]*teker\b/, () => "6 Teker"],
   [/\bkamyonet\b/, () => "Kamyonet"],
   [/\bkamyon\b/, () => "Kamyon"],
   [/\bpanel ?van\b/, () => "Panelvan"],
@@ -378,6 +396,8 @@ export function analyzeListing(input: AnalyzeInput): ListingAnalysis {
   }
 
   // Şehir etiketleri: önce metindeki sıraya göre, sonra alanlardan gelenler
+  const districtOf: Record<string, string> = {}
+  for (const m of ms) if (m.district && !districtOf[m.city]) districtOf[m.city] = m.district
   const cityList: string[] = []
   const pushCity = (c?: string) => { if (c && !cityList.includes(c)) cityList.push(c) }
   if (input.trustFields) {
@@ -399,6 +419,7 @@ export function analyzeListing(input: AnalyzeInput): ListingAnalysis {
 
   return {
     cities: cityList.slice(0, 6),
+    districtOf,
     from,
     to,
     extraCities,
