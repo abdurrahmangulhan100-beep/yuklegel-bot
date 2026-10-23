@@ -121,6 +121,7 @@ type Mention = {
 const TOKEN_RE = /[A-Za-zÇĞİıÖŞÜçğöşü0-9]+(?:['’´`][A-Za-zÇĞİıÖŞÜçğöşü]+)?/g
 
 function findMentions(text: string): Mention[] {
+  text = text.replace(/\b(orhan)\s+(eli|gazi)\b/gi, (m) => m.replace(/\s+/g, "").padEnd(m.length, " "))
   const tokens: { raw: string; start: number; end: number }[] = []
   for (const m of text.matchAll(TOKEN_RE)) {
     tokens.push({ raw: m[0], start: m.index ?? 0, end: (m.index ?? 0) + m[0].length })
@@ -206,7 +207,7 @@ function findMentions(text: string): Mention[] {
 
     // Aynı şehir arka arkaya geçiyorsa tekrar ekleme
     const prev = result[result.length - 1]
-    if (prev && prev.city === city && prev.kind === kind) continue
+    if (prev && prev.city === city && prev.kind === kind) { if (!prev.district && district) prev.district = district; continue }
     result.push({ city, district, kind, start, end })
   }
   return result
@@ -332,6 +333,10 @@ function inferTiming(f: string): string | undefined {
     const name = { sabah: "Sabah", gece: "Gece", ogle: "Öğle", aksam: "Akşam" }[m[1] as "sabah"]
     return `${name} ${m[2]}${m[3] ? `:${m[3]}` : ""}${m[4] ? " kadar" : ""}`
   }
+  if (/\bsabah\b/.test(f)) return "Sabah"
+  if (/\bogle\b/.test(f)) return "Öğle"
+  if (/\baksam\b/.test(f)) return "Akşam"
+  if (/\bgece\b/.test(f)) return "Gece"
   if (/\b(yarin)\b/.test(f)) return "Yarın"
   if (/\b(bugun|bu gun)\b/.test(f)) return "Bugün"
   if (/\b7\s*\/\s*24\b/.test(f)) return "7/24 yükleme"
