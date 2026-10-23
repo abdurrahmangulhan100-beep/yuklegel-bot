@@ -46,9 +46,15 @@ const VEHICLE_PRESETS = [
 ]
 const MARGIN_PRESETS = ["10", "20", "30", "35"]
 
-/** "42,5" ve "42.5" yazımlarının ikisini de kabul eder */
+/**
+ * "42,5" ve "42.5" yazımlarının ikisini de kabul eder.
+ * Türkçe binlik ayracını da anlar: "1.500" -> 1500, "1.500,50" -> 1500.5
+ */
 const num = (v: string) => {
-  const n = parseFloat(String(v).replace(",", "."))
+  let s = String(v).trim().replace(/\s/g, "")
+  if (s.includes(",")) s = s.replace(/\./g, "").replace(",", ".")
+  else if (/^\d{1,3}(\.\d{3})+$/.test(s)) s = s.replace(/\./g, "")
+  const n = parseFloat(s)
   return Number.isFinite(n) ? n : 0
 }
 
