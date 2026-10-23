@@ -163,7 +163,21 @@ export default function Page() {
       const { data: { user }, error: userError } = await supabase.auth.getUser()
       if (userError || !user) return
       
-      const { data, error } = await supabase.from("profiles").select("*").eq("id", user.id).maybeSingle()
+      let { data, error } = await supabase.from("profiles").select("*").eq("id", user.id).maybeSingle()
+      if (!data && !error) {
+        // İlk kez Google ile giren kullanıcı: profil satırı yoksa Google hesabındaki adla oluştur
+        const meta = (user.user_metadata || {}) as { full_name?: string; name?: string }
+        const fullName = meta.full_name || meta.name || ""
+        const created = {
+          id: user.id,
+          email: user.email,
+          company_name: fullName || "Nakliye Cepte Kullanıcısı",
+          authorized_person: fullName || user.email?.split("@")[0] || "Kullanıcı",
+          updated_at: new Date().toISOString(),
+        }
+        const { error: upErr } = await supabase.from("profiles").upsert(created)
+        if (!upErr) data = created as typeof data
+      }
       if (data && !error) {
         const cName = data.company_name || data.authorized_person || "Nakliye Cepte Kullanıcısı"
         const aPerson = data.authorized_person || user.email?.split("@")[0] || "Kullanıcı"
