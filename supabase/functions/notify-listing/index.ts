@@ -55,7 +55,7 @@ type Rec = {
   phone?: string | null
   created_at?: string
 }
-type Route = { id: string; user_id: string; from_city: string; direction: "from" | "to" | "both"; vehicle: string | null; urgent_only: boolean }
+type Route = { id: string; user_id: string; from_city: string; direction?: "from" | "to" | "both" | null; vehicle: string | null; urgent_only: boolean }
 type Sub = { endpoint: string; p256dh: string; auth: string }
 
 let vapidReady = false
@@ -151,10 +151,13 @@ async function handleListing(db: SupabaseClient, table: string, rec: Rec) {
 
   const matches = (routes as Route[]).filter((r) => {
     if (rec.user_id && r.user_id === rec.user_id) return false // kendi ilanı için bildirim yok
+    // YÖN KESİN: "from" = yalnızca bu şehirden ÇIKAN, "to" = yalnızca bu şehre GİDEN, "both" = ikisinden biri.
+    // Yön bilgisi yoksa/bilinmiyorsa en dar anlam ("çıkan") kullanılır; metinde sadece geçen şehir (örn. güzergâh üstü) eşleşme sayılmaz.
+    const dir = r.direction === "to" || r.direction === "both" ? r.direction : "from"
     const ok =
-      r.direction === "from" ? fromCity === r.from_city
-      : r.direction === "to" ? toCity === r.from_city
-      : cities.includes(r.from_city)
+      dir === "from" ? fromCity === r.from_city
+      : dir === "to" ? toCity === r.from_city
+      : fromCity === r.from_city || toCity === r.from_city
     if (!ok) return false
     if (r.urgent_only && !urgent) return false
     // Araç filtresi: ilandan araç tipi çıkarılamadıysa kaçırmamak için bildirim gönderilir
