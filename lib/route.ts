@@ -88,6 +88,15 @@ const SUFFIXES: [string, SuffixKind][] = [
 const SUFFIX_MAP = new Map(SUFFIXES)
 const SUFFIXES_LONGEST_FIRST = [...SUFFIXES].sort((a, b) => b[0].length - a[0].length)
 
+/** Şehrin yanındaki kelimeden yönünü anlar: "Ankara teslim" -> varış, "Bursa yükleme" -> çıkış */
+const ORIGIN_KW = ["yukle", "cikis", "kalkis"]
+const DEST_KW = ["bosalt", "teslim", "varis", "inecek", "gidecek", "gidis"]
+function roleOfWord(w: string): "from" | "to" | null {
+  if (ORIGIN_KW.some((k) => w.startsWith(k))) return "from"
+  if (DEST_KW.some((k) => w.startsWith(k))) return "to"
+  return null
+}
+
 type Mention = {
   city: string
   /** from: -dan/-den, to: -a/-e, at: -da/-de, bare: ek yok */
@@ -151,6 +160,28 @@ function findMentions(text: string): Mention[] {
         kind = "from"
         result.push({ city, kind, start, end: tokens[i + 1].end })
         i++
+        continue
+      }
+    }
+
+    // Ekli/ayrı yazılmış yön: "Ankara ya", "Ankara'da teslim", "Ankara boşaltma", "Boşaltma: Ankara"
+    if (kind === "bare" || kind === "at") {
+      const nxt = tokens[i + 1]
+      let role: "from" | "to" | null = null
+      let consumed = 0
+      if (nxt && kind === "bare") {
+        const f = fold(nxt.raw)
+        if (f === "ya" || f === "ye" || f === "na" || f === "ne") { role = "to"; consumed = 1 }
+      }
+      // "Boşaltma: Ankara" biçiminde önceki kelime (iki nokta/tire ile bağlıysa) önceliklidir
+      if (!role && i > 0) {
+        const pv = tokens[i - 1]
+        if (/^\s*[:=\-–]\s*$/.test(text.slice(pv.end, start))) role = roleOfWord(fold(pv.raw))
+      }
+      if (!role && nxt) role = roleOfWord(fold(nxt.raw))
+      if (role) {
+        result.push({ city, kind: role, start, end: consumed ? nxt.end : end })
+        i += consumed
         continue
       }
     }
@@ -325,6 +356,19 @@ export function analyzeListing(input: AnalyzeInput): ListingAnalysis {
   } else {
     if (!from && tr.from && tr.from.city !== to?.city) from = { label: tr.from.city, city: tr.from.city }
     if (!to && tr.to && tr.to.city !== from?.city) to = { label: tr.to.city, city: tr.to.city }
+  }
+
+  // Bot alanı (from/to) ile metin çelişirse metin kazanır: metinde bir şehir sadece "-e/-a/teslim" ile geçiyorsa çıkış olamaz (ve tersi)
+  if (!input.trustFields) {
+    const kindsOf = (c?: string) => new Set(ms.filter((m) => m.city === c).map((m) => m.kind))
+    if (from?.city) {
+      const k = kindsOf(from.city)
+      if (k.has("to") && !k.has("from")) { if (!to) to = from; from = undefined }
+    }
+    if (to?.city) {
+      const k = kindsOf(to.city)
+      if (k.has("from") && !k.has("to")) { if (!from) from = to; to = undefined }
+    }
   }
 
   // Sadece bir uç biliniyorsa ve yön "-e" ekiyle belirlenmişse yanlış tarafta durmasın
