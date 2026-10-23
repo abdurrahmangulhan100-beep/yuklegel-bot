@@ -124,6 +124,8 @@ export function mapBotListing(item: DatabaseListing): Load {
     from: "",
     to: "",
     cities: a.cities,
+    fromCity: a.from?.city,
+    toCity: a.to?.city,
     cargo: rawDetail,
     message: "",
     vehicle: a.vehicle ?? "",
