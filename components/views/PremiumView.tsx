@@ -1,6 +1,6 @@
 "use client"
 
-import { Check, Crown, Loader2, X } from "lucide-react"
+import { Check, Crown, Loader2, Minus } from "lucide-react"
 import { usePremium } from "@/components/PremiumProvider"
 import { FREE_FEATURES, PLAY_PACKAGE, PREMIUM_FEATURES, PREMIUM_SKU } from "@/lib/premium"
 
@@ -39,7 +39,7 @@ export function PremiumView() {
           <p className="mb-3 text-xs font-bold uppercase tracking-wider text-[#8da0b2]">Ücretsiz</p>
           <ul className="space-y-2 text-sm text-[#486581]">
             {FREE_FEATURES.map((f) => (
-              <li key={f} className="flex gap-2"><X className="mt-0.5 size-4 shrink-0 text-[#b4c1ce]" />{f}</li>
+              <li key={f} className="flex gap-2"><Minus className="mt-0.5 size-4 shrink-0 text-[#b4c1ce]" />{f}</li>
             ))}
           </ul>
         </div>
