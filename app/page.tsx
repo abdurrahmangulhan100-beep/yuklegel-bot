@@ -10,7 +10,7 @@ import { supabase } from "@/lib/supabase"
 import { signOutClean } from "@/lib/push"
 import { Load } from "@/components/LoadCard"
 import { mapUserListing, mapBotListing, dedupeLoads, reuseLoads, type DatabaseListing } from "@/lib/listings"
-import { fold } from "@/lib/route"
+import { fold, isMissing } from "@/lib/route"
 import { ListingsView } from "@/components/views/ListingsView"
 import { TripsView } from "@/components/views/TripsView"
 import { CalculatorView } from "@/components/views/CalculatorView"
@@ -281,7 +281,10 @@ export default function Page() {
       }
 
       const formattedUserLoads: Load[] = userRows.map(mapUserListing)
-      const formattedBotLoads: Load[] = (botRes.data || []).map((item: DatabaseListing) => mapBotListing(item))
+      // Telefon numarası bulunamayan saha ilanı işe yaramaz (aranamaz); listeye hiç alınmaz
+      const formattedBotLoads: Load[] = (botRes.data || [])
+        .map((item: DatabaseListing) => mapBotListing(item))
+        .filter((l: Load) => !isMissing(l.phone))
 
       // Acil ilanlar ilk 24 saat boyunca en üstte durur, sonrasında normal tarih sırasına döner
       const nowMs = Date.now()
