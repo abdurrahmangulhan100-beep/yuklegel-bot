@@ -155,8 +155,8 @@ async function handleListing(db: SupabaseClient, table: string, rec: Rec) {
     // Yön bilgisi yoksa/bilinmiyorsa en dar anlam ("çıkan") kullanılır; metinde sadece geçen şehir (örn. güzergâh üstü) eşleşme sayılmaz.
     const dir = r.direction === "to" || r.direction === "both" ? r.direction : "from"
     const ok =
-      dir === "from" ? fromCity === r.from_city
-      : dir === "to" ? toCity === r.from_city
+      dir === "from" ? fromCity === r.from_city && toCity !== r.from_city
+      : dir === "to" ? toCity === r.from_city && fromCity !== r.from_city
       : fromCity === r.from_city || toCity === r.from_city
     if (!ok) return false
     if (r.urgent_only && !urgent) return false
