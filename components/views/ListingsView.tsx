@@ -3,7 +3,7 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from "react"
 import { Load, LoadCard } from "@/components/LoadCard"
 import { AdSlot } from "@/components/AdSlot"
-import { PackageSearch, Plus, Zap, Phone, X, MapPin, Crown } from "lucide-react"
+import { PackageSearch, Plus, Zap, Phone, X, MapPin, Crown, Clock, ArrowRight, Bell } from "lucide-react"
 import { usePremium } from "@/components/PremiumProvider"
 import { FREE_DELAY_MINUTES, openPremium } from "@/lib/premium"
 import { cn } from "@/lib/utils"
@@ -64,31 +64,56 @@ export function ListingsView({
   const fmt = (n: number) => n.toLocaleString("tr-TR")
   const { isPremium, loading: premiumLoading } = usePremium()
 
-  // Şehir filtresi: ilanda herhangi bir yerde geçen şehre göre (yön ayrımı yok)
-  const [city, setCity] = useState("")
+  // Güzergâh filtresi: Nereden / Nereye (yönü belli olmayan ilanlarda metinde geçen şehir de sayılır)
+  const [from, setFrom] = useState("")
+  const [to, setTo] = useState("")
+  const [age, setAge] = useState<"" | "1h" | "6h" | "today">("")
   const [onlyPhone, setOnlyPhone] = useState(false)
 
-  const cityOptions = useMemo(() => {
+  // Son seçilen güzergâh bu cihazda hatırlansın (uygulamayı her açışta yeniden seçmek gerekmesin)
+  const PREF_KEY = "listing_filters_v1"
+  useEffect(() => {
+    try {
+      const p = JSON.parse(localStorage.getItem(PREF_KEY) || "null")
+      if (p) { setFrom(p.from || ""); setTo(p.to || ""); setAge(p.age || ""); setOnlyPhone(Boolean(p.onlyPhone)) }
+    } catch {}
+  }, [])
+  useEffect(() => {
+    try { localStorage.setItem(PREF_KEY, JSON.stringify({ from, to, age, onlyPhone })) } catch {}
+  }, [from, to, age, onlyPhone])
+
+  const matchFrom = (l: Load, c: string) => (l.fromCity ? l.fromCity === c : (l.cities ?? []).includes(c))
+  const matchTo = (l: Load, c: string) => (l.toCity ? l.toCity === c : (l.cities ?? []).includes(c))
+
+  const fromOptions = useMemo(() => {
     const m = new Map<string, number>()
-    for (const l of loads) for (const c of l.cities ?? []) m.set(c, (m.get(c) ?? 0) + 1)
+    for (const l of loads) for (const c of Array.from(new Set([l.fromCity, ...(l.fromCity ? [] : l.cities ?? [])].filter(Boolean) as string[]))) m.set(c, (m.get(c) ?? 0) + 1)
+    return Array.from(m.entries()).sort((a, b) => b[1] - a[1] || byTr(a[0], b[0]))
+  }, [loads])
+  const toOptions = useMemo(() => {
+    const m = new Map<string, number>()
+    for (const l of loads) for (const c of Array.from(new Set([l.toCity, ...(l.toCity ? [] : l.cities ?? [])].filter(Boolean) as string[]))) m.set(c, (m.get(c) ?? 0) + 1)
     return Array.from(m.entries()).sort((a, b) => b[1] - a[1] || byTr(a[0], b[0]))
   }, [loads])
 
-  const visibleLoads = useMemo(
-    () =>
-      loads.filter((l) => {
-        if (city && !(l.cities ?? []).includes(city)) return false
-        if (onlyPhone && isMissing(l.phone)) return false
-        return true
-      }),
-    [loads, city, onlyPhone]
-  )
+  const visibleLoads = useMemo(() => {
+    const now = Date.now()
+    const maxAge = age === "1h" ? 3600_000 : age === "6h" ? 6 * 3600_000 : age === "today" ? 24 * 3600_000 : 0
+    return loads.filter((l) => {
+      if (from && !matchFrom(l, from)) return false
+      if (to && !matchTo(l, to)) return false
+      if (from && to && from !== to && l.fromCity && l.toCity && !(l.fromCity === from && l.toCity === to)) return false
+      if (maxAge && (!l.createdAt || now - Date.parse(l.createdAt) > maxAge)) return false
+      if (onlyPhone && isMissing(l.phone)) return false
+      return true
+    })
+  }, [loads, from, to, age, onlyPhone])
 
   // Uzun listeyi tek seferde çizmek mobilde kasmaya yol açar: ekran kaydıkça parça parça ekle
   const CHUNK = 20
   const [shown, setShown] = useState(CHUNK)
   const sentinelRef = useRef<HTMLDivElement | null>(null)
-  const filterKey = `${activeFilter}|${sourceFilter}|${city}|${onlyPhone}|${searchQuery}`
+  const filterKey = `${activeFilter}|${sourceFilter}|${from}|${to}|${age}|${onlyPhone}|${searchQuery}`
   useEffect(() => { setShown(CHUNK) }, [filterKey])
 
   const renderedLoads = useMemo(() => visibleLoads.slice(0, shown), [visibleLoads, shown])
@@ -107,8 +132,9 @@ export function ListingsView({
 
   const favoriteSet = useMemo(() => new Set(favoriteIds), [favoriteIds])
 
-  const hasExtraFilters = Boolean(city || onlyPhone)
-  const clearAll = () => { setActiveFilter("Tümü"); setSourceFilter("all"); setCity(""); setOnlyPhone(false) }
+  const hasExtraFilters = Boolean(from || to || age || onlyPhone)
+  const clearExtra = () => { setFrom(""); setTo(""); setAge(""); setOnlyPhone(false) }
+  const clearAll = () => { setActiveFilter("Tümü"); setSourceFilter("all"); clearExtra() }
 
   const sources: { key: "all" | "user" | "bot"; label: string; count?: number; active: string }[] = [
     { key: "all", label: "Tümü", count: stats.activeTotal, active: "bg-[#122c4a] text-white shadow-sm" },
@@ -198,37 +224,69 @@ export function ListingsView({
         </div>
       </div>
 
-      {/* Şehir filtresi */}
-      {(cityOptions.length > 0 || onlyPhone) && (
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="relative min-w-0 flex-1 sm:flex-none sm:min-w-[200px]">
-            <MapPin aria-hidden className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[#8da0b2]" />
-            <select aria-label="Şehir" value={city} onChange={(e) => setCity(e.target.value)} className={cn(selectClass, "w-full pl-9")}>
-              <option value="">Şehir: Tümü</option>
-              {cityOptions.map(([c, n]) => (
-                <option key={c} value={c}>{c} ({n})</option>
-              ))}
-            </select>
+      {/* Güzergâh filtresi: Nereden → Nereye */}
+      {(fromOptions.length > 0 || toOptions.length > 0 || hasExtraFilters) && (
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <div className="relative min-w-0 flex-1">
+              <MapPin aria-hidden className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[#8da0b2]" />
+              <select aria-label="Nereden" value={from} onChange={(e) => setFrom(e.target.value)} className={cn(selectClass, "w-full pl-9")}>
+                <option value="">Nereden: Tümü</option>
+                {from && !fromOptions.some(([c]) => c === from) && <option value={from}>{from} (0)</option>}
+                {fromOptions.map(([c, n]) => (<option key={c} value={c}>{c} ({n})</option>))}
+              </select>
+            </div>
+            <ArrowRight aria-hidden className="size-4 shrink-0 text-[#8da0b2]" />
+            <div className="relative min-w-0 flex-1">
+              <MapPin aria-hidden className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[#8da0b2]" />
+              <select aria-label="Nereye" value={to} onChange={(e) => setTo(e.target.value)} className={cn(selectClass, "w-full pl-9")}>
+                <option value="">Nereye: Tümü</option>
+                {to && !toOptions.some(([c]) => c === to) && <option value={to}>{to} (0)</option>}
+                {toOptions.map(([c, n]) => (<option key={c} value={c}>{c} ({n})</option>))}
+              </select>
+            </div>
           </div>
-          <button
-            type="button"
-            onClick={() => setOnlyPhone((v) => !v)}
-            aria-pressed={onlyPhone}
-            className={cn(
-              "inline-flex h-10 shrink-0 items-center gap-1.5 rounded-xl border px-3 text-[13px] font-semibold transition-colors",
-              onlyPhone ? "border-emerald-600 bg-emerald-50 text-emerald-700" : "border-[#e0e6ed] bg-white text-[#4a6178]"
-            )}
-          >
-            <Phone className="size-3.5" />
-            Telefonlu
-          </button>
-          {hasExtraFilters && (
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative min-w-0 flex-1 sm:flex-none sm:min-w-[170px]">
+              <Clock aria-hidden className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[#8da0b2]" />
+              <select aria-label="Zaman" value={age} onChange={(e) => setAge(e.target.value as "" | "1h" | "6h" | "today")} className={cn(selectClass, "w-full pl-9")}>
+                <option value="">Zaman: Tümü</option>
+                <option value="1h">Son 1 saat</option>
+                <option value="6h">Son 6 saat</option>
+                <option value="today">Son 24 saat</option>
+              </select>
+            </div>
             <button
               type="button"
-              onClick={() => { setCity(""); setOnlyPhone(false) }}
-              className="inline-flex h-10 items-center gap-1 rounded-xl px-2 text-xs font-semibold text-[#d64526] hover:bg-[#fff0ec]"
+              onClick={() => setOnlyPhone((v) => !v)}
+              aria-pressed={onlyPhone}
+              className={cn(
+                "inline-flex h-10 shrink-0 items-center gap-1.5 rounded-xl border px-3 text-[13px] font-semibold transition-colors",
+                onlyPhone ? "border-emerald-600 bg-emerald-50 text-emerald-700" : "border-[#e0e6ed] bg-white text-[#4a6178]"
+              )}
             >
-              <X className="size-3.5" /> Temizle
+              <Phone className="size-3.5" />
+              Telefonlu
+            </button>
+            {hasExtraFilters && (
+              <button
+                type="button"
+                onClick={clearExtra}
+                className="inline-flex h-10 items-center gap-1 rounded-xl px-2 text-xs font-semibold text-[#d64526] hover:bg-[#fff0ec]"
+              >
+                <X className="size-3.5" /> Temizle
+              </button>
+            )}
+          </div>
+          {/* Güzergâh seçiliyse ücretsiz kullanıcıya anlık bildirim önerisi */}
+          {!premiumLoading && !isPremium && from && (
+            <button
+              type="button"
+              onClick={openPremium}
+              className="flex w-full items-center gap-2 rounded-xl border border-[#cfe0ee] bg-[#f1f7fc] px-3 py-2.5 text-left text-xs font-semibold text-[#315d83] active:scale-[0.99]"
+            >
+              <Bell className="size-4 shrink-0" />
+              {from} çıkışlı yeni ilanlar gelince anında bildirim almak için Premium'a geçin.
             </button>
           )}
         </div>
