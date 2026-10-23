@@ -292,7 +292,7 @@ export default function LoginPage() {
             Google ile devam et
           </button>
           <p className="mb-3 text-center text-[11px] text-[#8da0b2]">
-            Google ile devam ederek <Link href="/privacy" target="_blank" className="underline">Gizlilik Politikası</Link>&apos;nı kabul etmiş olursunuz.
+            Google ile devam ederek <Link href="/kullanim-kosullari" target="_blank" className="underline">Kullanım Koşulları</Link> ve <Link href="/privacy" target="_blank" className="underline">Gizlilik Politikası</Link>&apos;nı kabul etmiş olursunuz.
           </p>
 
           <button
@@ -308,6 +308,7 @@ export default function LoginPage() {
             <Link href="/hakkimizda" className="hover:underline">Hakkımızda</Link>
             <Link href="/rehber" className="hover:underline">Rehber</Link>
             <Link href="/privacy" className="hover:underline">Gizlilik Politikası</Link>
+            <Link href="/kullanim-kosullari" className="hover:underline">Kullanım Koşulları</Link>
             <Link href="/delete-account" className="hover:underline">Hesap Silme</Link>
           </div>
         </div>
