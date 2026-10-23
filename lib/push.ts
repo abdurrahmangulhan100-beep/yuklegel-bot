@@ -14,9 +14,32 @@ function urlBase64ToUint8Array(b64: string) {
   return Uint8Array.from(raw, (c) => c.charCodeAt(0))
 }
 
+// Bayrak artık KULLANICIYA özel: aynı cihazda başka hesap açılınca eski hesabın "açık" bilgisi ona geçmez.
+const flagKey = (uid: string) => `${ENABLED_FLAG}:${uid}`
 const flag = {
-  get: () => { try { return localStorage.getItem(ENABLED_FLAG) === "1" } catch { return false } },
-  set: (on: boolean) => { try { on ? localStorage.setItem(ENABLED_FLAG, "1") : localStorage.removeItem(ENABLED_FLAG) } catch {} },
+  get: (uid: string) => { try { return localStorage.getItem(flagKey(uid)) === "1" } catch { return false } },
+  set: (uid: string, on: boolean) => { try { on ? localStorage.setItem(flagKey(uid), "1") : localStorage.removeItem(flagKey(uid)) } catch {} },
+}
+
+async function sessionUserId(): Promise<string | null> {
+  if (!supabase) return null
+  const { data } = await supabase.auth.getSession()
+  return data.session?.user.id ?? null
+}
+
+/** Bu cihazın bildirim adresi, GİRİŞ YAPMIŞ kullanıcının hesabına mı kayıtlı? (RLS: yalnızca kendi satırlarını görür) */
+async function ownsEndpoint(endpoint: string): Promise<boolean | null> {
+  if (!supabase) return null
+  const { data, error } = await supabase.from("push_subscriptions").select("id").eq("endpoint", endpoint).maybeSingle()
+  if (error) return null // bilinmiyor: yanlışlıkla silmeyelim
+  return !!data
+}
+
+/** Bu cihazın kaydını (hangi hesaba bağlı olursa olsun) sunucudan düşürür. */
+async function releaseEndpoint(endpoint: string): Promise<void> {
+  if (!supabase) return
+  const { error } = await supabase.rpc("release_push_endpoint", { p_endpoint: endpoint })
+  if (error) await supabase.from("push_subscriptions").delete().eq("endpoint", endpoint)
 }
 
 /** Service worker hazır olana kadar bekler (kayıt henüz bitmemiş olabilir); en fazla 6 sn. */
@@ -75,7 +98,10 @@ export async function getPushState(): Promise<PushState> {
   try {
     const reg = await getRegistration()
     const sub = await reg?.pushManager.getSubscription()
-    return sub && Notification.permission === "granted" ? "on" : "off"
+    if (!sub || Notification.permission !== "granted") return "off"
+    // Tarayıcıda abonelik olması yetmez: bu cihaz GİRİŞ YAPILAN hesaba kayıtlı olmalı
+    if ((await sessionUserId()) && (await ownsEndpoint(sub.endpoint)) === false) return "off"
+    return "on"
   } catch {
     return "off"
   }
@@ -96,7 +122,8 @@ export async function enablePush(): Promise<{ ok: boolean; error?: string }> {
     const sub = await ensureSubscription(reg, true)
     if (!sub) return { ok: false, error: "Bildirim açılamadı, tekrar deneyin." }
     if (!(await saveSubscription(sub))) return { ok: false, error: "Kaydedilemedi, tekrar deneyin." }
-    flag.set(true)
+    const uid = await sessionUserId()
+    if (uid) flag.set(uid, true)
     return { ok: true }
   } catch (e) {
     console.error("Push aboneliği başarısız:", e)
@@ -106,12 +133,13 @@ export async function enablePush(): Promise<{ ok: boolean; error?: string }> {
 
 /** Bu cihazda bildirimleri kapatır (abonelik hem tarayıcıdan hem veritabanından silinir). */
 export async function disablePush(): Promise<void> {
-  flag.set(false)
+  const uid = await sessionUserId()
+  if (uid) flag.set(uid, false)
   try {
     const reg = await getRegistration()
     const sub = await reg?.pushManager.getSubscription()
     if (sub) {
-      if (supabase) await supabase.from("push_subscriptions").delete().eq("endpoint", sub.endpoint)
+      await releaseEndpoint(sub.endpoint)
       await sub.unsubscribe()
     }
   } catch (e) {
@@ -119,27 +147,72 @@ export async function disablePush(): Promise<void> {
   }
 }
 
-let lastSync = 0
+/** Service worker kaydını bekletmeden alır (çıkış yaparken takılmasın diye). */
+async function getRegistrationNow(): Promise<ServiceWorkerRegistration | null> {
+  try {
+    if (!("serviceWorker" in navigator)) return null
+    return (await Promise.race([
+      navigator.serviceWorker.getRegistration(),
+      new Promise<undefined>((resolve) => setTimeout(() => resolve(undefined), 2000)),
+    ])) ?? null
+  } catch {
+    return null
+  }
+}
+
 /**
- * Sessiz bakım (Premium kullanıcı uygulamayı açınca çalışır):
- *  - tarayıcının yenilediği/değiştirdiği abonelik adresini sunucuya yazar,
- *  - sistem aboneliği düşürmüşse (kullanıcı bildirimi bilerek kapatmadıysa) yeniden oluşturur,
- *  - eski VAPID anahtarıyla yapılmış aboneliği düzeltir.
- * Bu olmadan "bir süre sonra bildirimler gelmiyor" sorunu oluşur.
+ * ÇIKIŞ YAPARKEN çağrılır: bu cihazın bildirim kaydını hesabın üzerinden SİLER.
+ * (Tarayıcı aboneliği kalır; aynı kullanıcı tekrar girerse otomatik yeniden bağlanır, başka kullanıcı girerse eski hesabın bildirimleri gelmez.)
  */
-export async function syncPush(force = false): Promise<void> {
+export async function releaseDevicePush(): Promise<void> {
+  try {
+    if (!pushSupported()) return
+    const reg = await getRegistrationNow()
+    const sub = await reg?.pushManager.getSubscription()
+    if (sub) await releaseEndpoint(sub.endpoint)
+  } catch (e) {
+    console.error("Cihaz kaydı düşürülemedi:", e)
+  }
+}
+
+/** Tüm çıkış düğmeleri bunu kullanır: önce cihaz kaydı düşer, sonra oturum kapanır. */
+export async function signOutClean(): Promise<void> {
+  await releaseDevicePush()
+  if (supabase) await supabase.auth.signOut()
+}
+
+let lastSync = { uid: "", at: 0 }
+/**
+ * Sessiz bakım (uygulama açılınca / oturum değişince çalışır):
+ *  - bu cihaz BAŞKA bir hesaba kayıtlıysa ve şu anki kullanıcı bildirimi açmadıysa kaydı düşürür (eski hesabın bildirimleri akmasın),
+ *  - şu anki kullanıcı bildirimi açmışsa (Premium) tarayıcının yenilediği abonelik adresini sunucuya yazar,
+ *  - eski VAPID anahtarıyla yapılmış aboneliği düzeltir.
+ */
+export async function syncPush(force = false, entitled = true): Promise<void> {
   try {
     if (!pushSupported() || !VAPID_PUBLIC_KEY || !supabase) return
     if (Notification.permission !== "granted") return
-    if (!force && Date.now() - lastSync < 10 * 60_000) return
-    if (!(await supabase.auth.getSession()).data.session) return
-    lastSync = Date.now()
+    const uid = await sessionUserId()
+    if (!uid) return
+    if (!force && lastSync.uid === uid && Date.now() - lastSync.at < 10 * 60_000) return
+    lastSync = { uid, at: Date.now() }
     const reg = await getRegistration()
     if (!reg) return
     const existing = await reg.pushManager.getSubscription()
-    if (!existing && !flag.get()) return // kullanıcı hiç açmamış ya da kapatmış
+    if (!existing) return // kullanıcı hiç açmamış ya da kapatmış
+
+    const mine = await ownsEndpoint(existing.endpoint)
+    if (mine === null) return // sunucuya ulaşılamadı: dokunma
+    if (mine) flag.set(uid, true) // eski sürümden gelen kayıt: bayrağı bu kullanıcıya taşı
+
+    if (!flag.get(uid)) {
+      // Bu kullanıcı bildirimi açmadı: cihaz önceki hesaba kayıtlıysa oradan düşür
+      await releaseEndpoint(existing.endpoint)
+      return
+    }
+    if (!entitled) return // Premium bitmiş: kayıt kalsın, sunucu zaten Premium olmayana göndermez
     const sub = await ensureSubscription(reg, true)
-    if (sub && (await saveSubscription(sub))) flag.set(true)
+    if (sub) await saveSubscription(sub)
   } catch (e) {
     console.error("Push senkronu başarısız:", e)
   }
