@@ -1,5 +1,6 @@
 "use client"
 
+import { realName } from "@/lib/names"
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
@@ -91,7 +92,7 @@ export function CreateListingModal({ isOpen, onClose, onSuccess }: CreateListing
 
         setFormData((prev) => ({
           ...prev,
-          companyName: profile?.company_name || "",
+          companyName: realName(profile?.company_name),
           phone: profile?.phone || user.user_metadata?.phone || ""
         }))
       } catch (err) {
