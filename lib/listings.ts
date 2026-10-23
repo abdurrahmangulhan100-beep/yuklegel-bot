@@ -1,6 +1,7 @@
 import type { Load } from "@/components/LoadCard"
 import { analyzeListing, fold, isMissing } from "@/lib/route"
 import { timeAgo } from "@/lib/utils"
+import { extractPhone, normalizeStoredPhone } from "@/lib/phone"
 
 export interface DatabaseListing {
   id: string | number
@@ -49,16 +50,8 @@ export const cleanRaw = (text?: string | null) => {
     .trim()
 }
 
-// +90 / 0 / boşluk, tire, nokta, parantez içeren cep telefonlarını yakalar; "05xxxxxxxxx" döner
-export const extractPhone = (text?: string | null) => {
-  if (!text) return ""
-  const match = text.match(/(?:\+?90[\s.\-]*)?0?[\s.\-]*\(?5\d{2}\)?[\s.\-]*\d{3}[\s.\-]*\d{2}[\s.\-]*\d{2}/)
-  if (!match) return ""
-  const digits = match[0].replace(/\D/g, "")
-  if (digits.length < 10) return ""
-  return "0" + digits.slice(-10)
-}
-
+// Telefon çıkarma lib/phone.ts içinde (daha toleranslı); eski içe aktarmalar bozulmasın diye buradan da dışa aktarılır
+export { extractPhone }
 
 export function mapUserListing(item: DatabaseListing): Load {
   const profileObj = Array.isArray(item.profiles) ? item.profiles[0] : item.profiles
@@ -138,7 +131,7 @@ export function mapBotListing(item: DatabaseListing): Load {
     createdAt: item.created_at,
     color: "bg-[#315d83]",
     source: "bot",
-    phone: extractPhone(rawDetail) || item.phone || "Belirtilmedi",
+    phone: extractPhone(rawDetail) || normalizeStoredPhone(item.phone) || "Belirtilmedi",
   }
 }
 
