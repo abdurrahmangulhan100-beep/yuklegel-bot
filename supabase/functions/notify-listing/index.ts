@@ -65,7 +65,7 @@ function initVapid() {
   vapidReady = true
 }
 
-/** Cihazlara gönderir; süresi dolmuş (404/410) abonelikleri veritabanından siler. */
+/** Cihazlara gönderir; süresi dolmuş (404/410) abonelikleri veritabanından siler.[cite: 4] */
 async function sendAll(db: SupabaseClient, subs: Sub[], payload: Record<string, unknown>) {
   initVapid()
   const body = JSON.stringify(payload)
@@ -92,10 +92,28 @@ async function sendAll(db: SupabaseClient, subs: Sub[], payload: Record<string, 
   return { sent, removed: dead.length }
 }
 
+/** Yalnızca aktif/geçerli premium aboneliği olan kullanıcıların cihaz token'larını getirir. */
 async function subsOf(db: SupabaseClient, userIds: string[]): Promise<Map<string, Sub[]>> {
   const map = new Map<string, Sub[]>()
   if (!userIds.length) return map
-  const { data } = await db.from("push_subscriptions").select("user_id,endpoint,p256dh,auth").in("user_id", userIds)
+
+  // 1. Abonelik süresi dolmamış/aktif olan kullanıcıları filtrele
+  const now = new Date().toISOString()
+  const { data: activeSubs } = await db
+    .from("subscriptions")
+    .select("user_id")
+    .in("user_id", userIds)
+    .in("status", ["active", "grace", "canceled"])
+    .or(`expires_at.is.null,expires_at.gt.${now}`)
+
+  const entitledUserIds = new Set((activeSubs || []).map((s: { user_id: string }) => s.user_id))
+  if (!entitledUserIds.size) return map
+
+  const validIds = userIds.filter((id) => entitledUserIds.has(id))
+  if (!validIds.length) return map
+
+  // 2. Yalnızca bu doğrulanmış premium kullanıcıların push aboneliklerini çek
+  const { data } = await db.from("push_subscriptions").select("user_id,endpoint,p256dh,auth").in("user_id", validIds)
   for (const r of (data || []) as (Sub & { user_id: string })[]) {
     const list = map.get(r.user_id) || []
     list.push(r)
@@ -110,7 +128,7 @@ const stripEmoji = (t: string) =>
   t.replace(/[\uD83C-\uD83E][\uDC00-\uDFFF]|[\u231A-\u23FF]|[\u2600-\u27BF]|[\u2B00-\u2BFF]|\uFE0F|\u200D/g, "")
 const clip = (t: string, n: number) => (t.length > n ? t.slice(0, n - 1).trimEnd() + "…" : t)
 
-/** Bot ilanları aynı metinle tekrar tekrar gelir; son 6 saatte aynısı varsa bildirim atma. */
+/** Bot ilanları aynı metinle tekrar tekrar gelir; son 6 saatte aynısı varsa bildirim atma.[cite: 4] */
 async function isRepeatedBot(db: SupabaseClient, rec: Rec): Promise<boolean> {
   if (!rec.cargo_detail || !rec.created_at) return false
   const since = new Date(new Date(rec.created_at).getTime() - 6 * 3600_000).toISOString()
@@ -151,8 +169,6 @@ async function handleListing(db: SupabaseClient, table: string, rec: Rec) {
 
   const matches = (routes as Route[]).filter((r) => {
     if (rec.user_id && r.user_id === rec.user_id) return false // kendi ilanı için bildirim yok
-    // YÖN KESİN: "from" = yalnızca bu şehirden ÇIKAN, "to" = yalnızca bu şehre GİDEN, "both" = ikisinden biri.
-    // Yön bilgisi yoksa/bilinmiyorsa en dar anlam ("çıkan") kullanılır; metinde sadece geçen şehir (örn. güzergâh üstü) eşleşme sayılmaz.
     const dir = r.direction === "to" || r.direction === "both" ? r.direction : "from"
     const ok =
       dir === "from" ? fromCity === r.from_city && toCity !== r.from_city
@@ -160,14 +176,12 @@ async function handleListing(db: SupabaseClient, table: string, rec: Rec) {
       : fromCity === r.from_city || toCity === r.from_city
     if (!ok) return false
     if (r.urgent_only && !urgent) return false
-    // Araç filtresi: ilandan araç tipi çıkarılamadıysa kaçırmamak için bildirim gönderilir
     if (r.vehicle && vehicleTokens.length) {
       const want = fold(r.vehicle).split(/\s+/).filter(Boolean)
       if (!want.every((w) => vehicleTokens.includes(w))) return false
     }
     return true
   })
-  // Aynı kullanıcının birden fazla şehri aynı ilana uyarsa tek bildirim gitsin
   const seenUser = new Set<string>()
   for (let i = matches.length - 1; i >= 0; i--) {
     if (seenUser.has(matches[i].user_id)) matches.splice(i, 1)
@@ -179,7 +193,6 @@ async function handleListing(db: SupabaseClient, table: string, rec: Rec) {
   const info = [a.vehicle, a.trailer, a.tonnage, a.timing].filter(Boolean).join(" · ")
   const cargo = clip(stripEmoji(a.cargoText || "").replace(/\s+/g, " ").trim(), 110)
   const bodyText = [info, cargo].filter(Boolean).join(" — ") || "Detaylar için dokunun."
-  // Telefon: kayıttaki alan ya da ilan metnindeki cep numarası (bildirimde "Ara" düğmesi için)
   const m = (rec.phone || "").match(PHONE_RE) || rawText.match(PHONE_RE)
   const digits = m ? m[0].replace(/\D/g, "") : ""
   const phone = digits.length >= 10 ? "0" + digits.slice(-10) : ""
@@ -209,7 +222,6 @@ async function handleListing(db: SupabaseClient, table: string, rec: Rec) {
     }
   }
 
-  // Throttle yüzünden bekleyen ilanlar: pencere dolunca tek bildirimle haber ver
   for (const r of toFlush) schedule(flushLater(db, r))
 }
 
@@ -244,7 +256,6 @@ Deno.serve(async (req: Request) => {
   try {
     const hook = req.headers.get("x-webhook-secret")
 
-    // A) Veritabanı tetikleyicisi (yeni ilan)
     if (hook !== null) {
       if (!safeEqual(hook, WEBHOOK_SECRET)) return json(req, { ok: false, error: "unauthorized" }, 401)
       const payload = await req.json().catch(() => null)
@@ -261,7 +272,6 @@ Deno.serve(async (req: Request) => {
       return json(req, { ok: true })
     }
 
-    // B) Kullanıcının kendi cihazlarına test bildirimi
     const jwt = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "")
     if (!jwt) return json(req, { ok: false, error: "unauthorized" }, 401)
     const { data: u } = await createClient(SUPABASE_URL, ANON, { auth: { persistSession: false } }).auth.getUser(jwt)
@@ -286,3 +296,4 @@ Deno.serve(async (req: Request) => {
     return json(req, { ok: false, error: "exception" }, 500)
   }
 })
+```[cite: 4]
