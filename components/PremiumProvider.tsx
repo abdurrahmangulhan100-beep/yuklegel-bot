@@ -113,8 +113,8 @@ export function PremiumProvider({ children }: { children: React.ReactNode }) {
           setExpiresAt(r.expiresAt ?? null)
         }
       }
-      // Premium ise bu cihazın bildirim kaydını sessizce güncel tut
-      if (entitled) void syncPush()
+      // Bu cihazın bildirim kaydını sessizce güncel tut / başka hesaba ait kaydı düşür
+      void syncPush(false, entitled)
     } catch (e) {
       console.error("Premium durumu alınamadı:", e)
     } finally {
