@@ -1,6 +1,6 @@
 "use client"
 
-import { Phone, MessageCircle, Star, Check, Ban, Zap, ChevronDown, Share2, Copy, Flag, MoreHorizontal, MapPin, Truck } from "lucide-react"
+import { Phone, MessageCircle, Star, Check, Ban, Zap, ChevronDown, Share2, Copy, Flag, MoreHorizontal, MapPin, Truck, Clock, Weight, Ruler, Repeat2 } from "lucide-react"
 import { Fragment, memo, useState } from "react"
 import { isMissing } from "@/lib/route"
 import { supabase } from "@/lib/supabase"
@@ -411,35 +411,26 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
 
         {/* Güzergâh: tek bakışta nereden → nereye */}
         {route ? (
-          <div className="rounded-2xl bg-gradient-to-br from-[#f4f8fc] to-[#e9f0f7] px-4 py-3.5">
+          <div className="rounded-2xl border border-[#e3ebf3] bg-gradient-to-br from-white to-[#f1f6fb] px-4 py-3.5 shadow-[0_1px_0_rgba(18,44,74,0.03)]">
             <div className="flex items-center gap-3">
-              <Place caption="Çıkış" label={highlightMatch(route.from, cleanQuery)} sub={load.districtOf?.[route.from]} align="left" onClick={onCitySearch ? () => onCitySearch(route.from) : undefined} />
-              <div aria-hidden className="flex w-16 shrink-0 items-center gap-1.5 text-[#a9bacb]">
+              <Place dot="bg-emerald-500" caption="Çıkış" label={highlightMatch(route.from, cleanQuery)} sub={load.districtOf?.[route.from]} align="left" onClick={onCitySearch ? () => onCitySearch(route.from) : undefined} />
+              <div aria-hidden className="flex w-14 shrink-0 sm:w-20 items-center gap-1.5 text-[#a9bacb]">
                 <span className="h-0 flex-1 border-t-2 border-dotted border-current" />
-                <Truck className="size-[18px] shrink-0 text-[#d64526]" />
+                <span className="grid size-7 shrink-0 place-items-center rounded-full bg-white text-[#d64526] shadow-sm ring-1 ring-[#e3ebf3]"><Truck className="size-4" /></span>
                 <span className="h-0 flex-1 border-t-2 border-dotted border-current" />
               </div>
-              <Place caption="Varış" label={highlightMatch(route.to, cleanQuery)} sub={load.districtOf?.[route.to]} align="right" onClick={onCitySearch ? () => onCitySearch(route.to) : undefined} />
+              <Place dot="bg-[#e5522f]" caption="Varış" label={highlightMatch(route.to, cleanQuery)} sub={load.districtOf?.[route.to]} align="right" onClick={onCitySearch ? () => onCitySearch(route.to) : undefined} />
             </div>
           </div>
         ) : places.length > 0 ? (
-          <div className="flex items-start gap-2.5 rounded-2xl bg-[#f4f8fc] px-3.5 py-3">
-            <MapPin aria-hidden className="mt-0.5 size-4 shrink-0 text-[#d64526]" />
-            <p className="min-w-0 text-[15px] font-bold leading-snug text-[#122c4a]">
-              {places.slice(0, 3).map((t, i) => (
-                <Fragment key={t.city}>
-                  {i > 0 && <span className="mx-1.5 font-normal text-[#b4c1ce]">·</span>}
-                  {onCitySearch ? (
-                    <button type="button" onClick={() => onCitySearch(t.city)} className="active:opacity-60">
-                      {highlightMatch(t.label, cleanQuery)}
-                    </button>
-                  ) : (
-                    <span>{highlightMatch(t.label, cleanQuery)}</span>
-                  )}
-                </Fragment>
-              ))}
-              {places.length > 3 && <span className="ml-1.5 text-xs font-semibold text-[#8da0b2]">+{places.length - 3}</span>}
-            </p>
+          <div className="flex flex-wrap items-center gap-1.5">
+            {places.slice(0, 4).map((t) => (
+              <button key={t.city} type="button" disabled={!onCitySearch} onClick={() => onCitySearch?.(t.city)} className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-[#e3ebf3] bg-gradient-to-b from-white to-[#f4f8fc] py-1.5 pl-2.5 pr-3 text-[14px] font-bold text-[#122c4a] active:opacity-60">
+                <MapPin aria-hidden className="size-3.5 shrink-0 text-[#d64526]" />
+                <span className="truncate">{highlightMatch(t.label, cleanQuery)}</span>
+              </button>
+            ))}
+            {places.length > 4 && <span className="text-xs font-semibold text-[#8da0b2]">+{places.length - 4}</span>}
           </div>
         ) : null}
 
@@ -452,13 +443,13 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
                 ACİL
               </Tag>
             )}
-            {load.timing && <Tag tone="bg-emerald-50 text-emerald-700">{load.timing}</Tag>}
-            {hasVehicle && <Tag tone="bg-[#f1f5f9] text-[#3c566e]">{highlightMatch(load.vehicle, cleanQuery)}</Tag>}
-            {load.trailer && <Tag tone="bg-[#f1f5f9] text-[#3c566e]">{load.trailer}</Tag>}
-            {load.tonnage && <Tag tone="bg-[#f1f5f9] text-[#3c566e]">{load.tonnage}</Tag>}
+            {load.timing && <Tag tone="bg-emerald-50 text-emerald-700" icon={<Clock className="size-3" />}>{load.timing}</Tag>}
+            {hasVehicle && <Tag tone="bg-[#eef3f8] text-[#2c4a66]" icon={<Truck className="size-3" />}>{highlightMatch(load.vehicle, cleanQuery)}</Tag>}
+            {load.trailer && <Tag tone="bg-[#eef3f8] text-[#2c4a66]" icon={<Ruler className="size-3" />}>{load.trailer}</Tag>}
+            {load.tonnage && <Tag tone="bg-[#eef3f8] text-[#2c4a66]" icon={<Weight className="size-3" />}>{load.tonnage}</Tag>}
             {hasDistance && <Tag tone="bg-[#f1f5f9] text-[#3c566e]">{load.distance}</Tag>}
             {hasPrice && <Tag tone="bg-emerald-600 text-white">{load.price}</Tag>}
-            {(load.repeatCount ?? 0) > 1 && <Tag tone="bg-[#f1f5f9] text-[#627d98]">{load.repeatCount} kez paylaşıldı</Tag>}
+            {(load.repeatCount ?? 0) > 1 && <Tag tone="bg-[#f1f5f9] text-[#627d98]" icon={<Repeat2 className="size-3" />}>{load.repeatCount} kez paylaşıldı</Tag>}
           </div>
         )}
 
@@ -596,7 +587,7 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
   )
 })
 
-function Place({ caption, label, sub, align, onClick }: { caption: string; label: React.ReactNode; sub?: string; align: "left" | "right"; onClick?: () => void }) {
+function Place({ caption, dot, label, sub, align, onClick }: { caption: string; dot?: string; label: React.ReactNode; sub?: string; align: "left" | "right"; onClick?: () => void }) {
   return (
     <button
       type="button"
@@ -604,17 +595,17 @@ function Place({ caption, label, sub, align, onClick }: { caption: string; label
       disabled={!onClick}
       className={cn("min-w-0 flex-1 active:opacity-60", align === "right" ? "text-right" : "text-left")}
     >
-      <span className="block text-[10px] font-bold uppercase tracking-[0.1em] text-[#8da0b2]">{caption}</span>
+      <span className={cn("flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.1em] text-[#8da0b2]", align === "right" && "justify-end")}>{dot && <i className={cn("size-1.5 rounded-full", dot)} />}{caption}</span>
       <span className="mt-0.5 block truncate text-[17px] font-extrabold leading-tight text-[#122c4a]">{label}</span>
       {sub && <span className="block truncate text-[12px] font-semibold text-[#6b8399]">{sub}</span>}
     </button>
   )
 }
 
-function Tag({ tone, children }: { tone: string; children: React.ReactNode }) {
+function Tag({ tone, icon, children }: { tone: string; icon?: React.ReactNode; children: React.ReactNode }) {
   return (
     <span className={cn("inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11.5px] font-semibold", tone)}>
-      {children}
+      {icon}{children}
     </span>
   )
 }
