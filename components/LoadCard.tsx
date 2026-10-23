@@ -6,6 +6,7 @@ import { isMissing } from "@/lib/route"
 import { supabase } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
 import { Sheet } from "@/components/Sheet"
+import { VehicleIcon } from "@/components/VehicleIcon"
 import { usePremium } from "@/components/PremiumProvider"
 import { FREE_LIMITS, consumeContact, contactLimitMessage, openPremium } from "@/lib/premium"
 
@@ -416,7 +417,7 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
               <Place dot="bg-emerald-500" caption="Çıkış" label={highlightMatch(route.from, cleanQuery)} sub={load.districtOf?.[route.from]} align="left" onClick={onCitySearch ? () => onCitySearch(route.from) : undefined} />
               <div aria-hidden className="flex w-14 shrink-0 sm:w-20 items-center gap-1.5 text-[#a9bacb]">
                 <span className="h-0 flex-1 border-t-2 border-dotted border-current" />
-                <span className="grid size-7 shrink-0 place-items-center rounded-full bg-white text-[#d64526] shadow-sm ring-1 ring-[#e3ebf3]"><Truck className="size-4" /></span>
+                <span className="grid size-7 shrink-0 place-items-center rounded-full bg-white text-[#d64526] shadow-sm ring-1 ring-[#e3ebf3]"><VehicleIcon vehicle={load.vehicle} className="size-[18px]" /></span>
                 <span className="h-0 flex-1 border-t-2 border-dotted border-current" />
               </div>
               <Place dot="bg-[#e5522f]" caption="Varış" label={highlightMatch(route.to, cleanQuery)} sub={load.districtOf?.[route.to]} align="right" onClick={onCitySearch ? () => onCitySearch(route.to) : undefined} />
@@ -444,7 +445,7 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
               </Tag>
             )}
             {load.timing && <Tag tone="bg-emerald-50 text-emerald-700" icon={<Clock className="size-3" />}>{load.timing}</Tag>}
-            {hasVehicle && <Tag tone="bg-[#eef3f8] text-[#2c4a66]" icon={<Truck className="size-3" />}>{highlightMatch(load.vehicle, cleanQuery)}</Tag>}
+            {hasVehicle && <Tag tone="bg-[#eef3f8] text-[#2c4a66]" icon={<VehicleIcon vehicle={load.vehicle} className="size-3.5" />}>{highlightMatch(load.vehicle, cleanQuery)}</Tag>}
             {load.trailer && <Tag tone="bg-[#eef3f8] text-[#2c4a66]" icon={<Ruler className="size-3" />}>{load.trailer}</Tag>}
             {load.tonnage && <Tag tone="bg-[#eef3f8] text-[#2c4a66]" icon={<Weight className="size-3" />}>{load.tonnage}</Tag>}
             {hasDistance && <Tag tone="bg-[#f1f5f9] text-[#3c566e]">{load.distance}</Tag>}
