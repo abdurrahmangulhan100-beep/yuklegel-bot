@@ -5,6 +5,7 @@ const NAV = [
   { href: "/hakkimizda", label: "Hakkımızda" },
   { href: "/rehber", label: "Rehber" },
   { href: "/privacy", label: "Gizlilik Politikası" },
+  { href: "/kullanim-kosullari", label: "Kullanım Koşulları" },
   { href: "/delete-account", label: "Hesap Silme" },
 ]
 
