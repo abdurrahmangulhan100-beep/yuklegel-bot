@@ -50,6 +50,23 @@ export function NotificationSettings() {
     loadRoute()
   }, [loadRoute])
 
+  // Hesap değişince (çıkış / başka hesapla giriş) önceki hesabın şehir ve bildirim durumu ekranda kalmasın
+  useEffect(() => {
+    if (!supabase) return
+    const { data } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "SIGNED_OUT") {
+        setRoute(null)
+        setEditing(false)
+        setMsg(null)
+        setState("off")
+      } else if (event === "SIGNED_IN") {
+        loadRoute()
+        getPushState().then(setState)
+      }
+    })
+    return () => data.subscription.unsubscribe()
+  }, [loadRoute])
+
   const toggle = async () => {
     setBusy(true)
     setMsg(null)
