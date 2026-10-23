@@ -307,7 +307,7 @@ export function ListingsView({
 
       {/* İlan kartları */}
       {loading ? (
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-1 items-start gap-3 md:grid-cols-2 xl:grid-cols-3">
           {[0, 1, 2].map((i) => (
             <div key={i} className="animate-pulse overflow-hidden rounded-2xl border border-[#e4e9ef] bg-white p-4">
               <div className="flex items-center gap-3">
@@ -360,7 +360,7 @@ export function ListingsView({
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4 xl:grid-cols-3">
+        <div className="grid grid-cols-1 items-start gap-3 md:grid-cols-2 md:gap-4 xl:grid-cols-3">
           {renderedLoads.map((load, i) => (
             <Fragment key={load.id}>
               <LoadCard
