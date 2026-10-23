@@ -32,6 +32,7 @@ export type Load = {
   toCity?: string
   /** İlan metninde geçen şehirler (etiket olarak gösterilir, yön belirtmez) */
   cities?: string[]
+  districtOf?: Record<string, string>
   /** Metinde geçen ama çıkış/varış olarak ayrılamayan diğer şehirler */
   extraCities?: string[]
   trailer?: string
@@ -129,7 +130,7 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
     if (!isMissing(load.from)) addTag(load.from, load.fromCity, "Çıkış")
     if (!isMissing(load.to)) addTag(load.to, load.toCity, "Varış")
   }
-  for (const c of load.cities ?? []) addTag(c, c)
+  for (const c of load.cities ?? []) addTag(load.districtOf?.[c] ? `${c} · ${load.districtOf[c]}` : c, c)
   const cityText = cityTags.map((t) => t.label).join(" · ")
   const showMessage = Boolean(load.message) && load.message !== "-" && load.message !== load.cargo
 
@@ -412,13 +413,13 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
         {route ? (
           <div className="rounded-2xl bg-gradient-to-br from-[#f4f8fc] to-[#e9f0f7] px-4 py-3.5">
             <div className="flex items-center gap-3">
-              <Place caption="Çıkış" label={highlightMatch(route.from, cleanQuery)} align="left" onClick={onCitySearch ? () => onCitySearch(route.from) : undefined} />
+              <Place caption="Çıkış" label={highlightMatch(route.from, cleanQuery)} sub={load.districtOf?.[route.from]} align="left" onClick={onCitySearch ? () => onCitySearch(route.from) : undefined} />
               <div aria-hidden className="flex w-16 shrink-0 items-center gap-1.5 text-[#a9bacb]">
                 <span className="h-0 flex-1 border-t-2 border-dotted border-current" />
                 <Truck className="size-[18px] shrink-0 text-[#d64526]" />
                 <span className="h-0 flex-1 border-t-2 border-dotted border-current" />
               </div>
-              <Place caption="Varış" label={highlightMatch(route.to, cleanQuery)} align="right" onClick={onCitySearch ? () => onCitySearch(route.to) : undefined} />
+              <Place caption="Varış" label={highlightMatch(route.to, cleanQuery)} sub={load.districtOf?.[route.to]} align="right" onClick={onCitySearch ? () => onCitySearch(route.to) : undefined} />
             </div>
           </div>
         ) : places.length > 0 ? (
@@ -595,7 +596,7 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
   )
 })
 
-function Place({ caption, label, align, onClick }: { caption: string; label: React.ReactNode; align: "left" | "right"; onClick?: () => void }) {
+function Place({ caption, label, sub, align, onClick }: { caption: string; label: React.ReactNode; sub?: string; align: "left" | "right"; onClick?: () => void }) {
   return (
     <button
       type="button"
@@ -605,6 +606,7 @@ function Place({ caption, label, align, onClick }: { caption: string; label: Rea
     >
       <span className="block text-[10px] font-bold uppercase tracking-[0.1em] text-[#8da0b2]">{caption}</span>
       <span className="mt-0.5 block truncate text-[17px] font-extrabold leading-tight text-[#122c4a]">{label}</span>
+      {sub && <span className="block truncate text-[12px] font-semibold text-[#6b8399]">{sub}</span>}
     </button>
   )
 }
