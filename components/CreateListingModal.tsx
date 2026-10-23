@@ -91,7 +91,7 @@ export function CreateListingModal({ isOpen, onClose, onSuccess }: CreateListing
 
         setFormData((prev) => ({
           ...prev,
-          companyName: profile?.company_name || user.email?.split("@")[0] || "Nakliye Cepte Kullanıcısı",
+          companyName: profile?.company_name || "",
           phone: profile?.phone || user.user_metadata?.phone || ""
         }))
       } catch (err) {
@@ -276,6 +276,7 @@ export function CreateListingModal({ isOpen, onClose, onSuccess }: CreateListing
                 type="text"
                 autoComplete="organization"
                 value={formData.companyName}
+                placeholder="Firma veya kişi adınız"
                 onChange={(e) => setFormData({ ...formData, companyName: e.target.value })}
                 className={fieldClass}
                 required
