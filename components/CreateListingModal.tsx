@@ -28,7 +28,7 @@ const SEHIRLER = [
   "Iğdır", "Yalova", "Karabük", "Kilis", "Osmaniye", "Düzce"
 ]
 
-const ARAÇ_TİPLERİ = ["Tır", "Damperli Tır", "Kamyon", "Frigo", "Kırkayak", "13.60 Açık Dorse", "Panelvan", "Pikap"]
+const ARAÇ_TİPLERİ = ["Kapalı Dorse", "Damperli Tır", "Kamyon", "Frigo", "Kırkayak", "13.60 Açık Dorse", "Panelvan", "Pikap"]
 const YUK_CİNSLERİ = ["Kömür", "Tahıl / Hububat", "Demir / Çelik", "Paletli Yük", "Gıda", "İnşaat Malzemesi", "Mobilya", "Dökme Yük", "Tekstil", "Diğer"]
 
 export function CreateListingModal({ isOpen, onClose, onSuccess }: CreateListingModalProps) {
