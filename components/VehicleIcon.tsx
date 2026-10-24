@@ -1,6 +1,12 @@
 import { cn } from "@/lib/utils"
 
-export type VehicleKind = "tir" | "kamyon" | "frigo" | "kirkayak" | "dorse" | "damperli"
+export type VehicleKind = "tumu" | "acil" | "tir" | "kamyon" | "frigo" | "kirkayak" | "dorse" | "damperli"
+
+/** İkon renk tonu: tek yerden değişir. Kartlarda koyu lacivert/mavi, seçili filtrede beyaz (currentColor) */
+export const VEHICLE_ICON_COLOR = "text-[#1f4a75]"
+
+/** public/vehicles/*.png dosyalarının en/boy oranı (genişlik ÷ yükseklik) */
+const RATIO: Record<VehicleKind, number> = {"tumu": 2.543, "acil": 2.03, "tir": 3.453, "kamyon": 1.964, "frigo": 1.832, "kirkayak": 2.496, "dorse": 7.058, "damperli": 1.767}
 
 const fold = (s: string) =>
   s.replace(/İ/g, "i").replace(/I/g, "i").toLowerCase().replace(/ı/g, "i").replace(/ş/g, "s").replace(/ğ/g, "g").replace(/ü/g, "u").replace(/ö/g, "o").replace(/ç/g, "c")
@@ -16,61 +22,19 @@ export function vehicleKind(vehicle?: string | null): VehicleKind {
   return "tir"
 }
 
-function Wheel({ x, r = 1.7 }: { x: number; r?: number }) {
-  return <circle cx={x} cy={17.5} r={r} />
-}
-
-/** Araç türüne göre çizgi ikon (lucide stiliyle uyumlu, currentColor kullanır) */
+/**
+ * Araç türüne göre dolu (silüet) ikon. PNG, maske olarak kullanıldığı için rengi currentColor'dan gelir:
+ * `className` ile hem boyut (h-* / w-*) hem renk (text-*) verilebilir. Yalnızca birini verirsen diğer boyut orandan hesaplanır.
+ */
 export function VehicleIcon({ vehicle, kind, className }: { vehicle?: string | null; kind?: VehicleKind; className?: string }) {
   const k = kind ?? vehicleKind(vehicle)
+  const url = `url(/vehicles/${k}.png)`
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden className={cn("size-4", className)}>
-      {k === "tir" && (
-        <>
-          <rect x="1" y="5" width="13" height="10" rx="1.2" />
-          <path d="M16 9h2.5L22 12v3h-6z" />
-          <path d="M14 13h2" />
-          <Wheel x={5} /><Wheel x={9.5} /><Wheel x={19} />
-        </>
-      )}
-      {k === "kamyon" && (
-        <>
-          <rect x="2" y="6" width="11" height="9" rx="1.2" />
-          <path d="M13 9.5h4.2L21 12.5V15H13" />
-          <Wheel x={6.5} /><Wheel x={17.5} />
-        </>
-      )}
-      {k === "frigo" && (
-        <>
-          <rect x="1" y="5" width="13" height="10" rx="1.2" />
-          <path d="M16 9h2.5L22 12v3h-6z" />
-          <path d="M7.5 7v6M4.9 8.5l5.2 3M4.9 11.5l5.2-3" />
-          <Wheel x={5} /><Wheel x={9.5} /><Wheel x={19} />
-        </>
-      )}
-      {k === "kirkayak" && (
-        <>
-          <rect x="1" y="6" width="14" height="8" rx="1.2" />
-          <path d="M15.5 9h3L22 12v3h-6.5z" />
-          <Wheel x={3.5} r={1.3} /><Wheel x={6.8} r={1.3} /><Wheel x={10.1} r={1.3} /><Wheel x={13.4} r={1.3} /><Wheel x={19} r={1.5} />
-        </>
-      )}
-      {k === "dorse" && (
-        <>
-          <path d="M1.5 15h21" />
-          <rect x="3.5" y="7" width="13" height="8" rx="1" />
-          <path d="M8 7v8M12 7v8" />
-          <path d="M2 15v3" />
-          <Wheel x={17} r={1.5} /><Wheel x={20.5} r={1.5} />
-        </>
-      )}
-      {k === "damperli" && (
-        <>
-          <path d="M2 6.5l11.5 3V15H2z" />
-          <path d="M13.5 10.5h3.7L21 13v2h-7.5" />
-          <Wheel x={6} /><Wheel x={10.5} /><Wheel x={18} />
-        </>
-      )}
-    </svg>
+    <span
+      role="img"
+      aria-hidden
+      className={cn("inline-block shrink-0 bg-current", VEHICLE_ICON_COLOR, className)}
+      style={{ aspectRatio: String(RATIO[k]), WebkitMaskImage: url, maskImage: url, WebkitMaskRepeat: "no-repeat", maskRepeat: "no-repeat", WebkitMaskSize: "contain", maskSize: "contain", WebkitMaskPosition: "center", maskPosition: "center" }}
+    />
   )
 }
