@@ -141,8 +141,17 @@ function findMentions(text: string): Mention[] {
     let weakKey = ""
 
     if (hasApos) {
-      const r = resolveName(base)
-      const k = SUFFIX_MAP.get(suffixPart)
+      let r = resolveName(base)
+      let k = SUFFIX_MAP.get(suffixPart)
+      if (!(r && k)) {
+        // "Karabağ'lardan", "Çiftlik'lerden": kesme yanlış yere konmuş çoğul + hal eki
+        const pl = suffixPart.match(/^(lar|ler)(dan|den|tan|ten|a|e|da|de|ta|te)$/)
+        if (pl) {
+          const r2 = resolveName(base + pl[1])
+          const k2 = SUFFIX_MAP.get(pl[2])
+          if (r2 && k2) { r = r2; k = k2 }
+        }
+      }
       if (r && k) { city = r.city; district = r.district; kind = k; weakKey = base }
     } else {
       const direct = resolveName(base)
@@ -213,7 +222,7 @@ function findMentions(text: string): Mention[] {
   return result
 }
 
-const SEPARATOR_RE = /^\s*(?:[-–—>→»~/+]+|=>|->)\s*$/
+const SEPARATOR_RE = /^\s*(?:[-–—>→»~/]+|=>|->)\s*$/
 
 type TextRoute = { from?: Mention; to?: Mention; explicit: boolean }
 
@@ -354,6 +363,10 @@ export type AnalyzeInput = {
   trustFields?: boolean
 }
 
+function placeFromMention(m: { city: string; district?: string }): Place {
+  return { label: m.district ? `${m.city} / ${m.district}` : m.city, city: m.city, district: m.district }
+}
+
 export function analyzeListing(input: AnalyzeInput): ListingAnalysis {
   const rawText = [input.cargo, input.message]
     .filter((v): v is string => !isMissing(v))
@@ -372,13 +385,27 @@ export function analyzeListing(input: AnalyzeInput): ListingAnalysis {
     // Kullanıcı seçimi: sadece eksik tarafı metinden tamamla
     if (!from && tr.from && tr.from.city !== to?.city) from = { label: tr.from.city, city: tr.from.city }
     if (!to && tr.to && tr.to.city !== from?.city) to = { label: tr.to.city, city: tr.to.city }
-  } else if (tr.explicit && tr.from && tr.to) {
-    // Bot ilanı: metindeki "A'dan B'ye" ifadesi, alanlardan daha güvenilirdir
-    from = from?.city === tr.from.city ? from : { label: tr.from.city, city: tr.from.city }
-    to = to?.city === tr.to.city ? to : { label: tr.to.city, city: tr.to.city }
   } else {
-    if (!from && tr.from && tr.from.city !== to?.city) from = { label: tr.from.city, city: tr.from.city }
-    if (!to && tr.to && tr.to.city !== from?.city) to = { label: tr.to.city, city: tr.to.city }
+    // Bot ilanı: alan değerleri yanlış olabilir, ilan metni daha güvenilirdir.
+    const mentioned = new Set(ms.map((m) => m.city))
+
+    // a) Metinde hiç geçmeyen bir şehir alanda duruyorsa (ör. grup şehri) güvenme
+    if (ms.length > 0) {
+      if (from?.city && !mentioned.has(from.city)) from = undefined
+      if (to?.city && !mentioned.has(to.city)) to = undefined
+    }
+
+    // b) Metinde net sinyal varsa ("X yükleme", "X'dan", "Y'ye", "Y teslim") alanı ezer
+    if (tr.explicit && tr.from && tr.to) {
+      if (from?.city !== tr.from.city) from = placeFromMention(tr.from)
+      if (to?.city !== tr.to.city) to = placeFromMention(tr.to)
+    } else {
+      if (tr.from?.kind === "from" && from?.city !== tr.from.city && tr.from.city !== to?.city) from = placeFromMention(tr.from)
+      if (tr.to?.kind === "to" && to?.city !== tr.to.city && tr.to.city !== from?.city) to = placeFromMention(tr.to)
+      // c) Eksik tarafı metinden tamamla
+      if (!from && tr.from && tr.from.city !== to?.city) from = placeFromMention(tr.from)
+      if (!to && tr.to && tr.to.city !== from?.city) to = placeFromMention(tr.to)
+    }
   }
 
   // Bot alanı (from/to) ile metin çelişirse metin kazanır: metinde bir şehir sadece "-e/-a/teslim" ile geçiyorsa çıkış olamaz (ve tersi)
