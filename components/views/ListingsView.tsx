@@ -4,7 +4,7 @@ import { Fragment, useEffect, useMemo, useRef, useState } from "react"
 import { Load, LoadCard } from "@/components/LoadCard"
 import { AdSlot } from "@/components/AdSlot"
 import { VehicleIcon, type VehicleKind } from "@/components/VehicleIcon"
-import { PackageSearch, Plus, Zap, Phone, X, MapPin, Crown, Clock, ArrowRight, Bell } from "lucide-react"
+import { PackageSearch, Plus, Phone, X, MapPin, Crown, Clock, ArrowRight, Bell } from "lucide-react"
 import { usePremium } from "@/components/PremiumProvider"
 import { FREE_DELAY_MINUTES, openPremium } from "@/lib/premium"
 import { cn } from "@/lib/utils"
@@ -219,14 +219,14 @@ export function ListingsView({
                 onClick={() => setActiveFilter(option)}
                 aria-pressed={active}
                 className={cn(
-                  "flex h-[92px] w-[96px] shrink-0 flex-col items-center justify-between rounded-2xl border px-2 pb-2 pt-3 text-[12.5px] font-bold transition-all active:scale-95 sm:w-[104px]",
+                  "flex h-[96px] w-[104px] shrink-0 flex-col items-center justify-between rounded-2xl border-2 px-2 pb-2 pt-2.5 text-[12.5px] font-bold transition-all active:scale-95 sm:w-[112px]",
                   active
-                    ? "border-[#122c4a] bg-[#122c4a] text-white shadow-[0_8px_18px_-10px_rgba(18,44,74,0.8)]"
-                    : "border-[#e0e6ed] bg-white text-[#122c4a] hover:border-[#c4d0dc]"
+                    ? "border-[#122c4a] bg-[#eaf1f8] text-[#122c4a] shadow-[0_8px_18px_-12px_rgba(18,44,74,0.7)]"
+                    : "border-[#e4e9ef] bg-white text-[#4a6178] hover:border-[#c4d0dc]"
                 )}
               >
-                <span className="flex h-11 w-full items-center justify-center">
-                  <VehicleIcon kind={FILTER_ICON[option]} className={cn("max-h-11 max-w-[76px]", active ? "text-white" : option === "Acil" ? "text-[#d64526]" : "text-[#1f4a75]")} />
+                <span className="flex h-12 w-full items-center justify-center">
+                  <VehicleIcon kind={FILTER_ICON[option]} className="h-full w-full" />
                 </span>
                 {option}
               </button>
