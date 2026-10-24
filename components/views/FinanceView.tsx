@@ -286,6 +286,25 @@ export function FinanceView() {
     fetchFinances()
   }, [fetchFinances])
 
+  // Sefer Hesapla'dan gelen hazır kayıt: formu doldurup açar
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("fin_prefill")
+      if (!raw) return
+      localStorage.removeItem("fin_prefill")
+      const d = JSON.parse(raw)
+      setEditingItem(null)
+      resetForm()
+      setType(d.type === "expense" ? "expense" : "income")
+      setCategory(String(d.category || ""))
+      setAmount(String(d.amount || ""))
+      setDescription(String(d.description || ""))
+      setShowNote(true)
+      setSheetOpen(true)
+    } catch { /* geçersiz kayıt */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   // Filtre değişince listeyi başa al
   useEffect(() => {
     setVisible(PAGE)
