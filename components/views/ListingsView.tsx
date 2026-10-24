@@ -228,7 +228,7 @@ export function ListingsView({
                 <span className="flex h-12 w-full items-center justify-center">
                   <VehicleIcon kind={FILTER_ICON[option]} className="h-full w-full" />
                 </span>
-                <span className={cn(option.length > 10 && "text-[11px] leading-[1.15]")}>{option}</span>
+                <span className={cn(option.length > 10 && "whitespace-nowrap text-[11.5px] tracking-tight")}>{option}</span>
               </button>
             )
           })}
