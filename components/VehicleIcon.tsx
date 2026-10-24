@@ -12,6 +12,7 @@ export function vehicleKind(vehicle?: string | null): VehicleKind {
   if (/frigo|soguk|termokin/.test(f)) return "frigo"
   if (/kirkayak/.test(f)) return "kirkayak"
   if (/acik dorse/.test(f)) return "acikdorse"
+  if (/kapali|tenteli|perdeli/.test(f)) return "tir"
   if (/dorse|lowbed|low bed/.test(f)) return "dorse"
   if (/kamyon|teker|pikap|pick|panel|van\b/.test(f)) return "kamyon"
   return "tir"
