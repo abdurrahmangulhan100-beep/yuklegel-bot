@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils"
 
-export type VehicleKind = "tumu" | "acil" | "tir" | "kamyon" | "frigo" | "kirkayak" | "dorse" | "damperli"
+export type VehicleKind = "tumu" | "acil" | "tir" | "kamyon" | "frigo" | "kirkayak" | "acikdorse" | "dorse" | "damperli"
 
 const fold = (s: string) =>
   s.replace(/İ/g, "i").replace(/I/g, "i").toLowerCase().replace(/ı/g, "i").replace(/ş/g, "s").replace(/ğ/g, "g").replace(/ü/g, "u").replace(/ö/g, "o").replace(/ç/g, "c")
@@ -8,9 +8,10 @@ const fold = (s: string) =>
 /** Araç yazısından (ör. "Damperli Tır", "10 Teker", "Frigo") ikon türünü bulur; bulunamazsa genel tır */
 export function vehicleKind(vehicle?: string | null): VehicleKind {
   const f = fold(String(vehicle ?? ""))
-  if (/damper/.test(f)) return "damperli"
+  if (/damper|kisa dorse/.test(f)) return "damperli"
   if (/frigo|soguk|termokin/.test(f)) return "frigo"
   if (/kirkayak/.test(f)) return "kirkayak"
+  if (/acik dorse/.test(f)) return "acikdorse"
   if (/dorse|lowbed|low bed/.test(f)) return "dorse"
   if (/kamyon|teker|pikap|pick|panel|van\b/.test(f)) return "kamyon"
   return "tir"
