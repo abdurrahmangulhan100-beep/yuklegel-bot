@@ -10,7 +10,7 @@ import { supabase } from "@/lib/supabase"
 import { signOutClean } from "@/lib/push"
 import { Load } from "@/components/LoadCard"
 import { mapUserListing, mapBotListing, dedupeLoads, reuseLoads, type DatabaseListing } from "@/lib/listings"
-import { fold, isMissing } from "@/lib/route"
+import { fold, isMissing, isOpenDorse, isDamperli, isClosedDorse } from "@/lib/route"
 import { ListingsView } from "@/components/views/ListingsView"
 import { TripsView } from "@/components/views/TripsView"
 import { CalculatorView } from "@/components/views/CalculatorView"
@@ -42,14 +42,10 @@ const botCutoff = () => new Date(Date.now() - BOT_MAX_AGE_DAYS * 86400000).toISO
 // Araç filtresi: araç alanına ve ilan metnine bakar; "tir" gibi kısa kelimeler başka sözcüklerin içinde eşleşmesin diye kelime sınırı kullanır
 const matchesVehicle = (load: Load, filter: string) => {
   const blob = fold(`${load.vehicle} ${load.cargo}`)
-  // "Damperli" kategorisi: damperli araçlar + kısa dorse ilanları
-  if (filter === "Damperli") return /\bda[nm]per\w*/.test(blob) || /\bkisa\s+dorse\b/.test(blob)
-  // "13.60 Açık Dorse" kategorisi: açık dorse ve 13.60 ile birlikte açık/dorse geçen ilanlar (Kırkayak ayrı kategori)
-  if (filter === "13.60 Açık Dorse") {
-    // "13.60 açık kapalı tır", "kapalı/tenteli/perdeli" geçenler tenteli tır sayılır, bu kategoriye girmez
-    if (/\b(kapali|tenteli|perdeli)\b/.test(blob)) return false
-    return /\bacik\s+dorse\b/.test(blob) || (/\b13[\s.,]?60\b/.test(blob) && /\bacik\b/.test(blob))
-  }
+  // Kategoriler birbirine karışmaz: açık dorse / damperli / kapalı dorse ayrı kurallarla ayrılır
+  if (filter === "Damperli") return isDamperli(blob)
+  if (filter === "13.60 Açık Dorse") return isOpenDorse(blob)
+  if (filter === "Kapalı Dorse") return isClosedDorse(blob)
   const word = fold(filter).replace(/[^a-z0-9 ]/g, "")
   return new RegExp(`\\b${word}\\b`).test(blob)
 }
