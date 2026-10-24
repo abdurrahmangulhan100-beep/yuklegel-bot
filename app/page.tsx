@@ -26,7 +26,6 @@ import { BottomNav } from "@/components/BottomNav"
 import { LogoMark } from "@/components/Logo"
 import { PremiumView } from "@/components/views/PremiumView"
 import { PremiumLock } from "@/components/PremiumLock"
-import { SavedRoutes } from "@/components/SavedRoutes"
 import { usePremium } from "@/components/PremiumProvider"
 import { AdSlot } from "@/components/AdSlot"
 import { FREE_DELAY_MINUTES, FREE_LIMITS, OPEN_PREMIUM_EVENT } from "@/lib/premium"
@@ -43,6 +42,12 @@ const botCutoff = () => new Date(Date.now() - BOT_MAX_AGE_DAYS * 86400000).toISO
 // Araç filtresi: araç alanına ve ilan metnine bakar; "tir" gibi kısa kelimeler başka sözcüklerin içinde eşleşmesin diye kelime sınırı kullanır
 const matchesVehicle = (load: Load, filter: string) => {
   const blob = fold(`${load.vehicle} ${load.cargo}`)
+  // "Damperli" kategorisi: damperli araçlar + kısa dorse ilanları
+  if (filter === "Damperli") return /\bdamper\w*/.test(blob) || /\bkisa\s+dorse\b/.test(blob)
+  // "13.60 Açık Dorse" kategorisi: açık dorse ve 13.60 ile birlikte açık/dorse geçen ilanlar (Kırkayak ayrı kategori)
+  if (filter === "13.60 Açık Dorse") {
+    return /\bacik\s+dorse\b/.test(blob) || (/\b13[\s.,]?60\b/.test(blob) && /\b(acik|dorse)\b/.test(blob))
+  }
   const word = fold(filter).replace(/[^a-z0-9 ]/g, "")
   return new RegExp(`\\b${word}\\b`).test(blob)
 }
@@ -642,7 +647,6 @@ export default function Page() {
           )}
           {effectiveTab === "İlanlar" && (
             <>
-            <SavedRoutes loads={visibleLoads} onCitySearch={handleCitySearch} />
             <ListingsView 
               loads={filteredLoads} 
               stats={stats} 
