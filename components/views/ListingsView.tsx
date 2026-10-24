@@ -37,8 +37,8 @@ type ListingsViewProps = {
   lockedCount?: number
 }
 
-const FILTER_ICON: Record<string, VehicleKind> = { "Tümü": "tumu", Acil: "acil", "Tır": "tir", Kamyon: "kamyon", Frigo: "frigo", "Kırkayak": "kirkayak", "13.60 Açık Dorse": "acikdorse", Damperli: "damperli" }
-const FILTER_OPTIONS = ["Tümü", "Acil", "Tır", "Kamyon", "Frigo", "Kırkayak", "13.60 Açık Dorse", "Damperli"]
+const FILTER_ICON: Record<string, VehicleKind> = { "Tümü": "tumu", Acil: "acil", "Kapalı Dorse": "tir", Kamyon: "kamyon", Frigo: "frigo", "Kırkayak": "kirkayak", "13.60 Açık Dorse": "acikdorse", Damperli: "damperli" }
+const FILTER_OPTIONS = ["Tümü", "Acil", "Kapalı Dorse", "Kamyon", "Frigo", "Kırkayak", "13.60 Açık Dorse", "Damperli"]
 
 const selectClass =
   "h-10 min-w-0 flex-1 rounded-xl border border-[#e0e6ed] bg-white px-3 text-[13px] font-semibold text-[#334e68] outline-none transition-colors focus:border-[#122c4a] sm:flex-none sm:min-w-[170px]"
