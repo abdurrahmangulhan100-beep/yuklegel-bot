@@ -118,6 +118,8 @@ type Mention = {
   end: number
 }
 
+const FIRM_WORDS = new Set(["nakliyat", "nakliye", "nakliyecilik", "lojistik", "tasimacilik", "transport", "ticaret"])
+
 const TOKEN_RE = /[A-Za-zÇĞİıÖŞÜçğöşü0-9]+(?:['’´`][A-Za-zÇĞİıÖŞÜçğöşü]+)?/g
 
 function findMentions(text: string): Mention[] {
@@ -177,6 +179,12 @@ function findMentions(text: string): Mention[] {
       if (kind === "bare" && !isCapital) continue
     }
 
+    // Firma adının parçası olan şehir ("Afyon Doğan Nakliyat", "Konya Lojistik") güzergâh değildir
+    if (kind === "bare") {
+      const near = [tokens[i + 1], tokens[i + 2]].filter(Boolean).map((t) => fold(t.raw))
+      if (near.some((w) => FIRM_WORDS.has(w))) continue
+    }
+
     // "Konya dan Urfa" - ek ayrı yazılmış
     if (kind === "bare" && i + 1 < tokens.length) {
       const next = fold(tokens[i + 1].raw)
@@ -222,7 +230,7 @@ function findMentions(text: string): Mention[] {
   return result
 }
 
-const SEPARATOR_RE = /^\s*(?:[-–—>→»~/]+|=>|->)\s*$/
+const SEPARATOR_RE = /^\s*(?:[A-Za-zÇĞİıÖŞÜçğöşü]+\s+){0,2}(?:[-–—>→»~/]+|=>|->)\s*$/
 
 type TextRoute = { from?: Mention; to?: Mention; explicit: boolean }
 
@@ -300,18 +308,24 @@ export function stripPhones(text: string): string {
   return t.replace(/^[\s:.\-–,]+|[\s:.\-–,]+$/g, "")
 }
 
+/** "açık tır/dorse" veya "açık … 13.60" / "13.60 … açık" (sıra fark etmez). Kapalı/tenteli/perdeli geçiyorsa açık sayılmaz. f: fold edilmiş metin */
+const OPEN_DORSE_RE = /^(?![\s\S]*\b(?:kapali|tenteli|perdeli)\b)(?=[\s\S]*(?:\bacik\s+(?:tir|dorse)\b|\bacik\b\W+(?:\w+\W+){0,2}13[\s.,]?60\b|\b13[\s.,]?60\W+(?:\w+\W+){0,2}acik\b))/
+export const isOpenDorse = (f: string) => OPEN_DORSE_RE.test(f)
+export const isDamperli = (f: string) => /\bda[nm]per\w*/.test(f) || /\bkisa\s+dorse\b/.test(f)
+/** Kapalı Dorse (eski "Tır"): tır / tenteli / kapalı / perdeli / dorse; açık dorse ve damperli ilanlarla karışmaz */
+export const isClosedDorse = (f: string) => /\b(?:tir|tirlar|tenteli|kapali|perdeli|dorse)\b/.test(f) && !isOpenDorse(f) && !isDamperli(f)
+
 const VEHICLE_RULES: [RegExp, (m: RegExpMatchArray) => string][] = [
   [/\bkirkayak\b/, () => "Kırkayak"],
   [/\b(frigo|frigorifik|soguk zincir|termokin)\b/, () => "Frigo"],
   [/\bkisa\s+dorse\b|\bda[nm]per\s+dorse\b/, () => "Damperli"],
   [/\bda[nm]per(li)?\b/, () => "Damperli Tır"],
-  // Kapalı/tenteli/perdeli geçiyorsa (ör. "13.60 açık kapalı tır") açık dorse sayılmaz
-  [/^(?=.*\b13[\s.,]?60\b)(?=.*\bacik\s+(dorse|tir)\b)(?!.*\b(kapali|tenteli|perdeli)\b)/, () => "13.60 Açık Dorse"],
-  [/^(?=.*\bacik\s+dorse\b)(?!.*\b(kapali|tenteli|perdeli)\b)/, () => "Açık Dorse"],
+  // Kapalı/tenteli/perdeli tır-dorse her zaman "Kapalı Dorse" (açık kapalı yazılsa bile): kategoriler karışmaz
+  [/\b(kapali|tenteli|perdeli)\s+(tir|dorse)\b/, () => "Kapalı Dorse"],
+  [OPEN_DORSE_RE, (m) => (/\b13[\s.,]?60\b/.test(m.input ?? "") ? "13.60 Açık Dorse" : "Açık Dorse")],
   [/\blow ?be[dt]\b/, () => "Lowbed"],
   [/\bdorse\b/, () => "Dorse"],
-  [/\b(acik|kapali|tenteli|perdeli)\s+tir\b/, (m) => ({ acik: "Açık", kapali: "Kapalı", tenteli: "Tenteli", perdeli: "Perdeli" } as Record<string, string>)[m[1]] + " Tır"],
-  [/\btir\b/, () => "Tır"],
+  [/\btir\b/, () => "Kapalı Dorse"],
   [/\b(10|on)[\s.]*teker\b/, () => "10 Teker"],
   [/\b(8|sekiz)[\s.]*teker\b/, () => "8 Teker"],
   [/\b(6|alti)[\s.]*teker\b/, () => "6 Teker"],
