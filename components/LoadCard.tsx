@@ -445,7 +445,7 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
             )}
             {load.timing && <Tag tone="bg-emerald-50 text-emerald-700" icon={<Clock className="size-3" />}>{load.timing}</Tag>}
             {hasVehicle && <Tag tone="bg-[#eef3f8] text-[#2c4a66]">{highlightMatch(load.vehicle, cleanQuery)}</Tag>}
-            {load.trailer && <Tag tone="bg-[#eef3f8] text-[#2c4a66]" icon={<Ruler className="size-3" />}>{load.trailer}</Tag>}
+            {load.trailer && !/13[.,]60/.test(load.vehicle ?? "") && <Tag tone="bg-[#eef3f8] text-[#2c4a66]" icon={<Ruler className="size-3" />}>{load.trailer}</Tag>}
             {load.tonnage && <Tag tone="bg-[#eef3f8] text-[#2c4a66]" icon={<Weight className="size-3" />}>{load.tonnage}</Tag>}
             {hasDistance && <Tag tone="bg-[#f1f5f9] text-[#3c566e]">{load.distance}</Tag>}
             {hasPrice && <Tag tone="bg-emerald-600 text-white">{load.price}</Tag>}
