@@ -19,7 +19,7 @@ const DIRECTIONS: { value: Direction; label: string; short: string }[] = [
 
 const MAX_ROUTES = 3
 
-const VEHICLES = ["Tır", "Kamyon", "Kamyonet", "Frigo", "Kırkayak", "Dorse", "Damperli"]
+const VEHICLES = ["Tır", "Kamyon", "Kamyonet", "Frigo", "Kırkayak", "13.60 Açık Dorse", "Damperli"]
 
 const selectClass =
   "h-11 w-full rounded-xl border border-[#e0e6ed] bg-white px-3 text-base text-[#122c4a] md:text-sm"
