@@ -1,12 +1,16 @@
 "use client"
 
 import { useEffect, useMemo, useRef, useState } from "react"
-import { Bookmark, Check, ChevronDown, Copy, Fuel, MessageCircle, Minus, Plus, RotateCcw, Route, Scale, Share2, TrendingUp, X } from "lucide-react"
+import { Bookmark, Check, ChevronDown, Copy, Fuel, MessageCircle, Minus, Plus, RotateCcw, Wallet, Receipt, Route, Scale, Share2, TrendingUp, X } from "lucide-react"
 import { Input } from "@/components/ui/input"
+import { CITY_LIST, estimateKm } from "@/lib/distance"
+import { supabase } from "@/lib/supabase"
 import { VehicleIcon, type VehicleKind } from "@/components/VehicleIcon"
 import { cn } from "@/lib/utils"
 
 type Form = {
+  from: string
+  to: string
   vehicle: string
   km: string
   emptyReturn: boolean
@@ -24,6 +28,8 @@ type Form = {
 }
 
 const DEFAULTS: Form = {
+  from: "",
+  to: "",
   vehicle: "Kapalı Dorse",
   km: "500",
   emptyReturn: false,
@@ -80,6 +86,29 @@ export function CalculatorView() {
   const [moreOpen, setMoreOpen] = useState(false)
   const [saved, setSaved] = useState<Saved[]>([])
   const resultRef = useRef<HTMLDivElement | null>(null)
+  const [kmAuto, setKmAuto] = useState(false) // km şehirlerden otomatik mi geldi
+  const [fuelLive, setFuelLive] = useState<{ price: number; date: string } | null>(null)
+
+  // Güncel mazot fiyatı (Supabase app_settings tablosu; yoksa sessizce elle giriş kalır)
+  useEffect(() => {
+    if (!supabase) return
+    supabase.from("app_settings").select("value,updated_at").eq("key", "fuel_diesel").maybeSingle().then(({ data }) => {
+      const v = data ? num(String(data.value)) : 0
+      if (v > 0) setFuelLive({ price: v, date: String(data.updated_at || "").slice(0, 10) })
+    })
+  }, [])
+
+  // İlan kartından "Hesapla" ile gelen şehirleri al
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("calc_prefill")
+      if (!raw) return
+      localStorage.removeItem("calc_prefill")
+      const { from, to } = JSON.parse(raw)
+      applyCities(from || "", to || "")
+    } catch { /* geçersiz kayıt */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready])
 
   useEffect(() => {
     try {
@@ -106,6 +135,25 @@ export function CalculatorView() {
       // depolama kapalıysa sessizce geç
     }
   }, [f, saved, ready])
+
+  const applyCities = (from: string, to: string) => {
+    const km = estimateKm(from, to)
+    setF((p) => ({ ...p, from, to, ...(km ? { km: String(km) } : {}) }))
+    setKmAuto(!!km)
+  }
+
+  const toFinance = (kind: "income" | "expense") => {
+    const route = f.from && f.to ? `${f.from} → ${f.to}` : "Sefer"
+    const amount = kind === "income" ? (c.offer > 0 ? c.offer : c.finalPrice) : c.totalCost
+    const payload = {
+      type: kind,
+      category: kind === "income" ? "Navlun Bedeli" : "Sefer Masrafı",
+      amount: Math.round(amount),
+      description: `${route} · ${plain(c.loadedKm, 0)} km`,
+    }
+    try { localStorage.setItem("fin_prefill", JSON.stringify(payload)) } catch { /* depolama kapalı */ }
+    window.dispatchEvent(new CustomEvent("nc:tab", { detail: "Gelir Gider" }))
+  }
 
   const set = <K extends keyof Form>(key: K, value: Form[K]) => setF((p) => ({ ...p, [key]: value }))
 
@@ -184,7 +232,7 @@ export function CalculatorView() {
       <div>
         <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-[#d64526]">Maliyet & Teklif Planlama</p>
         <h1 className="text-2xl font-bold tracking-tight text-[#122c4a] sm:text-3xl">Sefer Hesapla & Navlun Analizi</h1>
-        <p className="mt-1 text-xs text-[#718397]">4 adımda navlun fiyatını bul, gelen teklifi anında değerlendir. Değerler cihazında saklanır.</p>
+        <p className="mt-1 text-xs text-[#718397]">Şehirleri seç, ne kadara taşıman gerektiğini gör; gelen teklif kârlı mı hemen anla. Değerler cihazında saklanır.</p>
       </div>
 
       {saved.length > 0 && (
@@ -204,11 +252,28 @@ export function CalculatorView() {
         <div className="space-y-4 lg:col-span-7">
           {/* 1. Yol */}
           <Step n={1} title="Yol" icon={<Route className="size-4" />}>
+            <div className="mb-4 grid grid-cols-2 gap-2">
+              <div>
+                <Label2>Nereden</Label2>
+                <select value={f.from} onChange={(e) => applyCities(e.target.value, f.to)} className="h-11 w-full rounded-xl border border-[#d9e2ec] bg-[#f8fafc] px-3 text-sm font-bold text-[#122c4a]">
+                  <option value="">Şehir seç</option>
+                  {CITY_LIST.map((n) => <option key={n} value={n}>{n}</option>)}
+                </select>
+              </div>
+              <div>
+                <Label2>Nereye</Label2>
+                <select value={f.to} onChange={(e) => applyCities(f.from, e.target.value)} className="h-11 w-full rounded-xl border border-[#d9e2ec] bg-[#f8fafc] px-3 text-sm font-bold text-[#122c4a]">
+                  <option value="">Şehir seç</option>
+                  {CITY_LIST.map((n) => <option key={n} value={n}>{n}</option>)}
+                </select>
+              </div>
+              <p className="col-span-2 text-[11px] text-[#8da0b2]">{kmAuto ? `✓ ${f.from} → ${f.to} mesafesi otomatik dolduruldu (tahmini). Farklı biliyorsan aşağıya yazabilirsin.` : "İki şehri seçersen mesafe kendiliğinden dolar. İstersen aşağıya elle de yazabilirsin."}</p>
+            </div>
             <div className="flex items-end justify-between gap-3">
               <div className="min-w-0 flex-1">
                 <Label2>Yüklü mesafe</Label2>
                 <div className="relative">
-                  <Input inputMode="decimal" value={f.km} onChange={(e) => set("km", e.target.value)} placeholder="0" className="h-14 border-[#d9e2ec] bg-[#f8fafc] pr-12 text-2xl font-black text-[#122c4a] focus:bg-white" />
+                  <Input inputMode="decimal" value={f.km} onChange={(e) => { set("km", e.target.value); setKmAuto(false) }} placeholder="0" className="h-14 border-[#d9e2ec] bg-[#f8fafc] pr-12 text-2xl font-black text-[#122c4a] focus:bg-white" />
                   <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-sm font-bold text-[#8da0b2]">km</span>
                 </div>
               </div>
@@ -263,6 +328,11 @@ export function CalculatorView() {
           {/* 3. Yakıt ve giderler */}
           <Step n={3} title="Yakıt & Giderler" icon={<Fuel className="size-4" />}>
             <Stepper label="Mazot litre fiyatı" unit="₺ / lt" value={f.fuelPrice} onChange={(v) => set("fuelPrice", v)} step={0.5} />
+            {fuelLive && num(f.fuelPrice) !== fuelLive.price && (
+              <button type="button" onClick={() => set("fuelPrice", String(fuelLive.price).replace(".", ","))} className="mt-2 rounded-full border border-[#f3d9d2] bg-[#fff6f3] px-3 py-1.5 text-xs font-bold text-[#9a3a22]">
+                Güncel mazot: {plain(fuelLive.price)} ₺{fuelLive.date ? ` (${fuelLive.date})` : ""} · Kullan
+              </button>
+            )}
 
             <button type="button" onClick={() => setMoreOpen((o) => !o)} aria-expanded={moreOpen} className="mt-4 flex w-full items-center justify-between rounded-xl border border-[#e4e9ef] bg-[#fafbfd] px-3.5 py-3 text-left">
               <span>
@@ -333,7 +403,7 @@ export function CalculatorView() {
                 {plain(c.loadedKm, 0)} km{c.returnKm > 0 ? ` + ${plain(c.returnKm, 0)} km boş dönüş` : ""} · {plain(c.liters, 0)} lt yakıt{!f.vat ? ` · KDV dahil ${moneyR(c.price * 1.2)}` : ""}
               </p>
               <div className="mt-4 grid grid-cols-3 gap-2">
-                <Tile label="Başabaş" value={moneyR(c.totalCost)} />
+                <Tile label="Masraf toplamı" value={moneyR(c.totalCost)} />
                 <Tile label="KM başı" value={money(c.pricePerKm)} />
                 <Tile label="Ton başı" value={c.perTon > 0 ? moneyR(c.perTon) : "—"} />
               </div>
@@ -406,6 +476,15 @@ export function CalculatorView() {
                   {copied ? "Kopyalandı" : "Paylaş / Kopyala"}
                 </button>
               </div>
+              <div className="grid grid-cols-2 gap-2">
+                <button type="button" onClick={() => toFinance("income")} className="flex h-11 items-center justify-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 text-xs font-bold text-emerald-800 hover:bg-emerald-100">
+                  <Wallet className="size-4" /> Gelir olarak ekle
+                </button>
+                <button type="button" onClick={() => toFinance("expense")} className="flex h-11 items-center justify-center gap-1.5 rounded-xl border border-red-200 bg-red-50 text-xs font-bold text-red-700 hover:bg-red-100">
+                  <Receipt className="size-4" /> Masraf olarak ekle
+                </button>
+              </div>
+              <p className="-mt-3 text-[10px] text-[#8da0b2]">Gelir Gider ekranı açılır, bilgiler hazır gelir; sadece Kaydet'e basarsın.</p>
               <button type="button" onClick={saveCurrent} className="flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-[#e0e6ed] bg-white text-sm font-bold text-[#334e68] hover:bg-[#f6f8fb]">
                 <Bookmark className="size-4" /> Bu hesabı kaydet
               </button>
@@ -497,7 +576,7 @@ function Meter({ cost, price, offer }: { cost: number; price: number; offer: num
         <div className="bg-emerald-500" style={{ width: `${100 - pPrice}%` }} />
       </div>
       <div className="absolute -translate-x-1/2 text-center" style={{ left: `${keep(pCost)}%`, top: offer > 0 ? "3.1rem" : "1.6rem" }}>
-        <p className="text-[10px] font-bold text-red-500">Başabaş</p>
+        <p className="text-[10px] font-bold text-red-500">Zarar etmeme sınırı</p>
         <p className="text-[10px] font-semibold text-[#627d98]">{moneyR(cost)}</p>
       </div>
       <div className="absolute -translate-x-1/2 text-center" style={{ left: `${keep(pPrice)}%`, top: offer > 0 ? "3.1rem" : "1.6rem" }}>
