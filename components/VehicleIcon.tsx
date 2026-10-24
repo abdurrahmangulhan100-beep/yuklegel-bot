@@ -8,7 +8,7 @@ const fold = (s: string) =>
 /** Araç yazısından (ör. "Damperli Tır", "10 Teker", "Frigo") ikon türünü bulur; bulunamazsa genel tır */
 export function vehicleKind(vehicle?: string | null): VehicleKind {
   const f = fold(String(vehicle ?? ""))
-  if (/damper|kisa dorse/.test(f)) return "damperli"
+  if (/da[nm]per|kisa dorse/.test(f)) return "damperli"
   if (/frigo|soguk|termokin/.test(f)) return "frigo"
   if (/kirkayak/.test(f)) return "kirkayak"
   if (/acik dorse/.test(f)) return "acikdorse"
