@@ -37,7 +37,7 @@ type ListingsViewProps = {
   lockedCount?: number
 }
 
-const FILTER_ICON: Record<string, VehicleKind> = { "Tır": "tir", Kamyon: "kamyon", Frigo: "frigo", "Kırkayak": "kirkayak", Dorse: "dorse", Damperli: "damperli" }
+const FILTER_ICON: Record<string, VehicleKind> = { "Tümü": "tumu", Acil: "acil", "Tır": "tir", Kamyon: "kamyon", Frigo: "frigo", "Kırkayak": "kirkayak", Dorse: "dorse", Damperli: "damperli" }
 const FILTER_OPTIONS = ["Tümü", "Acil", "Tır", "Kamyon", "Frigo", "Kırkayak", "Dorse", "Damperli"]
 
 const selectClass =
@@ -210,7 +210,7 @@ export function ListingsView({
 
       {/* Araç / tip çipleri (yatay kaydırma) */}
       <div className="-mx-4 sm:mx-0">
-        <div className="no-scrollbar flex items-center gap-2 overflow-x-auto px-4 pb-1 sm:flex-wrap sm:px-0">
+        <div className="no-scrollbar flex items-stretch gap-2.5 overflow-x-auto px-4 pb-1.5 sm:flex-wrap sm:px-0">
           {FILTER_OPTIONS.map((option) => {
             const active = activeFilter === option
             return (
@@ -219,14 +219,15 @@ export function ListingsView({
                 onClick={() => setActiveFilter(option)}
                 aria-pressed={active}
                 className={cn(
-                  "inline-flex h-10 shrink-0 items-center gap-1.5 rounded-full border px-4 text-[13px] font-semibold transition-all active:scale-95",
+                  "flex h-[92px] w-[96px] shrink-0 flex-col items-center justify-between rounded-2xl border px-2 pb-2 pt-3 text-[12.5px] font-bold transition-all active:scale-95 sm:w-[104px]",
                   active
-                    ? "border-[#122c4a] bg-[#122c4a] text-white shadow-sm"
-                    : "border-[#e0e6ed] bg-white text-[#4a6178] hover:border-[#c4d0dc]"
+                    ? "border-[#122c4a] bg-[#122c4a] text-white shadow-[0_8px_18px_-10px_rgba(18,44,74,0.8)]"
+                    : "border-[#e0e6ed] bg-white text-[#122c4a] hover:border-[#c4d0dc]"
                 )}
               >
-                {FILTER_ICON[option] && <VehicleIcon kind={FILTER_ICON[option]} className="size-4" />}
-                {option === "Acil" && <Zap className={cn("size-3.5", active ? "fill-white" : "fill-[#d64526] text-[#d64526]")} />}
+                <span className="flex h-11 w-full items-center justify-center">
+                  <VehicleIcon kind={FILTER_ICON[option]} className={cn("max-h-11 max-w-[76px]", active ? "text-white" : option === "Acil" ? "text-[#d64526]" : "text-[#1f4a75]")} />
+                </span>
                 {option}
               </button>
             )
