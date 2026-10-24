@@ -1,38 +1,98 @@
-// Şehirler arası TAHMİNİ karayolu mesafesi: kuş uçuşu (haversine) × yol katsayısı.
-// 81x81 tablo yerine 81 koordinat: küçük, bakımı kolay, ±%5-8 sapma (tahmindir).
-import { CITY_NAMES } from "@/lib/route"
-
-const C: Record<string, [number, number]> = {
-  Adana: [37.0, 35.32], Adıyaman: [37.76, 38.28], Afyonkarahisar: [38.76, 30.54], Ağrı: [39.72, 43.05], Aksaray: [38.37, 34.03],
-  Amasya: [40.65, 35.83], Ankara: [39.93, 32.86], Antalya: [36.9, 30.69], Ardahan: [41.11, 42.7], Artvin: [41.18, 41.82],
-  Aydın: [37.85, 27.84], Balıkesir: [39.65, 27.89], Bartın: [41.64, 32.34], Batman: [37.88, 41.13], Bayburt: [40.26, 40.23],
-  Bilecik: [40.14, 29.98], Bingöl: [38.88, 40.5], Bitlis: [38.4, 42.11], Bolu: [40.73, 31.61], Burdur: [37.72, 30.29],
-  Bursa: [40.19, 29.06], Çanakkale: [40.15, 26.41], Çankırı: [40.6, 33.62], Çorum: [40.55, 34.95], Denizli: [37.78, 29.09],
-  Diyarbakır: [37.91, 40.24], Düzce: [40.84, 31.16], Edirne: [41.68, 26.56], Elazığ: [38.67, 39.22], Erzincan: [39.75, 39.49],
-  Erzurum: [39.9, 41.27], Eskişehir: [39.78, 30.52], Gaziantep: [37.07, 37.38], Giresun: [40.91, 38.39], Gümüşhane: [40.46, 39.48],
-  Hakkari: [37.57, 43.74], Hatay: [36.4, 36.35], Iğdır: [39.92, 44.05], Isparta: [37.76, 30.55], İstanbul: [41.01, 28.98],
-  İzmir: [38.42, 27.14], Kahramanmaraş: [37.58, 36.94], Karabük: [41.2, 32.62], Karaman: [37.18, 33.22], Kars: [40.6, 43.1],
-  Kastamonu: [41.38, 33.78], Kayseri: [38.73, 35.49], Kilis: [36.72, 37.12], Kırıkkale: [39.85, 33.51], Kırklareli: [41.74, 27.23],
-  Kırşehir: [39.15, 34.16], Kocaeli: [40.77, 29.94], Konya: [37.87, 32.48], Kütahya: [39.42, 29.98], Malatya: [38.35, 38.31],
-  Manisa: [38.61, 27.43], Mardin: [37.31, 40.74], Mersin: [36.8, 34.64], Muğla: [37.22, 28.36], Muş: [38.74, 41.49],
-  Nevşehir: [38.62, 34.71], Niğde: [37.97, 34.68], Ordu: [40.98, 37.88], Osmaniye: [37.07, 36.25], Rize: [41.02, 40.52],
-  Sakarya: [40.76, 30.4], Samsun: [41.29, 36.33], Şanlıurfa: [37.16, 38.79], Siirt: [37.93, 41.94], Sinop: [42.03, 35.15],
-  Sivas: [39.75, 37.02], Şırnak: [37.52, 42.46], Tekirdağ: [40.98, 27.51], Tokat: [40.31, 36.55], Trabzon: [41.0, 39.72],
-  Tunceli: [39.11, 39.55], Uşak: [38.68, 29.41], Van: [38.5, 43.38], Yalova: [40.65, 29.27], Yozgat: [39.82, 34.81],
-  Zonguldak: [41.45, 31.79],
+/**
+ * İlçe / yaygın sanayi bölgesi -> il eşlemesi (nakliye ilanlarında sık geçenler).
+ * Birden fazla ilde aynı adı taşıyan (Ereğli, Yenişehir, Gölbaşı...) veya günlük dilde
+ * başka anlamı olan (Ulaş, Kale, Pazar, Çay, Bala...) adlar bilerek EKLENMEDİ.
+ */
+const RAW: Record<string, string> = {
+  "İstanbul": "Arnavutköy,Hadımköy,Sazlıbosna,İkitelli,Esenyurt,Beylikdüzü,Avcılar,Küçükçekmece,Büyükçekmece,Başakşehir,Bağcılar,Bahçelievler,Bakırköy,Bayrampaşa,Esenler,Gaziosmanpaşa,Sultangazi,Eyüpsultan,Kağıthane,Şişli,Beşiktaş,Sarıyer,Beyoğlu,Zeytinburnu,Güngören,Silivri,Çatalca,Şile,Beykoz,Ümraniye,Ataşehir,Kadıköy,Üsküdar,Maltepe,Kartal,Pendik,Tuzla,Sancaktepe,Sultanbeyli,Çekmeköy,Dudullu,Yenibosna,Halkalı",
+  "Kocaeli": "Gebze,Dilovası,Darıca,Çayırova,Körfez,Derince,İzmit,Gölcük,Kartepe,Kandıra,Başiskele,Karamürsel",
+  "Sakarya": "Adapazarı,Hendek,Arifiye,Akyazı,Karasu,Sapanca,Serdivan,Erenler,Kaynarca,Pamukova,Geyve,Ferizli",
+  "Tekirdağ": "Çorlu,Çerkezköy,Çerkezkoy,Kapaklı,Süleymanpaşa,Ergene,Malkara,Şarköy,Hayrabolu,Muratlı,Marmaraereğlisi",
+  "Edirne": "Keşan,Uzunköprü,Havsa,Lalapaşa,Enez,İpsala,Kapıkule",
+  "Kırklareli": "Lüleburgaz,Babaeski,Pınarhisar,Pehlivanköy,Kofçaz",
+  "Bursa": "Osmangazi,Nilüfer,Mudanya,Gemlik,Orhangazi,İnegöl,Karacabey,Mustafakemalpaşa,Gürsu,Kestel,Orhaneli,Harmancık,Büyükorhan,İznik,Yenişehir Bursa,Demirtaş,Hasanağa",
+  "Balıkesir": "Bandırma,Edremit,Gönen,Burhaniye,Ayvalık,Susurluk,Bigadiç,Sındırgı,Erdek,Havran,Savaştepe,Dursunbey,Manyas",
+  "Çanakkale": "Biga,Gelibolu,Lapseki,Ayvacık,Ezine,Bayramiç,Eceabat",
+  "Bilecik": "Bozüyük,Osmaneli,Söğüt,Pazaryeri,Gölpazarı",
+  "Yalova": "Çiftlikköy,Çınarcık,Altınova,Armutlu",
+  "Ankara": "Çankaya,Keçiören,Yenimahalle,Mamak,Etimesgut,Sincan,Polatlı,Gölbaşı,Pursaklar,Altındağ,Beypazarı,Kazan,Kahramankazan,Ayaş,Haymana,Elmadağ,Kızılcahamam,Nallıhan,Akyurt,Temelli,Ostim,Şereflikoçhisar",
+  "Eskişehir": "Odunpazarı,Tepebaşı,Sivrihisar,Alpu,Çifteler,Mihalıççık,Seyitgazi,İnönü",
+  "İzmir": "Aliağa,Bornova,Buca,Karşıyaka,Çiğli,Menemen,Torbalı,Kemalpaşa,Bayraklı,Gaziemir,Konak,Karabağlar,Ödemiş,Bergama,Foça,Urla,Çeşme,Seferihisar,Menderes,Kınık,Bayındır,Narlıdere,Güzelbahçe,Balçova,Torbali,Pancar",
+  "Manisa": "Akhisar,Turgutlu,Salihli,Soma,Alaşehir,Saruhanlı,Kırkağaç,Demirci,Gördes,Ahmetli,Yunusemre,Şehzadeler,Kula",
+  "Aydın": "Söke,Nazilli,Efeler,Kuşadası,Didim,Çine,Germencik,Sultanhisar,Bozdoğan,Incirliova,İncirliova,Karacasu",
+  "Denizli": "Pamukkale,Merkezefendi,Çivril,Acıpayam,Honaz,Sarayköy,Buldan,Tavas,Kale Denizli,Çardak,Babadağ",
+  "Muğla": "Fethiye,Bodrum,Marmaris,Milas,Menteşe,Yatağan,Ortaca,Dalaman,Köyceğiz,Datça,Seydikemer,Kavaklıdere",
+  "Uşak": "Banaz,Sivaslı,Karahallı",
+  "Kütahya": "Tavşanlı,Simav,Gediz,Emet,Domaniç,Altıntaş,Dumlupınar",
+  "Afyonkarahisar": "Sandıklı,Bolvadin,Emirdağ,Dazkırı,Sinanpaşa,Şuhut,İscehisar,Bayat",
+  "Isparta": "Eğirdir,Şarkikaraağaç,Senirkent,Gelendost,Atabey,Keçiborlu",
+  "Burdur": "Bucak,Gölhisar,Tefenni,Yeşilova,Ağlasun",
+  "Antalya": "Alanya,Manavgat,Kumluca,Serik,Kepez,Konyaaltı,Muratpaşa,Döşemealtı,Finike,Demre,Elmalı,Gazipaşa,Korkuteli,Gündoğmuş",
+  "Konya": "Selçuklu,Karatay,Meram,Akşehir,Beyşehir,Cihanbeyli,Çumra,Ilgın,Kadınhanı,Karapınar,Kulu,Sarayönü,Seydişehir,Bozkır,Doğanhisar,Hadim,Yunak,Altınekin,Akören,Güneysınır,Taşkent",
+  "Karaman": "Ermenek,Kazımkarabekir,Sarıveliler,Ayrancı",
+  "Aksaray": "Ortaköy,Gülağaç,Güzelyurt",
+  "Nevşehir": "Ürgüp,Avanos,Göreme,Gülşehir,Kozaklı,Derinkuyu,Hacıbektaş",
+  "Niğde": "Çamardı,Ulukışla,Altunhisar",
+  "Kayseri": "Melikgazi,Kocasinan,Talas,Develi,Yahyalı,Bünyan,Tomarza,İncesu,Pınarbaşı,Sarıoğlan,Hacılar,Yeşilhisar,Felahiye",
+  "Kırşehir": "Kaman,Mucur,Çiçekdağı,Boztepe",
+  "Kırıkkale": "Yahşihan,Keskin,Sulakyurt,Balışeyh",
+  "Yozgat": "Sorgun,Akdağmadeni,Yerköy,Boğazlıyan,Sarıkaya,Çekerek,Şefaatli",
+  "Sivas": "Şarkışla,Suşehri,Divriği,Yıldızeli,Gemerek,Hafik,Gürün,Koyulhisar,Akıncılar",
+  "Çorum": "Sungurlu,Osmancık,İskilip,Alaca,Mecitözü,Bayat Çorum,Kargı,Dodurga",
+  "Amasya": "Merzifon,Suluova,Taşova,Gümüşhacıköy,Göynücek",
+  "Tokat": "Erbaa,Niksar,Turhal,Zile,Reşadiye,Almus,Artova,Sulusaray",
+  "Samsun": "Bafra,Çarşamba,Terme,Vezirköprü,Havza,İlkadım,Atakum,Canik,Tekkeköy,Alaçam,Ladik,Ondokuzmayıs",
+  "Ordu": "Ünye,Fatsa,Perşembe,Altınordu,Aybastı,Gölköy",
+  "Giresun": "Bulancak,Espiye,Tirebolu,Görele,Eynesil,Dereli",
+  "Trabzon": "Akçaabat,Vakfıkebir,Sürmene,Araklı,Yomra,Ortahisar,Arsin,Beşikdüzü,Maçka",
+  "Rize": "Ardeşen,Pazar Rize,Çayeli,Fındıklı,Kalkandere,Derepazarı",
+  "Artvin": "Hopa,Arhavi,Borçka,Şavşat,Yusufeli",
+  "Kastamonu": "Taşköprü,Tosya,İnebolu,Cide,Daday,Bozkurt Kastamonu",
+  "Sinop": "Boyabat,Gerze,Ayancık,Durağan,Türkeli",
+  "Bolu": "Gerede,Mudurnu,Mengen,Göynük,Yeniçağa",
+  "Düzce": "Akçakoca,Gölyaka,Kaynaşlı,Cumayeri,Yığılca,Gümüşova",
+  "Zonguldak": "Çaycuma,Alaplı,Devrek,Kilimli,Kozlu,Gökçebey",
+  "Karabük": "Safranbolu,Yenice Karabük,Eskipazar,Ovacık Karabük",
+  "Bartın": "Amasra,Kurucaşile,Ulus Bartın",
+  "Çankırı": "Ilgaz,Kurşunlu,Şabanözü,Çerkeş",
+  "Adana": "Seyhan,Yüreğir,Çukurova,Sarıçam,Ceyhan,Kozan,İmamoğlu,Karaisalı,Pozantı,Yumurtalık,Tufanbeyli,Aladağ,Feke,Saimbeyli",
+  "Mersin": "Tarsus,Anamur,Silifke,Erdemli,Mezitli,Toroslar,Bozyazı,Gülnar,Aydıncık,Çamlıyayla,Mut Mersin,Akkuyu",
+  "Osmaniye": "Kadirli,Düziçi,Toprakkale,Sumbas",
+  "Hatay": "İskenderun,Antakya,Dörtyol,Defne,Payas,Kırıkhan,Reyhanlı,Samandağ,Erzin,Arsuz,Altınözü,Yayladağı",
+  "Kahramanmaraş": "Elbistan,Afşin,Pazarcık,Göksun,Türkoğlu,Dulkadiroğlu,Onikişubat,Andırın,Çağlayancerit",
+  "Gaziantep": "Şahinbey,Şehitkamil,Nizip,İslahiye,Oğuzeli,Nurdağı,Araban,Karkamış,Yavuzeli",
+  "Kilis": "Elbeyli,Polateli,Musabeyli",
+  "Adıyaman": "Kahta,Besni,Gölbaşı Adıyaman,Gerger,Çelikhan,Samsat",
+  "Malatya": "Battalgazi,Yeşilyurt,Darende,Doğanşehir,Akçadağ,Arapgir,Yazıhan,Hekimhan,Pütürge",
+  "Elazığ": "Karakoçan,Palu,Baskil,Sivrice,Ağın,Arıcak",
+  "Bingöl": "Solhan,Karlıova,Kiğı",
+  "Tunceli": "Ovacık,Pertek,Hozat,Çemişgezek",
+  "Diyarbakır": "Bismil,Ergani,Silvan,Çınar,Kayapınar,Bağlar,Yenişehir Diyarbakır,Hazro,Kulp,Lice,Çermik,Çüngüş",
+  "Mardin": "Kızıltepe,Nusaybin,Midyat,Artuklu,Ömerli,Savur,Dargeçit,Mazıdağı",
+  "Batman": "Kozluk,Beşiri,Sason,Gercüş,Hasankeyf",
+  "Şanlıurfa": "Siverek,Viranşehir,Birecik,Ceylanpınar,Suruç,Akçakale,Harran,Halfeti,Bozova,Hilvan,Eyyübiye,Haliliye,Karaköprü",
+  "Siirt": "Kurtalan,Pervari,Baykan,Eruh,Şirvan",
+  "Şırnak": "Cizre,Silopi,İdil,Uludere,Beytüşşebap,Güçlükonak,Habur",
+  "Van": "Erciş,Çaldıran,Özalp,Gevaş,Muradiye,Edremit Van,Başkale",
+  "Hakkari": "Yüksekova,Şemdinli,Çukurca,Derecik",
+  "Erzurum": "Aziziye,Palandöken,Yakutiye,Horasan,Oltu,Pasinler,Tortum,Karayazı,Hınıs,Aşkale,Narman",
+  "Erzincan": "Refahiye,Tercan,Üzümlü,Çayırlı,Kemah",
+  "Ağrı": "Doğubayazıt,Patnos,Taşlıçay,Diyadin,Eleşkirt,Tutak",
+  "Kars": "Sarıkamış,Kağızman,Digor,Arpaçay",
+  "Iğdır": "Tuzluca,Karakoyunlu,Dilucu",
+  "Ardahan": "Göle,Posof,Hanak,Çıldır",
+  "Muş": "Malazgirt,Varto,Hasköy Muş",
 }
+export type District = { city: string; name: string }
+const FOLD: Record<string, string> = { "ı": "i", "İ": "i", "I": "i", "ş": "s", "Ş": "s", "ğ": "g", "Ğ": "g", "ü": "u", "Ü": "u", "ö": "o", "Ö": "o", "ç": "c", "Ç": "c", "â": "a", "î": "i", "û": "u" }
+const f = (s: string) => Array.from(s).map((c) => FOLD[c] ?? c.toLowerCase()).join("")
 
-const ROAD_FACTOR = 1.27 // Türkiye'de kuş uçuşu → karayolu ortalaması
-
-export const CITY_LIST: string[] = [...CITY_NAMES].sort((a, b) => a.localeCompare(b, "tr"))
-
-/** İki şehir arası tahmini yol km (5'e yuvarlı). Bilinmiyorsa null. */
-export function estimateKm(a?: string | null, b?: string | null): number | null {
-  const p = a ? C[a] : undefined
-  const q = b ? C[b] : undefined
-  if (!p || !q || a === b) return null
-  const r = (d: number) => (d * Math.PI) / 180
-  const h = Math.sin(r(q[0] - p[0]) / 2) ** 2 + Math.cos(r(p[0])) * Math.cos(r(q[0])) * Math.sin(r(q[1] - p[1]) / 2) ** 2
-  const air = 2 * 6371 * Math.asin(Math.sqrt(h))
-  return Math.max(5, Math.round((air * ROAD_FACTOR) / 5) * 5)
+/** katlanmış ilçe adı -> { il, görünen ad } (tek kelimelik adlar; "Yenişehir Bursa" gibi ayrımlı olanlar kendi adıyla eşleşmez) */
+export const DISTRICTS: Map<string, District> = new Map()
+for (const [city, list] of Object.entries(RAW)) {
+  for (const name of list.split(",")) {
+    if (name.includes(" ")) continue
+    const k = f(name)
+    if (!DISTRICTS.has(k)) DISTRICTS.set(k, { city, name })
+  }
 }
