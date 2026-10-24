@@ -303,9 +303,11 @@ export function stripPhones(text: string): string {
 const VEHICLE_RULES: [RegExp, (m: RegExpMatchArray) => string][] = [
   [/\bkirkayak\b/, () => "Kırkayak"],
   [/\b(frigo|frigorifik|soguk zincir|termokin)\b/, () => "Frigo"],
-  [/\bdamperli\b/, () => "Damperli Tır"],
-  [/\bkisa\s+dorse\b/, () => "Damperli"],
-  [/^(?=.*\bacik\s+dorse\b)(?=.*\b13[\s.,]?60\b)/, () => "13.60 Açık Dorse"],
+  [/\bkisa\s+dorse\b|\bda[nm]per\s+dorse\b/, () => "Damperli"],
+  [/\bda[nm]per(li)?\b/, () => "Damperli Tır"],
+  // Kapalı/tenteli/perdeli geçiyorsa (ör. "13.60 açık kapalı tır") açık dorse sayılmaz
+  [/^(?=.*\b13[\s.,]?60\b)(?=.*\bacik\s+(dorse|tir)\b)(?!.*\b(kapali|tenteli|perdeli)\b)/, () => "13.60 Açık Dorse"],
+  [/^(?=.*\bacik\s+dorse\b)(?!.*\b(kapali|tenteli|perdeli)\b)/, () => "Açık Dorse"],
   [/\blow ?be[dt]\b/, () => "Lowbed"],
   [/\bdorse\b/, () => "Dorse"],
   [/\b(acik|kapali|tenteli|perdeli)\s+tir\b/, (m) => ({ acik: "Açık", kapali: "Kapalı", tenteli: "Tenteli", perdeli: "Perdeli" } as Record<string, string>)[m[1]] + " Tır"],
