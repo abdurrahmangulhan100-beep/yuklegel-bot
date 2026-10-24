@@ -1,8 +1,9 @@
 "use client"
 
 import { useEffect, useMemo, useRef, useState } from "react"
-import { Bookmark, Check, ChevronDown, Copy, Fuel, MessageCircle, Minus, Plus, RotateCcw, Wallet, Receipt, Route, Scale, Share2, TrendingUp, X } from "lucide-react"
+import { Bookmark, Check, ChevronDown, Copy, Fuel, MessageCircle, Minus, Plus, RotateCcw, Wallet, Receipt, ArrowUpDown, MapPin, Search, Route, Scale, Share2, TrendingUp, X } from "lucide-react"
 import { Input } from "@/components/ui/input"
+import { Sheet } from "@/components/Sheet"
 import { CITY_LIST, estimateKm } from "@/lib/distance"
 import { supabase } from "@/lib/supabase"
 import { VehicleIcon, type VehicleKind } from "@/components/VehicleIcon"
@@ -86,6 +87,7 @@ export function CalculatorView() {
   const [moreOpen, setMoreOpen] = useState(false)
   const [saved, setSaved] = useState<Saved[]>([])
   const resultRef = useRef<HTMLDivElement | null>(null)
+  const [picker, setPicker] = useState<"from" | "to" | null>(null)
   const [kmAuto, setKmAuto] = useState(false) // km şehirlerden otomatik mi geldi
   const [fuelLive, setFuelLive] = useState<{ price: number; date: string } | null>(null)
 
@@ -252,23 +254,38 @@ export function CalculatorView() {
         <div className="space-y-4 lg:col-span-7">
           {/* 1. Yol */}
           <Step n={1} title="Yol" icon={<Route className="size-4" />}>
-            <div className="mb-4 grid grid-cols-2 gap-2">
-              <div>
-                <Label2>Nereden</Label2>
-                <select value={f.from} onChange={(e) => applyCities(e.target.value, f.to)} className="h-11 w-full rounded-xl border border-[#d9e2ec] bg-[#f8fafc] px-3 text-sm font-bold text-[#122c4a]">
-                  <option value="">Şehir seç</option>
-                  {CITY_LIST.map((n) => <option key={n} value={n}>{n}</option>)}
-                </select>
+            {/* Modern güzergah kartı */}
+            <div className="mb-5 overflow-hidden rounded-2xl bg-gradient-to-br from-[#f3f7fb] to-white ring-1 ring-[#e3ebf3]">
+              <div className="relative p-3.5">
+                <button type="button" onClick={() => setPicker("from")} className="flex w-full items-center gap-3 rounded-xl px-1 py-2 text-left active:bg-white/70">
+                  <span className="grid size-9 shrink-0 place-items-center rounded-full bg-emerald-500/10"><i className="size-3 rounded-full bg-emerald-500" /></span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-[10px] font-bold uppercase tracking-wider text-[#8da0b2]">Nereden</span>
+                    <span className={cn("block truncate text-lg font-black", f.from ? "text-[#122c4a]" : "text-[#b0bfcd]")}>{f.from || "Şehir seç"}</span>
+                  </span>
+                  <ChevronDown className="size-4 -rotate-90 text-[#b0bfcd]" />
+                </button>
+                <div className="ml-[1.1rem] h-4 border-l-2 border-dotted border-[#cbd6e2]" />
+                <button type="button" onClick={() => setPicker("to")} className="flex w-full items-center gap-3 rounded-xl px-1 py-2 text-left active:bg-white/70">
+                  <span className="grid size-9 shrink-0 place-items-center rounded-full bg-[#e5522f]/10"><MapPin className="size-4 text-[#e5522f]" /></span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-[10px] font-bold uppercase tracking-wider text-[#8da0b2]">Nereye</span>
+                    <span className={cn("block truncate text-lg font-black", f.to ? "text-[#122c4a]" : "text-[#b0bfcd]")}>{f.to || "Şehir seç"}</span>
+                  </span>
+                  <ChevronDown className="size-4 -rotate-90 text-[#b0bfcd]" />
+                </button>
+                <button type="button" aria-label="Yönü değiştir" onClick={() => applyCities(f.to, f.from)} className="absolute right-12 top-1/2 grid size-10 -translate-y-1/2 place-items-center rounded-full bg-white text-[#122c4a] shadow-md ring-1 ring-[#e3ebf3] active:scale-90">
+                  <ArrowUpDown className="size-4" />
+                </button>
               </div>
-              <div>
-                <Label2>Nereye</Label2>
-                <select value={f.to} onChange={(e) => applyCities(f.from, e.target.value)} className="h-11 w-full rounded-xl border border-[#d9e2ec] bg-[#f8fafc] px-3 text-sm font-bold text-[#122c4a]">
-                  <option value="">Şehir seç</option>
-                  {CITY_LIST.map((n) => <option key={n} value={n}>{n}</option>)}
-                </select>
-              </div>
-              <p className="col-span-2 text-[11px] text-[#8da0b2]">{kmAuto ? `✓ ${f.from} → ${f.to} mesafesi otomatik dolduruldu (tahmini). Farklı biliyorsan aşağıya yazabilirsin.` : "İki şehri seçersen mesafe kendiliğinden dolar. İstersen aşağıya elle de yazabilirsin."}</p>
+              {kmAuto && (
+                <div className="flex items-center justify-between bg-[#122c4a] px-4 py-2 text-xs text-white">
+                  <span className="font-semibold text-white/70">Tahmini mesafe</span>
+                  <span className="font-black text-emerald-300">≈ {plain(num(f.km), 0)} km</span>
+                </div>
+              )}
             </div>
+            <CityPicker open={picker !== null} title={picker === "from" ? "Nereden?" : "Nereye?"} onClose={() => setPicker(null)} onPick={(n) => { if (picker === "from") applyCities(n, f.to); else applyCities(f.from, n); setPicker(null) }} />
             <div className="flex items-end justify-between gap-3">
               <div className="min-w-0 flex-1">
                 <Label2>Yüklü mesafe</Label2>
@@ -329,8 +346,9 @@ export function CalculatorView() {
           <Step n={3} title="Yakıt & Giderler" icon={<Fuel className="size-4" />}>
             <Stepper label="Mazot litre fiyatı" unit="₺ / lt" value={f.fuelPrice} onChange={(v) => set("fuelPrice", v)} step={0.5} />
             {fuelLive && num(f.fuelPrice) !== fuelLive.price && (
-              <button type="button" onClick={() => set("fuelPrice", String(fuelLive.price).replace(".", ","))} className="mt-2 rounded-full border border-[#f3d9d2] bg-[#fff6f3] px-3 py-1.5 text-xs font-bold text-[#9a3a22]">
-                Güncel mazot: {plain(fuelLive.price)} ₺{fuelLive.date ? ` (${fuelLive.date})` : ""} · Kullan
+              <button type="button" onClick={() => set("fuelPrice", String(fuelLive.price).replace(".", ","))} className="mt-2.5 inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-amber-50 to-orange-50 py-1.5 pl-2.5 pr-3.5 text-xs font-bold text-[#9a3a22] ring-1 ring-orange-200 active:scale-95">
+                <span className="relative flex size-2"><span className="absolute inline-flex size-full animate-ping rounded-full bg-orange-400 opacity-60" /><span className="relative inline-flex size-2 rounded-full bg-orange-500" /></span>
+                Güncel mazot {plain(fuelLive.price)} ₺ · Uygula
               </button>
             )}
 
@@ -476,15 +494,17 @@ export function CalculatorView() {
                   {copied ? "Kopyalandı" : "Paylaş / Kopyala"}
                 </button>
               </div>
-              <div className="grid grid-cols-2 gap-2">
-                <button type="button" onClick={() => toFinance("income")} className="flex h-11 items-center justify-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 text-xs font-bold text-emerald-800 hover:bg-emerald-100">
-                  <Wallet className="size-4" /> Gelir olarak ekle
-                </button>
-                <button type="button" onClick={() => toFinance("expense")} className="flex h-11 items-center justify-center gap-1.5 rounded-xl border border-red-200 bg-red-50 text-xs font-bold text-red-700 hover:bg-red-100">
-                  <Receipt className="size-4" /> Masraf olarak ekle
-                </button>
+              <div className="rounded-2xl bg-[#f3f7fb] p-3 ring-1 ring-[#e3ebf3]">
+                <p className="mb-2 px-1 text-[11px] font-bold uppercase tracking-wider text-[#8da0b2]">Gelir Gider'e aktar</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <button type="button" onClick={() => toFinance("income")} className="flex h-12 items-center justify-center gap-2 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 text-sm font-bold text-white shadow-[0_8px_18px_-8px_rgba(5,150,105,0.8)] active:scale-95">
+                    <Wallet className="size-4" /> Gelir
+                  </button>
+                  <button type="button" onClick={() => toFinance("expense")} className="flex h-12 items-center justify-center gap-2 rounded-xl bg-white text-sm font-bold text-[#c13a1c] ring-1 ring-[#f0cfc6] active:scale-95">
+                    <Receipt className="size-4" /> Masraf
+                  </button>
+                </div>
               </div>
-              <p className="-mt-3 text-[10px] text-[#8da0b2]">Gelir Gider ekranı açılır, bilgiler hazır gelir; sadece Kaydet'e basarsın.</p>
               <button type="button" onClick={saveCurrent} className="flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-[#e0e6ed] bg-white text-sm font-bold text-[#334e68] hover:bg-[#f6f8fb]">
                 <Bookmark className="size-4" /> Bu hesabı kaydet
               </button>
@@ -584,5 +604,32 @@ function Meter({ cost, price, offer }: { cost: number; price: number; offer: num
         <p className="text-[10px] font-semibold text-[#627d98]">{moneyR(price)}</p>
       </div>
     </div>
+  )
+}
+
+const POPULAR = ["İstanbul", "Ankara", "İzmir", "Bursa", "Konya", "Antalya", "Adana", "Gaziantep", "Kocaeli", "Mersin"]
+
+/** Aramalı şehir seçici: yazdıkça süzer, sık kullanılanlar tek dokunuş */
+function CityPicker({ open, title, onClose, onPick }: { open: boolean; title: string; onClose: () => void; onPick: (n: string) => void }) {
+  const [q, setQ] = useState("")
+  useEffect(() => { if (open) setQ("") }, [open])
+  const key = (x: string) => x.toLocaleLowerCase("tr-TR").replace(/ı/g, "i")
+  const list = q.trim() ? CITY_LIST.filter((n) => key(n).includes(key(q.trim()))) : CITY_LIST
+  return (
+    <Sheet open={open} onClose={onClose} title={title}>
+      <div className="relative">
+        <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-[#8da0b2]" />
+        <Input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Şehir ara…" className="h-12 rounded-xl border-0 bg-[#f1f5f9] pl-10 text-base font-semibold" />
+      </div>
+      {!q && (
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          {POPULAR.map((n) => <button key={n} type="button" onClick={() => onPick(n)} className="rounded-full bg-[#122c4a] px-3.5 py-1.5 text-xs font-bold text-white active:scale-95">{n}</button>)}
+        </div>
+      )}
+      <ul className="mt-3 max-h-[50vh] divide-y divide-[#eef2f6] overflow-y-auto">
+        {list.map((n) => <li key={n}><button type="button" onClick={() => onPick(n)} className="flex w-full items-center justify-between px-1 py-3 text-left text-[15px] font-semibold text-[#122c4a] active:bg-[#f0f4f8]">{n}<ChevronDown className="size-4 -rotate-90 text-[#c4d0dc]" /></button></li>)}
+        {list.length === 0 && <li className="py-6 text-center text-sm text-[#8da0b2]">Şehir bulunamadı</li>}
+      </ul>
+    </Sheet>
   )
 }
