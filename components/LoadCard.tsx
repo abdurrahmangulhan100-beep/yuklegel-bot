@@ -415,8 +415,8 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
           <div className="rounded-2xl border border-[#e3ebf3] bg-gradient-to-br from-white to-[#f1f6fb] px-4 py-3.5 shadow-[0_1px_0_rgba(18,44,74,0.03)]">
             <div className="flex items-center gap-3">
               <Place dot="bg-emerald-500" caption="Çıkış" label={highlightMatch(route.from, cleanQuery)} sub={load.districtOf?.[route.from]} align="left" onClick={onCitySearch ? () => onCitySearch(route.from) : undefined} />
-              <div aria-hidden className="flex w-[92px] shrink-0 flex-col items-center sm:w-[112px]">
-                <VehicleIcon vehicle={load.vehicle} className="h-auto w-full max-h-12 sm:max-h-14" />
+              <div aria-hidden className="flex w-[104px] shrink-0 flex-col items-center sm:w-[124px]">
+                <VehicleIcon vehicle={load.vehicle} className="h-11 w-full sm:h-[52px]" />
                 <span className="mt-1 h-0 w-full border-t-2 border-dotted border-[#b9c8d6]" />
               </div>
               <Place dot="bg-[#e5522f]" caption="Varış" label={highlightMatch(route.to, cleanQuery)} sub={load.districtOf?.[route.to]} align="right" onClick={onCitySearch ? () => onCitySearch(route.to) : undefined} />
@@ -444,7 +444,7 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
               </Tag>
             )}
             {load.timing && <Tag tone="bg-emerald-50 text-emerald-700" icon={<Clock className="size-3" />}>{load.timing}</Tag>}
-            {hasVehicle && <Tag tone="bg-[#eef3f8] text-[#2c4a66]" icon={<VehicleIcon vehicle={load.vehicle} className="h-3.5 text-current" />}>{highlightMatch(load.vehicle, cleanQuery)}</Tag>}
+            {hasVehicle && <Tag tone="bg-[#eef3f8] text-[#2c4a66]">{highlightMatch(load.vehicle, cleanQuery)}</Tag>}
             {load.trailer && <Tag tone="bg-[#eef3f8] text-[#2c4a66]" icon={<Ruler className="size-3" />}>{load.trailer}</Tag>}
             {load.tonnage && <Tag tone="bg-[#eef3f8] text-[#2c4a66]" icon={<Weight className="size-3" />}>{load.tonnage}</Tag>}
             {hasDistance && <Tag tone="bg-[#f1f5f9] text-[#3c566e]">{load.distance}</Tag>}
