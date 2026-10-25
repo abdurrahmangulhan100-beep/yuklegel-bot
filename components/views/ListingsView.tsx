@@ -2,6 +2,7 @@
 
 import { Fragment, useEffect, useMemo, useRef, useState } from "react"
 import { Load, LoadCard } from "@/components/LoadCard"
+import { LoadGroupCard, groupLoads } from "@/components/LoadGroupCard"
 import { AdSlot } from "@/components/AdSlot"
 import { VehicleIcon, type VehicleKind } from "@/components/VehicleIcon"
 import { PackageSearch, Plus, Phone, X, MapPin, Crown, Clock, ArrowRight, Bell, SlidersHorizontal } from "lucide-react"
@@ -126,8 +127,18 @@ export function ListingsView({
   const filterKey = `${activeFilter}|${sourceFilter}|${from}|${to}|${age}|${onlyPhone}|${searchQuery}`
   useEffect(() => { setShown(CHUNK) }, [filterKey])
 
-  const renderedLoads = useMemo(() => visibleLoads.slice(0, shown), [visibleLoads, shown])
-  const hasHiddenLocal = shown < visibleLoads.length
+  // Aynı mesajdan gelen çok güzergâhlı saha ilanları tek kartta toplanır (yalnızca tarayıcıda hesaplanır)
+  const items = useMemo(() => groupLoads(visibleLoads), [visibleLoads])
+  const renderedItems = useMemo(() => items.slice(0, shown), [items, shown])
+  const hasHiddenLocal = shown < items.length
+  const [openGroups, setOpenGroups] = useState<Set<string>>(() => new Set())
+  const toggleGroup = (key: string) =>
+    setOpenGroups((prev) => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
 
   useEffect(() => {
     const el = sentinelRef.current
@@ -427,16 +438,33 @@ export function ListingsView({
         </div>
       ) : (
         <div className="grid grid-cols-1 items-start gap-3 md:grid-cols-2 md:gap-4 xl:grid-cols-3">
-          {renderedLoads.map((load, i) => (
-            <Fragment key={load.id}>
-              <LoadCard
-                load={load}
-                searchQuery={searchQuery}
-                isFavorite={favoriteSet.has(load.id)}
-                onToggleFavorite={onToggleFavorite}
-                onUserBlocked={onUserBlocked}
-                onCitySearch={onCitySearch}
-              />
+          {renderedItems.map((item, i) => (
+            <Fragment key={item.kind === "group" ? item.key : item.load.id}>
+              {item.kind === "group" ? (
+                <LoadGroupCard loads={item.loads} open={openGroups.has(item.key)} onToggle={() => toggleGroup(item.key)}>
+                  {openGroups.has(item.key) &&
+                    item.loads.map((load) => (
+                      <LoadCard
+                        key={load.id}
+                        load={load}
+                        searchQuery={searchQuery}
+                        isFavorite={favoriteSet.has(load.id)}
+                        onToggleFavorite={onToggleFavorite}
+                        onUserBlocked={onUserBlocked}
+                        onCitySearch={onCitySearch}
+                      />
+                    ))}
+                </LoadGroupCard>
+              ) : (
+                <LoadCard
+                  load={item.load}
+                  searchQuery={searchQuery}
+                  isFavorite={favoriteSet.has(item.load.id)}
+                  onToggleFavorite={onToggleFavorite}
+                  onUserBlocked={onUserBlocked}
+                  onCitySearch={onCitySearch}
+                />
+              )}
               {(i + 1) % 8 === 0 && <AdSlot promoOnly className="col-span-full" />}
             </Fragment>
           ))}
