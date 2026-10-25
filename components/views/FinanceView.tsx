@@ -620,7 +620,7 @@ export function FinanceView() {
           <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-[#d64526]">Finansal Yönetim</p>
           <h1 className="text-2xl font-extrabold tracking-tight text-[#122c4a] sm:text-3xl">Gelir ve Gider</h1>
         </div>
-        <div className="grid grid-cols-2 gap-2 sm:flex">
+        <div className="hidden gap-2 sm:flex">
           <button onClick={() => openNew("income")} className="flex h-12 items-center justify-center gap-1.5 rounded-xl bg-emerald-600 px-5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-emerald-700 active:scale-[0.98]">
             <ArrowUpRight className="size-4" /> Gelir Ekle
           </button>
@@ -680,7 +680,7 @@ export function FinanceView() {
               {prev && <Delta cur={cur.net} prev={prev.net} goodWhenUp className="mt-2" dark />}
             </div>
             {margin !== null && (
-              <div className="shrink-0 rounded-2xl bg-white/10 px-3 py-2 text-center">
+              <div className="hidden shrink-0 rounded-2xl bg-white/10 px-3 py-2 text-center sm:block">
                 <div className="text-[10px] font-bold uppercase tracking-wider text-white/55">Kâr marjı</div>
                 <div className={cn("text-xl font-extrabold tabular-nums", margin < 0 && "text-[#ff9b85]")}>%{Math.round(margin)}</div>
               </div>
@@ -700,7 +700,7 @@ export function FinanceView() {
             </div>
           </div>
 
-          <div className="mt-3 grid grid-cols-3 gap-2 text-center">
+          <div className="mt-3 hidden grid-cols-3 gap-2 text-center sm:grid">
             <Mini label="Kayıt" value={String(scoped.length)} />
             <Mini label="Günlük ort. gider" value={TL(Math.round(avgDailyExpense))} />
             <Mini label="Ort. gelir kaydı" value={(() => {
@@ -980,6 +980,16 @@ export function FinanceView() {
         Bu bölüm yalnızca kişisel takip içindir; fatura, defter veya mali müşavirlik hizmeti yerine geçmez. Vergi ve yasal kayıt yükümlülükleri kullanıcıya aittir.{" "}
         <a href="/kullanim-kosullari" className="font-semibold underline">Kullanım Koşulları</a>
       </p>
+
+      {/* Mobil: ekranda hep görünen hızlı ekleme çubuğu */}
+      <div className="sticky bottom-[84px] z-20 grid grid-cols-2 gap-2 sm:hidden">
+        <button type="button" onClick={() => openNew("income")} className="flex h-12 items-center justify-center gap-1.5 rounded-2xl bg-emerald-600 text-sm font-bold text-white shadow-[0_10px_22px_-10px_rgba(5,150,105,0.9)] active:scale-95">
+          <ArrowUpRight className="size-4" /> Gelir Ekle
+        </button>
+        <button type="button" onClick={() => openNew("expense")} className="flex h-12 items-center justify-center gap-1.5 rounded-2xl bg-[#d64526] text-sm font-bold text-white shadow-[0_10px_22px_-10px_rgba(214,69,38,0.9)] active:scale-95">
+          <ArrowDownLeft className="size-4" /> Gider Ekle
+        </button>
+      </div>
 
       {/* Kayıt formu */}
       <Sheet
