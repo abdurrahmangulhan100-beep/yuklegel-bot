@@ -131,7 +131,8 @@ function findMentions(text: string): Mention[] {
 
   const result: Mention[] = []
   for (let i = 0; i < tokens.length; i++) {
-    const { raw, start, end } = tokens[i]
+    const { raw, end } = tokens[i]
+    let start = tokens[i].start
     const aposIdx = raw.search(/['’´`]/)
     const hasApos = aposIdx > 0
     const base = fold(hasApos ? raw.slice(0, aposIdx) : raw)
@@ -141,6 +142,7 @@ function findMentions(text: string): Mention[] {
     let district: string | undefined
     let kind: Mention["kind"] = "bare"
     let weakKey = ""
+    let usedSuf = ""
 
     if (hasApos) {
       let r = resolveName(base)
@@ -154,7 +156,7 @@ function findMentions(text: string): Mention[] {
           if (r2 && k2) { r = r2; k = k2 }
         }
       }
-      if (r && k) { city = r.city; district = r.district; kind = k; weakKey = base }
+      if (r && k) { city = r.city; district = r.district; kind = k; weakKey = base; usedSuf = suffixPart }
     } else {
       const direct = resolveName(base)
       if (direct) {
@@ -164,12 +166,33 @@ function findMentions(text: string): Mention[] {
           if (base.length > suf.length && base.endsWith(suf)) {
             const stem = base.slice(0, -suf.length)
             const r = resolveName(stem)
-            if (r) { city = r.city; district = r.district; kind = k; weakKey = stem; break }
+            if (r) { city = r.city; district = r.district; kind = k; weakKey = stem; usedSuf = suf; break }
           }
         }
       }
     }
     if (!city) continue
+
+    // "Tire", "Bor", "Of" gibi sıradan kelimelerle karışan ilçeler: açık yön eki ya da bağlam şart
+    if (district && DISTRICTS.get(weakKey)?.strict) {
+      const prevM = result[result.length - 1]
+      const afterFrom = Boolean(prevM && prevM.kind === "from" && i > 0 && prevM.end === tokens[i - 1].end) // "Sarayönü den Tire"
+      const before = text.slice(0, start)
+      const sepBefore = /[-–—>→»~/]\s*$/.test(before)
+      const sepAfter = i + 1 < tokens.length && /^\s*[-–—>→»~/]\s*$/.test(text.slice(end, tokens[i + 1].start))
+      const nextWord = i + 1 < tokens.length ? fold(tokens[i + 1].raw) : ""
+      const spacedSuffix = ["ya", "ye", "na", "ne", "dan", "den"].includes(nextWord)
+      const clearSuffix = usedSuf !== "" && (hasApos || ["dan", "den", "tan", "ten", "ya", "ye"].includes(usedSuf))
+      if (!(clearSuffix || afterFrom || sepBefore || sepAfter || spacedSuffix)) continue
+    }
+
+    // Ereğli hem Konya'da hem Zonguldak'ta: "Kdz Ereğli" / "Karadeniz Ereğli" / Zonguldak'ın hemen yanında -> Zonguldak
+    if (district === "Ereğli") {
+      const pw = i > 0 ? fold(tokens[i - 1].raw) : ""
+      const prevM = result[result.length - 1]
+      if (pw === "kdz" || pw === "karadeniz") { city = "Zonguldak"; start = tokens[i - 1].start }
+      else if (prevM && prevM.city === "Zonguldak" && start - prevM.end <= 2) city = "Zonguldak"
+    }
 
     if (WEAK.has(weakKey)) {
       // "Van'a" geçerli; "vana" / "van" (küçük harf) geçersiz
@@ -409,8 +432,16 @@ export function analyzeListing(input: AnalyzeInput): ListingAnalysis {
 
     // a) Metinde hiç geçmeyen bir şehir alanda duruyorsa (ör. grup şehri) güvenme
     if (ms.length > 0) {
-      if (from?.city && !mentioned.has(from.city)) from = undefined
-      if (to?.city && !mentioned.has(to.city)) to = undefined
+      // Alandaki ilçe adı metinde geçiyorsa (örn. "Konya / Ereğli" ve metinde "Ereğli'den") alan doğrudur, silinmez
+      const supported = (p?: Place) => {
+        if (!p?.city) return false
+        if (mentioned.has(p.city)) return true
+        if (!p.district) return false
+        const d = fold(p.district).replace(/[^a-z0-9]/g, "")
+        return d.length >= 3 && new RegExp(`(^|[^a-z0-9])${d}`).test(folded)
+      }
+      if (from && !supported(from)) from = undefined
+      if (to && !supported(to)) to = undefined
     }
 
     // b) Metinde net sinyal varsa ("X yükleme", "X'dan", "Y'ye", "Y teslim") alanı ezer
