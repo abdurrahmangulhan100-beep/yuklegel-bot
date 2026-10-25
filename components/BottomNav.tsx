@@ -73,7 +73,7 @@ function Tab({
       <span
         className={cn(
           "relative grid h-7 w-12 place-items-center rounded-full transition-colors",
-          active ? "bg-[#122c4a]/10 text-[#122c4a]" : "text-[#8da0b2]"
+          active ? "bg-[#e5522f]/12 text-[#d64526]" : "text-[#8da0b2]"
         )}
       >
         <Icon className="size-[22px]" strokeWidth={active ? 2.4 : 2} />
@@ -83,7 +83,7 @@ function Tab({
           </span>
         ) : null}
       </span>
-      <span className={cn("text-[10px] font-semibold", active ? "text-[#122c4a]" : "text-[#8da0b2]")}>{label}</span>
+      <span className={cn("text-[10px] font-semibold", active ? "text-[#d64526]" : "text-[#8da0b2]")}>{label}</span>
     </button>
   )
 }
