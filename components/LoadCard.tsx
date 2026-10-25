@@ -1,5 +1,6 @@
 "use client"
 
+import { hidePhones } from "@/lib/listings"
 import { Phone, MessageCircle, Star, Check, Ban, Zap, ChevronDown, Share2, Copy, Flag, MoreHorizontal, MapPin, Truck, Clock, Weight, Ruler, Repeat2 } from "lucide-react"
 import { Fragment, memo, useState } from "react"
 import { isMissing } from "@/lib/route"
@@ -114,7 +115,8 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
   const hasVehicle = !isMissing(load.vehicle)
   const hasDistance = !isMissing(load.distance)
   const hasPrice = Boolean(load.price) && load.price !== "₺0"
-  const cargoText = !isMissing(load.cargo) ? load.cargo : "Yük detayı belirtilmedi."
+  const cargoClean = !isMissing(load.cargo) ? (isUserLoad ? load.cargo : hidePhones(load.cargo)) : ""
+  const cargoText = cargoClean || "Yük detayı belirtilmedi."
   const isLongCargo = cargoText.length > 140 || cargoText.split("\n").length > 3
 
   // Şehir etiketleri. "Nereden → nereye" başlığı yok: saha ilanında ham mesaj gösterilir,
