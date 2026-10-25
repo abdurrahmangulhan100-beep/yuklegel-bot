@@ -6,6 +6,7 @@ import { VehicleIcon, type VehicleKind } from "@/components/VehicleIcon"
 import { Load } from "@/components/LoadCard"
 import { cn } from "@/lib/utils"
 import { AdSlot } from "@/components/AdSlot"
+import { hidePhones } from "@/lib/listings"
 
 type OverviewProps = {
   loads: Load[];
@@ -28,7 +29,7 @@ const POPULAR: [string, VehicleKind][] = [["Tümü", "tumu"], ["Acil", "acil"], 
 
 /** Kart başlığı: ilanın ilk satırı (saha ilanında ham mesajın ilk satırı) */
 const headline = (l: Load) => {
-  const first = (l.cargo || "").split("\n").find((x) => x.trim()) ?? ""
+  const first = (l.source === "bot" ? hidePhones(l.cargo || "") : l.cargo || "").split("\n").find((x) => x.trim()) ?? ""
   return first.trim() || "İlan"
 }
 const subline = (l: Load) => [(l.cities ?? []).slice(0, 3).join(" · "), l.vehicle, l.time].filter(Boolean).join(" • ")
