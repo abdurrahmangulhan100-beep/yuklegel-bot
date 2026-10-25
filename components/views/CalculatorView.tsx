@@ -1,10 +1,8 @@
 "use client"
 
 import { useEffect, useMemo, useRef, useState } from "react"
-import { Bookmark, Check, ChevronDown, Copy, Fuel, MessageCircle, Minus, Plus, RotateCcw, Wallet, Receipt, ArrowUpDown, MapPin, Search, Route, Scale, Share2, TrendingUp, X } from "lucide-react"
+import { Bookmark, Check, ChevronDown, Copy, Fuel, MessageCircle, Minus, Plus, RotateCcw, Wallet, Receipt, Scale, Share2, TrendingUp, X } from "lucide-react"
 import { Input } from "@/components/ui/input"
-import { Sheet } from "@/components/Sheet"
-import { CITY_LIST, estimateKm } from "@/lib/distance"
 import { supabase } from "@/lib/supabase"
 import { VehicleIcon, type VehicleKind } from "@/components/VehicleIcon"
 import { cn } from "@/lib/utils"
@@ -87,8 +85,6 @@ export function CalculatorView() {
   const [moreOpen, setMoreOpen] = useState(false)
   const [saved, setSaved] = useState<Saved[]>([])
   const resultRef = useRef<HTMLDivElement | null>(null)
-  const [picker, setPicker] = useState<"from" | "to" | null>(null)
-  const [kmAuto, setKmAuto] = useState(false) // km şehirlerden otomatik mi geldi
   const [fuelLive, setFuelLive] = useState<{ price: number; date: string } | null>(null)
 
   // Güncel mazot fiyatı (Supabase app_settings tablosu; yoksa sessizce elle giriş kalır)
@@ -99,18 +95,6 @@ export function CalculatorView() {
       if (v > 0) setFuelLive({ price: v, date: String(data.updated_at || "").slice(0, 10) })
     })
   }, [])
-
-  // İlan kartından "Hesapla" ile gelen şehirleri al
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem("calc_prefill")
-      if (!raw) return
-      localStorage.removeItem("calc_prefill")
-      const { from, to } = JSON.parse(raw)
-      applyCities(from || "", to || "")
-    } catch { /* geçersiz kayıt */ }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ready])
 
   useEffect(() => {
     try {
@@ -138,14 +122,8 @@ export function CalculatorView() {
     }
   }, [f, saved, ready])
 
-  const applyCities = (from: string, to: string) => {
-    const km = estimateKm(from, to)
-    setF((p) => ({ ...p, from, to, ...(km ? { km: String(km) } : {}) }))
-    setKmAuto(!!km)
-  }
-
   const toFinance = (kind: "income" | "expense") => {
-    const route = f.from && f.to ? `${f.from} → ${f.to}` : "Sefer"
+    const route = "Sefer"
     const amount = kind === "income" ? (c.offer > 0 ? c.offer : c.finalPrice) : c.totalCost
     const payload = {
       type: kind,
@@ -234,7 +212,7 @@ export function CalculatorView() {
       <div>
         <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-[#d64526]">Maliyet & Teklif Planlama</p>
         <h1 className="text-2xl font-bold tracking-tight text-[#122c4a] sm:text-3xl">Sefer Hesapla & Navlun Analizi</h1>
-        <p className="mt-1 text-xs text-[#718397]">Şehirleri seç, ne kadara taşıman gerektiğini gör; gelen teklif kârlı mı hemen anla. Değerler cihazında saklanır.</p>
+        <p className="mt-1 text-xs text-[#718397]">Km'yi yaz, ne kadara taşıman gerektiğini gör; gelen teklif kârlı mı hemen anla. Değerler cihazında saklanır.</p>
       </div>
 
       {saved.length > 0 && (
@@ -252,85 +230,32 @@ export function CalculatorView() {
       <div className="grid items-start gap-5 lg:grid-cols-12">
         {/* ============ GİRDİLER ============ */}
         <div className="space-y-4 lg:col-span-7">
-          {/* 1. Yol */}
-          <Step n={1} title="Yol" icon={<Route className="size-4" />}>
-            {/* Modern güzergah kartı */}
-            <div className="mb-5 overflow-hidden rounded-2xl bg-gradient-to-br from-[#f3f7fb] to-white ring-1 ring-[#e3ebf3]">
-              <div className="relative p-3.5">
-                <button type="button" onClick={() => setPicker("from")} className="flex w-full items-center gap-3 rounded-xl px-1 py-2 text-left active:bg-white/70">
-                  <span className="grid size-9 shrink-0 place-items-center rounded-full bg-emerald-500/10"><i className="size-3 rounded-full bg-emerald-500" /></span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-[10px] font-bold uppercase tracking-wider text-[#8da0b2]">Nereden</span>
-                    <span className={cn("block truncate text-lg font-black", f.from ? "text-[#122c4a]" : "text-[#b0bfcd]")}>{f.from || "Şehir seç"}</span>
-                  </span>
-                  <ChevronDown className="size-4 -rotate-90 text-[#b0bfcd]" />
-                </button>
-                <div className="ml-[1.1rem] h-4 border-l-2 border-dotted border-[#cbd6e2]" />
-                <button type="button" onClick={() => setPicker("to")} className="flex w-full items-center gap-3 rounded-xl px-1 py-2 text-left active:bg-white/70">
-                  <span className="grid size-9 shrink-0 place-items-center rounded-full bg-[#e5522f]/10"><MapPin className="size-4 text-[#e5522f]" /></span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-[10px] font-bold uppercase tracking-wider text-[#8da0b2]">Nereye</span>
-                    <span className={cn("block truncate text-lg font-black", f.to ? "text-[#122c4a]" : "text-[#b0bfcd]")}>{f.to || "Şehir seç"}</span>
-                  </span>
-                  <ChevronDown className="size-4 -rotate-90 text-[#b0bfcd]" />
-                </button>
-                <button type="button" aria-label="Yönü değiştir" onClick={() => applyCities(f.to, f.from)} className="absolute right-12 top-1/2 grid size-10 -translate-y-1/2 place-items-center rounded-full bg-white text-[#122c4a] shadow-md ring-1 ring-[#e3ebf3] active:scale-90">
-                  <ArrowUpDown className="size-4" />
-                </button>
-              </div>
-              {kmAuto && (
-                <div className="flex items-center justify-between bg-[#122c4a] px-4 py-2 text-xs text-white">
-                  <span className="font-semibold text-white/70">Tahmini mesafe</span>
-                  <span className="font-black text-emerald-300">≈ {plain(num(f.km), 0)} km</span>
-                </div>
-              )}
+          {/* 1. Mesafe & Araç */}
+          <Step n={1} title="Mesafe & Araç" icon={<Scale className="size-4" />}>
+            <Label2>Kaç km yüklü gideceksin?</Label2>
+            <div className="relative">
+              <Input inputMode="decimal" value={f.km} onChange={(e) => set("km", e.target.value)} placeholder="0" className="h-14 border-[#d9e2ec] bg-[#f8fafc] pr-12 text-2xl font-black text-[#122c4a] focus:bg-white" />
+              <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-sm font-bold text-[#8da0b2]">km</span>
             </div>
-            <CityPicker open={picker !== null} title={picker === "from" ? "Nereden?" : "Nereye?"} onClose={() => setPicker(null)} onPick={(n) => { if (picker === "from") applyCities(n, f.to); else applyCities(f.from, n); setPicker(null) }} />
-            <div className="flex items-end justify-between gap-3">
-              <div className="min-w-0 flex-1">
-                <Label2>Yüklü mesafe</Label2>
-                <div className="relative">
-                  <Input inputMode="decimal" value={f.km} onChange={(e) => { set("km", e.target.value); setKmAuto(false) }} placeholder="0" className="h-14 border-[#d9e2ec] bg-[#f8fafc] pr-12 text-2xl font-black text-[#122c4a] focus:bg-white" />
-                  <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-sm font-bold text-[#8da0b2]">km</span>
-                </div>
-              </div>
-            </div>
-            <input type="range" min={0} max={2500} step={10} value={Math.min(2500, num(f.km))} onChange={(e) => set("km", e.target.value)} aria-label="Yüklü mesafe" className="mt-3 h-2 w-full cursor-pointer accent-[#d64526]" />
             <div className="mt-2 flex flex-wrap gap-1.5">
               {KM_PRESETS.map((k) => <Pill key={k} active={num(f.km) === k} onClick={() => set("km", String(k))}>{plain(k, 0)} km</Pill>)}
             </div>
-
-            <div className="mt-4 grid grid-cols-2 gap-1 rounded-xl bg-[#eef2f6] p-1">
-              <button type="button" onClick={() => set("emptyReturn", false)} className={cn("h-10 rounded-lg text-xs font-bold transition-colors", !f.emptyReturn ? "bg-white text-[#122c4a] shadow-sm" : "text-[#627d98]")}>Dönüşte yük var</button>
-              <button type="button" onClick={() => set("emptyReturn", true)} className={cn("h-10 rounded-lg text-xs font-bold transition-colors", f.emptyReturn ? "bg-white text-[#122c4a] shadow-sm" : "text-[#627d98]")}>Boş dönüyorum</button>
-            </div>
+            <label className="mt-3 flex cursor-pointer items-center gap-3 rounded-xl border border-[#e4e9ef] bg-[#fafbfd] px-3.5 py-3">
+              <input type="checkbox" checked={f.emptyReturn} onChange={(e) => set("emptyReturn", e.target.checked)} className="size-5 accent-[#d64526]" />
+              <span className="text-sm font-bold text-[#122c4a]">Boş dönüyorum <span className="font-medium text-[#8da0b2]">(dönüş km'si de sayılır)</span></span>
+            </label>
             {f.emptyReturn && (
-              <div className="mt-3 flex items-center gap-3 rounded-xl border border-[#f3d9d2] bg-[#fff6f3] p-3">
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs font-semibold text-[#9a3a22]">Boş dönüş mesafesi</p>
-                  <p className="text-[11px] text-[#b5654f]">Boş bırakırsan gidiş kadar sayılır ({plain(c.loadedKm, 0)} km)</p>
-                </div>
+              <div className="mt-2 flex items-center gap-3 rounded-xl border border-[#f3d9d2] bg-[#fff6f3] p-3">
+                <p className="min-w-0 flex-1 text-[11px] text-[#b5654f]">Boş dönüş km (boşsa gidiş kadar: {plain(c.loadedKm, 0)})</p>
                 <Input inputMode="decimal" value={f.returnKm} onChange={(e) => set("returnKm", e.target.value)} placeholder={String(c.loadedKm || 0)} className="h-10 w-24 border-[#f0cfc6] bg-white text-right text-base font-bold" />
               </div>
             )}
-          </Step>
-
-          {/* 2. Araç */}
-          <Step n={2} title="Araç" icon={<Scale className="size-4" />}>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="mt-4 grid grid-cols-3 gap-2">
               {VEHICLES.map((v) => {
                 const active = f.vehicle === v.label
                 return (
-                  <button
-                    key={v.label}
-                    type="button"
-                    aria-pressed={active}
-                    onClick={() => setF((p) => ({ ...p, vehicle: v.label, consumption: v.lt }))}
-                    className={cn(
-                      "flex h-[84px] flex-col items-center justify-between rounded-2xl border-2 px-1.5 pb-1.5 pt-2 text-[10.5px] font-bold leading-tight transition-all active:scale-95",
-                      active ? "border-[#122c4a] bg-[#eaf1f8] text-[#122c4a]" : "border-[#e4e9ef] bg-white text-[#4a6178] hover:border-[#c4d0dc]"
-                    )}
-                  >
+                  <button key={v.label} type="button" aria-pressed={active} onClick={() => setF((p) => ({ ...p, vehicle: v.label, consumption: v.lt }))}
+                    className={cn("flex h-[84px] flex-col items-center justify-between rounded-2xl border-2 px-1.5 pb-1.5 pt-2 text-[10.5px] font-bold leading-tight transition-all active:scale-95", active ? "border-[#122c4a] bg-[#eaf1f8] text-[#122c4a]" : "border-[#e4e9ef] bg-white text-[#4a6178] hover:border-[#c4d0dc]")}>
                     <span className="flex h-9 w-full items-center justify-center"><VehicleIcon kind={v.kind} className="h-full w-full" /></span>
                     <span className="text-center">{v.label}</span>
                   </button>
@@ -343,7 +268,7 @@ export function CalculatorView() {
           </Step>
 
           {/* 3. Yakıt ve giderler */}
-          <Step n={3} title="Yakıt & Giderler" icon={<Fuel className="size-4" />}>
+          <Step n={2} title="Yakıt & Giderler" icon={<Fuel className="size-4" />}>
             <Stepper label="Mazot litre fiyatı" unit="₺ / lt" value={f.fuelPrice} onChange={(v) => set("fuelPrice", v)} step={0.5} />
             {fuelLive && num(f.fuelPrice) !== fuelLive.price && (
               <button type="button" onClick={() => set("fuelPrice", String(fuelLive.price).replace(".", ","))} className="mt-2.5 inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-amber-50 to-orange-50 py-1.5 pl-2.5 pr-3.5 text-xs font-bold text-[#9a3a22] ring-1 ring-orange-200 active:scale-95">
@@ -370,7 +295,7 @@ export function CalculatorView() {
           </Step>
 
           {/* 4. Kâr */}
-          <Step n={4} title="Hedef Kâr" icon={<TrendingUp className="size-4" />}>
+          <Step n={3} title="Hedef Kâr" icon={<TrendingUp className="size-4" />}>
             <div className="flex items-baseline justify-between">
               <Label2>Maliyetin üzerine</Label2>
               <span className="text-3xl font-black text-[#d64526]">%{f.margin || 0}</span>
@@ -604,32 +529,5 @@ function Meter({ cost, price, offer }: { cost: number; price: number; offer: num
         <p className="text-[10px] font-semibold text-[#627d98]">{moneyR(price)}</p>
       </div>
     </div>
-  )
-}
-
-const POPULAR = ["İstanbul", "Ankara", "İzmir", "Bursa", "Konya", "Antalya", "Adana", "Gaziantep", "Kocaeli", "Mersin"]
-
-/** Aramalı şehir seçici: yazdıkça süzer, sık kullanılanlar tek dokunuş */
-function CityPicker({ open, title, onClose, onPick }: { open: boolean; title: string; onClose: () => void; onPick: (n: string) => void }) {
-  const [q, setQ] = useState("")
-  useEffect(() => { if (open) setQ("") }, [open])
-  const key = (x: string) => x.toLocaleLowerCase("tr-TR").replace(/ı/g, "i")
-  const list = q.trim() ? CITY_LIST.filter((n) => key(n).includes(key(q.trim()))) : CITY_LIST
-  return (
-    <Sheet open={open} onClose={onClose} title={title}>
-      <div className="relative">
-        <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-[#8da0b2]" />
-        <Input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Şehir ara…" className="h-12 rounded-xl border-0 bg-[#f1f5f9] pl-10 text-base font-semibold" />
-      </div>
-      {!q && (
-        <div className="mt-3 flex flex-wrap gap-1.5">
-          {POPULAR.map((n) => <button key={n} type="button" onClick={() => onPick(n)} className="rounded-full bg-[#122c4a] px-3.5 py-1.5 text-xs font-bold text-white active:scale-95">{n}</button>)}
-        </div>
-      )}
-      <ul className="mt-3 max-h-[50vh] divide-y divide-[#eef2f6] overflow-y-auto">
-        {list.map((n) => <li key={n}><button type="button" onClick={() => onPick(n)} className="flex w-full items-center justify-between px-1 py-3 text-left text-[15px] font-semibold text-[#122c4a] active:bg-[#f0f4f8]">{n}<ChevronDown className="size-4 -rotate-90 text-[#c4d0dc]" /></button></li>)}
-        {list.length === 0 && <li className="py-6 text-center text-sm text-[#8da0b2]">Şehir bulunamadı</li>}
-      </ul>
-    </Sheet>
   )
 }
