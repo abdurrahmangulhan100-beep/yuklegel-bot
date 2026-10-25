@@ -191,3 +191,5 @@ for (const table of [RAW, EXTRA]) {
 }
 // Ereğli: Konya ve Zonguldak'ta var. Varsayılan Konya; "Kdz/Karadeniz Ereğli" ya da Zonguldak bağlamında Zonguldak (bkz. route.ts)
 DISTRICTS.set("eregli", { city: "Konya", name: "Ereğli" })
+// "araç" günlük dilde taşıt demek ("4 araç", "araç lazım"); Kastamonu/Araç ilçesi hayalet şehir üretiyordu
+DISTRICTS.delete("arac")
