@@ -6,7 +6,7 @@
  * ekranda HİÇ göstermemek. Dışarıya sadece bulunabilen bilgi döner.
  */
 
-import { DISTRICTS } from "./districts.ts"
+import { DISTRICTS } from "./districts"
 
 export type Place = {
   /** Ekranda gösterilecek metin: "Konya" veya "Konya / Beyşehir" */
@@ -28,6 +28,8 @@ export type ListingAnalysis = {
   to?: Place
   /** Güzergahta geçen ama yükleme/teslimat olarak ayrılamayan diğer şehirler */
   extraCities: string[]
+  /** Varış alanında birden çok şehir varsa hepsi (ilk eleman ana varış). Tek varışta boş. */
+  destinations: string[]
   vehicle?: string
   trailer?: string
   tonnage?: string
@@ -307,9 +309,14 @@ function placeFromField(raw?: string | null): Place | undefined {
   const text = tidy(String(raw))
   if (isMissing(text)) return undefined
 
-  const first = findMentions(text)[0]
+  const all = findMentions(text)
+  const first = all[0]
   if (first) {
-    const rest = trimSeparators(text.slice(0, first.start) + " " + text.slice(first.end))
+    // Alanda birden çok şehir varsa ("Erzurum, Konya, Trabzon") diğer şehirler ilçe sanılmasın: tüm şehir ifadeleri çıkarılır
+    let rest = ""
+    let pos = 0
+    for (const m of all) { rest += text.slice(pos, m.start) + " "; pos = m.end }
+    rest = trimSeparators(rest + text.slice(pos))
     const district = rest && fold(rest) !== "merkez" ? rest.slice(0, 30) : undefined
     return { label: district ? `${first.city} / ${district}` : first.city, city: first.city, district }
   }
@@ -492,7 +499,12 @@ export function analyzeListing(input: AnalyzeInput): ListingAnalysis {
     pushCity(to?.city)
   }
 
-  const used = new Set([from?.city, to?.city].filter(Boolean) as string[])
+  // Bot ilanında varış alanı birden çok şehir içeriyorsa ("Erzurum, Konya, Trabzon") hepsini koru
+  const fieldDest = isMissing(input.to) ? [] : Array.from(new Set(findMentions(tidy(String(input.to))).map((m) => m.city)))
+  const destinations = fieldDest.length > 1 && to?.city && fieldDest.includes(to.city) ? fieldDest.slice(0, 8) : []
+  destinations.forEach((c) => pushCity(c))
+
+  const used = new Set([from?.city, to?.city, ...destinations].filter(Boolean) as string[])
   const extraCities = Array.from(new Set(ms.map((m) => m.city))).filter((c) => !used.has(c)).slice(0, 3)
 
   const fieldVehicle = isMissing(input.vehicle) ? undefined : tidy(String(input.vehicle)).slice(0, 24)
@@ -504,6 +516,7 @@ export function analyzeListing(input: AnalyzeInput): ListingAnalysis {
     from,
     to,
     extraCities,
+    destinations,
     vehicle: input.trustFields ? (fieldVehicle ?? inferred) : (inferred ?? fieldVehicle),
     trailer: inferTrailer(folded),
     tonnage: inferTonnage(folded),
