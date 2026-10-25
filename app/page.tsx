@@ -580,7 +580,7 @@ export default function Page() {
             </div>
 
             {/* Arama */}
-            <div className="relative w-full lg:w-[380px]">
+            <div className={cn("relative w-full lg:w-[380px]", (effectiveTab === "Genel Bakış" || effectiveTab === "overview") && "hidden lg:block")}>
               <Search className="pointer-events-none absolute left-3.5 top-1/2 size-[18px] -translate-y-1/2 text-[#8da0b2]" />
               <Input 
                 value={query} 
@@ -641,6 +641,8 @@ export default function Page() {
               setActiveTab={setActiveTab} 
               onSelectCity={handleCitySearch}
               onOpenUrgent={openUrgent}
+              onPickFilter={(f: string) => { setActiveFilter(f); setSourceFilter("all"); setActiveTab("İlanlar") }}
+              favoritesCount={favoriteIds.length}
             />
           )}
           {effectiveTab === "İlanlar" && (
