@@ -4,7 +4,8 @@ import { Fragment, useEffect, useMemo, useRef, useState } from "react"
 import { Load, LoadCard } from "@/components/LoadCard"
 import { AdSlot } from "@/components/AdSlot"
 import { VehicleIcon, type VehicleKind } from "@/components/VehicleIcon"
-import { PackageSearch, Plus, Phone, X, MapPin, Crown, Clock, ArrowRight, Bell } from "lucide-react"
+import { PackageSearch, Plus, Phone, X, MapPin, Crown, Clock, ArrowRight, Bell, SlidersHorizontal } from "lucide-react"
+import { Sheet } from "@/components/Sheet"
 import { usePremium } from "@/components/PremiumProvider"
 import { FREE_DELAY_MINUTES, openPremium } from "@/lib/premium"
 import { cn } from "@/lib/utils"
@@ -141,6 +142,8 @@ export function ListingsView({
 
   const favoriteSet = useMemo(() => new Set(favoriteIds), [favoriteIds])
 
+  const [filterOpen, setFilterOpen] = useState(false)
+  const extraCount = [from, to, age, onlyPhone].filter(Boolean).length
   const hasExtraFilters = Boolean(from || to || age || onlyPhone)
   const clearExtra = () => { setFrom(""); setTo(""); setAge(""); setOnlyPhone(false) }
   const clearAll = () => { setActiveFilter("Tümü"); setSourceFilter("all"); clearExtra() }
@@ -170,8 +173,8 @@ export function ListingsView({
       {/* Başlık */}
       <div className="flex items-end justify-between gap-4">
         <div>
-          <div className="mb-0.5 text-[11px] font-bold uppercase tracking-wider text-[#d64526]">Pazar Yeri</div>
-          <h1 className="text-2xl font-extrabold tracking-tight text-[#122c4a] sm:text-3xl">Güncel İlanlar</h1>
+          <div className="mb-0.5 hidden text-[11px] font-bold uppercase tracking-wider text-[#d64526] sm:block">Pazar Yeri</div>
+          <h1 className="text-xl font-extrabold tracking-tight text-[#122c4a] sm:text-3xl">Güncel İlanlar</h1>
           <p className="mt-1 hidden text-sm text-[#627d98] sm:block">
             Saha ve kullanıcı ilanları güncel esas alınarak listelenmektedir.
           </p>
@@ -194,7 +197,7 @@ export function ListingsView({
             onClick={() => setSourceFilter(s.key)}
             aria-pressed={sourceFilter === s.key}
             className={cn(
-              "flex min-h-12 flex-col items-center justify-center rounded-xl px-1.5 py-1.5 transition-all",
+              "flex min-h-11 flex-col items-center justify-center rounded-xl px-1.5 py-1 transition-all sm:min-h-12 sm:py-1.5",
               sourceFilter === s.key ? s.active : "text-[#627d98] hover:bg-[#f5f7fa]"
             )}
           >
@@ -219,25 +222,84 @@ export function ListingsView({
                 onClick={() => setActiveFilter(option)}
                 aria-pressed={active}
                 className={cn(
-                  "flex h-[96px] w-[104px] shrink-0 flex-col items-center justify-between rounded-2xl border-2 px-2 pb-2 pt-2.5 text-[12.5px] font-bold transition-all active:scale-95 sm:w-[112px]",
+                  "flex h-11 shrink-0 flex-row items-center gap-1.5 rounded-full border-2 pl-2 pr-3.5 text-[12.5px] font-bold transition-all active:scale-95 sm:h-[96px] sm:w-[112px] sm:flex-col sm:justify-between sm:rounded-2xl sm:px-2 sm:pb-2 sm:pt-2.5",
                   active
                     ? "border-[#122c4a] bg-[#eaf1f8] text-[#122c4a] shadow-[0_8px_18px_-12px_rgba(18,44,74,0.7)]"
                     : "border-[#e4e9ef] bg-white text-[#4a6178] hover:border-[#c4d0dc]"
                 )}
               >
-                <span className="flex h-12 w-full items-center justify-center">
+                <span className="flex h-7 w-11 items-center justify-center sm:h-12 sm:w-full">
                   <VehicleIcon kind={FILTER_ICON[option]} className="h-full w-full" />
                 </span>
-                <span className={cn(option.length > 10 && "whitespace-nowrap text-[11.5px] tracking-tight")}>{option}</span>
+                <span className={cn("whitespace-nowrap", option.length > 10 && "sm:text-[11.5px] sm:tracking-tight")}>{option}</span>
               </button>
             )
           })}
         </div>
       </div>
 
+      {/* Mobil: tek "Filtreler" düğmesi + alttan açılan pencere */}
+      <div className="flex items-center gap-2 sm:hidden">
+        <button
+          type="button"
+          onClick={() => setFilterOpen(true)}
+          className={cn("inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-xl border text-sm font-bold active:scale-[0.99]", extraCount ? "border-[#122c4a] bg-[#eaf1f8] text-[#122c4a]" : "border-[#e0e6ed] bg-white text-[#4a6178]")}
+        >
+          <SlidersHorizontal className="size-4" />
+          {from && to ? `${from} → ${to}` : from ? `${from} çıkışlı` : to ? `${to} varışlı` : "Güzergâh ve filtreler"}
+          {extraCount > 0 && <span className="grid size-5 place-items-center rounded-full bg-[#d64526] text-[11px] font-black text-white">{extraCount}</span>}
+        </button>
+        {hasExtraFilters && (
+          <button type="button" onClick={clearExtra} aria-label="Filtreleri temizle" className="grid size-11 shrink-0 place-items-center rounded-xl border border-[#e0e6ed] bg-white text-[#d64526] active:scale-95">
+            <X className="size-4" />
+          </button>
+        )}
+      </div>
+      <Sheet
+        open={filterOpen}
+        onClose={() => setFilterOpen(false)}
+        title="Filtreler"
+        footer={
+          <div className="grid grid-cols-2 gap-2">
+            <button type="button" onClick={clearExtra} className="h-12 rounded-xl border border-[#d9e2ec] bg-white text-sm font-bold text-[#122c4a] active:scale-95">Temizle</button>
+            <button type="button" onClick={() => setFilterOpen(false)} className="h-12 rounded-xl bg-[#122c4a] text-sm font-bold text-white active:scale-95">{visibleLoads.length} ilanı göster</button>
+          </div>
+        }
+      >
+        <div className="space-y-4">
+          <label className="block">
+            <span className="mb-1.5 block text-xs font-bold text-[#486581]">Nereden</span>
+            <select aria-label="Nereden" value={from} onChange={(e) => setFrom(e.target.value)} className={cn(selectClass, "w-full")}>
+              <option value="">Tümü</option>
+              {from && !fromOptions.some(([c]) => c === from) && <option value={from}>{from} (0)</option>}
+              {fromOptions.map(([c, n]) => (<option key={c} value={c}>{c} ({n})</option>))}
+            </select>
+          </label>
+          <label className="block">
+            <span className="mb-1.5 block text-xs font-bold text-[#486581]">Nereye</span>
+            <select aria-label="Nereye" value={to} onChange={(e) => setTo(e.target.value)} className={cn(selectClass, "w-full")}>
+              <option value="">Tümü</option>
+              {to && !toOptions.some(([c]) => c === to) && <option value={to}>{to} (0)</option>}
+              {toOptions.map(([c, n]) => (<option key={c} value={c}>{c} ({n})</option>))}
+            </select>
+          </label>
+          <div>
+            <span className="mb-1.5 block text-xs font-bold text-[#486581]">Zaman</span>
+            <div className="grid grid-cols-4 gap-1.5">
+              {([["", "Tümü"], ["1h", "1 saat"], ["6h", "6 saat"], ["today", "24 saat"]] as const).map(([k, label]) => (
+                <button key={k} type="button" onClick={() => setAge(k)} aria-pressed={age === k} className={cn("h-10 rounded-xl border text-xs font-bold", age === k ? "border-[#122c4a] bg-[#122c4a] text-white" : "border-[#e0e6ed] bg-white text-[#4a6178]")}>{label}</button>
+              ))}
+            </div>
+          </div>
+          <button type="button" onClick={() => setOnlyPhone((v) => !v)} aria-pressed={onlyPhone} className={cn("flex h-12 w-full items-center justify-center gap-2 rounded-xl border text-sm font-bold", onlyPhone ? "border-emerald-600 bg-emerald-50 text-emerald-700" : "border-[#e0e6ed] bg-white text-[#4a6178]")}>
+            <Phone className="size-4" /> Sadece telefonlu ilanlar
+          </button>
+        </div>
+      </Sheet>
+
       {/* Güzergâh filtresi: Nereden → Nereye */}
       {(fromOptions.length > 0 || toOptions.length > 0 || hasExtraFilters) && (
-        <div className="space-y-2">
+        <div className="hidden space-y-2 sm:block">
           <div className="flex items-center gap-2">
             <div className="relative min-w-0 flex-1">
               <MapPin aria-hidden className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[#8da0b2]" />
