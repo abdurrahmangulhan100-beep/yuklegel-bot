@@ -447,6 +447,8 @@ export default function Page() {
       }, 1500)
     }
 
+    let realtimeOk = false
+    let pollSkips = 0
     const channel = supabase
       .channel("realtime-all")
       .on("postgres_changes", { event: "*", schema: "public", table: "listings" }, refresh)
@@ -455,7 +457,7 @@ export default function Page() {
       .on("postgres_changes", { event: "*", schema: "public", table: "favorites" }, () => {
         if (currentUserId) fetchUserFavorites(currentUserId)
       })
-      .subscribe()
+      .subscribe((status) => { realtimeOk = status === "SUBSCRIBED" })
 
     // Realtime sessizce düşebilir ya da tabloda yayın kapalı olabilir. Yedek olarak: sekme açıkken
     // dakikada bir yenile; sekmeye dönünce / internet gelince hemen yenile (elle yenileme gerekmesin).
@@ -464,7 +466,12 @@ export default function Page() {
       fetchListings(queryRef.current, pageSizeRef.current)
       fetchCounts()
     }
-    const poll = setInterval(tick, 60000)
+    // Realtime bağlıyken yedek yenileme 5 dakikada bir (her istek ~120 satır çeker; çok kullanıcıda Supabase ücretsiz
+    // bant genişliğini hızla tüketir). Realtime düşerse eskisi gibi dakikada bir yenilenir.
+    const poll = setInterval(() => {
+      if (realtimeOk && ++pollSkips % 5 !== 0) return
+      tick()
+    }, 60000)
     document.addEventListener("visibilitychange", tick)
     window.addEventListener("online", tick)
 
