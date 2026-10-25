@@ -351,7 +351,7 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
     >
       {load.urgent && <span aria-hidden className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-[#e5522f] to-[#f4a259]" />}
 
-      <div className="flex flex-col gap-3.5 p-4">
+      <div className="flex flex-col gap-3 p-3.5 sm:gap-3.5 sm:p-4">
         {/* Üst: kaynak + zaman + aksiyonlar */}
         <div className="flex items-center justify-between gap-2">
           <div className="flex min-w-0 items-center gap-3">
@@ -412,11 +412,11 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
 
         {/* Güzergâh: tek bakışta nereden → nereye */}
         {route ? (
-          <div className="rounded-2xl border border-[#e3ebf3] bg-gradient-to-br from-white to-[#f1f6fb] px-4 py-3.5 shadow-[0_1px_0_rgba(18,44,74,0.03)]">
+          <div className="rounded-2xl border border-[#e3ebf3] bg-gradient-to-br from-white to-[#f1f6fb] px-3.5 py-3 sm:px-4 sm:py-3.5 shadow-[0_1px_0_rgba(18,44,74,0.03)]">
             <div className="flex items-center gap-3">
               <Place dot="bg-emerald-500" caption="Çıkış" label={highlightMatch(route.from, cleanQuery)} sub={load.districtOf?.[route.from]} align="left" onClick={onCitySearch ? () => onCitySearch(route.from) : undefined} />
-              <div aria-hidden className="flex w-[104px] shrink-0 flex-col items-center sm:w-[124px]">
-                <VehicleIcon vehicle={load.vehicle} className="h-11 w-full sm:h-[52px]" />
+              <div aria-hidden className="flex w-[84px] shrink-0 flex-col items-center sm:w-[124px]">
+                <VehicleIcon vehicle={load.vehicle} className="h-9 w-full sm:h-[52px]" />
                 <span className="mt-1 h-0 w-full border-t-2 border-dotted border-[#b9c8d6]" />
               </div>
               <Place dot="bg-[#e5522f]" caption="Varış" label={highlightMatch(route.to, cleanQuery)} sub={load.districtOf?.[route.to]} align="right" onClick={onCitySearch ? () => onCitySearch(route.to) : undefined} />
@@ -480,14 +480,14 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
           <div className="grid grid-cols-2 gap-2.5">
             <button
               onClick={handleCall}
-              className="flex h-12 items-center justify-center gap-2 rounded-2xl bg-[#122c4a] text-sm font-semibold text-white shadow-[0_6px_14px_-8px_rgba(18,44,74,0.7)] active:scale-[0.98] active:bg-[#1a3d68]"
+              className="flex h-[52px] items-center justify-center gap-2 rounded-2xl bg-[#122c4a] text-sm font-semibold text-white shadow-[0_6px_14px_-8px_rgba(18,44,74,0.7)] active:scale-[0.98] active:bg-[#1a3d68]"
             >
               <Phone className="size-[17px]" />
               Ara
             </button>
             <button
               onClick={handleWhatsApp}
-              className="flex h-12 items-center justify-center gap-2 rounded-2xl bg-emerald-600 text-sm font-semibold text-white shadow-[0_6px_14px_-8px_rgba(5,150,105,0.8)] active:scale-[0.98] active:bg-emerald-700"
+              className="flex h-[52px] items-center justify-center gap-2 rounded-2xl bg-emerald-600 text-sm font-semibold text-white shadow-[0_6px_14px_-8px_rgba(5,150,105,0.8)] active:scale-[0.98] active:bg-emerald-700"
             >
               <MessageCircle className="size-[17px]" />
               WhatsApp
