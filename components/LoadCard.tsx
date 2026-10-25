@@ -37,6 +37,8 @@ export type Load = {
   districtOf?: Record<string, string>
   /** Metinde geçen ama çıkış/varış olarak ayrılamayan diğer şehirler */
   extraCities?: string[]
+  /** Varış alanında birden çok şehir varsa hepsi (ilk eleman ana varış) */
+  destinations?: string[]
   trailer?: string
   tonnage?: string
   timing?: string
@@ -423,6 +425,17 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
               </div>
               <Place dot="bg-[#e5522f]" caption="Varış" label={highlightMatch(route.to, cleanQuery)} sub={load.districtOf?.[route.to]} align="right" onClick={onCitySearch ? () => onCitySearch(route.to) : undefined} />
             </div>
+            {(load.destinations?.length ?? 0) > 1 && (
+              <div className="mt-2.5 flex flex-wrap items-center gap-1.5 border-t border-[#e3ebf3] pt-2.5">
+                <span className="text-[10px] font-bold uppercase tracking-[0.1em] text-[#8da0b2]">Varışlar</span>
+                {load.destinations!.slice(0, 6).map((c) => (
+                  <button key={c} type="button" disabled={!onCitySearch} onClick={() => onCitySearch?.(c)} className="inline-flex items-center rounded-full border border-[#e3ebf3] bg-white px-2.5 py-1 text-[12.5px] font-bold text-[#122c4a] active:opacity-60">
+                    {highlightMatch(c, cleanQuery)}
+                  </button>
+                ))}
+                {load.destinations!.length > 6 && <span className="text-xs font-semibold text-[#8da0b2]">+{load.destinations!.length - 6}</span>}
+              </div>
+            )}
           </div>
         ) : places.length > 0 ? (
           <div className="flex flex-wrap items-center gap-1.5">
