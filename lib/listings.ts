@@ -181,3 +181,19 @@ export function reuseLoads(prev: Load[], next: Load[]): Load[] {
     return p
   })
 }
+
+/** Saha (bot) ilanlarında metne gömülü telefon numaralarını ve "Tel:" gibi etiketleri gizler; numara yalnızca Ara / WhatsApp / ilan işlemlerinde kullanılır */
+const PHONE_CORE = "(?:(?:\\+|00)?90[\\s.\\-]?)?\\(?0?\\s?\\(?[2-5]\\d{2}\\)?[\\s.\\-]?\\d{3}[\\s.\\-]?\\d{2}[\\s.\\-]?\\d{2}"
+const PHONE_RE = new RegExp(`(?:\\b(?:tel(?:efon)?|gsm|cep|wp|whatsapp|iletişim|iletisim|irtibat)\\b\\s*[:.\\-–—]*\\s*)?${PHONE_CORE}`, "gi")
+export function hidePhones(text: string): string {
+  if (!text) return text
+  const out: string[] = []
+  for (const line of text.split("\n")) {
+    PHONE_RE.lastIndex = 0
+    if (!PHONE_RE.test(line)) { out.push(line); continue }
+    PHONE_RE.lastIndex = 0
+    const cleaned = line.replace(PHONE_RE, "").replace(/[\s—–\-:|·,]+$/, "").trimEnd()
+    if (cleaned.trim()) out.push(cleaned) // sadece numaradan ibaret satır tamamen düşer
+  }
+  return out.join("\n").trim()
+}
