@@ -80,6 +80,7 @@ export function mapUserListing(item: DatabaseListing): Load {
     cities: a.cities,
     districtOf: a.districtOf,
     extraCities: a.extraCities,
+    destinations: a.destinations,
     cargo: cleanText(item.cargo_detail),
     message: cleanText(item.message),
     vehicle: a.vehicle ?? "",
