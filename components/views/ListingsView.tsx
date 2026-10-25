@@ -2,7 +2,6 @@
 
 import { Fragment, useEffect, useMemo, useRef, useState } from "react"
 import { Load, LoadCard } from "@/components/LoadCard"
-import { LoadGroupCard, groupLoads } from "@/components/LoadGroupCard"
 import { AdSlot } from "@/components/AdSlot"
 import { VehicleIcon, type VehicleKind } from "@/components/VehicleIcon"
 import { PackageSearch, Plus, Phone, X, MapPin, Crown, Clock, ArrowRight, Bell, SlidersHorizontal } from "lucide-react"
@@ -87,7 +86,7 @@ export function ListingsView({
   }, [from, to, age, onlyPhone])
 
   const matchFrom = (l: Load, c: string) => (l.fromCity ? l.fromCity === c : (l.cities ?? []).includes(c))
-  const matchTo = (l: Load, c: string) => (l.toCity ? l.toCity === c : (l.cities ?? []).includes(c))
+  const matchTo = (l: Load, c: string) => (l.toCity ? l.toCity === c || (l.destinations ?? []).includes(c) : (l.cities ?? []).includes(c))
 
   // Seçenek sayıları diğer seçime göre hesaplanır: "Nereden: Konya" seçiliyken Nereye listesinde yalnızca Konya çıkışlı yüklerin gittiği şehirler görünür
   const fromOptions = useMemo(() => {
@@ -102,7 +101,7 @@ export function ListingsView({
     const m = new Map<string, number>()
     for (const l of loads) {
       if (from && !matchFrom(l, from)) continue
-      for (const c of Array.from(new Set([l.toCity, ...(l.toCity ? [] : l.cities ?? [])].filter(Boolean) as string[]))) m.set(c, (m.get(c) ?? 0) + 1)
+      for (const c of Array.from(new Set([l.toCity, ...(l.destinations ?? []), ...(l.toCity ? [] : l.cities ?? [])].filter(Boolean) as string[]))) m.set(c, (m.get(c) ?? 0) + 1)
     }
     return Array.from(m.entries()).sort((a, b) => b[1] - a[1] || byTr(a[0], b[0]))
   }, [loads, from])
@@ -113,7 +112,7 @@ export function ListingsView({
     return loads.filter((l) => {
       if (from && !matchFrom(l, from)) return false
       if (to && !matchTo(l, to)) return false
-      if (from && to && from !== to && l.fromCity && l.toCity && !(l.fromCity === from && l.toCity === to)) return false
+      if (from && to && from !== to && l.fromCity && l.toCity && !(l.fromCity === from && matchTo(l, to))) return false
       if (maxAge && (!l.createdAt || now - Date.parse(l.createdAt) > maxAge)) return false
       if (onlyPhone && isMissing(l.phone)) return false
       return true
@@ -127,18 +126,8 @@ export function ListingsView({
   const filterKey = `${activeFilter}|${sourceFilter}|${from}|${to}|${age}|${onlyPhone}|${searchQuery}`
   useEffect(() => { setShown(CHUNK) }, [filterKey])
 
-  // Aynı mesajdan gelen çok güzergâhlı saha ilanları tek kartta toplanır (yalnızca tarayıcıda hesaplanır)
-  const items = useMemo(() => groupLoads(visibleLoads), [visibleLoads])
-  const renderedItems = useMemo(() => items.slice(0, shown), [items, shown])
-  const hasHiddenLocal = shown < items.length
-  const [openGroups, setOpenGroups] = useState<Set<string>>(() => new Set())
-  const toggleGroup = (key: string) =>
-    setOpenGroups((prev) => {
-      const next = new Set(prev)
-      if (next.has(key)) next.delete(key)
-      else next.add(key)
-      return next
-    })
+  const renderedItems = useMemo(() => visibleLoads.slice(0, shown), [visibleLoads, shown])
+  const hasHiddenLocal = shown < visibleLoads.length
 
   useEffect(() => {
     const el = sentinelRef.current
@@ -438,33 +427,16 @@ export function ListingsView({
         </div>
       ) : (
         <div className="grid grid-cols-1 items-start gap-3 md:grid-cols-2 md:gap-4 xl:grid-cols-3">
-          {renderedItems.map((item, i) => (
-            <Fragment key={item.kind === "group" ? item.key : item.load.id}>
-              {item.kind === "group" ? (
-                <LoadGroupCard loads={item.loads} open={openGroups.has(item.key)} onToggle={() => toggleGroup(item.key)}>
-                  {openGroups.has(item.key) &&
-                    item.loads.map((load) => (
-                      <LoadCard
-                        key={load.id}
-                        load={load}
-                        searchQuery={searchQuery}
-                        isFavorite={favoriteSet.has(load.id)}
-                        onToggleFavorite={onToggleFavorite}
-                        onUserBlocked={onUserBlocked}
-                        onCitySearch={onCitySearch}
-                      />
-                    ))}
-                </LoadGroupCard>
-              ) : (
-                <LoadCard
-                  load={item.load}
-                  searchQuery={searchQuery}
-                  isFavorite={favoriteSet.has(item.load.id)}
-                  onToggleFavorite={onToggleFavorite}
-                  onUserBlocked={onUserBlocked}
-                  onCitySearch={onCitySearch}
-                />
-              )}
+          {renderedItems.map((load, i) => (
+            <Fragment key={load.id}>
+              <LoadCard
+                load={load}
+                searchQuery={searchQuery}
+                isFavorite={favoriteSet.has(load.id)}
+                onToggleFavorite={onToggleFavorite}
+                onUserBlocked={onUserBlocked}
+                onCitySearch={onCitySearch}
+              />
               {(i + 1) % 8 === 0 && <AdSlot promoOnly className="col-span-full" />}
             </Fragment>
           ))}
