@@ -1,6 +1,6 @@
 "use client"
 
-import { Phone, MessageCircle, Star, Check, Ban, Zap, ChevronDown, Share2, Copy, Flag, MoreHorizontal, MapPin, Truck, Clock, Weight, Ruler, Repeat2, Calculator } from "lucide-react"
+import { Phone, MessageCircle, Star, Check, Ban, Zap, ChevronDown, Share2, Copy, Flag, MoreHorizontal, MapPin, Truck, Clock, Weight, Ruler, Repeat2 } from "lucide-react"
 import { Fragment, memo, useState } from "react"
 import { isMissing } from "@/lib/route"
 import { supabase } from "@/lib/supabase"
@@ -421,9 +421,6 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
               </div>
               <Place dot="bg-[#e5522f]" caption="Varış" label={highlightMatch(route.to, cleanQuery)} sub={load.districtOf?.[route.to]} align="right" onClick={onCitySearch ? () => onCitySearch(route.to) : undefined} />
             </div>
-            <button type="button" onClick={() => { try { localStorage.setItem("calc_prefill", JSON.stringify({ from: route.from, to: route.to })) } catch { /* depolama kapalı */ } window.dispatchEvent(new CustomEvent("nc:tab", { detail: "Sefer Hesapla" })) }} className="mt-3 flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-[#d9e2ec] bg-white text-[13px] font-bold text-[#122c4a] active:bg-[#f0f4f8]">
-              <Calculator className="size-4 text-[#e5522f]" /> Bu ilanı hesapla
-            </button>
           </div>
         ) : places.length > 0 ? (
           <div className="flex flex-wrap items-center gap-1.5">
