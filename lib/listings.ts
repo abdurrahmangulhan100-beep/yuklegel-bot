@@ -128,7 +128,7 @@ export function mapBotListing(item: DatabaseListing): Load {
     tonnage: a.tonnage,
     timing: a.timing,
     price: "",
-    urgent: Boolean(item.urgent),
+    urgent: Boolean(item.urgent) || /\bacil\b/.test(fold(`${item.cargo_detail ?? ""} ${item.company_name ?? ""}`)),
     time: timeAgo(item.created_at),
     createdAt: item.created_at,
     color: "bg-[#315d83]",
