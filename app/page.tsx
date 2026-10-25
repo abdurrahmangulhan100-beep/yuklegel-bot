@@ -39,6 +39,36 @@ const delayCutoff = (premium: boolean) =>
   premium ? null : new Date(Date.now() - FREE_DELAY_MINUTES * 60000).toISOString()
 const botCutoff = () => new Date(Date.now() - BOT_MAX_AGE_DAYS * 86400000).toISOString()
 
+// Kategori seçilince filtre sunucuda da uygulanır: yalnızca en yeni 60 ilanın içinden değil, tüm aktif ilanlar arasından seçilsin
+const CATEGORY_TERMS: Record<string, string[]> = {
+  Acil: ["acil"],
+  "Kırkayak": ["kırkayak"],
+  Kamyon: ["kamyon"],
+  Frigo: ["frigo"],
+  Damperli: ["damper", "danper", "kısa dorse"],
+  "13.60 Açık Dorse": ["açık"],
+  "Kapalı Dorse": ["tır", "tenteli", "kapalı", "perdeli", "dorse"],
+}
+const trVariants = (t: string) => {
+  const ascii = t.replace(/ı/g, "i").replace(/ş/g, "s").replace(/ğ/g, "g").replace(/ü/g, "u").replace(/ö/g, "o").replace(/ç/g, "c")
+  const out = new Set<string>()
+  for (const x of [t, ascii]) {
+    out.add(x)
+    out.add(x.toLocaleLowerCase("tr-TR"))
+    out.add(x.toLocaleUpperCase("tr-TR"))
+    out.add(x.toUpperCase())
+    out.add(x.charAt(0).toLocaleUpperCase("tr-TR") + x.slice(1))
+  }
+  return Array.from(out)
+}
+const categoryOr = (cat: string): { bot: string; user: string } | null => {
+  const terms = CATEGORY_TERMS[cat]
+  if (!terms) return null
+  const extra = cat === "Acil" ? ["urgent.eq.true"] : []
+  const mk = (fields: string[]) => [...extra, ...fields.flatMap((f) => terms.flatMap((t) => trVariants(t).map((v) => `${f}.ilike.%${v}%`)))].join(",")
+  return { bot: mk(["cargo_detail"]), user: mk(["cargo_detail", "message"]) }
+}
+
 // Araç filtresi: araç alanına ve ilan metnine bakar; "tir" gibi kısa kelimeler başka sözcüklerin içinde eşleşmesin diye kelime sınırı kullanır
 const matchesVehicle = (load: Load, filter: string) => {
   const blob = fold(`${load.vehicle} ${load.cargo}`)
@@ -79,6 +109,7 @@ export default function Page() {
   const hasLoadedRef = useRef(false)
   const reqIdRef = useRef(0)
   const pageSizeRef = useRef(PAGE_SIZE)
+  const activeFilterRef = useRef("Tümü")
   const currentUserIdRef = useRef<string | null>(null)
   const isPremiumRef = useRef(false) // premium doğrulanana kadar false: ücretsiz gibi (gecikmeli) davranır
 
@@ -260,6 +291,15 @@ export default function Page() {
         botReq = botReq.or(buildOr(bFields))
       }
 
+      // Kategori seçiliyse sunucuda da daralt ve daha geniş bir havuzdan çek
+      const cat = activeFilterRef.current
+      const catOr = cat !== "Tümü" ? categoryOr(cat) : null
+      if (catOr) {
+        userReq = userReq.or(catOr.user)
+        botReq = botReq.or(catOr.bot)
+      }
+      const effSize = catOr ? size * 3 : size
+
       // Kullanıcının kendi ilanları sayfalamadan bağımsız olarak her zaman gelsin
       const myId = currentUserIdRef.current
       const myReq: PromiseLike<{ data: any[] | null }> = (!s && myId)
@@ -267,8 +307,8 @@ export default function Page() {
         : Promise.resolve({ data: [] })
 
       const [userRes, botRes, myRes] = await Promise.all([
-        userReq.order("created_at", { ascending: false }).limit(size),
-        botReq.order("created_at", { ascending: false }).limit(size),
+        userReq.order("created_at", { ascending: false }).limit(effSize),
+        botReq.order("created_at", { ascending: false }).limit(effSize),
         myReq,
       ])
 
@@ -302,7 +342,7 @@ export default function Page() {
       // Aynı saha ilanı tekrar tekrar paylaşıldıysa tek karta indir
       const merged = dedupeLoads(sorted)
       setLoads((prev) => reuseLoads(prev, merged))
-      setHasMore((userRes.data?.length ?? 0) >= size || (botRes.data?.length ?? 0) >= size)
+      setHasMore((userRes.data?.length ?? 0) >= effSize || (botRes.data?.length ?? 0) >= effSize)
     } catch (err) {
       console.error("Veri çekme hatası:", err)
     } finally {
@@ -315,6 +355,15 @@ export default function Page() {
 
   useEffect(() => { setPageSize(PAGE_SIZE) }, [debouncedQuery])
   useEffect(() => { pageSizeRef.current = pageSize }, [pageSize])
+  const lastFilterRef = useRef("Tümü")
+  useEffect(() => {
+    activeFilterRef.current = activeFilter
+    if (lastFilterRef.current === activeFilter) return
+    lastFilterRef.current = activeFilter
+    if (isCheckingAuth) return
+    hasLoadedRef.current = false // kısa bir yükleniyor görünümü: boş sonuç ekranı yanıp sönmesin
+    fetchListings(queryRef.current, pageSizeRef.current)
+  }, [activeFilter, isCheckingAuth, fetchListings])
   useEffect(() => { currentUserIdRef.current = currentUserId }, [currentUserId])
   useEffect(() => { isPremiumRef.current = isPremium }, [isPremium])
 
