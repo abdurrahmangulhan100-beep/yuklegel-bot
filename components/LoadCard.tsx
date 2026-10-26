@@ -87,25 +87,7 @@ const highlightMatch = (text: string, query: string) => {
 
 
 // ── Ekranda okunaklı gösterim (veritabanındaki metne dokunulmaz) ──
-const KEEP_UPPER = new Set(["TIR", "KDV", "TİO", "TIO", "K1", "K2", "U1", "SRC", "TEL", "ABS", "WC", "CMR", "ADR"])
-const SMALL_WORDS = new Set(["ve", "da", "de", "dan", "den", "ile", "için", "veya", "ya"])
-const MAX_COLLAPSED_LINES = 4
-
-// Eski kayıtlarda satırlar " • " ile yapışık gelir: ekranda satırlara ayırırız.
-// Satırın tamamı BÜYÜK harfse okunaklı yazıma çeviririz; karışık harfli satıra dokunmayız.
-const prettifyLine = (line: string) => {
-  if (!/\p{L}/u.test(line) || /\p{Ll}/u.test(line)) return line
-  return line
-    .split(" ")
-    .map((w, i) => {
-      const up = w.toLocaleUpperCase("tr-TR")
-      if (KEEP_UPPER.has(up) || !/\p{L}/u.test(w)) return w
-      const low = w.toLocaleLowerCase("tr-TR")
-      if (i > 0 && SMALL_WORDS.has(low)) return low
-      return low.charAt(0).toLocaleUpperCase("tr-TR") + low.slice(1)
-    })
-    .join(" ")
-}
+const MAX_COLLAPSED_LINES = 5
 
 // Başka uygulama / kanal reklamı satırları ekranda gösterilmez (eski kayıtlar için)
 const AD_LINE = [
@@ -129,7 +111,6 @@ const toDisplayLines = (text: string) =>
     .split("\n")
     .map((l) => l.trim())
     .filter((l) => l && !isAdLine(l))
-    .map(prettifyLine)
 
 // 05321234567 -> 0532 123 45 67
 const formatPhone = (phone: string) => {
@@ -165,14 +146,11 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
   const hasPrice = Boolean(load.price) && load.price !== "₺0"
   const cargoClean = !isMissing(load.cargo) ? (isUserLoad ? load.cargo : hidePhones(load.cargo)) : ""
   const cargoText = cargoClean || "Yük detayı belirtilmedi."
-  const cargoLines = isUserLoad ? cargoText.split("\n") : toDisplayLines(cargoText)
-  const hiddenLines = cargoLines.slice(MAX_COLLAPSED_LINES)
-  const isLongCargo = hiddenLines.length > 0 || (isUserLoad && cargoText.length > 140)
-  // Arama, gizli satırlarda eşleşiyorsa o satırlar otomatik açılır
+  // Saha ilanı: WhatsApp mesajı olduğu gibi gösterilir (satırlar korunur); yalnızca reklam satırları ayıklanır
+  const cargoShown = isUserLoad ? cargoText : toDisplayLines(cargoText).join("\n")
+  const isLongCargo = cargoShown.split("\n").length > MAX_COLLAPSED_LINES || cargoShown.length > 260
   const qLow = searchQuery.trim().toLocaleLowerCase("tr-TR")
-  const hitHidden = Boolean(qLow) && hiddenLines.some((l) => l.toLocaleLowerCase("tr-TR").includes(qLow))
-  const showAll = expanded || hitHidden
-  const shownLines = showAll || !isLongCargo ? cargoLines : cargoLines.slice(0, MAX_COLLAPSED_LINES)
+  const showAll = expanded || (Boolean(qLow) && isLongCargo && cargoShown.toLocaleLowerCase("tr-TR").includes(qLow))
 
   // Şehir etiketleri. "Nereden → nereye" başlığı yok: saha ilanında ham mesaj gösterilir,
   // metinden bulunan şehirler dokunulabilir etiket olur. Formla açılan ilanlarda çıkış / varış etiketle belirtilir.
@@ -523,27 +501,21 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
 
         {/* Yük detayı */}
         <div>
-          <div className="divide-y divide-[#eef2f6] text-[13.5px] leading-[1.55] text-[#425b73]">
-            {shownLines.map((line, i) => (
-              <p
-                key={i}
-                className={cn(
-                  "break-words py-1.5 first:pt-0 last:pb-0",
-                  line.includes("→") && "font-semibold text-[#122c4a]",
-                  !showAll && "line-clamp-2"
-                )}
-              >
-                {highlightMatch(line, cleanQuery)}
-              </p>
-            ))}
-          </div>
-          {isLongCargo && !hitHidden && (
+          <p
+            className={cn(
+              "whitespace-pre-line break-words rounded-xl bg-[#f6f8fb] px-3 py-2.5 text-[13.5px] leading-[1.6] text-[#33485e]",
+              !showAll && "line-clamp-5"
+            )}
+          >
+            {highlightMatch(cargoShown, cleanQuery)}
+          </p>
+          {isLongCargo && !(showAll && !expanded) && (
             <button
               type="button"
               onClick={() => setExpanded((v) => !v)}
               className="mt-1 inline-flex items-center gap-1 py-1 text-xs font-semibold text-[#315d83]"
             >
-              {expanded ? "Daha az" : hiddenLines.length > 0 ? `+${hiddenLines.length} satır daha` : "Devamı"}
+              {expanded ? "Daha az" : "Devamı"}
               <ChevronDown className={cn("size-3.5", expanded && "rotate-180")} />
             </button>
           )}
