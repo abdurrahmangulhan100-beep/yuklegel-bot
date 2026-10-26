@@ -97,10 +97,12 @@ const AD_LINE = [
   /\b(?:kanalimiza|kanalimiz|bizi takip|abone ol\w*|takip edin)\b/,
   /\bilanlari\s+\d+\s+ilan\b/,
 ]
-const isAdLine = (line: string) => {
-  const n = line
+const foldText = (line: string) =>
+  line
     .normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/ı/g, "i").toLowerCase()
     .replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim()
+const isAdLine = (line: string) => {
+  const n = foldText(line)
   return AD_LINE.some((r) => r.test(n))
 }
 
@@ -149,6 +151,9 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
   // Saha ilanı: WhatsApp mesajı olduğu gibi gösterilir (satırlar korunur); yalnızca reklam satırları ayıklanır
   const cargoShown = isUserLoad ? cargoText : toDisplayLines(cargoText).join("\n")
   const isLongCargo = cargoShown.split("\n").length > MAX_COLLAPSED_LINES || cargoShown.length > 260
+  const companyName = (load.company ?? "").trim()
+  const companyUsable = !isUserLoad && companyName.length > 2 && !/whatsapp/i.test(companyName) && foldText(companyName) !== "nakliye agi" && foldText(companyName) !== "saha lojistik agi"
+  const companyLine = companyUsable && !foldText(cargoShown).includes(foldText(companyName)) ? companyName : ""
   const qLow = searchQuery.trim().toLocaleLowerCase("tr-TR")
   const showAll = expanded || (Boolean(qLow) && isLongCargo && cargoShown.toLocaleLowerCase("tr-TR").includes(qLow))
 
@@ -400,7 +405,7 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
             </div>
             <div className="min-w-0">
               <div className="truncate text-[14px] font-bold leading-tight text-[#122c4a]">
-                {highlightMatch(displayCompany, cleanQuery)}
+                {isUserLoad ? highlightMatch(displayCompany, cleanQuery) : "Saha İlanı"}
               </div>
               <div className="mt-1 flex items-center gap-1.5 text-[11.5px] text-[#8da0b2]">
                 <span
@@ -413,10 +418,12 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
                   {fresh && <span aria-hidden className={cn("size-1.5 rounded-full", fresh === "hot" ? "bg-emerald-500" : "bg-amber-500")} />}
                   {load.time}
                 </span>
-                <span className="text-[#cbd5e1]">•</span>
-                <span className={cn("truncate font-medium", isUserLoad ? "text-[#d64526]" : "text-[#3f7199]")}>
-                  {isUserLoad ? "Nakliye Cepte" : "Saha Ağı"}
-                </span>
+                {isUserLoad && (
+                  <>
+                    <span className="text-[#cbd5e1]">•</span>
+                    <span className="truncate font-medium text-[#d64526]">Nakliye Cepte</span>
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -501,14 +508,21 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
 
         {/* Yük detayı */}
         <div>
-          <p
-            className={cn(
-              "whitespace-pre-line break-words rounded-xl bg-[#f6f8fb] px-3 py-2.5 text-[13.5px] leading-[1.6] text-[#33485e]",
-              !showAll && "line-clamp-5"
+          <div className="rounded-xl bg-[#f6f8fb] px-3 py-2.5">
+            <p
+              className={cn(
+                "whitespace-pre-line break-words text-[13.5px] leading-[1.6] text-[#33485e]",
+                !showAll && "line-clamp-5"
+              )}
+            >
+              {highlightMatch(cargoShown, cleanQuery)}
+            </p>
+            {companyLine && (
+              <p className="mt-1.5 break-words text-[13px] font-semibold leading-snug text-[#122c4a]">
+                {highlightMatch(companyLine, cleanQuery)}
+              </p>
             )}
-          >
-            {highlightMatch(cargoShown, cleanQuery)}
-          </p>
+          </div>
           {isLongCargo && !(showAll && !expanded) && (
             <button
               type="button"
