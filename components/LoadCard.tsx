@@ -151,9 +151,6 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
   const cargoText = cargoClean || "Yük detayı belirtilmedi."
   // Saha ilanı: WhatsApp mesajı olduğu gibi gösterilir (satırlar korunur); yalnızca reklam satırları ayıklanır
   const cargoShown = isUserLoad ? cargoText : toDisplayLines(cargoText).join("\n")
-  const companyName = (load.company ?? "").trim()
-  const companyUsable = !isUserLoad && companyName.length > 2 && !/whatsapp/i.test(companyName) && foldText(companyName) !== "nakliye agi" && foldText(companyName) !== "saha lojistik agi"
-  const companyLine = companyUsable && !foldText(cargoShown).includes(foldText(companyName)) ? companyName : ""
 
   // Önizleme gerçekten kırpıldı mı? (satır kaydırmaları dahil, ekranda ölçülür)
   useEffect(() => {
@@ -530,11 +527,6 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
             >
               {highlightMatch(cargoShown, cleanQuery)}
             </p>
-            {companyLine && (
-              <p className="mt-1.5 break-words text-[13px] font-semibold leading-snug text-[#122c4a]">
-                {highlightMatch(companyLine, cleanQuery)}
-              </p>
-            )}
           </div>
           <button
             type="button"
@@ -581,7 +573,7 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
         <Sheet
           open={detailOpen}
           onClose={() => setDetailOpen(false)}
-          title={isUserLoad ? displayCompany : companyUsable ? companyName : "Saha İlanı"}
+          title={isUserLoad ? displayCompany : "Saha İlanı"}
           subtitle={load.time}
           footer={
             hasPhone ? (
@@ -629,7 +621,6 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
             )}
             <div className="rounded-xl bg-[#f6f8fb] px-3.5 py-3">
               <p className="whitespace-pre-line break-words text-[14.5px] leading-[1.65] text-[#33485e]">{cargoShown}</p>
-              {companyLine && <p className="mt-2 break-words text-[14px] font-semibold text-[#122c4a]">{companyLine}</p>}
             </div>
             {showMessage && <p className="text-xs italic leading-relaxed text-[#8da0b2]">{load.message}</p>}
           </div>
@@ -644,7 +635,7 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
           title={sheetView === "menu" ? "İlan işlemleri" : "İlanı bildir"}
           subtitle={
             sheetView === "menu"
-              ? cityText || displayCompany
+              ? cityText || (isUserLoad ? displayCompany : "Saha İlanı")
               : "Bildiriminiz incelenmek üzere ekibimize iletilir."
           }
           footer={
