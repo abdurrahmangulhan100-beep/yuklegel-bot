@@ -2,7 +2,7 @@
 
 import { hidePhones } from "@/lib/listings"
 import { Phone, MessageCircle, Star, Check, Ban, Zap, ChevronDown, Share2, Copy, Flag, MoreHorizontal, MapPin, Truck, Clock, Weight, Ruler, Repeat2 } from "lucide-react"
-import { Fragment, memo, useState } from "react"
+import { Fragment, memo, useEffect, useRef, useState } from "react"
 import { isMissing } from "@/lib/route"
 import { supabase } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
@@ -87,7 +87,6 @@ const highlightMatch = (text: string, query: string) => {
 
 
 // ── Ekranda okunaklı gösterim (veritabanındaki metne dokunulmaz) ──
-const MAX_COLLAPSED_LINES = 5
 
 // Başka uygulama / kanal reklamı satırları ekranda gösterilmez (eski kayıtlar için)
 const AD_LINE = [
@@ -124,7 +123,9 @@ const formatPhone = (phone: string) => {
 export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavorite = false, onToggleFavorite, onUserBlocked, onCitySearch }: LoadCardProps) {
   const { isPremium } = usePremium()
   const [copied, setCopied] = useState(false)
-  const [expanded, setExpanded] = useState(false)
+  const [detailOpen, setDetailOpen] = useState(false)
+  const [clamped, setClamped] = useState(false)
+  const textRef = useRef<HTMLParagraphElement>(null)
   const [isReportOpen, setIsReportOpen] = useState(false)
   const [sheetView, setSheetView] = useState<"menu" | "report">("menu")
   const [reportReason, setReportReason] = useState(REPORT_REASONS[0])
@@ -150,12 +151,21 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
   const cargoText = cargoClean || "Yük detayı belirtilmedi."
   // Saha ilanı: WhatsApp mesajı olduğu gibi gösterilir (satırlar korunur); yalnızca reklam satırları ayıklanır
   const cargoShown = isUserLoad ? cargoText : toDisplayLines(cargoText).join("\n")
-  const isLongCargo = cargoShown.split("\n").length > MAX_COLLAPSED_LINES || cargoShown.length > 260
   const companyName = (load.company ?? "").trim()
   const companyUsable = !isUserLoad && companyName.length > 2 && !/whatsapp/i.test(companyName) && foldText(companyName) !== "nakliye agi" && foldText(companyName) !== "saha lojistik agi"
   const companyLine = companyUsable && !foldText(cargoShown).includes(foldText(companyName)) ? companyName : ""
-  const qLow = searchQuery.trim().toLocaleLowerCase("tr-TR")
-  const showAll = expanded || (Boolean(qLow) && isLongCargo && cargoShown.toLocaleLowerCase("tr-TR").includes(qLow))
+
+  // Önizleme gerçekten kırpıldı mı? (satır kaydırmaları dahil, ekranda ölçülür)
+  useEffect(() => {
+    const el = textRef.current
+    if (!el) return
+    const check = () => setClamped(el.scrollHeight > el.clientHeight + 1)
+    check()
+    if (typeof ResizeObserver === "undefined") return
+    const ro = new ResizeObserver(check)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [cargoShown])
 
   // Şehir etiketleri. "Nereden → nereye" başlığı yok: saha ilanında ham mesaj gösterilir,
   // metinden bulunan şehirler dokunulabilir etiket olur. Formla açılan ilanlarda çıkış / varış etiketle belirtilir.
@@ -382,9 +392,14 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
 
   return (
     <article
+      onClick={(e) => {
+        // Butonlara / bağlantılara basış detayı açmaz; kartın geri kalanına dokunmak açar
+        if ((e.target as HTMLElement).closest("button, a")) return
+        setDetailOpen(true)
+      }}
       style={{ contentVisibility: "auto", containIntrinsicSize: "auto 280px" }}
       className={cn(
-        "relative overflow-hidden rounded-[22px] border bg-white transition-shadow",
+        "relative cursor-pointer overflow-hidden rounded-[22px] border bg-white transition-shadow",
         "shadow-[0_1px_2px_rgba(18,44,74,0.05),0_12px_28px_-18px_rgba(18,44,74,0.28)] hover:shadow-[0_2px_4px_rgba(18,44,74,0.06),0_18px_36px_-18px_rgba(18,44,74,0.34)]",
         load.urgent ? "border-[#f4cdbf]" : "border-[#e8edf3]"
       )}
@@ -510,10 +525,8 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
         <div>
           <div className="rounded-xl bg-[#f6f8fb] px-3 py-2.5">
             <p
-              className={cn(
-                "whitespace-pre-line break-words text-[13.5px] leading-[1.6] text-[#33485e]",
-                !showAll && "line-clamp-5"
-              )}
+              ref={textRef}
+              className="line-clamp-4 whitespace-pre-line break-words text-[13.5px] leading-[1.6] text-[#33485e]"
             >
               {highlightMatch(cargoShown, cleanQuery)}
             </p>
@@ -523,16 +536,14 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
               </p>
             )}
           </div>
-          {isLongCargo && !(showAll && !expanded) && (
-            <button
-              type="button"
-              onClick={() => setExpanded((v) => !v)}
-              className="mt-1 inline-flex items-center gap-1 py-1 text-xs font-semibold text-[#315d83]"
-            >
-              {expanded ? "Daha az" : "Devamı"}
-              <ChevronDown className={cn("size-3.5", expanded && "rotate-180")} />
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={() => setDetailOpen(true)}
+            className="mt-1 inline-flex items-center gap-1 py-1 text-xs font-semibold text-[#315d83]"
+          >
+            {clamped ? "Tamamını gör" : "İlan detayı"}
+            <ChevronDown className="size-3.5 -rotate-90" />
+          </button>
           {showMessage && (
             <p className="mt-1 line-clamp-2 text-xs italic leading-relaxed text-[#8da0b2]">
               {highlightMatch(load.message as string, cleanQuery)}
@@ -564,6 +575,66 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
           </p>
         )}
       </div>
+
+      {/* İlan detayı: tüm metin, güzergâh, özellikler ve iletişim */}
+      {detailOpen && (
+        <Sheet
+          open={detailOpen}
+          onClose={() => setDetailOpen(false)}
+          title={isUserLoad ? displayCompany : companyUsable ? companyName : "Saha İlanı"}
+          subtitle={load.time}
+          footer={
+            hasPhone ? (
+              <div className="grid grid-cols-2 gap-2.5">
+                <button onClick={handleCall} className="flex h-12 items-center justify-center gap-2 rounded-xl bg-[#122c4a] text-sm font-semibold text-white active:bg-[#1a3d68]">
+                  <Phone className="size-[17px]" />
+                  Ara
+                </button>
+                <button onClick={handleWhatsApp} className="flex h-12 items-center justify-center gap-2 rounded-xl bg-emerald-600 text-sm font-semibold text-white active:bg-emerald-700">
+                  <MessageCircle className="size-[17px]" />
+                  WhatsApp
+                </button>
+              </div>
+            ) : undefined
+          }
+        >
+          <div className="space-y-3 pt-1">
+            {route && (
+              <div className="flex items-center gap-2 rounded-2xl border border-[#e3ebf3] bg-[#f4f8fc] px-3.5 py-3 text-[15px] font-extrabold text-[#122c4a]">
+                <span className="min-w-0 truncate">{route.from}</span>
+                <span aria-hidden className="shrink-0 text-[#8da0b2]">→</span>
+                <span className="min-w-0 truncate">{route.to}</span>
+              </div>
+            )}
+            {!route && places.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {places.map((t) => (
+                  <span key={t.city} className="inline-flex items-center gap-1.5 rounded-full border border-[#e3ebf3] bg-[#f4f8fc] py-1.5 pl-2.5 pr-3 text-[13.5px] font-bold text-[#122c4a]">
+                    <MapPin aria-hidden className="size-3.5 shrink-0 text-[#d64526]" />
+                    {t.label}
+                  </span>
+                ))}
+              </div>
+            )}
+            {hasSpecs && (
+              <div className="flex flex-wrap items-center gap-1.5">
+                {load.urgent && <Tag tone="bg-[#e5522f] text-white"><Zap className="size-3 fill-white" />ACİL</Tag>}
+                {load.timing && <Tag tone="bg-emerald-50 text-emerald-700" icon={<Clock className="size-3" />}>{load.timing}</Tag>}
+                {hasVehicle && <Tag tone="bg-[#eef3f8] text-[#2c4a66]">{load.vehicle}</Tag>}
+                {load.trailer && !/13[.,]60/.test(load.vehicle ?? "") && <Tag tone="bg-[#eef3f8] text-[#2c4a66]" icon={<Ruler className="size-3" />}>{load.trailer}</Tag>}
+                {load.tonnage && <Tag tone="bg-[#eef3f8] text-[#2c4a66]" icon={<Weight className="size-3" />}>{load.tonnage}</Tag>}
+                {hasDistance && <Tag tone="bg-[#f1f5f9] text-[#3c566e]">{load.distance}</Tag>}
+                {hasPrice && <Tag tone="bg-emerald-600 text-white">{load.price}</Tag>}
+              </div>
+            )}
+            <div className="rounded-xl bg-[#f6f8fb] px-3.5 py-3">
+              <p className="whitespace-pre-line break-words text-[14.5px] leading-[1.65] text-[#33485e]">{cargoShown}</p>
+              {companyLine && <p className="mt-2 break-words text-[14px] font-semibold text-[#122c4a]">{companyLine}</p>}
+            </div>
+            {showMessage && <p className="text-xs italic leading-relaxed text-[#8da0b2]">{load.message}</p>}
+          </div>
+        </Sheet>
+      )}
 
       {/* İşlem menüsü / şikayet (sadece açıkken oluşturulur) */}
       {isReportOpen && (
