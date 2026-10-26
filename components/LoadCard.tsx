@@ -85,6 +85,52 @@ const highlightMatch = (text: string, query: string) => {
   })
 }
 
+
+// ── Ekranda okunaklı gösterim (veritabanındaki metne dokunulmaz) ──
+const KEEP_UPPER = new Set(["TIR", "KDV", "TİO", "TIO", "K1", "K2", "U1", "SRC", "TEL", "ABS", "WC", "CMR", "ADR"])
+const SMALL_WORDS = new Set(["ve", "da", "de", "dan", "den", "ile", "için", "veya", "ya"])
+const MAX_COLLAPSED_LINES = 4
+
+// Eski kayıtlarda satırlar " • " ile yapışık gelir: ekranda satırlara ayırırız.
+// Satırın tamamı BÜYÜK harfse okunaklı yazıma çeviririz; karışık harfli satıra dokunmayız.
+const prettifyLine = (line: string) => {
+  if (!/\p{L}/u.test(line) || /\p{Ll}/u.test(line)) return line
+  return line
+    .split(" ")
+    .map((w, i) => {
+      const up = w.toLocaleUpperCase("tr-TR")
+      if (KEEP_UPPER.has(up) || !/\p{L}/u.test(w)) return w
+      const low = w.toLocaleLowerCase("tr-TR")
+      if (i > 0 && SMALL_WORDS.has(low)) return low
+      return low.charAt(0).toLocaleUpperCase("tr-TR") + low.slice(1)
+    })
+    .join(" ")
+}
+
+// Başka uygulama / kanal reklamı satırları ekranda gösterilmez (eski kayıtlar için)
+const AD_LINE = [
+  /\bgetir nakliye\b|\bucretsiz indir\w*|\bdiger ilanlar icin\b|\b(?:google play|play store|app store|apk)\b/,
+  /^(?:android|ios|iphone)(?: (?:android|ios|iphone))*$/,
+  /\buygulama\w*\b.{0,25}\b(?:indir\w*|yukle\w*)\b|\bindir\w*\b.{0,20}\b(?:android|ios)\b/,
+  /\b(?:kanalimiza|kanalimiz|bizi takip|abone ol\w*|takip edin)\b/,
+  /\bilanlari\s+\d+\s+ilan\b/,
+]
+const isAdLine = (line: string) => {
+  const n = line
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/ı/g, "i").toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim()
+  return AD_LINE.some((r) => r.test(n))
+}
+
+const toDisplayLines = (text: string) =>
+  text
+    .replace(/[ \t]+•[ \t]+/g, "\n")
+    .replace(/^•\s*/, "")
+    .split("\n")
+    .map((l) => l.trim())
+    .filter((l) => l && !isAdLine(l))
+    .map(prettifyLine)
+
 // 05321234567 -> 0532 123 45 67
 const formatPhone = (phone: string) => {
   const d = phone.replace(/\D/g, "")
@@ -119,7 +165,14 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
   const hasPrice = Boolean(load.price) && load.price !== "₺0"
   const cargoClean = !isMissing(load.cargo) ? (isUserLoad ? load.cargo : hidePhones(load.cargo)) : ""
   const cargoText = cargoClean || "Yük detayı belirtilmedi."
-  const isLongCargo = cargoText.length > 140 || cargoText.split("\n").length > 3
+  const cargoLines = isUserLoad ? cargoText.split("\n") : toDisplayLines(cargoText)
+  const hiddenLines = cargoLines.slice(MAX_COLLAPSED_LINES)
+  const isLongCargo = hiddenLines.length > 0 || (isUserLoad && cargoText.length > 140)
+  // Arama, gizli satırlarda eşleşiyorsa o satırlar otomatik açılır
+  const qLow = searchQuery.trim().toLocaleLowerCase("tr-TR")
+  const hitHidden = Boolean(qLow) && hiddenLines.some((l) => l.toLocaleLowerCase("tr-TR").includes(qLow))
+  const showAll = expanded || hitHidden
+  const shownLines = showAll || !isLongCargo ? cargoLines : cargoLines.slice(0, MAX_COLLAPSED_LINES)
 
   // Şehir etiketleri. "Nereden → nereye" başlığı yok: saha ilanında ham mesaj gösterilir,
   // metinden bulunan şehirler dokunulabilir etiket olur. Formla açılan ilanlarda çıkış / varış etiketle belirtilir.
@@ -470,16 +523,27 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
 
         {/* Yük detayı */}
         <div>
-          <p className={cn("whitespace-pre-line break-words text-[13.5px] leading-[1.6] text-[#425b73]", !expanded && "line-clamp-3")}>
-            {highlightMatch(cargoText, cleanQuery)}
-          </p>
-          {isLongCargo && (
+          <div className="divide-y divide-[#eef2f6] text-[13.5px] leading-[1.55] text-[#425b73]">
+            {shownLines.map((line, i) => (
+              <p
+                key={i}
+                className={cn(
+                  "break-words py-1.5 first:pt-0 last:pb-0",
+                  line.includes("→") && "font-semibold text-[#122c4a]",
+                  !showAll && "line-clamp-2"
+                )}
+              >
+                {highlightMatch(line, cleanQuery)}
+              </p>
+            ))}
+          </div>
+          {isLongCargo && !hitHidden && (
             <button
               type="button"
               onClick={() => setExpanded((v) => !v)}
-              className="mt-0.5 inline-flex items-center gap-1 py-1 text-xs font-semibold text-[#315d83]"
+              className="mt-1 inline-flex items-center gap-1 py-1 text-xs font-semibold text-[#315d83]"
             >
-              {expanded ? "Daha az" : "Devamı"}
+              {expanded ? "Daha az" : hiddenLines.length > 0 ? `+${hiddenLines.length} satır daha` : "Devamı"}
               <ChevronDown className={cn("size-3.5", expanded && "rotate-180")} />
             </button>
           )}
@@ -495,14 +559,14 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
           <div className="grid grid-cols-2 gap-2.5">
             <button
               onClick={handleCall}
-              className="flex h-[52px] items-center justify-center gap-2 rounded-2xl bg-[#122c4a] text-sm font-semibold text-white shadow-[0_6px_14px_-8px_rgba(18,44,74,0.7)] active:scale-[0.98] active:bg-[#1a3d68]"
+              className="flex h-11 items-center justify-center gap-2 rounded-xl bg-[#122c4a] text-sm font-semibold text-white shadow-[0_6px_14px_-8px_rgba(18,44,74,0.7)] active:scale-[0.98] active:bg-[#1a3d68]"
             >
               <Phone className="size-[17px]" />
               Ara
             </button>
             <button
               onClick={handleWhatsApp}
-              className="flex h-[52px] items-center justify-center gap-2 rounded-2xl bg-emerald-600 text-sm font-semibold text-white shadow-[0_6px_14px_-8px_rgba(5,150,105,0.8)] active:scale-[0.98] active:bg-emerald-700"
+              className="flex h-11 items-center justify-center gap-2 rounded-xl bg-emerald-600 text-sm font-semibold text-white shadow-[0_6px_14px_-8px_rgba(5,150,105,0.8)] active:scale-[0.98] active:bg-emerald-700"
             >
               <MessageCircle className="size-[17px]" />
               WhatsApp
