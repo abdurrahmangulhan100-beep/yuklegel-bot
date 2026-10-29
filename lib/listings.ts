@@ -27,12 +27,17 @@ type ProfileJoin = {
   authorized_person?: string
 }
 
+// Ekranda kutucuk (☐) olarak görünen her şeyi siler: tüm emoji/piktogramlar, bayraklar, renk tonu, görünmez/biçim karakterleri,
+// özel kullanım ve atanmamış kod noktaları. Rakamlara, ₺, Türkçe harflere ve satır sonlarına dokunmaz.
+const INVISIBLE_RE = /[\u20E3\uFE0E\uFE0F\u2060\uFFFC\uFFFD\p{Cf}\p{Co}\p{Cn}\p{Cs}]/gu // kelime içinde kalırsa bitişik silinir
+const SYMBOL_RE = /\p{Extended_Pictographic}|\p{Emoji_Modifier}|[\u{1F1E6}-\u{1F1FF}]|[\u25A0-\u25FF\u2190-\u21FF\u2B00-\u2BFF]/gu // yerine boşluk konur: "Konya➡️Ankara" birleşmesin
+const stripJunk = (t: string) => t.replace(INVISIBLE_RE, "").replace(SYMBOL_RE, " ")
+
 // Emoji/sembolleri temizler; ₺, tire, üç nokta ve Türkçe karakterlere dokunmaz
 export const cleanText = (text?: string | null) => {
   if (!text) return "-"
-  return text
+  return stripJunk(text)
     .replace(/[*_~`]/g, "")
-    .replace(/[\uD83C-\uD83E][\uDC00-\uDFFF]|[\u231A-\u23FF]|[\u2600-\u27BF]|[\u2B00-\u2BFF]|\uFE0F|\u200D/g, "")
     .replace(/\s+/g, " ")
     .trim()
 }
@@ -40,10 +45,9 @@ export const cleanText = (text?: string | null) => {
 // cleanText ile aynı temizlik, ama satır sonlarını korur (bot mesajı "ham" haliyle okunabilsin)
 export const cleanRaw = (text?: string | null) => {
   if (!text) return ""
-  return text
+  return stripJunk(text)
     .replace(/\r\n?/g, "\n")
     .replace(/[*_~`]/g, "")
-    .replace(/[\uD83C-\uD83E][\uDC00-\uDFFF]|[\u231A-\u23FF]|[\u2600-\u27BF]|[\u2B00-\u2BFF]|\uFE0F|\u200D/g, "")
     .replace(/[ \t\u00A0]+/g, " ")
     .replace(/ *\n */g, "\n")
     .replace(/\n{3,}/g, "\n\n")
