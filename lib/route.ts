@@ -331,12 +331,50 @@ export function stripPhones(text: string): string {
   return t.replace(/^[\s:.\-–,]+|[\s:.\-–,]+$/g, "")
 }
 
-/** "açık tır/dorse" veya "açık … 13.60" / "13.60 … açık" (sıra fark etmez). Kapalı/tenteli/perdeli geçiyorsa açık sayılmaz. f: fold edilmiş metin */
+/** "açık tır/dorse/kasa" veya "açık … 13.60" / "13.60 … açık" (sıra fark etmez). f: fold edilmiş metin */
+const OPEN_POS = /\bacik\s+(?:tir|dorse|kasa|tirlar)\b|\bacik\b\W+(?:\w+\W+){0,2}13[\s.,]?60\b|\b13[\s.,]?60\W+(?:\w+\W+){0,2}acik\b/
 const OPEN_DORSE_RE = /^(?![\s\S]*\b(?:kapali|tenteli|perdeli)\b)(?=[\s\S]*(?:\bacik\s+(?:tir|dorse)\b|\bacik\b\W+(?:\w+\W+){0,2}13[\s.,]?60\b|\b13[\s.,]?60\W+(?:\w+\W+){0,2}acik\b))/
-export const isOpenDorse = (f: string) => OPEN_DORSE_RE.test(f)
-export const isDamperli = (f: string) => /\bda[nm]per\w*/.test(f) || /\bkisa\s+dorse\b/.test(f)
-/** Kapalı Dorse (eski "Tır"): tır / tenteli / kapalı / perdeli / dorse; açık dorse ve damperli ilanlarla karışmaz */
-export const isClosedDorse = (f: string) => /\b(?:tir|tirlar|tenteli|kapali|perdeli|dorse)\b/.test(f) && !isOpenDorse(f) && !isDamperli(f)
+const DAMPER_POS = /\bda[nm]per\w*|\bkisa\s+dorse\b/
+const CLOSED_POS = /\b(?:kapali|tenteli|perdeli)\b/
+const CLOSED_WEAK = /\b(?:tir|tirlar|dorse)\b/ // yalnızca "tır" / "dorse" yazıyorsa (başka araç tipi yoksa) kapalı sayılır
+const FRIGO_POS = /\b(?:frigo\w*|termokin\w*|soguk\s+zincir)\b/
+const KIRKAYAK_POS = /\bkirkayak\b/
+const KAMYON_POS = /\bkamyon\b|\b(?:6|8|10|alti|sekiz|on)[\s.]*teker\b/
+const T1360 = /\b13[\s.,]?60\b/
+
+export type VehicleCategory = "Kırkayak" | "Frigo" | "Damperli" | "Açık Dorse" | "Kapalı Dorse" | "Kamyon"
+const CATEGORY_RULES: [VehicleCategory, RegExp][] = [
+  ["Kırkayak", KIRKAYAK_POS],
+  ["Frigo", FRIGO_POS],
+  ["Damperli", DAMPER_POS],
+  ["Açık Dorse", OPEN_POS],
+  ["Kapalı Dorse", CLOSED_POS],
+  ["Kamyon", KAMYON_POS],
+]
+
+/**
+ * Bir ilanın TEK kategorisi. Birden fazla araç geçiyorsa metinde en önce geçen kazanır (eşitlikte yukarıdaki sıra).
+ * 13.60 geçen ilan Damperli sayılmaz (damperli ilanlarda 13.60 dorse olmaz). f: fold edilmiş metin
+ */
+export function classifyVehicle(f: string): VehicleCategory | null {
+  const has1360 = T1360.test(f)
+  let best: VehicleCategory | null = null
+  let bestPos = Infinity
+  for (const [cat, re] of CATEGORY_RULES) {
+    if (cat === "Damperli" && has1360) continue
+    const m = re.exec(f)
+    if (m && m.index < bestPos) { best = cat; bestPos = m.index }
+  }
+  // Sadece "tır" / "dorse" yazan ilan = kapalı dorse; "tır açık dorse" gibi ifadelerde açık dorse ezilmesin
+  if (best === null || best === "Kamyon") {
+    const w = CLOSED_WEAK.exec(f)
+    if (w && w.index < bestPos) return "Kapalı Dorse"
+  }
+  return best
+}
+export const isOpenDorse = (f: string) => classifyVehicle(f) === "Açık Dorse"
+export const isDamperli = (f: string) => classifyVehicle(f) === "Damperli"
+export const isClosedDorse = (f: string) => classifyVehicle(f) === "Kapalı Dorse"
 
 const VEHICLE_RULES: [RegExp, (m: RegExpMatchArray) => string][] = [
   [/\bkirkayak\b/, () => "Kırkayak"],
@@ -359,6 +397,10 @@ const VEHICLE_RULES: [RegExp, (m: RegExpMatchArray) => string][] = [
 ]
 
 function inferVehicle(f: string): string | undefined {
+  // Kart etiketi ile kategori filtresi aynı kuralı kullanır (kartta görünen araç = girilen kategori)
+  const cat = classifyVehicle(f)
+  if (cat === "Kırkayak" || cat === "Frigo" || cat === "Damperli" || cat === "Kapalı Dorse") return cat
+  if (cat === "Açık Dorse") return T1360.test(f) ? "13.60 Açık Dorse" : "Açık Dorse"
   for (const [re, label] of VEHICLE_RULES) {
     const m = f.match(re)
     if (m) return label(m)
