@@ -10,7 +10,7 @@ import { supabase } from "@/lib/supabase"
 import { signOutClean } from "@/lib/push"
 import { Load } from "@/components/LoadCard"
 import { mapUserListing, mapBotListing, dedupeLoads, reuseLoads, type DatabaseListing } from "@/lib/listings"
-import { fold, isMissing, isOpenDorse, isDamperli, isClosedDorse } from "@/lib/route"
+import { fold, isMissing, classifyVehicle } from "@/lib/route"
 import { ListingsView } from "@/components/views/ListingsView"
 import { TripsView } from "@/components/views/TripsView"
 import { CalculatorView } from "@/components/views/CalculatorView"
@@ -43,8 +43,8 @@ const botCutoff = () => new Date(Date.now() - BOT_MAX_AGE_DAYS * 86400000).toISO
 const CATEGORY_TERMS: Record<string, string[]> = {
   Acil: ["acil"],
   "Kırkayak": ["kırkayak"],
-  Kamyon: ["kamyon"],
-  Frigo: ["frigo"],
+  Kamyon: ["kamyon", "teker"],
+  Frigo: ["frigo", "termokin", "soğuk zincir"],
   Damperli: ["damper", "danper", "kısa dorse"],
   "13.60 Açık Dorse": ["açık"],
   "Kapalı Dorse": ["tır", "tenteli", "kapalı", "perdeli", "dorse"],
@@ -69,15 +69,15 @@ const categoryOr = (cat: string): { bot: string; user: string } | null => {
   return { bot: mk(["cargo_detail"]), user: mk(["cargo_detail", "message"]) }
 }
 
-// Araç filtresi: araç alanına ve ilan metnine bakar; "tir" gibi kısa kelimeler başka sözcüklerin içinde eşleşmesin diye kelime sınırı kullanır
+// Araç filtresi: her ilan tek kategoriye girer (lib/route.ts classifyVehicle); kategoriler birbirine karışmaz
+const FILTER_TO_CATEGORY: Record<string, string> = {
+  "Kırkayak": "Kırkayak", Frigo: "Frigo", Damperli: "Damperli", Kamyon: "Kamyon",
+  "13.60 Açık Dorse": "Açık Dorse", "Kapalı Dorse": "Kapalı Dorse",
+}
 const matchesVehicle = (load: Load, filter: string) => {
-  const blob = fold(`${load.vehicle} ${load.cargo}`)
-  // Kategoriler birbirine karışmaz: açık dorse / damperli / kapalı dorse ayrı kurallarla ayrılır
-  if (filter === "Damperli") return isDamperli(blob)
-  if (filter === "13.60 Açık Dorse") return isOpenDorse(blob)
-  if (filter === "Kapalı Dorse") return isClosedDorse(blob)
-  const word = fold(filter).replace(/[^a-z0-9 ]/g, "")
-  return new RegExp(`\\b${word}\\b`).test(blob)
+  const want = FILTER_TO_CATEGORY[filter]
+  if (!want) return true
+  return classifyVehicle(fold(`${load.vehicle} ${load.cargo} ${load.message ?? ""}`)) === want
 }
 const GUEST_BLOCKED_TABS = ["Favorilerim", "Seferlerim", "Gelir Gider", "Şirket Profili", "Premium"]
 
