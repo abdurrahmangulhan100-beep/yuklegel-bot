@@ -98,7 +98,7 @@ export async function fetchSubscription(token: string): Promise<PlayResult> {
 }
 
 /** Onaylanmamış aboneliği onayla (3 gün içinde yapılmazsa Google otomatik iade eder) */
-export async function acknowledge(token: string, access: string): Promise<void> {
+export async function acknowledge(token: string, access: string): Promise<boolean> {
   const res = await fetch(
     `${API_BASE}/purchases/subscriptions/${SKU}/tokens/${encodeURIComponent(token)}:acknowledge`,
     {
@@ -107,5 +107,9 @@ export async function acknowledge(token: string, access: string): Promise<void> 
       body: "{}",
     },
   )
-  if (!res.ok) console.error("acknowledge başarısız:", res.status, await res.text().catch(() => ""))
+  if (!res.ok) {
+    console.error("acknowledge başarısız:", res.status, await res.text().catch(() => ""))
+    return false
+  }
+  return true
 }
