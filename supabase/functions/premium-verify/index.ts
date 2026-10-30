@@ -9,19 +9,15 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || ""
 const ANON = Deno.env.get("SUPABASE_ANON_KEY") || ""
 const SERVICE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || ""
 
-const ALLOWED_ORIGINS = [
-  "https://nakliyecepte.online",
-  "https://www.nakliyecepte.online",
-  "http://localhost:3000",
-]
-
-function corsHeaders(req: Request) {
-  const origin = req.headers.get("origin") || ""
+// CORS: bu uç nokta çerez değil, Authorization (Supabase JWT) ile korunur; kaynak (origin) kısıtı güvenlik sağlamaz.
+// Eskiden yalnızca nakliyecepte.online izinliydi: uygulama başka bir adresten (ör. *.workers.dev) açılınca tarayıcı isteği
+// engelliyor ve kullanıcı satın alma/doğrulama sırasında "Failed to fetch" görüyordu.
+function corsHeaders(_req: Request) {
   return {
-    "Access-Control-Allow-Origin": ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0],
+    "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Headers": "authorization, content-type, apikey, x-client-info",
     "Access-Control-Allow-Methods": "POST, OPTIONS",
-    "Vary": "Origin",
+    "Access-Control-Max-Age": "86400",
   }
 }
 
@@ -83,8 +79,12 @@ Deno.serve(async (req: Request) => {
     const ev = evaluate(play.sub)
     if (!ev) return json(req, { error: "Ürün eşleşmedi" }, 400)
 
-    // 5) Onaylanmamışsa onayla
-    if (ev.needsAck) await acknowledge(token, play.access)
+    // 5) Onaylanmamışsa onayla. Onay 3 gün içinde yapılmazsa Google aboneliği otomatik İADE EDER ve Premium kendiliğinden kaybolur.
+    //    Bu yüzden onay başarısızsa Premium vermeyiz; kullanıcı "Satın alımı geri yükle" ile (ya da uygulamayı yeniden açınca) tekrar dener.
+    if (ev.needsAck) {
+      const acked = await acknowledge(token, play.access)
+      if (!acked) return json(req, { error: "Satın alma onaylanamadı. Birkaç dakika sonra 'Satın alımı geri yükle'ye dokunun." }, 502)
+    }
 
     // 6) Kaydet (sadece service role yazabilir)
     const { error: upErr } = await admin.from("subscriptions").upsert(
