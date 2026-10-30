@@ -246,3 +246,61 @@ export async function sendTestPush(): Promise<{ ok: boolean; message: string }> 
     return { ok: false, message: "İnternet bağlantısı yok." }
   }
 }
+
+export type PushDiagRow = { label: string; ok: boolean | null; detail?: string }
+
+/**
+ * "Bildirim gelmiyor" sorununun nedenini ekranda gösterir (DevTools gerekmez).
+ * ok: true = sorun yok, false = sorun BURADA, null = bilgi / kontrol edilemedi.
+ * Hiçbir şeyi değiştirmez; yalnızca okur (sunucu kontrolü 1 hafif "ping" çağrısıdır).
+ */
+export async function diagnosePush(): Promise<PushDiagRow[]> {
+  const rows: PushDiagRow[] = []
+  const add = (label: string, ok: boolean | null, detail?: string) => rows.push({ label, ok, detail })
+  try {
+    const supported = pushSupported()
+    add("Cihaz bildirimi destekliyor", supported, supported ? undefined : "Tarayıcı/uygulama Web Push desteklemiyor (iPhone'da uygulama ana ekrana eklenmeli).")
+    if (!supported) return rows
+
+    add("Bildirim anahtarı (VAPID) sitede tanımlı", !!VAPID_PUBLIC_KEY, VAPID_PUBLIC_KEY ? undefined : "NEXT_PUBLIC_VAPID_PUBLIC_KEY Cloudflare Build variables'ta yok; siteyi yeniden yayınlayın.")
+
+    const perm = Notification.permission
+    add("Bildirim izni", perm === "granted", `durum: ${perm}` + (perm !== "granted" ? " — Telefon ayarları > Uygulamalar > Nakliye Cepte > Bildirimler açık olmalı." : ""))
+
+    const standalone = typeof window !== "undefined" && (window.matchMedia?.("(display-mode: standalone)").matches || document.referrer.startsWith("android-app://"))
+    add("Çalışma biçimi", null, standalone ? "uygulama / ana ekran" : "tarayıcı sekmesi")
+
+    const uid = await sessionUserId()
+    add("Giriş yapılmış", !!uid, uid ? undefined : "Bildirimler için giriş gerekir.")
+
+    const reg = await getRegistration()
+    add("Service worker çalışıyor", !!reg?.active, reg ? (reg.active ? undefined : "kayıtlı ama henüz aktif değil; uygulamayı kapatıp açın") : "kayıt yok (yalnızca yayındaki sürümde çalışır)")
+
+    const sub = await reg?.pushManager.getSubscription()
+    add("Cihaz bildirim adresi (tarayıcıda)", !!sub, sub ? undefined : "Abonelik oluşmamış: \"Aç\" düğmesine tekrar dokunun.")
+
+    if (sub && uid && supabase) {
+      const { data, error } = await supabase.from("push_subscriptions").select("id").eq("endpoint", sub.endpoint).maybeSingle()
+      if (error) add("Sunucuda bu hesaba kayıtlı", null, "Kontrol edilemedi: " + error.message)
+      else add("Sunucuda bu hesaba kayıtlı", !!data, data ? undefined : "Tarayıcıda adres var ama sunucuda bu hesapta yok (kayıt yazılamadı ya da okuma izni yok).")
+    }
+
+    if (supabase && uid) {
+      const { data: { session } } = await supabase.auth.getSession()
+      try {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/notify-listing`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token}`, apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "" },
+          body: JSON.stringify({ ping: true }),
+        })
+        const j = await res.json().catch(() => ({}))
+        add("Bildirim sunucusu (edge function) yanıt veriyor", res.ok && j.ok === true, res.ok ? `sürüm: ${j.version ?? "?"}` : `HTTP ${res.status}`)
+      } catch {
+        add("Bildirim sunucusu (edge function) yanıt veriyor", false, "Ulaşılamadı (internet / CORS).")
+      }
+    }
+  } catch (e) {
+    add("Tanılama çalışırken hata", false, (e as Error)?.message || String(e))
+  }
+  return rows
+}
