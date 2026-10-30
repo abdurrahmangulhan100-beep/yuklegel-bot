@@ -101,7 +101,9 @@ export async function getPushState(): Promise<PushState> {
   try {
     const reg = await getRegistration()
     const sub = await reg?.pushManager.getSubscription()
-    if (!sub || Notification.permission !== "granted") return "off"
+    // Not: bazı uygulama kabuklarında (TWA / Play Store uygulaması) izin verilmiş olsa bile Notification.permission "default" döner.
+    // Abonelik izin olmadan oluşamayacağı için "abonelik var" = izin alınmış sayılır; yalnızca açıkça "denied" engel.
+    if (!sub) return "off"
     // Tarayıcıda abonelik olması yetmez: bu cihaz GİRİŞ YAPILAN hesaba kayıtlı olmalı
     if ((await sessionUserId()) && (await ownsEndpoint(sub.endpoint)) === false) return "off"
     return "on"
@@ -117,7 +119,7 @@ export async function enablePush(): Promise<{ ok: boolean; error?: string }> {
   if (!supabase || !(await supabase.auth.getSession()).data.session) return { ok: false, error: "Bildirimler için giriş yapın." }
 
   const permission = await Notification.requestPermission()
-  if (permission !== "granted") return { ok: false, error: "Bildirim izni verilmedi." }
+  if (permission === "denied") return { ok: false, error: "Bildirim izni verilmedi. Telefon ayarlarından Nakliye Cepte için bildirimleri açın." }
 
   try {
     const reg = await getRegistration()
@@ -194,7 +196,7 @@ let lastSync = { uid: "", at: 0 }
 export async function syncPush(force = false, entitled = true): Promise<void> {
   try {
     if (!pushSupported() || !VAPID_PUBLIC_KEY || !supabase) return
-    if (Notification.permission !== "granted") return
+    if (Notification.permission === "denied") return
     const uid = await sessionUserId()
     if (!uid) return
     if (!force && lastSync.uid === uid && Date.now() - lastSync.at < 10 * 60_000) return
@@ -264,9 +266,6 @@ export async function diagnosePush(): Promise<PushDiagRow[]> {
 
     add("Bildirim anahtarı (VAPID) sitede tanımlı", !!VAPID_PUBLIC_KEY, VAPID_PUBLIC_KEY ? undefined : "NEXT_PUBLIC_VAPID_PUBLIC_KEY Cloudflare Build variables'ta yok; siteyi yeniden yayınlayın.")
 
-    const perm = Notification.permission
-    add("Bildirim izni", perm === "granted", `durum: ${perm}` + (perm !== "granted" ? " — Telefon ayarları > Uygulamalar > Nakliye Cepte > Bildirimler açık olmalı." : ""))
-
     const standalone = typeof window !== "undefined" && (window.matchMedia?.("(display-mode: standalone)").matches || document.referrer.startsWith("android-app://"))
     add("Çalışma biçimi", null, standalone ? "uygulama / ana ekran" : "tarayıcı sekmesi")
 
@@ -278,6 +277,11 @@ export async function diagnosePush(): Promise<PushDiagRow[]> {
 
     const sub = await reg?.pushManager.getSubscription()
     add("Cihaz bildirim adresi (tarayıcıda)", !!sub, sub ? undefined : "Abonelik oluşmamış: \"Aç\" düğmesine tekrar dokunun.")
+
+    const perm = Notification.permission
+    if (perm === "granted") add("Bildirim izni", true, "durum: granted")
+    else if (perm === "default" && sub) add("Bildirim izni", null, "durum: default — uygulama kabuğunda normal; abonelik var, yani izin alınmış. Bildirim yine de görünmezse telefon ayarları > Uygulamalar > Nakliye Cepte > Bildirimler açık olmalı.")
+    else add("Bildirim izni", false, `durum: ${perm} — Telefon ayarları > Uygulamalar > Nakliye Cepte > Bildirimler açık olmalı; sonra "Aç"a dokunun.`)
 
     if (sub && uid && supabase) {
       const { data, error } = await supabase.from("push_subscriptions").select("id").eq("endpoint", sub.endpoint).maybeSingle()
@@ -295,8 +299,8 @@ export async function diagnosePush(): Promise<PushDiagRow[]> {
         })
         const j = await res.json().catch(() => ({}))
         add("Bildirim sunucusu (edge function) yanıt veriyor", res.ok && j.ok === true, res.ok ? `sürüm: ${j.version ?? "?"}` : `HTTP ${res.status}`)
-      } catch {
-        add("Bildirim sunucusu (edge function) yanıt veriyor", false, "Ulaşılamadı (internet / CORS).")
+      } catch (e) {
+        add("Bildirim sunucusu (edge function) yanıt veriyor", false, `Ulaşılamadı (${(e as Error)?.message || "ağ hatası"}). Sayfa adresi: ${window.location.origin}`)
       }
     }
   } catch (e) {
