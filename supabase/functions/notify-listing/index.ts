@@ -7,7 +7,7 @@
 // NOT: ../_shared kullanır -> Supabase CLI ile deploy edin.
 import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2"
 import webpush from "npm:web-push@3.6.7"
-import { analyzeListing, fold } from "../_shared/route.ts"
+import { analyzeListing, classifyListing, fold } from "../_shared/route.ts"
 
 declare const EdgeRuntime: { waitUntil(p: Promise<unknown>): void } | undefined
 
@@ -19,7 +19,7 @@ const VAPID_PRIVATE = Deno.env.get("VAPID_PRIVATE_KEY") || ""
 const VAPID_SUBJECT = Deno.env.get("VAPID_SUBJECT") || ""
 const WEBHOOK_SECRET = Deno.env.get("NOTIFY_WEBHOOK_SECRET") || ""
 
-const VERSION = "2026-10-23-premium-gate"
+const VERSION = "2026-10-30-kategori-ve-kuyruk-onarimi"
 const FLUSH_DELAY_MS = 62_000 // 003/006 SQL'deki 1 dakikalık throttle penceresi + pay
 
 const ALLOWED_ORIGINS = ["https://nakliyecepte.online", "https://www.nakliyecepte.online", "http://localhost:3000"]
@@ -103,7 +103,9 @@ async function premiumSet(db: SupabaseClient, userIds: string[]): Promise<Set<st
     .select("user_id")
     .in("user_id", userIds)
     .in("status", ["active", "grace", "canceled"])
-    .gt("expires_at", now) // expires_at boşsa Premium SAYILMAZ (eski kodda boş süre = sınırsız Premium idi)
+    // SQL is_premium() ve uygulamadaki isEntitled ile AYNI kural: süresi bitmemiş ya da elle verilmiş (süresiz) kayıt.
+    // (Eskiden süresiz kayıt burada reddediliyordu: ekranda Premium görünüp bildirim hiç gelmeyen kullanıcı oluşuyordu.)
+    .or(`expires_at.is.null,expires_at.gt.${now}`)
   if (error) { console.error("premiumSet hatası:", error.message); return out }
   for (const r of (data || []) as { user_id: string }[]) out.add(r.user_id)
   return out
@@ -128,6 +130,9 @@ async function subsOf(db: SupabaseClient, userIds: string[]): Promise<Map<string
   }
   return map
 }
+
+/** NotificationSettings araç seçenekleri -> classifyListing kategorisi */
+const ROUTE_VEHICLE_CATEGORY: Record<string, string> = { "13.60 Açık Dorse": "Açık Dorse" }
 
 const PHONE_RE = /(?:\+?90[\s.\-]*)?0?[\s.\-]*\(?5\d{2}\)?[\s.\-]*\d{3}[\s.\-]*\d{2}[\s.\-]*\d{2}/
 
@@ -172,7 +177,8 @@ async function handleListing(db: SupabaseClient, table: string, rec: Rec) {
 
   const rawText = `${rec.cargo_detail || ""} ${rec.message || ""}`
   const urgent = rec.urgent === true || /\bacil\b/.test(fold(rawText))
-  const vehicleTokens = a.vehicle ? fold(a.vehicle).split(/\s+/).filter(Boolean) : []
+  // Bildirim araç filtresi, ilan listesindeki kategori filtresiyle AYNI sınıflandırmayı kullanır (kullanıcı ilanında form alanı, saha ilanında metin)
+  const category = classifyListing(rec.vehicle_type, rawText, isUser)
 
   const matches = (routes as Route[]).filter((r) => {
     if (rec.user_id && r.user_id === rec.user_id) return false // kendi ilanı için bildirim yok
@@ -183,9 +189,10 @@ async function handleListing(db: SupabaseClient, table: string, rec: Rec) {
       : fromCity === r.from_city || toCity === r.from_city
     if (!ok) return false
     if (r.urgent_only && !urgent) return false
-    if (r.vehicle && vehicleTokens.length) {
-      const want = fold(r.vehicle).split(/\s+/).filter(Boolean)
-      if (!want.every((w) => vehicleTokens.includes(w))) return false
+    // Araç tipi ilanda anlaşılamıyorsa ilan kaçırılmasın (bildirim gider); anlaşılıyorsa kategori tutmalı
+    if (r.vehicle && category) {
+      const want = ROUTE_VEHICLE_CATEGORY[r.vehicle] ?? r.vehicle
+      if (want !== category) return false
     }
     return true
   })
@@ -227,7 +234,7 @@ async function handleListing(db: SupabaseClient, table: string, rec: Rec) {
       await sendAll(db, list, {
         title: (urgent ? "ACİL · " : "") + (total > 1 ? `${total} yeni ilan · ${route.from_city}` : place),
         body: bodyText,
-        url: "/",
+        url: "/?tab=ilanlar",
         tag: `route-${route.id}`,
         phone: total > 1 ? "" : phone,
       })
@@ -246,7 +253,7 @@ async function flushLater(db: SupabaseClient, route: Route) {
   await sendAll(db, subs, {
     title: `${n} yeni ilan · ${route.from_city}`,
     body: "Yeni ilanları görmek için dokunun.",
-    url: "/",
+    url: "/?tab=ilanlar",
     tag: `route-${route.id}`,
   })
 }
