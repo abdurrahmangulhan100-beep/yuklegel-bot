@@ -1,12 +1,12 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
-import { Bell, BellOff, Crown, Lock, Pencil, Trash2 } from "lucide-react"
+import { Bell, BellOff, Check, Crown, Lock, Pencil, Search, Trash2, X } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { usePremium } from "@/components/PremiumProvider"
 import { openPremium } from "@/lib/premium"
 import { CITY_NAMES } from "@/lib/route"
-import { disablePush, enablePush, getPushState, sendTestPush, type PushState } from "@/lib/push"
+import { diagnosePush, disablePush, enablePush, getPushState, sendTestPush, type PushDiagRow, type PushState } from "@/lib/push"
 
 type Direction = "from" | "to" | "both"
 type Route = { id: string; from_city: string | null; vehicle: string | null; urgent_only: boolean; direction: Direction }
@@ -36,6 +36,7 @@ export function NotificationSettings() {
   const [direction, setDirection] = useState<Direction>("from")
   const [vehicle, setVehicle] = useState("")
   const [urgentOnly, setUrgentOnly] = useState(false)
+  const [diag, setDiag] = useState<PushDiagRow[] | null>(null)
 
   const loadRoute = useCallback(async () => {
     if (!supabase) return
@@ -77,8 +78,15 @@ export function NotificationSettings() {
       setMsg({ text: "Bu cihazda bildirimler kapatıldı.", ok: true })
     } else {
       const r = await enablePush()
-      setState(await getPushState())
-      setMsg(r.ok ? { text: "Bildirimler bu cihazda açıldı.", ok: true } : { text: r.error || "Açılamadı.", ok: false })
+      const st = await getPushState()
+      setState(st)
+      if (!r.ok) setMsg({ text: r.error || "Açılamadı.", ok: false })
+      else if (st === "on") setMsg({ text: "Bildirimler bu cihazda açıldı.", ok: true })
+      else {
+        // İzin alındı ama cihaz hesaba kayıtlı görünmüyor: "açıldı" demek yanıltıcı olurdu
+        setMsg({ text: "İzin verildi ancak bu cihaz hesabınıza kaydedilemedi. Aşağıdaki \"Sorun tespiti\" düğmesine dokunup sonucu bize iletin.", ok: false })
+        setDiag(await diagnosePush())
+      }
     }
     setBusy(false)
   }
@@ -128,6 +136,13 @@ export function NotificationSettings() {
     setRoutes(routes.filter((x) => x.id !== r.id))
     const { error } = await supabase.from("notification_routes").delete().eq("id", r.id)
     if (error) setRoutes(before)
+  }
+
+  const runDiag = async () => {
+    setBusy(true)
+    setDiag(null)
+    setDiag(await diagnosePush())
+    setBusy(false)
   }
 
   const sendTest = async () => {
@@ -276,15 +291,32 @@ export function NotificationSettings() {
         )}
       </div>
 
-      {on && (
-        <button
-          type="button"
-          onClick={sendTest}
-          disabled={busy}
-          className="h-10 w-full rounded-xl bg-[#f0f4f8] text-xs font-semibold text-[#122c4a] disabled:opacity-60"
-        >
-          Test bildirimi gönder
-        </button>
+      {pushUsable && (
+        <div className="grid grid-cols-2 gap-2">
+          <button type="button" onClick={sendTest} disabled={busy} className="h-10 rounded-xl bg-[#f0f4f8] text-xs font-semibold text-[#122c4a] disabled:opacity-60">
+            Test bildirimi gönder
+          </button>
+          <button type="button" onClick={runDiag} disabled={busy} className="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl bg-[#f0f4f8] text-xs font-semibold text-[#122c4a] disabled:opacity-60">
+            <Search className="size-3.5" /> Sorun tespiti
+          </button>
+        </div>
+      )}
+
+      {diag && (
+        <div className="space-y-1.5 rounded-xl border border-[#e4e9ef] bg-[#fafbfd] p-3">
+          <div className="text-[11px] font-bold uppercase tracking-wider text-[#8da0b2]">Tanılama sonucu</div>
+          {diag.map((r, i) => (
+            <div key={i} className="flex items-start gap-2 text-xs">
+              <span className={`mt-0.5 grid size-4 shrink-0 place-items-center rounded-full text-white ${r.ok === true ? "bg-[#1f9d55]" : r.ok === false ? "bg-[#d64526]" : "bg-[#8da0b2]"}`}>
+                {r.ok === true ? <Check className="size-3" /> : r.ok === false ? <X className="size-3" /> : <span className="text-[9px] font-bold">i</span>}
+              </span>
+              <span className="min-w-0 text-[#122c4a]">
+                <span className="font-semibold">{r.label}</span>
+                {r.detail && <span className="block break-words text-[#627d98]">{r.detail}</span>}
+              </span>
+            </div>
+          ))}
+        </div>
       )}
 
       {routes.length > 0 && !on && pushUsable && (
