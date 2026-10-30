@@ -10,7 +10,7 @@ import { supabase } from "@/lib/supabase"
 import { signOutClean } from "@/lib/push"
 import { Load } from "@/components/LoadCard"
 import { mapUserListing, mapBotListing, dedupeLoads, reuseLoads, type DatabaseListing } from "@/lib/listings"
-import { fold, isMissing, classifyVehicle } from "@/lib/route"
+import { isMissing, classifyListing } from "@/lib/route"
 import { ListingsView } from "@/components/views/ListingsView"
 import { TripsView } from "@/components/views/TripsView"
 import { CalculatorView } from "@/components/views/CalculatorView"
@@ -29,6 +29,7 @@ import { PremiumLock } from "@/components/PremiumLock"
 import { usePremium } from "@/components/PremiumProvider"
 import { AdSlot } from "@/components/AdSlot"
 import { FREE_DELAY_MINUTES, FREE_LIMITS, OPEN_PREMIUM_EVENT } from "@/lib/premium"
+import { OPEN_LISTINGS_EVENT } from "@/lib/push"
 
 const PAGE_SIZE = 60
 
@@ -44,9 +45,10 @@ const CATEGORY_TERMS: Record<string, string[]> = {
   Acil: ["acil"],
   "Kırkayak": ["kırkayak"],
   Kamyon: ["kamyon", "teker"],
+  Kamyonet: ["kamyonet", "panelvan", "panel van", "pikap", "pick up", "pickup"],
   Frigo: ["frigo", "termokin", "soğuk zincir"],
   Damperli: ["damper", "danper", "kısa dorse"],
-  "13.60 Açık Dorse": ["açık"],
+  "13.60 Açık Dorse": ["açık", "düz"],
   "Kapalı Dorse": ["tır", "tenteli", "kapalı", "perdeli", "dorse"],
 }
 const trVariants = (t: string) => {
@@ -66,18 +68,20 @@ const categoryOr = (cat: string): { bot: string; user: string } | null => {
   if (!terms) return null
   const extra = cat === "Acil" ? ["urgent.eq.true"] : []
   const mk = (fields: string[]) => [...extra, ...fields.flatMap((f) => terms.flatMap((t) => trVariants(t).map((v) => `${f}.ilike.%${v}%`)))].join(",")
-  return { bot: mk(["cargo_detail"]), user: mk(["cargo_detail", "message"]) }
+  // Kullanıcı ilanında araç tipi formdan seçilir ve metinde geçmeyebilir: vehicle_type sütunu da aranmalı
+  return { bot: mk(["cargo_detail"]), user: mk(["cargo_detail", "message", "vehicle_type"]) }
 }
 
 // Araç filtresi: her ilan tek kategoriye girer (lib/route.ts classifyVehicle); kategoriler birbirine karışmaz
 const FILTER_TO_CATEGORY: Record<string, string> = {
-  "Kırkayak": "Kırkayak", Frigo: "Frigo", Damperli: "Damperli", Kamyon: "Kamyon",
+  "Kırkayak": "Kırkayak", Frigo: "Frigo", Damperli: "Damperli", Kamyon: "Kamyon", Kamyonet: "Kamyonet",
   "13.60 Açık Dorse": "Açık Dorse", "Kapalı Dorse": "Kapalı Dorse",
 }
 const matchesVehicle = (load: Load, filter: string) => {
   const want = FILTER_TO_CATEGORY[filter]
   if (!want) return true
-  return classifyVehicle(fold(`${load.vehicle} ${load.cargo} ${load.message ?? ""}`)) === want
+  // Kullanıcı ilanında formdaki araç tipi esas, saha ilanında metin esas (lib/route.ts classifyListing)
+  return classifyListing(load.vehicle, `${load.cargo} ${load.message ?? ""}`, load.source === "user") === want
 }
 const GUEST_BLOCKED_TABS = ["Favorilerim", "Seferlerim", "Gelir Gider", "Şirket Profili", "Premium"]
 
@@ -280,7 +284,7 @@ export default function Page() {
         const qUp = `%${sUpper}%`
         const qCap = `%${sCap}%`
 
-        const uFields = ['from_city', 'to_city', 'cargo_detail', 'company_name', 'message']
+        const uFields = ['from_city', 'to_city', 'cargo_detail', 'company_name', 'message', 'vehicle_type']
         const bFields = ['from_city', 'to_city', 'cargo_detail', 'company_name']
 
         const buildOr = (fields: string[]) => {
@@ -437,14 +441,22 @@ export default function Page() {
 
     if (!supabase) return
 
-    // Bot toplu kayıt eklediğinde her satırda yeniden çekmemek için olayları birleştir
+    // Bot toplu kayıt eklediğinde her satırda yeniden çekmemek için olayları birleştir.
+    // Supabase ücretsiz bant genişliğini korumak için: en az 20 sn aralık, sekme gizliyken hiç çekme
+    // (sekmeye dönünce aşağıdaki "tick" zaten yeniler).
     let timer: ReturnType<typeof setTimeout> | null = null
+    let lastRun = 0
+    const MIN_GAP_MS = 20_000
     const refresh = () => {
-      if (timer) clearTimeout(timer)
+      if (timer) return // zaten planlı bir yenileme var: tüm olaylar onunla birleşir
+      const wait = Math.max(2500, MIN_GAP_MS - (Date.now() - lastRun))
       timer = setTimeout(() => {
+        timer = null
+        if (document.visibilityState !== "visible") return
+        lastRun = Date.now()
         fetchListings(queryRef.current, pageSizeRef.current)
         fetchCounts()
-      }, 1500)
+      }, wait)
     }
 
     let realtimeOk = false
@@ -547,6 +559,25 @@ export default function Page() {
     setSourceFilter("all")
     setActiveTab("İlanlar")
   }, [])
+
+  // Bildirime dokunulunca (uygulama kapalıyken "/?tab=ilanlar", açıkken service worker mesajı) İlanlar sekmesi açılır
+  useEffect(() => {
+    try {
+      const sp = new URLSearchParams(window.location.search)
+      if (sp.get("tab") === "ilanlar") {
+        setActiveTab("İlanlar")
+        window.history.replaceState(null, "", window.location.pathname)
+      }
+    } catch {}
+    const onOpen = () => {
+      setActiveTab("İlanlar")
+      setIsSidebarOpen(false)
+      fetchListings(queryRef.current, pageSizeRef.current)
+      fetchCounts()
+    }
+    window.addEventListener(OPEN_LISTINGS_EVENT, onOpen)
+    return () => window.removeEventListener(OPEN_LISTINGS_EVENT, onOpen)
+  }, [fetchListings, fetchCounts])
 
   // Premium sekmesini dışarıdan (reklam kartı, kilitli özellik) açma
   useEffect(() => {
