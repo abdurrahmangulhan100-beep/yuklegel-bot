@@ -3,7 +3,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react"
 import { supabase } from "@/lib/supabase"
 import { PLAY_BILLING, PREMIUM_SKU } from "@/lib/premium"
-import { syncPush } from "@/lib/push"
 
 type PremiumState = {
   isPremium: boolean
@@ -113,8 +112,6 @@ export function PremiumProvider({ children }: { children: React.ReactNode }) {
           setExpiresAt(r.expiresAt ?? null)
         }
       }
-      // Bu cihazın bildirim kaydını sessizce güncel tut / başka hesaba ait kaydı düşür
-      void syncPush(false, entitled)
     } catch (e) {
       console.error("Premium durumu alınamadı:", e)
     } finally {
