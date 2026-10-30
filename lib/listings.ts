@@ -92,7 +92,8 @@ export function mapUserListing(item: DatabaseListing): Load {
     tonnage: a.tonnage,
     timing: a.timing,
     price: typeof item.price === "number" ? `₺${item.price.toLocaleString("tr-TR")}` : (item.price || "₺0"),
-    urgent: Boolean(item.urgent),
+    // Formda "acil" işaretlenmese bile ilan metninde açıkça "acil" yazıyorsa Acil filtresinde görünsün
+    urgent: Boolean(item.urgent) || /\bacil\b/.test(fold(`${item.cargo_detail ?? ""} ${item.message ?? ""}`)),
     time: timeAgo(item.created_at),
     createdAt: item.created_at,
     color: "bg-[#d64526]",
@@ -152,7 +153,8 @@ export function dedupeLoads(loads: Load[]): Load[] {
   const out: Load[] = []
   for (const l of loads) {
     if (l.source !== "bot" || isMissing(l.phone)) { out.push(l); continue }
-    const key = l.phone.replace(/\D/g, "") + "|" + fold(l.cargo).replace(/[^a-z0-9]/g, "").slice(0, 90)
+    // Aynı telefon farklı güzergâhlar için ayrı ilan paylaşabilir: güzergâh da anahtara girer, böylece gerçek ilanlar tek karta düşmez
+    const key = l.phone.replace(/\D/g, "") + "|" + (l.fromCity ?? "") + ">" + (l.toCity ?? "") + "|" + fold(l.cargo).replace(/[^a-z0-9]/g, "").slice(0, 120)
     const idx = seen.get(key)
     if (idx === undefined) {
       seen.set(key, out.length)
