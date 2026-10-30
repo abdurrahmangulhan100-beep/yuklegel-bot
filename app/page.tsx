@@ -7,7 +7,6 @@ import { Bell, Search, LogIn, X } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { cn, timeAgo } from "@/lib/utils"
 import { supabase } from "@/lib/supabase"
-import { signOutClean } from "@/lib/push"
 import { Load } from "@/components/LoadCard"
 import { mapUserListing, mapBotListing, dedupeLoads, reuseLoads, type DatabaseListing } from "@/lib/listings"
 import { isMissing, classifyListing } from "@/lib/route"
@@ -29,7 +28,6 @@ import { PremiumLock } from "@/components/PremiumLock"
 import { usePremium } from "@/components/PremiumProvider"
 import { AdSlot } from "@/components/AdSlot"
 import { FREE_DELAY_MINUTES, FREE_LIMITS, OPEN_PREMIUM_EVENT } from "@/lib/premium"
-import { OPEN_LISTINGS_EVENT } from "@/lib/push"
 
 const PAGE_SIZE = 60
 
@@ -531,7 +529,7 @@ export default function Page() {
     try {
       localStorage.removeItem("favorite_loads")
       localStorage.removeItem("is_guest")
-      await signOutClean()
+      if (supabase) await supabase.auth.signOut()
       setCurrentUserId(null)
       setFavoriteIds([])
       router.push("/login")
@@ -559,25 +557,6 @@ export default function Page() {
     setSourceFilter("all")
     setActiveTab("İlanlar")
   }, [])
-
-  // Bildirime dokunulunca (uygulama kapalıyken "/?tab=ilanlar", açıkken service worker mesajı) İlanlar sekmesi açılır
-  useEffect(() => {
-    try {
-      const sp = new URLSearchParams(window.location.search)
-      if (sp.get("tab") === "ilanlar") {
-        setActiveTab("İlanlar")
-        window.history.replaceState(null, "", window.location.pathname)
-      }
-    } catch {}
-    const onOpen = () => {
-      setActiveTab("İlanlar")
-      setIsSidebarOpen(false)
-      fetchListings(queryRef.current, pageSizeRef.current)
-      fetchCounts()
-    }
-    window.addEventListener(OPEN_LISTINGS_EVENT, onOpen)
-    return () => window.removeEventListener(OPEN_LISTINGS_EVENT, onOpen)
-  }, [fetchListings, fetchCounts])
 
   // Premium sekmesini dışarıdan (reklam kartı, kilitli özellik) açma
   useEffect(() => {
