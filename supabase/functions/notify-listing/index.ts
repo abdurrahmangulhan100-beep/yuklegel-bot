@@ -19,18 +19,18 @@ const VAPID_PRIVATE = Deno.env.get("VAPID_PRIVATE_KEY") || ""
 const VAPID_SUBJECT = Deno.env.get("VAPID_SUBJECT") || ""
 const WEBHOOK_SECRET = Deno.env.get("NOTIFY_WEBHOOK_SECRET") || ""
 
-const VERSION = "2026-10-30-kategori-ve-kuyruk-onarimi"
+const VERSION = "2026-10-30-cors-acik"
 const FLUSH_DELAY_MS = 62_000 // 003/006 SQL'deki 1 dakikalık throttle penceresi + pay
 
-const ALLOWED_ORIGINS = ["https://nakliyecepte.online", "https://www.nakliyecepte.online", "http://localhost:3000"]
-
-function corsHeaders(req: Request) {
-  const origin = req.headers.get("origin") || ""
+// CORS: bu uç nokta çerez değil, Authorization (JWT) ya da gizli webhook anahtarıyla korunur; bu yüzden kaynak (origin) kısıtı güvenlik sağlamaz.
+// Eski sürümde yalnızca nakliyecepte.online izinliydi: uygulama başka bir adresten (ör. *.workers.dev, Play Store kabuğu) açılınca
+// tarayıcı isteği engelliyor ve "Test bildirimi" / tanılama "Ulaşılamadı" diyordu.
+function corsHeaders(_req: Request) {
   return {
-    "Access-Control-Allow-Origin": ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0],
+    "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Headers": "authorization, content-type, apikey, x-client-info, x-webhook-secret",
     "Access-Control-Allow-Methods": "POST, OPTIONS",
-    "Vary": "Origin",
+    "Access-Control-Max-Age": "86400",
   }
 }
 
