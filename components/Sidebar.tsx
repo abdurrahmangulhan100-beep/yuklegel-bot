@@ -3,7 +3,6 @@
 import { Calculator, ChevronLeft, Crown, ChevronRight, CircleHelp, FileText, LayoutDashboard, LogIn, LogOut, ShieldCheck, Star, Truck, User, UserX, WalletCards, Wrench, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { supabase } from "@/lib/supabase"
-import { signOutClean } from "@/lib/push"
 import Link from "next/link"
 import { LogoMark } from "@/components/Logo"
 import { usePremium } from "@/components/PremiumProvider"
@@ -40,7 +39,7 @@ export function Sidebar({
   }
 
   const handleLogout = async () => {
-    await signOutClean()
+    if (supabase) await supabase.auth.signOut()
     localStorage.removeItem("is_guest")
     window.location.replace("/")
   }
