@@ -2,7 +2,7 @@
 // İlan ayrıştırıcısının (lib/route.ts) bilinen sorunlu / kritik örnekleri. Yeni bir hata bulursanız buraya satır ekleyin.
 import test from "node:test"
 import assert from "node:assert/strict"
-import { analyzeListing } from "../lib/route"
+import { analyzeListing, classifyListing, classifyVehicle, fold } from "../lib/route"
 
 type Case = { text: string; from?: string; to?: string; note?: string }
 const rota = ({ text, from, to }: Case) => {
@@ -46,4 +46,33 @@ test("bottan gelen doğru alan, ilçe metinde geçiyorsa silinmez", () => {
 test("metinde hiç geçmeyen grup şehri alana güvenilmez", () => {
   const a = analyzeListing({ from: "Kayseri", to: "Ankara", cargo: "Konya'dan Ankara'ya tır", trustFields: false })
   assert.equal(a.from?.city, "Konya")
+})
+
+// --- Araç kategorisi (ilan listesi filtresi + bildirim aynı fonksiyonu kullanır) ---
+const KATEGORI: [string, string | null][] = [
+  ["Konya'dan Ankara'ya düz kasa 13.60 tır", "Açık Dorse"],
+  ["Açık Kasa kamyon İzmir'e", "Kamyon"],
+  ["açık kasa tır Ankara", "Açık Dorse"],
+  ["Konya Ankara kamyonet yük var", "Kamyonet"],
+  ["Panelvan Konya", "Kamyonet"],
+  ["Pikap Mersin", "Kamyonet"],
+  ["Konya'dan Adana'ya 10 teker kamyon", "Kamyon"],
+  ["Konya'dan Ankara'ya 13.60 açık tır", "Açık Dorse"],
+  ["Tenteli tır Mersin'e acil", "Kapalı Dorse"],
+  ["Damperli Tır", "Damperli"],
+  ["Konya'dan Adana'ya TIR lazım", "Kapalı Dorse"],
+  ["Frigo tır", "Frigo"],
+]
+for (const [text, beklenen] of KATEGORI) {
+  test(`kategori: ${text}`, () => assert.equal(classifyVehicle(fold(text)), beklenen))
+}
+
+test("kullanıcı ilanında formdaki araç tipi esastır, metindeki 'tır' onu ezmez", () => {
+  assert.equal(classifyListing("Panelvan", "tır ile de olur dorse", true), "Kamyonet")
+  assert.equal(classifyListing("13.60 Açık Dorse", "Kömür", true), "Açık Dorse")
+})
+
+test("saha ilanında metin esastır, alan yalnızca yedektir", () => {
+  assert.equal(classifyListing("Kamyon", "Konya Ankara 13.60 açık tır", false), "Açık Dorse")
+  assert.equal(classifyListing("Frigo", "Konya Ankara yük var", false), "Frigo")
 })
