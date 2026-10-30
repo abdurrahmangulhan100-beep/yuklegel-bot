@@ -4,7 +4,7 @@ import { Fragment, useEffect, useMemo, useRef, useState } from "react"
 import { Load, LoadCard } from "@/components/LoadCard"
 import { AdSlot } from "@/components/AdSlot"
 import { VehicleIcon, type VehicleKind } from "@/components/VehicleIcon"
-import { PackageSearch, Plus, Phone, X, MapPin, Crown, Clock, ArrowRight, Bell, SlidersHorizontal } from "lucide-react"
+import { PackageSearch, Plus, Phone, X, MapPin, Crown, Clock, ArrowRight, SlidersHorizontal } from "lucide-react"
 import { Sheet } from "@/components/Sheet"
 import { usePremium } from "@/components/PremiumProvider"
 import { FREE_DELAY_MINUTES, openPremium } from "@/lib/premium"
@@ -355,17 +355,6 @@ export function ListingsView({
               </button>
             )}
           </div>
-          {/* Güzergâh seçiliyse ücretsiz kullanıcıya anlık bildirim önerisi */}
-          {!premiumLoading && !isPremium && from && (
-            <button
-              type="button"
-              onClick={openPremium}
-              className="flex w-full items-center gap-2 rounded-xl border border-[#cfe0ee] bg-[#f1f7fc] px-3 py-2.5 text-left text-xs font-semibold text-[#315d83] active:scale-[0.99]"
-            >
-              <Bell className="size-4 shrink-0" />
-              {from} çıkışlı yeni ilanlar gelince anında bildirim almak için Premium'a geçin.
-            </button>
-          )}
         </div>
       )}
 
