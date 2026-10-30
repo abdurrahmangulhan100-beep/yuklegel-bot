@@ -19,7 +19,6 @@ export const PREMIUM_ONLY_TOOLS = ["planner", "docs", "fuel"]
 
 export const PREMIUM_FEATURES = [
   "Yeni ilanları anında görme (ücretsiz planda 10 dk gecikmeli)",
-  "Seçtiğiniz şehir için anlık ilan bildirimi",
   "Reklamsız kullanım",
   "Sınırsız Ara / WhatsApp ile iletişim",
   "Sınırsız favori ve aynı anda sınırsız aktif ilan",
@@ -28,7 +27,6 @@ export const PREMIUM_FEATURES = [
 
 export const FREE_FEATURES = [
   `Yeni ilanlar ${FREE_DELAY_MINUTES} dakika gecikmeli görünür`,
-  "İlan bildirimi yok",
   `Günde ${FREE_LIMITS.contactsPerDay} ilanda iletişim`,
   `${FREE_LIMITS.favorites} favori, ${FREE_LIMITS.activeListings} aktif ilan`,
   "Takograf, Hacim ve Kontrol Listesi araçları",
