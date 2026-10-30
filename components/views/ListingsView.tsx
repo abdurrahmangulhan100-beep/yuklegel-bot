@@ -38,8 +38,8 @@ type ListingsViewProps = {
   lockedCount?: number
 }
 
-const FILTER_ICON: Record<string, VehicleKind> = { "Tümü": "tumu", Acil: "acil", "Kapalı Dorse": "tir", Kamyon: "kamyon", Frigo: "frigo", "Kırkayak": "kirkayak", "13.60 Açık Dorse": "acikdorse", Damperli: "damperli" }
-const FILTER_OPTIONS = ["Tümü", "Acil", "Kapalı Dorse", "Kamyon", "Frigo", "Kırkayak", "13.60 Açık Dorse", "Damperli"]
+const FILTER_ICON: Record<string, VehicleKind> = { "Tümü": "tumu", Acil: "acil", "Kapalı Dorse": "tir", Kamyon: "kamyon", Kamyonet: "kamyon", Frigo: "frigo", "Kırkayak": "kirkayak", "13.60 Açık Dorse": "acikdorse", Damperli: "damperli" }
+const FILTER_OPTIONS = ["Tümü", "Acil", "Kapalı Dorse", "Kamyon", "Kamyonet", "Frigo", "Kırkayak", "13.60 Açık Dorse", "Damperli"]
 
 const selectClass =
   "h-10 min-w-0 flex-1 rounded-xl border border-[#e0e6ed] bg-white px-3 text-[13px] font-semibold text-[#334e68] outline-none transition-colors focus:border-[#122c4a] sm:flex-none sm:min-w-[170px]"
@@ -73,17 +73,21 @@ export function ListingsView({
   const [age, setAge] = useState<"" | "1h" | "6h" | "today">("")
   const [onlyPhone, setOnlyPhone] = useState(false)
 
-  // Son seçilen güzergâh bu cihazda hatırlansın (uygulamayı her açışta yeniden seçmek gerekmesin)
-  const PREF_KEY = "listing_filters_v1"
+  // Son seçilen GÜZERGÂH bu cihazda hatırlansın. "Zaman" ve "Sadece telefonlu" filtreleri bilerek hatırlanmaz:
+  // eskiden bunlar da saklanıyordu ve kullanıcı bir hafta sonra uygulamayı açınca "1 saat" filtresi yüzünden listeyi boş görüyordu.
+  const PREF_KEY = "listing_filters_v2"
+  const prefsLoaded = useRef(false)
   useEffect(() => {
     try {
       const p = JSON.parse(localStorage.getItem(PREF_KEY) || "null")
-      if (p) { setFrom(p.from || ""); setTo(p.to || ""); setAge(p.age || ""); setOnlyPhone(Boolean(p.onlyPhone)) }
+      if (p) { setFrom(p.from || ""); setTo(p.to || "") }
     } catch {}
+    prefsLoaded.current = true
   }, [])
   useEffect(() => {
-    try { localStorage.setItem(PREF_KEY, JSON.stringify({ from, to, age, onlyPhone })) } catch {}
-  }, [from, to, age, onlyPhone])
+    if (!prefsLoaded.current) return
+    try { localStorage.setItem(PREF_KEY, JSON.stringify({ from, to })) } catch {}
+  }, [from, to])
 
   const matchFrom = (l: Load, c: string) => (l.fromCity ? l.fromCity === c : (l.cities ?? []).includes(c))
   const matchTo = (l: Load, c: string) => (l.toCity ? l.toCity === c || (l.destinations ?? []).includes(c) : (l.cities ?? []).includes(c))
@@ -366,8 +370,13 @@ export function ListingsView({
       )}
 
       {!loading && (
-        <div className="px-1 text-xs font-medium text-[#8da0b2]">
-          <span className="font-bold text-[#122c4a]">{visibleLoads.length}</span> ilan gösteriliyor
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 px-1 text-xs font-medium text-[#8da0b2]">
+          <span><span className="font-bold text-[#122c4a]">{visibleLoads.length}</span> ilan gösteriliyor</span>
+          {(hasExtraFilters || activeFilter !== "Tümü" || sourceFilter !== "all") && (
+            <button type="button" onClick={clearAll} className="inline-flex min-h-8 items-center gap-1 rounded-full bg-[#fff0ec] px-2.5 font-semibold text-[#d64526] active:scale-95">
+              <X className="size-3" /> Filtre açık · Temizle
+            </button>
+          )}
         </div>
       )}
 
