@@ -332,7 +332,9 @@ export function stripPhones(text: string): string {
 }
 
 /** "açık tır/dorse/kasa" veya "açık … 13.60" / "13.60 … açık" (sıra fark etmez). f: fold edilmiş metin */
-const OPEN_POS = /\bacik\s+(?:tir|dorse|kasa|tirlar)\b|\bacik\b\W+(?:\w+\W+){0,2}13[\s.,]?60\b|\b13[\s.,]?60\W+(?:\w+\W+){0,2}acik\b/
+const OPEN_POS = /\bacik\s+(?:tir|dorse|tirlar)\b|\bduz\s+(?:kasa|dorse|tir)\b|\bacik\b\W+(?:\w+\W+){0,2}13[\s.,]?60\b|\b13[\s.,]?60\W+(?:\w+\W+){0,2}acik\b/
+/** "açık kasa": tırda açık dorse demektir, ama "açık kasa kamyon" bir kamyondur (kamyon/kamyonet/teker geçiyorsa sayılmaz) */
+const OPEN_KASA = /\bacik\s+kasa\b/
 const OPEN_DORSE_RE = /^(?![\s\S]*\b(?:kapali|tenteli|perdeli)\b)(?=[\s\S]*(?:\bacik\s+(?:tir|dorse)\b|\bacik\b\W+(?:\w+\W+){0,2}13[\s.,]?60\b|\b13[\s.,]?60\W+(?:\w+\W+){0,2}acik\b))/
 const DAMPER_POS = /\bda[nm]per\w*|\bkisa\s+dorse\b/
 const CLOSED_POS = /\b(?:kapali|tenteli|perdeli)\b/
@@ -340,9 +342,10 @@ const CLOSED_WEAK = /\b(?:tir|tirlar|dorse)\b/ // yalnızca "tır" / "dorse" yaz
 const FRIGO_POS = /\b(?:frigo\w*|termokin\w*|soguk\s+zincir)\b/
 const KIRKAYAK_POS = /\bkirkayak\b/
 const KAMYON_POS = /\bkamyon\b|\b(?:6|8|10|alti|sekiz|on)[\s.]*teker\b/
+const KAMYONET_POS = /\b(?:kamyonet|panel\s?van|pikap|pick\s?up)\b/
 const T1360 = /\b13[\s.,]?60\b/
 
-export type VehicleCategory = "Kırkayak" | "Frigo" | "Damperli" | "Açık Dorse" | "Kapalı Dorse" | "Kamyon"
+export type VehicleCategory = "Kırkayak" | "Frigo" | "Damperli" | "Açık Dorse" | "Kapalı Dorse" | "Kamyon" | "Kamyonet"
 const CATEGORY_RULES: [VehicleCategory, RegExp][] = [
   ["Kırkayak", KIRKAYAK_POS],
   ["Frigo", FRIGO_POS],
@@ -350,6 +353,7 @@ const CATEGORY_RULES: [VehicleCategory, RegExp][] = [
   ["Açık Dorse", OPEN_POS],
   ["Kapalı Dorse", CLOSED_POS],
   ["Kamyon", KAMYON_POS],
+  ["Kamyonet", KAMYONET_POS],
 ]
 
 /**
@@ -365,6 +369,9 @@ export function classifyVehicle(f: string): VehicleCategory | null {
     const m = re.exec(f)
     if (m && m.index < bestPos) { best = cat; bestPos = m.index }
   }
+  // Tırda "açık kasa" = açık dorse (kamyon / kamyonet / teker geçiyorsa bu kural işlemez)
+  const kasa = OPEN_KASA.exec(f)
+  if (kasa && kasa.index < bestPos && !KAMYON_POS.test(f) && !KAMYONET_POS.test(f)) { best = "Açık Dorse"; bestPos = kasa.index }
   // Sadece "tır" / "dorse" yazan ilan = kapalı dorse; "tır açık dorse" gibi ifadelerde açık dorse ezilmesin
   if (best === null || best === "Kamyon") {
     const w = CLOSED_WEAK.exec(f)
@@ -372,6 +379,17 @@ export function classifyVehicle(f: string): VehicleCategory | null {
   }
   return best
 }
+/**
+ * Kart / filtre / bildirim için TEK doğru kategori kaynağı.
+ * Kullanıcı ilanında formdaki araç tipi esastır (metin sadece alan boşsa bakılır);
+ * saha (bot) ilanında metin esastır (alan güvenilmez), alan yalnızca yedektir.
+ */
+export function classifyListing(vehicleField: string | null | undefined, text: string, trustField: boolean): VehicleCategory | null {
+  const fromField = isMissing(vehicleField) ? null : classifyVehicle(fold(String(vehicleField)))
+  if (trustField) return fromField ?? classifyVehicle(fold(text))
+  return classifyVehicle(fold(text)) ?? fromField
+}
+
 export const isOpenDorse = (f: string) => classifyVehicle(f) === "Açık Dorse"
 export const isDamperli = (f: string) => classifyVehicle(f) === "Damperli"
 export const isClosedDorse = (f: string) => classifyVehicle(f) === "Kapalı Dorse"
