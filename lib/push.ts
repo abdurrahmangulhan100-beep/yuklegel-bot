@@ -3,6 +3,9 @@ import { supabase } from "@/lib/supabase"
 const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || ""
 const ENABLED_FLAG = "push_enabled" // kullanıcı bildirimi bu cihazda bilerek açtı mı
 
+/** Bildirime dokunulunca (uygulama açıkken) page.tsx'e "İlanlar sekmesini aç + yenile" demek için */
+export const OPEN_LISTINGS_EVENT = "nakliye:open-listings"
+
 export type PushState = "unsupported" | "denied" | "on" | "off"
 
 export const pushSupported = () =>
