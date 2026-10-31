@@ -356,7 +356,7 @@ export function CreateListingModal({ isOpen, onClose, onSuccess }: CreateListing
           {/* Fiyat */}
           <div className={sectionClass}>
             <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Fiyatlandırma</div>
-            <div className="grid grid-cols-2 gap-1 rounded-xl bg-[#eaeff4] p-1" role="radiogroup" aria-label="Fiyatlandırma türü">
+            <div className="grid grid-cols-2 gap-1 rounded-xl bg-muted/60 p-1" role="radiogroup" aria-label="Fiyatlandırma türü">
               {[
                 { value: "total", label: "Götürü / Toplam" },
                 { value: "ton", label: "Ton Başı" },
@@ -410,7 +410,7 @@ export function CreateListingModal({ isOpen, onClose, onSuccess }: CreateListing
             htmlFor="urgent"
             className={cn(
               "flex min-h-14 cursor-pointer items-center gap-3 rounded-2xl border p-3.5 transition-colors",
-              formData.isUrgent ? "border-[#d64526] bg-[#fff6f3]" : "border-border bg-card"
+              formData.isUrgent ? "border-[#d64526] bg-muted/60" : "border-border bg-card"
             )}
           >
             <input
@@ -435,7 +435,7 @@ export function CreateListingModal({ isOpen, onClose, onSuccess }: CreateListing
                 onChange={(e) => setAcceptedTerms(e.target.checked)}
                 className="mt-0.5 size-5 shrink-0 cursor-pointer accent-brand"
               />
-              <span className="text-xs leading-relaxed text-[#4a5568]">
+              <span className="text-xs leading-relaxed text-foreground/80">
                 İlanımda <strong>yasalara aykırı, yanıltıcı veya genel ahlaka uymayan</strong> içerik bulunmadığını, aksi takdirde ilanımın silineceğini ve hesabımın engellenebileceğini bildiren <a href="/privacy" target="_blank" rel="noopener noreferrer" className="font-semibold text-brand underline">Kullanım Koşulları & Topluluk Kurallarını</a> okudum ve kabul ediyorum.
               </span>
             </label>
