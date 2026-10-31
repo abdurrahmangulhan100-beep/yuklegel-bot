@@ -221,15 +221,21 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
   }
 
   const handleShare = async () => {
-    const parts = [
-      cityText,
-      hasVehicle ? load.vehicle : "",
-      load.trailer,
-      load.tonnage,
-      cargoText.length > 140 ? cargoText.slice(0, 140) + "…" : cargoText,
-      hasPhone ? `Tel: ${formatPhone(load.phone)}` : "",
-    ].filter(Boolean)
-    const text = `${parts.join(" • ")}\n— Nakliye Cepte`
+    // Ham mesaj paylaşılır: uygulama adı / imza eklenmez, kesilmez. Telefon paylaşmak da iletişim sayılır:
+    // ücretsiz planda günlük limit dolmuşsa numara metinden çıkarılır (ilan metni yine paylaşılır).
+    const canShowPhone = !hasPhone || consumeContact(String(load.id), isPremium)
+    let text: string
+    if (isUserLoad) {
+      const route = [load.from, load.to].filter((x) => !isMissing(x)).join(" → ")
+      const body = !isMissing(load.cargo) ? load.cargo : ""
+      const msg = showMessage ? load.message ?? "" : ""
+      text = [route, body, msg, hasPhone && canShowPhone ? formatPhone(load.phone) : ""].filter(Boolean).join("\n")
+    } else {
+      const raw = !isMissing(load.cargo) ? load.cargo : ""
+      text = canShowPhone ? raw : hidePhones(raw)
+    }
+    text = text.trim()
+    if (!text) return
     try {
       if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
         await navigator.share({ text })
