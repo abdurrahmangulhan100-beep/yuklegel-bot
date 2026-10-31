@@ -221,7 +221,7 @@ export function CalculatorView() {
           {saved.map((s) => (
             <span key={s.id} className="flex shrink-0 items-center overflow-hidden rounded-full border border-border bg-card text-xs font-semibold text-foreground/80">
               <button type="button" onClick={() => { setF({ ...DEFAULTS, ...s.form }); resultRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }) }} className="px-3 py-1.5 hover:bg-muted">{s.label}</button>
-              <button type="button" aria-label="Sil" onClick={() => setSaved((a) => a.filter((x) => x.id !== s.id))} className="border-l border-[#eef2f6] px-2 py-1.5 text-muted-foreground hover:bg-[#fdecea] hover:text-brand"><X className="size-3" /></button>
+              <button type="button" aria-label="Sil" onClick={() => setSaved((a) => a.filter((x) => x.id !== s.id))} className="border-l border-border px-2 py-1.5 text-muted-foreground hover:bg-muted/60 hover:text-brand"><X className="size-3" /></button>
             </span>
           ))}
         </div>
@@ -245,7 +245,7 @@ export function CalculatorView() {
               <span className="text-sm font-bold text-foreground">Boş dönüyorum <span className="font-medium text-muted-foreground">(dönüş km'si de sayılır)</span></span>
             </label>
             {f.emptyReturn && (
-              <div className="mt-2 flex items-center gap-3 rounded-xl border border-[#f3d9d2] bg-[#fff6f3] p-3">
+              <div className="mt-2 flex items-center gap-3 rounded-xl border border-border bg-muted/60 p-3">
                 <p className="min-w-0 flex-1 text-[11px] text-[#b5654f]">Boş dönüş km (boşsa gidiş kadar: {plain(c.loadedKm, 0)})</p>
                 <Input inputMode="decimal" value={f.returnKm} onChange={(e) => set("returnKm", e.target.value)} placeholder={String(c.loadedKm || 0)} className="h-10 w-24 border-[#f0cfc6] bg-card text-right text-base font-bold" />
               </div>
@@ -419,7 +419,7 @@ export function CalculatorView() {
                   {copied ? "Kopyalandı" : "Paylaş / Kopyala"}
                 </button>
               </div>
-              <div className="rounded-2xl bg-[#f3f7fb] p-3 ring-1 ring-[#e3ebf3]">
+              <div className="rounded-2xl bg-muted/60 p-3 ring-1 ring-[#e3ebf3]">
                 <p className="mb-2 px-1 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Gelir Gider'e aktar</p>
                 <div className="grid grid-cols-2 gap-2">
                   <button type="button" onClick={() => toFinance("income")} className="flex h-12 items-center justify-center gap-2 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 text-sm font-bold text-white shadow-[0_8px_18px_-8px_rgba(5,150,105,0.8)] active:scale-95">
@@ -430,7 +430,7 @@ export function CalculatorView() {
                   </button>
                 </div>
               </div>
-              <button type="button" onClick={saveCurrent} className="flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-border bg-card text-sm font-bold text-foreground/80 hover:bg-[#f6f8fb]">
+              <button type="button" onClick={saveCurrent} className="flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-border bg-card text-sm font-bold text-foreground/80 hover:bg-muted/60">
                 <Bookmark className="size-4" /> Bu hesabı kaydet
               </button>
               <p className="text-[11px] leading-snug text-muted-foreground">* Kâr, maliyetin üzerine eklenen orandır. Tutarlar tahminidir; yol ve piyasa koşullarına göre değişebilir.</p>
@@ -450,7 +450,7 @@ function Step({ n, title, icon, children }: { n: number; title: string; icon: Re
       <div className="mb-3 flex items-center gap-2.5">
         <span className="flex size-7 items-center justify-center rounded-full bg-primary text-xs font-black text-primary-foreground">{n}</span>
         <h2 className="text-sm font-bold text-foreground">{title}</h2>
-        <span className="ml-auto text-[#b0bfcd]">{icon}</span>
+        <span className="ml-auto text-muted-foreground">{icon}</span>
       </div>
       {children}
     </section>
