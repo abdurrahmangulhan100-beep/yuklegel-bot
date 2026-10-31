@@ -1,825 +1,374 @@
 "use client"
 
-import { toast } from "@/lib/toast"
-import { realName } from "@/lib/names"
-import { useEffect, useMemo, useState, useRef, useCallback } from "react"
+import { useEffect, useState } from "react"
+import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { Bell, Search, LogIn, X } from "lucide-react"
-import { Input } from "@/components/ui/input"
-import { cn, timeAgo } from "@/lib/utils"
 import { supabase } from "@/lib/supabase"
-import { Load } from "@/components/LoadCard"
-import { mapUserListing, mapBotListing, dedupeLoads, reuseLoads, type DatabaseListing } from "@/lib/listings"
-import { isMissing, classifyListing } from "@/lib/route"
-import { ListingsView } from "@/components/views/ListingsView"
-import { TripsView } from "@/components/views/TripsView"
-import { CalculatorView } from "@/components/views/CalculatorView"
-import FavoritesView from "@/components/views/FavoritesView"
-import { CompanyProfileView } from "@/components/views/CompanyProfileView"
-import { OverviewView } from "@/components/views/OverviewView"
-import { FinanceView } from "@/components/views/FinanceView"
-import { HelpCenterView } from "@/components/views/HelpCenterView"
-import { ToolsView } from "@/components/views/ToolsView"
-import { CreateListingModal } from "@/components/CreateListingModal"
-import { Sidebar } from "@/components/Sidebar"
-import { BottomNav } from "@/components/BottomNav"
+import { signOutClean } from "@/lib/push"
+import { Eye, EyeOff, Truck, ShieldCheck, Zap } from "lucide-react"
+import { cn } from "@/lib/utils"
 import { LogoMark } from "@/components/Logo"
-import { PremiumView } from "@/components/views/PremiumView"
-import { PremiumLock } from "@/components/PremiumLock"
-import { usePremium } from "@/components/PremiumProvider"
-import { AdSlot } from "@/components/AdSlot"
-import { FREE_DELAY_MINUTES, FREE_LIMITS, OPEN_PREMIUM_EVENT } from "@/lib/premium"
 
-const PAGE_SIZE = 60
-
-// Saha (bot) ilanları bu günden eskiyse listelenmez; eski ilan yığılmasını ve yanlış yük aramasını önler
-const BOT_MAX_AGE_DAYS = 14
-// Ücretsiz kullanıcı: son FREE_DELAY_MINUTES dakikadaki ilanlar gizlenir. Premium'da null (filtre yok).
-const delayCutoff = (premium: boolean) =>
-  premium ? null : new Date(Date.now() - FREE_DELAY_MINUTES * 60000).toISOString()
-const botCutoff = () => new Date(Date.now() - BOT_MAX_AGE_DAYS * 86400000).toISOString()
-
-// Kategori seçilince filtre sunucuda da uygulanır: yalnızca en yeni 60 ilanın içinden değil, tüm aktif ilanlar arasından seçilsin
-const CATEGORY_TERMS: Record<string, string[]> = {
-  Acil: ["acil"],
-  "Kırkayak": ["kırkayak"],
-  Kamyon: ["kamyon", "teker"],
-  Kamyonet: ["kamyonet", "panelvan", "panel van", "pikap", "pick up", "pickup"],
-  Frigo: ["frigo", "termokin", "soğuk zincir"],
-  Damperli: ["damper", "danper", "kısa dorse"],
-  "13.60 Açık Dorse": ["açık", "düz"],
-  "Kapalı Dorse": ["tır", "tenteli", "kapalı", "perdeli", "dorse"],
-}
-const trVariants = (t: string) => {
-  const ascii = t.replace(/ı/g, "i").replace(/ş/g, "s").replace(/ğ/g, "g").replace(/ü/g, "u").replace(/ö/g, "o").replace(/ç/g, "c")
-  const out = new Set<string>()
-  for (const x of [t, ascii]) {
-    out.add(x)
-    out.add(x.toLocaleLowerCase("tr-TR"))
-    out.add(x.toLocaleUpperCase("tr-TR"))
-    out.add(x.toUpperCase())
-    out.add(x.charAt(0).toLocaleUpperCase("tr-TR") + x.slice(1))
-  }
-  return Array.from(out)
-}
-const categoryOr = (cat: string): { bot: string; user: string } | null => {
-  const terms = CATEGORY_TERMS[cat]
-  if (!terms) return null
-  // "urgent" sütunu yalnızca kullanıcı ilanları (listings) tablosunda garanti: bot_listings'te sütun yoksa tüm sorgu hata verip
-  // Acil filtresini boş döndürüyordu. Saha ilanlarında yalnızca metindeki "acil" aranır.
-  const mk = (fields: string[], withUrgent = false) => [...(withUrgent && cat === "Acil" ? ["urgent.eq.true"] : []), ...fields.flatMap((f) => terms.flatMap((t) => trVariants(t).map((v) => `${f}.ilike.%${v}%`)))].join(",")
-  // Kullanıcı ilanında araç tipi formdan seçilir ve metinde geçmeyebilir: vehicle_type sütunu da aranmalı
-  return { bot: mk(["cargo_detail"]), user: mk(["cargo_detail", "message", "vehicle_type"], true) }
-}
-
-// Araç filtresi: her ilan tek kategoriye girer (lib/route.ts classifyVehicle); kategoriler birbirine karışmaz
-const FILTER_TO_CATEGORY: Record<string, string> = {
-  "Kırkayak": "Kırkayak", Frigo: "Frigo", Damperli: "Damperli", Kamyon: "Kamyon", Kamyonet: "Kamyonet",
-  "13.60 Açık Dorse": "Açık Dorse", "Kapalı Dorse": "Kapalı Dorse",
-}
-const matchesVehicle = (load: Load, filter: string) => {
-  const want = FILTER_TO_CATEGORY[filter]
-  if (!want) return true
-  // Kullanıcı ilanında formdaki araç tipi esas, saha ilanında metin esas (lib/route.ts classifyListing)
-  return classifyListing(load.vehicle, `${load.cargo} ${load.message ?? ""}`, load.source === "user") === want
-}
-const GUEST_BLOCKED_TABS = ["Favorilerim", "Seferlerim", "Gelir Gider", "Şirket Profili"]
-
-export default function Page() {
+export default function LoginPage() {
   const router = useRouter()
-  const { isPremium, loading: premiumLoading } = usePremium()
-  const [isCheckingAuth, setIsCheckingAuth] = useState(true)
-  const [loads, setLoads] = useState<Load[]>([])
-  const [favoriteIds, setFavoriteIds] = useState<string[]>([])
-  const [activeFilter, setActiveFilter] = useState("Tümü")
-  const [sourceFilter, setSourceFilter] = useState<"all" | "user" | "bot">("all")
-  
-  const [query, setQuery] = useState("")
-  const [debouncedQuery, setDebouncedQuery] = useState("")
-  const queryRef = useRef("")
-
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false)
-  const [isCollapsed, setIsCollapsed] = useState(false)
-  const [isCreateOpen, setIsCreateOpen] = useState(false)
-  const [isLoading, setIsLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState("Genel Bakış")
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
-  const [isGuest, setIsGuest] = useState(false)
-  const [totals, setTotals] = useState<{ user: number; bot: number; urgent: number } | null>(null)
-  const [pageSize, setPageSize] = useState(PAGE_SIZE)
-  const [hasMore, setHasMore] = useState(false)
-  const [lockedCount, setLockedCount] = useState(0) // ücretsiz kullanıcının henüz göremediği (son 10 dk) ilan sayısı
-  const [blockedKeys, setBlockedKeys] = useState<string[]>([])
-  const hasLoadedRef = useRef(false)
-  const reqIdRef = useRef(0)
-  const pageSizeRef = useRef(PAGE_SIZE)
-  const activeFilterRef = useRef("Tümü")
-  const currentUserIdRef = useRef<string | null>(null)
-  const isPremiumRef = useRef(false) // premium doğrulanana kadar false: ücretsiz gibi (gecikmeli) davranır
-
-  const [profile, setProfile] = useState({
-    company_name: "Nakliye Cepte Kullanıcısı",
-    authorized_person: "Kullanıcı",
-    initials: "NK"
-  })
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  const [loading, setLoading] = useState(false)
+  const [isSignUp, setIsSignUp] = useState(false)
+  const [errorMsg, setErrorMsg] = useState("")
+  const [successMsg, setSuccessMsg] = useState("")
+  const [accepted, setAccepted] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
+  // Şifre sıfırlama e-postasındaki bağlantıdan gelindiğinde yeni şifre belirleme ekranı açılır
+  const [recovery, setRecovery] = useState(false)
+  const [newPassword, setNewPassword] = useState("")
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedQuery(query)
-      queryRef.current = query
-    }, 500)
-    return () => clearTimeout(timer)
-  }, [query])
-
-  const fetchUserFavorites = useCallback(async (userId: string) => {
-    if (!supabase || !userId) return
-    try {
-      const { data, error } = await supabase.from("favorites").select("listing_id").eq("user_id", userId)
-      if (!error && data) setFavoriteIds(data.map((f) => String(f.listing_id)))
-    } catch (e) {
-      console.error("Favoriler yüklenirken hata:", e)
-    }
-  }, [])
-
-  useEffect(() => {
-    if (currentUserId) fetchUserFavorites(currentUserId)
-    else setFavoriteIds([])
-  }, [currentUserId, fetchUserFavorites])
-
-  // Kararlı referans: LoadCard (memo) gereksiz yere yeniden çizilmesin
-  const toggleFavorite = useCallback((id?: string) => {
-    if (!id) return
-    setFavoriteIds((prev) => prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id])
-    if (currentUserIdRef.current) fetchUserFavorites(currentUserIdRef.current)
-  }, [fetchUserFavorites])
-
-  useEffect(() => {
-    let authSubscription: { unsubscribe: () => void } | null = null
-
-    const verifySession = async () => {
-      try {
-        const isGuest = typeof window !== 'undefined' ? localStorage.getItem("is_guest") === "true" : false
-        if (isGuest) {
-          setIsGuest(true)
-          setProfile({ company_name: "Giriş yapılmadı", authorized_person: "Misafir", initials: "M" })
-          setIsCheckingAuth(false)
-          return
-        }
-        if (!supabase) { setIsCheckingAuth(false); return }
-        
-        const { data: { session }, error } = await supabase.auth.getSession()
-        if (error || !session) router.push("/login")
-        else { setCurrentUserId(session.user.id); setIsCheckingAuth(false) }
-      } catch (err) {
-        console.error("Oturum doğrulama hatası:", err)
-        router.push("/login")
-      }
-    }
-
-    verifySession()
-
-    if (supabase) {
-      const { data } = supabase.auth.onAuthStateChange((event, session) => {
-        const isGuest = typeof window !== 'undefined' ? localStorage.getItem("is_guest") === "true" : false
-        if (session) setCurrentUserId(session.user.id)
-        else setCurrentUserId(null)
-        if (event === "SIGNED_OUT") {
-          try { localStorage.removeItem("blocked_users") } catch {}
-          setBlockedKeys([])
-        }
-        if (!session && !isGuest && event === "SIGNED_OUT") router.push("/login")
-      })
-      authSubscription = data.subscription
-    }
-    return () => { if (authSubscription) authSubscription.unsubscribe() }
-  }, [router])
-
-  const fetchProfile = async () => {
     if (!supabase) return
-    try {
-      const isGuest = localStorage.getItem("is_guest") === "true"
-      if (isGuest) return
-      const { data: { user }, error: userError } = await supabase.auth.getUser()
-      if (userError || !user) return
-      
-      let { data, error } = await supabase.from("profiles").select("*").eq("id", user.id).maybeSingle()
-      if (!data && !error) {
-        // İlk kez Google ile giren kullanıcı: profil satırı yoksa Google hesabındaki adla oluştur
-        const meta = (user.user_metadata || {}) as { full_name?: string; name?: string }
-        const fullName = meta.full_name || meta.name || ""
-        const created = {
-          id: user.id,
-          email: user.email,
-          company_name: fullName || "",
-          authorized_person: fullName || user.email?.split("@")[0] || "Kullanıcı",
-          updated_at: new Date().toISOString(),
-        }
-        const { error: upErr } = await supabase.from("profiles").upsert(created)
-        if (!upErr) data = created as typeof data
-      }
-      if (data && !error) {
-        const cName = realName(data.company_name) || data.authorized_person || "Nakliye Cepte Kullanıcısı"
-        const aPerson = data.authorized_person || user.email?.split("@")[0] || "Kullanıcı"
-        const initials = aPerson.split(" ").map((n: string) => n[0]).join("").toUpperCase().substring(0, 2)
-        setProfile({ company_name: cName, authorized_person: aPerson, initials: initials || "NK" })
-      }
-    } catch (err) {
-      console.error("Profil çekme hatası:", err)
-    }
-  }
-
-  const fetchCounts = useCallback(async () => {
-    if (!supabase) return
-    try {
-      const head = { count: "exact" as const, head: true }
-      const cutoff = botCutoff()
-      const dc = delayCutoff(isPremiumRef.current)
-      const late = <T extends { lte: (c: string, v: string) => T }>(q: T) => (dc ? q.lte("created_at", dc) : q)
-      const [u, b, uu, bu] = await Promise.all([
-        late(supabase.from("listings").select("id", head)),
-        late(supabase.from("bot_listings").select("id", head).gte("created_at", cutoff)),
-        late(supabase.from("listings").select("id", head).eq("urgent", true)),
-        late(supabase.from("bot_listings").select("id", head).ilike("cargo_detail", "%acil%").gte("created_at", cutoff)),
-      ])
-      setTotals({ user: u.count ?? 0, bot: b.count ?? 0, urgent: (uu.count ?? 0) + (bu.count ?? 0) })
-
-      // Ücretsiz plan: gecikme penceresindeki (henüz gösterilmeyen) ilan sayısı -> "Premium üyeler şu an görüyor" uyarısı
-      if (dc) {
-        const { data: n, error: rpcErr } = await supabase.rpc("recent_listing_count", { p_since: dc })
-        setLockedCount(!rpcErr && typeof n === "number" ? n : 0)
-      } else {
-        setLockedCount(0)
-      }
-    } catch (e) {
-      console.error("Sayaçlar alınamadı:", e)
-    }
-  }, [])
-
-  const fetchListings = useCallback(async (searchStr = "", size = PAGE_SIZE) => {
-    const reqId = ++reqIdRef.current
-    if (!hasLoadedRef.current) setIsLoading(true)
-    try {
-      if (!supabase) return
-
-      let userReq = supabase.from("listings").select("*")
-      let botReq = supabase.from("bot_listings").select("*").gte("created_at", botCutoff())
-
-      // Ücretsiz plan: yeni ilanlar FREE_DELAY_MINUTES dakika sonra görünür (kendi ilanların aşağıda ayrıca gelir)
-      const dc = delayCutoff(isPremiumRef.current)
-      if (dc) {
-        userReq = userReq.lte("created_at", dc)
-        botReq = botReq.lte("created_at", dc)
-      }
-
-      // PostgREST filtre sözdizimini bozan karakterleri temizle
-      const s = searchStr.replace(/[,()\\"%_*:]/g, " ").replace(/\s+/g, " ").trim()
-
-      if (s) {
-        const sLower = s.toLocaleLowerCase('tr-TR')
-        const sUpper = s.toLocaleUpperCase('tr-TR')
-        const sCap = s.charAt(0).toLocaleUpperCase('tr-TR') + s.slice(1).toLocaleLowerCase('tr-TR')
-
-        const qOrig = `%${s}%`
-        const qLow = `%${sLower}%`
-        const qUp = `%${sUpper}%`
-        const qCap = `%${sCap}%`
-
-        const uFields = ['from_city', 'to_city', 'cargo_detail', 'company_name', 'message', 'vehicle_type']
-        const bFields = ['from_city', 'to_city', 'cargo_detail', 'company_name']
-
-        const buildOr = (fields: string[]) => {
-          return fields.map(f => `${f}.ilike.${qOrig},${f}.ilike.${qLow},${f}.ilike.${qUp},${f}.ilike.${qCap}`).join(',')
-        }
-
-        userReq = userReq.or(buildOr(uFields))
-        botReq = botReq.or(buildOr(bFields))
-      }
-
-      // Kategori seçiliyse sunucuda da daralt ve daha geniş bir havuzdan çek
-      const cat = activeFilterRef.current
-      const catOr = cat !== "Tümü" ? categoryOr(cat) : null
-      if (catOr) {
-        userReq = userReq.or(catOr.user)
-        botReq = botReq.or(catOr.bot)
-      }
-      const effSize = catOr ? size * 3 : size
-
-      // Kullanıcının kendi ilanları sayfalamadan bağımsız olarak her zaman gelsin
-      const myId = currentUserIdRef.current
-      const myReq: PromiseLike<{ data: any[] | null }> = (!s && myId)
-        ? supabase.from("listings").select("*").eq("user_id", myId).order("created_at", { ascending: false }).limit(200)
-        : Promise.resolve({ data: [] })
-
-      const [userRes, botRes, myRes] = await Promise.all([
-        userReq.order("created_at", { ascending: false }).limit(effSize),
-        botReq.order("created_at", { ascending: false }).limit(effSize),
-        myReq,
-      ])
-
-      if (reqId !== reqIdRef.current) return // daha yeni bir istek başlamış, bu sonucu at
-
-      if (userRes.error) console.error("User listings hatası:", userRes.error)
-      if (botRes.error) console.error("Bot listings hatası:", botRes.error)
-
-      const userRows: DatabaseListing[] = [...(userRes.data || [])]
-      const seen = new Set(userRows.map((r) => String(r.id)))
-      for (const r of (myRes.data || [])) {
-        if (!seen.has(String(r.id))) userRows.push(r)
-      }
-
-      const formattedUserLoads: Load[] = userRows.map(mapUserListing)
-      // Telefon numarası bulunamayan saha ilanı işe yaramaz (aranamaz); listeye hiç alınmaz
-      const formattedBotLoads: Load[] = (botRes.data || [])
-        .map((item: DatabaseListing) => mapBotListing(item))
-        .filter((l: Load) => !isMissing(l.phone))
-
-      // Acil ilanlar ilk 24 saat boyunca en üstte durur, sonrasında normal tarih sırasına döner
-      const nowMs = Date.now()
-      const isFreshUrgent = (l: Load) =>
-        Boolean(l.urgent) && !!l.createdAt && nowMs - Date.parse(l.createdAt) < 24 * 60 * 60 * 1000
-      const sorted = [...formattedUserLoads, ...formattedBotLoads].sort((a, b) => {
-        const ua = isFreshUrgent(a) ? 1 : 0
-        const ub = isFreshUrgent(b) ? 1 : 0
-        if (ua !== ub) return ub - ua
-        return (b.createdAt ? Date.parse(b.createdAt) : 0) - (a.createdAt ? Date.parse(a.createdAt) : 0)
-      })
-      // Aynı saha ilanı tekrar tekrar paylaşıldıysa tek karta indir
-      const merged = dedupeLoads(sorted)
-      setLoads((prev) => reuseLoads(prev, merged))
-      setHasMore((userRes.data?.length ?? 0) >= effSize || (botRes.data?.length ?? 0) >= effSize)
-    } catch (err) {
-      console.error("Veri çekme hatası:", err)
-    } finally {
-      if (reqId === reqIdRef.current) {
-        hasLoadedRef.current = true
-        setIsLoading(false)
-      }
-    }
-  }, [])
-
-  useEffect(() => { setPageSize(PAGE_SIZE) }, [debouncedQuery])
-  useEffect(() => { pageSizeRef.current = pageSize }, [pageSize])
-  const lastFilterRef = useRef("Tümü")
-  useEffect(() => {
-    activeFilterRef.current = activeFilter
-    if (lastFilterRef.current === activeFilter) return
-    lastFilterRef.current = activeFilter
-    if (isCheckingAuth) return
-    hasLoadedRef.current = false // kısa bir yükleniyor görünümü: boş sonuç ekranı yanıp sönmesin
-    fetchListings(queryRef.current, pageSizeRef.current)
-  }, [activeFilter, isCheckingAuth, fetchListings])
-  useEffect(() => { currentUserIdRef.current = currentUserId }, [currentUserId])
-  useEffect(() => { isPremiumRef.current = isPremium }, [isPremium])
-
-  // Premium durumu netleşince (ya da değişince) listeyi doğru kurala göre yeniden çek
-  useEffect(() => {
-    if (isCheckingAuth || premiumLoading) return
-    fetchListings(queryRef.current, pageSizeRef.current)
-    fetchCounts()
-  }, [isPremium, premiumLoading, isCheckingAuth, fetchListings, fetchCounts])
-
-  useEffect(() => {
-    try {
-      setBlockedKeys(JSON.parse(localStorage.getItem("blocked_users") || "[]"))
-    } catch {
-      setBlockedKeys([])
-    }
-  }, [])
-
-  const handleUserBlocked = useCallback((key: string) => {
-    setBlockedKeys((prev) => (prev.includes(key) ? prev : [...prev, key]))
-    // Giriş yapmış kullanıcının engelleri hesabına kaydedilir (cihaz değişince / uygulama silinince kaybolmaz)
-    const uid = currentUserIdRef.current
-    if (uid && supabase) {
-      supabase
-        .from("blocked_users")
-        .upsert({ user_id: uid, target: key }, { onConflict: "user_id,target" })
-        .then(({ error }) => { if (error) console.error("Engelleme kaydedilemedi:", error.message) })
-    }
-  }, [])
-
-  // Oturum açılınca hesaptaki engelleri çek, bu cihazdakilerle birleştir; sadece cihazda olanları hesaba yükle
-  useEffect(() => {
-    if (!currentUserId || !supabase) return
-    let cancelled = false
-    ;(async () => {
-      try {
-        const { data, error } = await supabase.from("blocked_users").select("target").eq("user_id", currentUserId)
-        if (error || !data || cancelled) return
-        const remote = data.map((r: { target: string }) => String(r.target))
-        let local: string[] = []
-        try { local = JSON.parse(localStorage.getItem("blocked_users") || "[]") } catch { local = [] }
-        const merged = Array.from(new Set([...local, ...remote]))
-        localStorage.setItem("blocked_users", JSON.stringify(merged))
-        if (!cancelled) setBlockedKeys(merged)
-        const missing = merged.filter((k) => !remote.includes(k))
-        if (missing.length > 0) {
-          await supabase
-            .from("blocked_users")
-            .upsert(missing.map((target) => ({ user_id: currentUserId, target })), { onConflict: "user_id,target" })
-        }
-      } catch (e) {
-        console.error("Engellenenler senkronlanamadı:", e)
-      }
-    })()
-    return () => { cancelled = true }
-  }, [currentUserId])
-
-  useEffect(() => {
-    if (isCheckingAuth) return
-    fetchListings(debouncedQuery, pageSize)
-  }, [isCheckingAuth, currentUserId, debouncedQuery, pageSize, fetchListings])
-
-  useEffect(() => {
-    if (isCheckingAuth) return
-    fetchCounts()
-  }, [isCheckingAuth, fetchCounts])
-
-  useEffect(() => {
-    if (isCheckingAuth) return
-    fetchProfile()
-
-    if (!supabase) return
-
-    // Bot toplu kayıt eklediğinde her satırda yeniden çekmemek için olayları birleştir.
-    // Supabase ücretsiz bant genişliğini korumak için: en az 20 sn aralık, sekme gizliyken hiç çekme
-    // (sekmeye dönünce aşağıdaki "tick" zaten yeniler).
-    let timer: ReturnType<typeof setTimeout> | null = null
-    let lastRun = 0
-    const MIN_GAP_MS = 20_000
-    const refresh = () => {
-      if (timer) return // zaten planlı bir yenileme var: tüm olaylar onunla birleşir
-      const wait = Math.max(2500, MIN_GAP_MS - (Date.now() - lastRun))
-      timer = setTimeout(() => {
-        timer = null
-        if (document.visibilityState !== "visible") return
-        lastRun = Date.now()
-        fetchListings(queryRef.current, pageSizeRef.current)
-        fetchCounts()
-      }, wait)
-    }
-
-    let realtimeOk = false
-    let pollSkips = 0
-    const channel = supabase
-      .channel("realtime-all")
-      .on("postgres_changes", { event: "*", schema: "public", table: "listings" }, refresh)
-      .on("postgres_changes", { event: "*", schema: "public", table: "bot_listings" }, refresh)
-      .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, () => fetchProfile())
-      .on("postgres_changes", { event: "*", schema: "public", table: "favorites" }, () => {
-        if (currentUserId) fetchUserFavorites(currentUserId)
-      })
-      .subscribe((status) => { realtimeOk = status === "SUBSCRIBED" })
-
-    // Realtime sessizce düşebilir ya da tabloda yayın kapalı olabilir. Yedek olarak: sekme açıkken
-    // dakikada bir yenile; sekmeye dönünce / internet gelince hemen yenile (elle yenileme gerekmesin).
-    const tick = () => {
-      if (document.visibilityState !== "visible") return
-      fetchListings(queryRef.current, pageSizeRef.current)
-      fetchCounts()
-    }
-    // Realtime bağlıyken yedek yenileme 5 dakikada bir (her istek ~120 satır çeker; çok kullanıcıda Supabase ücretsiz
-    // bant genişliğini hızla tüketir). Realtime düşerse eskisi gibi dakikada bir yenilenir.
-    const poll = setInterval(() => {
-      if (realtimeOk && ++pollSkips % 5 !== 0) return
-      tick()
-    }, 60000)
-    document.addEventListener("visibilitychange", tick)
-    window.addEventListener("online", tick)
-
-    return () => {
-      if (timer) clearTimeout(timer)
-      clearInterval(poll)
-      document.removeEventListener("visibilitychange", tick)
-      window.removeEventListener("online", tick)
-      supabase.removeChannel(channel)
-    }
-  }, [isCheckingAuth, currentUserId, fetchListings, fetchCounts])
-
-  // Engellenen kullanıcı / telefonlara ait ilanları her yerden gizle
-  const visibleLoads = useMemo(() => {
-    if (blockedKeys.length === 0) return loads
-    return loads.filter((l) => {
-      if (l.userId && blockedKeys.includes(l.userId)) return false
-      if (l.phone && l.phone !== "Belirtilmedi" && blockedKeys.includes(l.phone)) return false
-      return true
+    if (typeof window !== "undefined" && /type=recovery/.test(window.location.hash)) setRecovery(true)
+    const { data } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "PASSWORD_RECOVERY") setRecovery(true)
     })
-  }, [loads, blockedKeys])
-
-  const filteredLoads = useMemo(() => {
-    return visibleLoads.filter((load) => {
-      const filterMatch = activeFilter === "Tümü" || (activeFilter === "Acil" ? load.urgent : matchesVehicle(load, activeFilter))
-      const sourceMatch = sourceFilter === "all" || load.source === sourceFilter
-      return filterMatch && sourceMatch
-    })
-  }, [visibleLoads, activeFilter, sourceFilter])
-
-  const totalActive = totals ? totals.user + totals.bot : visibleLoads.length
-
-  const stats = useMemo(() => {
-    const uniqueRoutes = new Set(visibleLoads.filter(l => l.from && l.to && l.from !== "-" && l.to !== "-").map(l => `${l.from}-${l.to}`)).size
-    return {
-      activeTotal: totals ? totals.user + totals.bot : visibleLoads.length,
-      todayUserCount: totals ? totals.user : visibleLoads.filter(l => l.source === "user").length,
-      botCount: totals ? totals.bot : visibleLoads.filter(l => l.source === "bot").length,
-      pendingTrips: visibleLoads.filter(l => l.source === "user" && l.userId === currentUserId).length,
-      activeRoutesCount: uniqueRoutes
-    }
-  }, [visibleLoads, totals, currentUserId])
-
-  const handleLogout = async () => {
-    try {
-      localStorage.removeItem("favorite_loads")
-      localStorage.removeItem("is_guest")
-      if (supabase) await supabase.auth.signOut()
-      setCurrentUserId(null)
-      setFavoriteIds([])
-      router.push("/login")
-      router.refresh()
-    } catch (error) {
-      console.error("Çıkış yapılırken hata oluştu:", error)
-    }
-  }
-
-  useEffect(() => {
-    if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior })
-  }, [activeTab])
-
-  const openUrgent = () => {
-    setActiveFilter("Acil")
-    setSourceFilter("all")
-    setActiveTab("İlanlar")
-  }
-
-  const handleCitySearch = useCallback((city: string) => {
-    setQuery(city)
-    setDebouncedQuery(city)
-    queryRef.current = city
-    setActiveFilter("Tümü")
-    setSourceFilter("all")
-    setActiveTab("İlanlar")
+    return () => data.subscription.unsubscribe()
   }, [])
 
-  // Premium sekmesini dışarıdan (reklam kartı, kilitli özellik) açma
-  useEffect(() => {
-    const open = () => { setActiveTab("Premium"); setIsSidebarOpen(false) }
-    window.addEventListener(OPEN_PREMIUM_EVENT, open)
-    return () => window.removeEventListener(OPEN_PREMIUM_EVENT, open)
-  }, [])
+  const handleSetNewPassword = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setErrorMsg("")
+    if (newPassword.length < 6) { setErrorMsg("Şifre en az 6 karakter olmalıdır."); return }
+    setLoading(true)
+    const { error } = await supabase.auth.updateUser({ password: newPassword })
+    setLoading(false)
+    if (error) { setErrorMsg("Şifre güncellenemedi. Bağlantının süresi dolmuş olabilir; 'Şifremi unuttum' ile yeni bağlantı isteyin."); return }
+    setSuccessMsg("Şifreniz güncellendi. Yönlendiriliyorsunuz...")
+    setTimeout(() => { router.push("/"); router.refresh() }, 900)
+  }
 
-  // Ücretsiz planda aynı anda en fazla N aktif ilan
-  const requestCreate = () => {
-    if (!isPremium && !isGuest && stats.pendingTrips >= FREE_LIMITS.activeListings) {
-      toast(`Ücretsiz planda aynı anda en fazla ${FREE_LIMITS.activeListings} aktif ilanınız olabilir. Sınırsız ilan için Premium'a geçin.`)
-      setActiveTab("Premium")
+  const trError = (msg: string) => {
+    const m = msg.toLowerCase()
+    if (m.includes("already registered") || m.includes("already been registered")) return "Bu e-posta adresi zaten kayıtlı. Giriş yapmayı deneyin."
+    if (m.includes("password") && m.includes("6")) return "Şifre en az 6 karakter olmalıdır."
+    if (m.includes("valid email") || m.includes("invalid email")) return "Geçerli bir e-posta adresi girin."
+    if (m.includes("rate limit")) return "Çok fazla deneme yapıldı. Lütfen biraz bekleyip tekrar deneyin."
+    return "İşlem tamamlanamadı. Lütfen tekrar deneyin."
+  }
+
+  const handleForgotPassword = async () => {
+    setErrorMsg("")
+    setSuccessMsg("")
+    if (!email) {
+      setErrorMsg("Şifre sıfırlama için önce e-posta adresinizi yazın.")
       return
     }
-    setIsCreateOpen(true)
+    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: `${window.location.origin}/login` })
+    if (error) setErrorMsg(trError(error.message))
+    else setSuccessMsg("Şifre sıfırlama bağlantısı e-posta adresinize gönderildi.")
   }
 
-  const effectiveTab = isGuest && GUEST_BLOCKED_TABS.includes(activeTab) ? "__guest" : activeTab
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoading(true)
+    setErrorMsg("")
+    setSuccessMsg("")
 
-  if (isCheckingAuth) {
+    if (isSignUp && !accepted) {
+      setErrorMsg("Devam etmek için Gizlilik Politikası'nı kabul etmelisiniz.")
+      setLoading(false)
+      return
+    }
+
+    if (!supabase) {
+      setErrorMsg("Veritabanı bağlantısı kurulamadı.")
+      setLoading(false)
+      return
+    }
+
+    try {
+      // Önce misafir durumunu ve eski oturum izlerini sil
+      localStorage.removeItem("is_guest")
+
+      if (isSignUp) {
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: {
+              company_name: "Nakliye Cepte Kullanıcısı",
+              authorized_person: email.split("@")[0]
+            }
+          }
+        })
+
+        if (error) {
+          setErrorMsg(trError(error.message))
+        } else {
+          if (data?.user && data.session) {
+            await supabase.from("profiles").upsert({
+              id: data.user.id,
+              email: email,
+              company_name: "Nakliye Cepte Kullanıcısı",
+              authorized_person: email.split("@")[0],
+              updated_at: new Date().toISOString()
+            })
+          }
+          
+          // Kayıt sonrası otomatik oturum açmayı dene
+          const { error: signInError } = await supabase.auth.signInWithPassword({ email, password })
+          
+          if (signInError) {
+            setSuccessMsg("Kayıt oluşturuldu. Lütfen e-postanızı onaylayın veya giriş yapın.")
+          } else {
+            setSuccessMsg("Kayıt başarılı! Yönlendiriliyorsunuz...")
+            setTimeout(() => {
+              router.push("/")
+              router.refresh()
+            }, 800)
+          }
+        }
+      } else {
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+        
+        if (error) {
+          setErrorMsg("Giriş başarısız: Şifre hatalı veya hesap bulunamadı.")
+        } else if (data?.user) {
+          router.push("/")
+          router.refresh()
+        }
+      }
+    } catch (err: any) {
+      console.error(err)
+      setErrorMsg("Bir sorun oluştu. Lütfen tekrar deneyin.")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleGoogleLogin = async () => {
+    setErrorMsg("")
+    setSuccessMsg("")
+    if (!supabase) { setErrorMsg("Veritabanı bağlantısı kurulamadı."); return }
+    setLoading(true)
+    try {
+      localStorage.removeItem("is_guest")
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: { redirectTo: `${window.location.origin}/` },
+      })
+      if (error) { setErrorMsg("Google ile giriş başlatılamadı. Lütfen tekrar deneyin."); setLoading(false) }
+      // Başarılıysa tarayıcı Google'a yönlenir; dönüşte oturum otomatik açılır.
+    } catch (err) {
+      console.error("Google giriş hatası:", err)
+      setErrorMsg("Google ile giriş başlatılamadı. Lütfen tekrar deneyin.")
+      setLoading(false)
+    }
+  }
+
+  const handleGuestLogin = async () => {
+    setLoading(true)
+    try {
+      // Misafir moduna geçerken eski Supabase oturumunu KESİNLİKLE kapat
+      await signOutClean()
+      localStorage.removeItem("favorite_loads")
+      localStorage.setItem("is_guest", "true")
+      
+      router.push("/")
+      router.refresh()
+    } catch (err) {
+      console.error("Misafir giriş hatası:", err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const fieldClass =
+    "h-12 w-full rounded-xl border border-[#dbe3ec] bg-[#f7f9fb] px-4 text-base text-[#122c4a] outline-none transition-colors placeholder:text-[#a3b1c0] focus:border-[#122c4a] focus:bg-white focus:ring-4 focus:ring-[#122c4a]/10 md:text-sm"
+
+  if (recovery) {
     return (
-      <div className="flex h-dvh flex-col items-center justify-center gap-4 bg-gradient-to-b from-[#122c4a] to-[#0b1d33] text-white">
-        <LogoMark size={96} className="animate-pulse drop-shadow-[0_12px_24px_rgba(0,0,0,0.35)]" />
-        <div className="text-center">
-          <div className="text-lg font-bold tracking-tight">Nakliye Cepte</div>
-          <div className="mt-1 text-xs text-white/60">Oturum kontrol ediliyor...</div>
-        </div>
+      <div className="flex min-h-dvh items-center justify-center bg-gradient-to-b from-[#163a63] via-[#122c4a] to-[#0b1d33] p-6">
+        <form onSubmit={handleSetNewPassword} className="animate-rise w-full max-w-md space-y-4 rounded-3xl bg-white p-6 shadow-xl">
+          <h1 className="text-lg font-extrabold text-[#122c4a]">Yeni şifre belirleyin</h1>
+          <p className="text-sm text-[#627d98]">Hesabınız için yeni bir şifre yazın (en az 6 karakter).</p>
+          {errorMsg && <div role="alert" className="rounded-xl border border-red-100 bg-red-50 p-3.5 text-xs font-semibold leading-relaxed text-red-600">{errorMsg}</div>}
+          {successMsg && <div role="status" className="rounded-xl border border-green-100 bg-green-50 p-3.5 text-xs font-semibold leading-relaxed text-green-700">{successMsg}</div>}
+          <div className="relative">
+            <input
+              type={showPassword ? "text" : "password"}
+              required
+              minLength={6}
+              autoComplete="new-password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              placeholder="Yeni şifre"
+              aria-label="Yeni şifre"
+              className={cn(fieldClass, "pr-12")}
+            />
+            <button type="button" onClick={() => setShowPassword((v) => !v)} aria-label={showPassword ? "Şifreyi gizle" : "Şifreyi göster"} className="absolute right-1.5 top-1/2 grid size-9 -translate-y-1/2 place-items-center rounded-lg text-[#8da0b2] hover:bg-[#eef2f6]">
+              {showPassword ? <EyeOff className="size-[18px]" /> : <Eye className="size-[18px]" />}
+            </button>
+          </div>
+          <button type="submit" disabled={loading} className="h-12 w-full rounded-xl bg-[#122c4a] text-sm font-bold text-white disabled:opacity-60">
+            {loading ? "Kaydediliyor..." : "Şifreyi Güncelle"}
+          </button>
+        </form>
       </div>
     )
   }
 
-  const urgentTotal = totals ? totals.urgent : 0
-
   return (
-    <div className="min-h-dvh bg-[#f5f7fa] text-[#122c4a]">
-      {isSidebarOpen && (
-        <button 
-          aria-label="Menüyü kapat" 
-          className="animate-fade fixed inset-0 z-[45] bg-[#0b1d33]/55 lg:hidden" 
-          onClick={() => setIsSidebarOpen(false)} 
-        />
-      )}
-      
-      <Sidebar 
-        activeTab={activeTab} 
-        setActiveTab={setActiveTab} 
-        loadsCount={totalActive} 
-        favoritesCount={favoriteIds.length}
-        isCollapsed={isCollapsed} 
-        setIsCollapsed={setIsCollapsed} 
-        isSidebarOpen={isSidebarOpen} 
-        setIsSidebarOpen={setIsSidebarOpen} 
-        isGuest={isGuest}
-        profile={profile}
-      />
+    <div className="flex min-h-dvh flex-col bg-gradient-to-b from-[#163a63] via-[#122c4a] to-[#0b1d33] lg:items-center lg:justify-center lg:p-6">
+      {/* Üst marka alanı */}
+      <div className="relative px-6 pb-10 pt-[calc(2.5rem+env(safe-area-inset-top))] text-center text-white lg:pb-6 lg:pt-0">
+        <div className="pointer-events-none absolute -right-8 top-4 size-40 rounded-full bg-[#d64526]/25 blur-3xl" />
+        <div className="pointer-events-none absolute -left-10 top-24 size-36 rounded-full bg-[#315d83]/40 blur-3xl" />
+        <div className="relative">
+          <LogoMark size={92} className="mx-auto mb-3 drop-shadow-[0_12px_24px_rgba(0,0,0,0.35)]" />
+          <h1 className="text-[26px] font-extrabold tracking-tight">Nakliye Cepte</h1>
+          <p className="mt-1.5 text-sm text-white/65">Türkiye&apos;nin yük ve taşıma ilan platformu</p>
 
-      <div className={cn("min-h-dvh transition-[padding] duration-200 lg:pl-[272px]", isCollapsed && "lg:pl-[78px]")}>
-        <header className="sticky top-0 z-30 border-b border-[#e4e9ef] bg-[#f5f7fa] pt-safe">
-          <div className="flex flex-col gap-2.5 px-4 pb-3 pt-3 sm:px-8 lg:h-[76px] lg:flex-row lg:items-center lg:justify-between lg:gap-4 lg:py-0">
-            {/* Mobil: marka + aksiyonlar */}
-            <div className="flex items-center justify-between gap-3 lg:hidden">
-              <button onClick={() => setActiveTab("Genel Bakış")} className="flex items-center gap-2.5" aria-label="Ana sayfa">
-                <LogoMark size={38} tile className="shrink-0 rounded-[10px] shadow-sm" />
-                <span className="text-[17px] font-bold tracking-tight">Nakliye Cepte</span>
-              </button>
-              <div className="flex items-center gap-1.5">
-                <UrgentButton count={urgentTotal} onClick={openUrgent} />
-                {isGuest ? (
-                  <button
-                    onClick={handleLogout}
-                    className="flex h-10 items-center gap-1.5 rounded-full bg-[#122c4a] px-4 text-xs font-semibold text-white transition-colors hover:bg-[#1a3d68]"
-                  >
-                    <LogIn className="size-4" />
-                    Giriş
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => setActiveTab("Şirket Profili")}
-                    aria-label="Profilim"
-                    className="grid size-10 place-items-center rounded-full bg-[#dbe8f2] text-sm font-bold text-[#315d83] transition-colors hover:bg-[#cddfee]"
-                  >
-                    {profile.initials}
-                  </button>
+          <div className="mx-auto mt-5 flex max-w-sm items-center justify-center gap-2 text-[11px] font-semibold text-white/80">
+            <span className="inline-flex items-center gap-1 rounded-full bg-white/10 px-2.5 py-1 ring-1 ring-white/15"><Truck className="size-3.5" /> Güncel yükler</span>
+            <span className="inline-flex items-center gap-1 rounded-full bg-white/10 px-2.5 py-1 ring-1 ring-white/15"><Zap className="size-3.5" /> Hızlı iletişim</span>
+            <span className="inline-flex items-center gap-1 rounded-full bg-white/10 px-2.5 py-1 ring-1 ring-white/15"><ShieldCheck className="size-3.5" /> Güvenli</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Form kartı */}
+      <div className="animate-rise relative flex-1 rounded-t-[32px] bg-white px-6 pb-[calc(2rem+env(safe-area-inset-bottom))] pt-7 shadow-[0_-12px_40px_rgba(0,0,0,0.18)] lg:w-full lg:max-w-md lg:flex-none lg:rounded-3xl lg:pb-8">
+        <div className="mx-auto w-full max-w-md">
+          {/* Giriş / Kayıt sekmesi */}
+          <div className="mb-6 grid grid-cols-2 gap-1 rounded-2xl bg-[#eef2f6] p-1" role="tablist">
+            {[
+              { signUp: false, label: "Giriş Yap" },
+              { signUp: true, label: "Kayıt Ol" },
+            ].map((t) => (
+              <button
+                key={t.label}
+                type="button"
+                role="tab"
+                aria-selected={isSignUp === t.signUp}
+                onClick={() => { setIsSignUp(t.signUp); setErrorMsg(""); setSuccessMsg("") }}
+                className={cn(
+                  "h-11 rounded-xl text-sm font-semibold transition-all",
+                  isSignUp === t.signUp ? "bg-white text-[#122c4a] shadow-sm" : "text-[#627d98]"
                 )}
-              </div>
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+
+          {errorMsg && <div role="alert" className="mb-4 rounded-xl border border-red-100 bg-red-50 p-3.5 text-xs font-semibold leading-relaxed text-red-600">{errorMsg}</div>}
+          {successMsg && <div role="status" className="mb-4 rounded-xl border border-green-100 bg-green-50 p-3.5 text-xs font-semibold leading-relaxed text-green-700">{successMsg}</div>}
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label htmlFor="email" className="mb-1.5 block text-xs font-semibold text-[#4a6178]">E-posta Adresi</label>
+              <input
+                id="email"
+                type="email"
+                required
+                autoComplete="email"
+                inputMode="email"
+                autoCapitalize="none"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="ornek@mail.com"
+                className={fieldClass}
+              />
             </div>
 
-            {/* Arama */}
-            <div className={cn("relative w-full lg:w-[380px]", (effectiveTab === "Genel Bakış" || effectiveTab === "overview") && "hidden lg:block")}>
-              <Search className="pointer-events-none absolute left-3.5 top-1/2 size-[18px] -translate-y-1/2 text-[#8da0b2]" />
-              <Input 
-                value={query} 
-                onChange={(e) => {
-                  setQuery(e.target.value)
-                  if (e.target.value.trim().length > 0) setActiveTab("İlanlar")
-                }} 
-                placeholder="Şehir, firma veya yük ara..." 
-                enterKeyHint="search"
-                className="h-11 w-full rounded-xl border-[#e0e6ed] bg-white pl-10 pr-10 text-base shadow-[0_1px_2px_rgba(18,44,74,0.04)] md:text-sm" 
-              />
-              {query && (
+            <div>
+              <label htmlFor="password" className="mb-1.5 block text-xs font-semibold text-[#4a6178]">Şifre</label>
+              <div className="relative">
+                <input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  required
+                  autoComplete={isSignUp ? "new-password" : "current-password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className={cn(fieldClass, "pr-12")}
+                />
                 <button
                   type="button"
-                  aria-label="Aramayı temizle"
-                  onClick={() => setQuery("")}
-                  className="absolute right-2 top-1/2 grid size-7 -translate-y-1/2 place-items-center rounded-full bg-[#eef2f6] text-[#627d98] hover:bg-[#e2e8ef]"
+                  onClick={() => setShowPassword((v) => !v)}
+                  aria-label={showPassword ? "Şifreyi gizle" : "Şifreyi göster"}
+                  className="absolute right-1.5 top-1/2 grid size-9 -translate-y-1/2 place-items-center rounded-lg text-[#8da0b2] hover:bg-[#eef2f6]"
                 >
-                  <X className="size-3.5" />
+                  {showPassword ? <EyeOff className="size-[18px]" /> : <Eye className="size-[18px]" />}
                 </button>
-              )}
-            </div>
-
-            {/* Masaüstü: aksiyonlar */}
-            <div className="hidden items-center gap-3 lg:flex">
-              <UrgentButton count={urgentTotal} onClick={openUrgent} />
-              <button onClick={() => setActiveTab("Şirket Profili")} className="flex items-center gap-2.5 rounded-xl p-1.5 pr-3 transition-colors hover:bg-white">
-                <div className="grid size-9 place-items-center rounded-full bg-[#dbe8f2] text-sm font-bold text-[#315d83]">{profile.initials}</div>
-                <div className="text-left">
-                  <div className="text-sm font-semibold leading-tight">{profile.authorized_person}</div>
-                  <div className="text-xs text-[#8da0b2]">{profile.company_name}</div>
+              </div>
+              {!isSignUp && (
+                <div className="mt-2 text-right">
+                  <button type="button" onClick={handleForgotPassword} className="text-xs font-semibold text-[#315d83] hover:underline">
+                    Şifremi unuttum
+                  </button>
                 </div>
-              </button>
-              {isGuest && (
-                <button
-                  onClick={handleLogout}
-                  className="flex items-center gap-1.5 rounded-xl bg-[#122c4a] px-4 py-2.5 text-xs font-semibold text-white transition-colors hover:bg-[#1a3d68]"
-                  title="Giriş Yap / Kayıt Ol"
-                >
-                  <LogIn className="size-4" />
-                  Giriş Yap
-                </button>
               )}
             </div>
+
+            {isSignUp && (
+              <label className="flex cursor-pointer items-start gap-3 rounded-xl bg-[#f7f9fb] p-3.5 text-xs leading-relaxed text-[#4a6178]">
+                <input type="checkbox" checked={accepted} onChange={(e) => setAccepted(e.target.checked)} className="mt-0.5 size-5 shrink-0 accent-[#d64526]" />
+                <span>
+                  <Link href="/privacy" target="_blank" className="font-semibold text-[#315d83] underline">Gizlilik Politikası</Link>
+                  &apos;nı okudum ve kabul ediyorum.
+                </span>
+              </label>
+            )}
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="h-12 w-full rounded-xl bg-[#d64526] text-sm font-semibold text-white shadow-md shadow-[#d64526]/25 transition-all hover:bg-[#b93820] active:scale-[0.99] disabled:opacity-60"
+            >
+              {loading ? "İşlem yapılıyor..." : (isSignUp ? "Hesap Oluştur" : "Giriş Yap")}
+            </button>
+          </form>
+
+          <div className="my-5 flex items-center gap-3 text-[11px] font-semibold uppercase tracking-wider text-[#a3b1c0]">
+            <span className="h-px flex-1 bg-[#e4e9ef]" /> veya <span className="h-px flex-1 bg-[#e4e9ef]" />
           </div>
-        </header>
 
-        <main className="mx-auto max-w-[1450px] px-4 pb-[calc(6.5rem+env(safe-area-inset-bottom))] pt-4 sm:px-8 sm:pt-6 lg:pb-10 lg:pt-8">
-          {effectiveTab === "__guest" && <GuestGate onLogin={handleLogout} />}
-          {(effectiveTab === "Genel Bakış" || effectiveTab === "overview") && (
-            <OverviewView 
-              loads={visibleLoads} 
-              totalCount={totalActive}
-              urgentCount={totals ? totals.urgent : undefined}
-              currentUserId={currentUserId}
-              userName={isGuest ? undefined : profile.authorized_person}
-              onOpenCreate={requestCreate} 
-              setActiveTab={setActiveTab} 
-              onSelectCity={handleCitySearch}
-              onOpenUrgent={openUrgent}
-              onPickFilter={(f: string) => { setActiveFilter(f); setSourceFilter("all"); setActiveTab("İlanlar") }}
-              favoritesCount={favoriteIds.length}
-            />
-          )}
-          {effectiveTab === "İlanlar" && (
-            <>
-            <ListingsView 
-              loads={filteredLoads} 
-              stats={stats} 
-              loading={isLoading} 
-              activeFilter={activeFilter} 
-              setActiveFilter={setActiveFilter} 
-              sourceFilter={sourceFilter} 
-              setSourceFilter={setSourceFilter} 
-              setIsCreateOpen={(open: boolean) => (open ? requestCreate() : setIsCreateOpen(false))} 
-              searchQuery={debouncedQuery}
-              favoriteIds={favoriteIds}
-              onToggleFavorite={toggleFavorite}
-              onUserBlocked={handleUserBlocked}
-              onCitySearch={handleCitySearch}
-              hasMore={hasMore}
-              onLoadMore={() => setPageSize((p) => p + PAGE_SIZE)}
-              lockedCount={lockedCount}
-            />
-            </>
-          )}
-          {effectiveTab === "Favorilerim" && (
-            <FavoritesView 
-              loads={visibleLoads} 
-              favoriteIds={favoriteIds} 
-              onToggleFavorite={toggleFavorite} 
-              onUserBlocked={handleUserBlocked}
-              onCitySearch={handleCitySearch}
-              searchQuery={debouncedQuery}
-            />
-          )}
-          {effectiveTab === "Seferlerim" && (
-            <TripsView
-              loads={visibleLoads}
-              currentUserId={currentUserId}
-              onChanged={() => {
-                fetchListings(queryRef.current, pageSizeRef.current)
-                fetchCounts()
-              }}
-            />
-          )}
-          {effectiveTab === "Gelir Gider" && (premiumLoading ? null : isPremium ? <FinanceView /> : <PremiumLock title="Gelir-Gider Premium'a özel" description="Kazanç ve masraflarınızı takip etmek, raporları görmek için Premium aboneliğe geçin." />)}
-          {effectiveTab === "Şirket Profili" && <CompanyProfileView onProfileUpdated={fetchProfile} />}
-          {effectiveTab === "Sefer Hesapla" && <CalculatorView />}
-          {effectiveTab === "Araçlar" && <ToolsView />}
-          {effectiveTab === "Yardım Merkezi" && <HelpCenterView />}
-          {effectiveTab === "Premium" && <PremiumView isGuest={isGuest} onLogin={handleLogout} />}
-        </main>
+          <button
+            type="button"
+            onClick={handleGoogleLogin}
+            disabled={loading}
+            className="mb-3 flex h-12 w-full items-center justify-center gap-3 rounded-xl border border-[#dbe3ec] bg-white text-sm font-semibold text-[#122c4a] transition-colors hover:bg-[#f5f7fa] disabled:opacity-60"
+          >
+            <svg viewBox="0 0 48 48" className="size-5" aria-hidden="true">
+              <path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.9 6.1C12.4 13.6 17.7 9.5 24 9.5z"/>
+              <path fill="#4285F4" d="M46.1 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.4c-.5 2.9-2.2 5.3-4.6 6.9l7.1 5.5c4.2-3.9 7.2-9.6 7.2-16.9z"/>
+              <path fill="#FBBC05" d="M10.5 28.7c-.5-1.4-.8-2.9-.8-4.7s.3-3.2.8-4.7l-7.9-6.1C.9 16.4 0 20.1 0 24s.9 7.6 2.6 10.8l7.9-6.1z"/>
+              <path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.1-5.5c-2 1.4-4.9 2.3-8.8 2.3-6.3 0-11.6-4.1-13.5-9.8l-7.9 6.1C6.5 42.6 14.6 48 24 48z"/>
+            </svg>
+            Google ile devam et
+          </button>
+          <p className="mb-3 text-center text-[11px] text-[#8da0b2]">
+            Google ile devam ederek <Link href="/kullanim-kosullari" target="_blank" className="underline">Kullanım Koşulları</Link> ve <Link href="/privacy" target="_blank" className="underline">Gizlilik Politikası</Link>&apos;nı kabul etmiş olursunuz.
+          </p>
+
+          <button
+            type="button"
+            onClick={handleGuestLogin}
+            disabled={loading}
+            className="h-12 w-full rounded-xl border border-[#dbe3ec] bg-white text-sm font-semibold text-[#122c4a] transition-colors hover:bg-[#f5f7fa] disabled:opacity-60"
+          >
+            Misafir Olarak Göz At
+          </button>
+
+          <div className="mt-6 flex flex-wrap justify-center gap-x-5 gap-y-2 text-[11px] font-medium text-[#8da0b2]">
+            <Link href="/hakkimizda" className="hover:underline">Hakkımızda</Link>
+            <Link href="/rehber" className="hover:underline">Rehber</Link>
+            <Link href="/privacy" className="hover:underline">Gizlilik Politikası</Link>
+            <Link href="/kullanim-kosullari" className="hover:underline">Kullanım Koşulları</Link>
+            <Link href="/delete-account" className="hover:underline">Hesap Silme</Link>
+          </div>
+        </div>
       </div>
-
-      <BottomNav
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
-        onOpenCreate={requestCreate}
-        onOpenMenu={() => setIsSidebarOpen(true)}
-        favoritesCount={favoriteIds.length}
-      />
-
-      <CreateListingModal 
-        isOpen={isCreateOpen} 
-        onClose={() => setIsCreateOpen(false)} 
-        onSuccess={() => {
-          setIsCreateOpen(false)
-          setActiveTab("İlanlar")
-          fetchListings(queryRef.current, pageSizeRef.current)
-          fetchCounts()
-        }} 
-      />
-    </div>
-  )
-}
-
-function UrgentButton({ count, onClick }: { count: number; onClick: () => void }) {
-  return (
-    <button
-      onClick={onClick}
-      aria-label={count > 0 ? `${count} acil yük` : "Acil yükler"}
-      title="Acil yükler"
-      className="relative grid size-10 place-items-center rounded-full text-[#4a6178] transition-colors hover:bg-white"
-    >
-      <Bell className="size-[22px]" />
-      {count > 0 && (
-        <span className="absolute -right-0.5 -top-0.5 grid min-w-[18px] place-items-center rounded-full border-2 border-[#f5f7fa] bg-[#d64526] px-1 text-[9px] font-bold leading-[14px] text-white">
-          {count > 99 ? "99+" : count}
-        </span>
-      )}
-    </button>
-  )
-}
-
-function GuestGate({ onLogin }: { onLogin: () => void }) {
-  return (
-    <div className="animate-rise mx-auto mt-6 max-w-md rounded-3xl border border-[#e4e9ef] bg-white p-8 text-center shadow-sm">
-      <div className="mx-auto mb-4 grid size-14 place-items-center rounded-2xl bg-[#eef4f8] text-[#315d83]">
-        <LogIn className="size-6" />
-      </div>
-      <h2 className="text-lg font-bold text-[#122c4a]">Bu bölüm için giriş gerekiyor</h2>
-      <p className="mt-2 text-sm leading-relaxed text-[#627d98]">
-        Favoriler, seferler, gelir-gider ve profil özellikleri için ücretsiz üye olabilir veya giriş yapabilirsiniz.
-      </p>
-      <button
-        onClick={onLogin}
-        className="mt-6 h-12 w-full rounded-xl bg-[#122c4a] px-6 text-sm font-semibold text-white transition-colors hover:bg-[#1a3d68]"
-      >
-        Giriş Yap / Kayıt Ol
-      </button>
     </div>
   )
 }
