@@ -473,7 +473,7 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
 
         {/* Güzergâh: tek bakışta nereden → nereye */}
         {route ? (
-          <div className="rounded-2xl border border-border bg-muted/60 px-3.5 py-3 sm:px-4 sm:py-3.5 shadow-[0_1px_0_rgba(18,44,74,0.03)]">
+          <div className="rounded-2xl bg-muted/60 px-3.5 py-3 sm:px-4 sm:py-3.5">
             <div className="flex items-center gap-3">
               <Place dot="bg-emerald-500" caption="Çıkış" name={route.from} label={highlightMatch(route.from, cleanQuery)} sub={load.districtOf?.[route.from]} align="left" onClick={onCitySearch ? () => onCitySearch(route.from) : undefined} />
               <div className="flex w-[78px] shrink-0 flex-col items-center sm:w-[108px]">
@@ -555,14 +555,14 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
           <div className="grid grid-cols-2 gap-2.5">
             <button
               onClick={handleCall}
-              className="flex h-11 items-center justify-center gap-2 rounded-xl bg-primary text-sm font-semibold text-primary-foreground shadow-[0_6px_14px_-8px_rgba(18,44,74,0.7)] active:scale-[0.98] active:opacity-90"
+              className="flex h-11 items-center justify-center gap-2 rounded-xl bg-brand text-sm font-semibold text-white active:scale-[0.98] active:opacity-90"
             >
               <Phone className="size-[17px]" />
               Ara
             </button>
             <button
               onClick={handleWhatsApp}
-              className="flex h-11 items-center justify-center gap-2 rounded-xl bg-emerald-600 text-sm font-semibold text-white shadow-[0_6px_14px_-8px_rgba(5,150,105,0.8)] active:scale-[0.98] active:bg-emerald-700"
+              className="flex h-11 items-center justify-center gap-2 rounded-xl border border-emerald-600/30 bg-emerald-600/10 text-sm font-semibold text-emerald-700 active:scale-[0.98] active:bg-emerald-600/20"
             >
               <MessageCircle className="size-[17px]" />
               WhatsApp
@@ -585,11 +585,11 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
           footer={
             hasPhone ? (
               <div className="grid grid-cols-2 gap-2.5">
-                <button onClick={handleCall} className="flex h-12 items-center justify-center gap-2 rounded-xl bg-primary text-sm font-semibold text-primary-foreground active:opacity-90">
+                <button onClick={handleCall} className="flex h-12 items-center justify-center gap-2 rounded-xl bg-brand text-sm font-semibold text-white active:opacity-90">
                   <Phone className="size-[17px]" />
                   Ara
                 </button>
-                <button onClick={handleWhatsApp} className="flex h-12 items-center justify-center gap-2 rounded-xl bg-emerald-600 text-sm font-semibold text-white active:bg-emerald-700">
+                <button onClick={handleWhatsApp} className="flex h-12 items-center justify-center gap-2 rounded-xl border border-emerald-600/30 bg-emerald-600/10 text-sm font-semibold text-emerald-700 active:bg-emerald-600/20">
                   <MessageCircle className="size-[17px]" />
                   WhatsApp
                 </button>
