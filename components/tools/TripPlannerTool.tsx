@@ -81,18 +81,18 @@ export function TripPlannerTool() {
 
   const breaks = result?.stops.filter((s) => s.kind === "break").length ?? 0
   const rests = result?.stops.filter((s) => s.kind === "rest").length ?? 0
-  const inputClass = "h-11 border-[#d9e2ec] bg-[#f8fafc] text-base focus:bg-white md:text-sm"
+  const inputClass = "h-11 border-input bg-muted/50 text-base focus:bg-card md:text-sm"
 
   return (
     <div className="grid gap-5 lg:grid-cols-12">
-      <section className="space-y-4 rounded-2xl border border-[#e4e9ef] bg-white p-5 shadow-sm lg:col-span-5">
-        <h2 className="text-sm font-bold text-[#122c4a]">Yolculuk bilgileri</h2>
+      <section className="space-y-4 rounded-2xl border border-border bg-card p-5 shadow-sm lg:col-span-5">
+        <h2 className="text-sm font-bold text-foreground">Yolculuk bilgileri</h2>
         <div className="grid grid-cols-2 gap-3">
-          <label className="block text-xs font-semibold text-[#334e68]">
+          <label className="block text-xs font-semibold text-foreground/80">
             Mesafe (km)
             <Input inputMode="decimal" value={km} onChange={(e) => setKm(e.target.value)} className={cn(inputClass, "mt-1.5")} />
           </label>
-          <label className="block text-xs font-semibold text-[#334e68]">
+          <label className="block text-xs font-semibold text-foreground/80">
             Ort. hız (km/sa)
             <Input inputMode="decimal" value={speed} onChange={(e) => setSpeed(e.target.value)} className={cn(inputClass, "mt-1.5")} />
           </label>
@@ -109,7 +109,7 @@ export function TripPlannerTool() {
               onClick={() => setSpeed(v)}
               className={cn(
                 "rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-colors",
-                speed === v ? "border-[#122c4a] bg-[#122c4a] text-white" : "border-[#e0e6ed] bg-white text-[#627d98] hover:border-[#c4d0dc]"
+                speed === v ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card text-muted-foreground hover:border-input"
               )}
             >
               {label} · {v}
@@ -117,31 +117,31 @@ export function TripPlannerTool() {
           ))}
         </div>
 
-        <label className="block text-xs font-semibold text-[#334e68]">
+        <label className="block text-xs font-semibold text-foreground/80">
           Yola çıkış zamanı
           <input
             type="datetime-local"
             value={start}
             onChange={(e) => setStart(e.target.value)}
-            className="mt-1.5 h-11 w-full rounded-lg border border-[#d9e2ec] bg-[#f8fafc] px-2.5 text-base text-[#122c4a] focus:bg-white md:text-sm"
+            className="mt-1.5 h-11 w-full rounded-lg border border-input bg-muted/50 px-2.5 text-base text-foreground focus:bg-card md:text-sm"
           />
         </label>
 
         <div className="grid grid-cols-2 gap-3">
-          <label className="block text-xs font-semibold text-[#334e68]">
+          <label className="block text-xs font-semibold text-foreground/80">
             Yükleme bekleme (dk)
             <Input inputMode="numeric" value={waitStart} onChange={(e) => setWaitStart(e.target.value)} className={cn(inputClass, "mt-1.5")} />
           </label>
-          <label className="block text-xs font-semibold text-[#334e68]">
+          <label className="block text-xs font-semibold text-foreground/80">
             Boşaltma bekleme (dk)
             <Input inputMode="numeric" value={waitEnd} onChange={(e) => setWaitEnd(e.target.value)} className={cn(inputClass, "mt-1.5")} />
           </label>
         </div>
 
-        <label className="flex cursor-pointer items-start gap-3 rounded-xl bg-[#f6f9fc] p-3">
+        <label className="flex cursor-pointer items-start gap-3 rounded-xl bg-muted/50 p-3">
           <input type="checkbox" checked={rules} onChange={(e) => setRules(e.target.checked)} className="mt-0.5 size-4 accent-[#122c4a]" />
-          <span className="text-xs leading-relaxed text-[#334e68]">
-            <strong className="text-[#122c4a]">Zorunlu mola ve dinlenmeleri hesaba kat</strong>
+          <span className="text-xs leading-relaxed text-foreground/80">
+            <strong className="text-foreground">Zorunlu mola ve dinlenmeleri hesaba kat</strong>
             <br />4,5 saatte 45 dk mola, 9 saat sürüşte 11 saat dinlenme.
           </span>
         </label>
@@ -149,7 +149,7 @@ export function TripPlannerTool() {
 
       <section className="space-y-4 lg:col-span-7">
         {!result ? (
-          <div className="rounded-2xl border border-dashed border-[#cbd5e1] bg-white p-10 text-center text-sm text-[#8da0b2]">Mesafe, hız ve çıkış zamanını girin.</div>
+          <div className="rounded-2xl border border-dashed border-input bg-card p-10 text-center text-sm text-muted-foreground">Mesafe, hız ve çıkış zamanını girin.</div>
         ) : (
           <>
             <div className="rounded-3xl bg-gradient-to-br from-[#163a63] via-[#122c4a] to-[#0b1d33] p-5 text-white shadow-[0_12px_32px_rgba(18,44,74,0.25)] sm:p-6">
@@ -166,24 +166,24 @@ export function TripPlannerTool() {
             </div>
 
             {rules && result.stops.length > 0 && (
-              <div className="rounded-2xl border border-[#e4e9ef] bg-white p-4 shadow-[0_1px_2px_rgba(18,44,74,0.04)] sm:p-5">
-                <h3 className="mb-3 flex items-center gap-1.5 text-sm font-bold text-[#122c4a]">
-                  <MapPinned className="size-4 text-[#315d83]" /> Planlı duraklar
+              <div className="rounded-2xl border border-border bg-card p-4 shadow-[0_1px_2px_rgba(18,44,74,0.04)] sm:p-5">
+                <h3 className="mb-3 flex items-center gap-1.5 text-sm font-bold text-foreground">
+                  <MapPinned className="size-4 text-foreground/80" /> Planlı duraklar
                 </h3>
                 <ol className="space-y-0">
                   {result.stops.map((s, i) => (
                     <li key={i} className="flex gap-3">
                       <div className="flex flex-col items-center">
-                        <span className={cn("grid size-8 place-items-center rounded-full", s.kind === "rest" ? "bg-[#eef4f8] text-[#315d83]" : "bg-amber-50 text-amber-600")}>
+                        <span className={cn("grid size-8 place-items-center rounded-full", s.kind === "rest" ? "bg-muted text-foreground/80" : "bg-amber-50 text-amber-600")}>
                           {s.kind === "rest" ? <BedDouble className="size-4" /> : <Coffee className="size-4" />}
                         </span>
-                        {i < result.stops.length - 1 && <span className="my-1 w-px flex-1 bg-[#e4e9ef]" />}
+                        {i < result.stops.length - 1 && <span className="my-1 w-px flex-1 bg-muted" />}
                       </div>
                       <div className="pb-4">
-                        <div className="text-sm font-bold text-[#122c4a]">
+                        <div className="text-sm font-bold text-foreground">
                           {s.kind === "rest" ? "Günlük dinlenme" : "Mola"} · {fmtDayTime(s.at)}
                         </div>
-                        <div className="text-xs text-[#718397]">
+                        <div className="text-xs text-muted-foreground">
                           Yaklaşık {Math.round(s.km)}. km · {fmtHM(s.durationMs)} bekleme
                         </div>
                       </div>
@@ -193,8 +193,8 @@ export function TripPlannerTool() {
               </div>
             )}
 
-            <div className="flex items-start gap-2.5 rounded-xl bg-[#f6f9fc] p-3 text-xs leading-relaxed text-[#627d98]">
-              <RouteIcon className="mt-0.5 size-4 shrink-0 text-[#8da0b2]" />
+            <div className="flex items-start gap-2.5 rounded-xl bg-muted/50 p-3 text-xs leading-relaxed text-muted-foreground">
+              <RouteIcon className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
               Hesap sabit ortalama hıza göre yapılır; trafik, hava, gümrük ve yakıt molaları süreyi uzatabilir. Mola kuralları kesintisiz sürüşün sıfırdan başladığı varsayımıyla uygulanır.
             </div>
           </>
