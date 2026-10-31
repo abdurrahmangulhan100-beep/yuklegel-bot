@@ -8,23 +8,23 @@ export const metadata = {
 
 export default function PrivacyPage() {
   return (
-    <div className="min-h-screen bg-[#f8fafc] text-[#122c4a] py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-4xl mx-auto bg-white rounded-2xl shadow-sm border border-[#e4e9ef] p-6 sm:p-10">
+    <div className="min-h-screen bg-muted/60 text-foreground/80 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-4xl mx-auto bg-card rounded-2xl shadow-sm border border-border p-6 sm:p-10">
         
         {/* Üst Başlık & Geri Dönüş */}
-        <div className="flex items-center justify-between border-b border-[#edf2f7] pb-6 mb-6">
+        <div className="flex items-center justify-between border-b border-border pb-6 mb-6">
           <div className="flex items-center gap-3">
-            <div className="size-10 bg-[#eef4f8] rounded-xl flex items-center justify-center text-[#315d83]">
+            <div className="size-10 bg-muted/60 rounded-xl flex items-center justify-center text-[#315d83]">
               <ShieldCheck className="size-6" />
             </div>
             <div>
-              <h1 className="text-xl sm:text-2xl font-bold text-[#122c4a]">Gizlilik Politikası</h1>
-              <p className="text-xs text-[#8da0b2] mt-0.5">Son Güncelleme: Ekim 2026</p>
+              <h1 className="text-xl sm:text-2xl font-bold text-foreground/80">Gizlilik Politikası</h1>
+              <p className="text-xs text-muted-foreground mt-0.5">Son Güncelleme: Ekim 2026</p>
             </div>
           </div>
           <Link 
             href="/" 
-            className="flex items-center gap-1.5 text-xs font-semibold text-[#315d83] hover:text-[#122c4a] transition-colors bg-[#f5f7fa] px-3 py-2 rounded-lg"
+            className="flex items-center gap-1.5 text-xs font-semibold text-[#315d83] hover:text-foreground/80 transition-colors bg-muted/60 px-3 py-2 rounded-lg"
           >
             <ArrowLeft className="size-4" />
             Ana Sayfa
@@ -32,9 +32,9 @@ export default function PrivacyPage() {
         </div>
 
         {/* Metin İçeriği */}
-        <div className="space-y-6 text-sm text-[#334e68] leading-relaxed">
+        <div className="space-y-6 text-sm text-foreground/80 leading-relaxed">
           <section>
-            <h2 className="text-base font-bold text-[#122c4a] mb-2">1. Giriş ve Amaç</h2>
+            <h2 className="text-base font-bold text-foreground/80 mb-2">1. Giriş ve Amaç</h2>
             <p>
               Nakliye Cepte ("Platform"), kullanıcılarının kişisel verilerinin gizliliğine ve güvenliğine büyük önem vermektedir. 
               Bu Gizlilik Politikası, platformumuzu ve mobil uygulamamızı kullanırken toplanan, işlenen ve korunan verileriniz hakkında sizleri bilgilendirmek amacıyla hazırlanmıştır.
@@ -42,7 +42,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-base font-bold text-[#122c4a] mb-2">2. Toplanan Veriler</h2>
+            <h2 className="text-base font-bold text-foreground/80 mb-2">2. Toplanan Veriler</h2>
             <p className="mb-2">Platformumuzu kullandığınızda aşağıdaki veriler toplanabilir:</p>
             <ul className="list-disc pl-5 space-y-1 text-xs sm:text-sm">
               <li><strong>Hesap ve Profil Bilgileri:</strong> Ad, soyad, e-posta adresi, telefon numarası ve firma adı.</li>
@@ -54,7 +54,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-base font-bold text-[#122c4a] mb-2">3. Verilerin Kullanım Amaçları</h2>
+            <h2 className="text-base font-bold text-foreground/80 mb-2">3. Verilerin Kullanım Amaçları</h2>
             <p>Toplanan verileriniz şu amaçlarla kullanılır:</p>
             <ul className="list-disc pl-5 space-y-1 text-xs sm:text-sm mt-1">
               <li>Nakliye ilanlarının yayınlanması ve lojistik eşleşmelerinin sağlanması,</li>
@@ -65,7 +65,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-base font-bold text-[#122c4a] mb-2">4. Veri Paylaşımı ve Üçüncü Taraflar</h2>
+            <h2 className="text-base font-bold text-foreground/80 mb-2">4. Veri Paylaşımı ve Üçüncü Taraflar</h2>
             <p>
               Kişisel verileriniz, yasal zorunluluklar haricinde üçüncü şahıslara satılmaz veya kiralanmaz. 
               Yayınladığınız yük ilanlarındaki iletişim bilgileri (telefon numarası ve firma adı), ilanı inceleyen diğer kullanıcılar tarafından görüntülenebilir.
@@ -92,8 +92,8 @@ export default function PrivacyPage() {
             </p>
           </section>
 
-          <section id="kamuya-acik-ilanlar" className="scroll-mt-6 rounded-xl border border-[#d9e6f2] bg-[#f1f7fc] p-4">
-            <h2 className="text-base font-bold text-[#122c4a] mb-2">5. Kamuya Açık Kaynaklardan Derlenen İlanlar (Saha Ağı)</h2>
+          <section id="kamuya-acik-ilanlar" className="scroll-mt-6 rounded-xl border border-border bg-muted/60 p-4">
+            <h2 className="text-base font-bold text-foreground/80 mb-2">5. Kamuya Açık Kaynaklardan Derlenen İlanlar (Saha Ağı)</h2>
             <p>
               Platformdaki <strong>Saha Ağı</strong> bölümünde yer alan ilanlar, ilanı yayımlayan kişilerce kamuya açık
               alanlarda herkesin görebileceği biçimde paylaşılmış nakliye ilanlarından derlenir. Nakliye Cepte bu
@@ -126,7 +126,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-base font-bold text-[#122c4a] mb-2">7. KVKK Kapsamındaki Haklarınız</h2>
+            <h2 className="text-base font-bold text-foreground/80 mb-2">7. KVKK Kapsamındaki Haklarınız</h2>
             <p>
               6698 sayılı Kişisel Verilerin Korunması Kanunu&apos;nun 11. maddesi uyarınca; verilerinizin işlenip
               işlenmediğini öğrenme, düzeltilmesini veya silinmesini isteme ve işlemeye itiraz etme haklarına sahipsiniz.
@@ -135,7 +135,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-base font-bold text-[#122c4a] mb-2">8. Şikayet ve Engelleme</h2>
+            <h2 className="text-base font-bold text-foreground/80 mb-2">8. Şikayet ve Engelleme</h2>
             <p>
               Uygunsuz, sahte veya yanıltıcı ilanları ilan kartındaki bayrak simgesinden bildirebilir ve ilan sahibini
               engelleyebilirsiniz. Bildirimler incelenir ve gerekli görülen ilanlar kaldırılır.
@@ -143,7 +143,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-base font-bold text-[#122c4a] mb-2">9. İletişim</h2>
+            <h2 className="text-base font-bold text-foreground/80 mb-2">9. İletişim</h2>
             <p>
               Gizlilik politikamız veya kişisel verilerinizle ilgili sorularınız için bizimle <strong>destek.nakliyecepte.com@gmail.com</strong> e-posta adresi üzerinden iletişime geçebilirsiniz.
             </p>
@@ -151,7 +151,7 @@ export default function PrivacyPage() {
         </div>
 
         {/* Alt Bilgi */}
-        <div className="mt-8 pt-6 border-t border-[#edf2f7] text-center text-xs text-[#8da0b2]">
+        <div className="mt-8 pt-6 border-t border-border text-center text-xs text-muted-foreground">
           © 2026 Nakliye Cepte - Tüm Hakları Saklıdır.
         </div>
       </div>
