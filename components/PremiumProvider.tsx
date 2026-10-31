@@ -2,7 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react"
 import { supabase } from "@/lib/supabase"
-import { PLAY_BILLING, PREMIUM_SKU } from "@/lib/premium"
+import { PLAY_BILLING, PREMIUM_SKU, syncContactUsage } from "@/lib/premium"
 
 type PremiumState = {
   isPremium: boolean
@@ -118,6 +118,7 @@ export function PremiumProvider({ children }: { children: React.ReactNode }) {
         .eq("user_id", session.user.id)
         .maybeSingle()
       let entitled = isEntitled(data)
+      if (!entitled) void syncContactUsage()
       setIsPremium(entitled)
       setStatus(data?.status ?? null)
       setExpiresAt(data?.expires_at ?? null)
