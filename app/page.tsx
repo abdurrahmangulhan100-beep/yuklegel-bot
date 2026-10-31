@@ -1,5 +1,6 @@
 "use client"
 
+import { toast } from "@/lib/toast"
 import { realName } from "@/lib/names"
 import { useEffect, useMemo, useState, useRef, useCallback } from "react"
 import { useRouter } from "next/navigation"
@@ -82,7 +83,7 @@ const matchesVehicle = (load: Load, filter: string) => {
   // Kullanıcı ilanında formdaki araç tipi esas, saha ilanında metin esas (lib/route.ts classifyListing)
   return classifyListing(load.vehicle, `${load.cargo} ${load.message ?? ""}`, load.source === "user") === want
 }
-const GUEST_BLOCKED_TABS = ["Favorilerim", "Seferlerim", "Gelir Gider", "Şirket Profili", "Premium"]
+const GUEST_BLOCKED_TABS = ["Favorilerim", "Seferlerim", "Gelir Gider", "Şirket Profili"]
 
 export default function Page() {
   const router = useRouter()
@@ -569,7 +570,7 @@ export default function Page() {
   // Ücretsiz planda aynı anda en fazla N aktif ilan
   const requestCreate = () => {
     if (!isPremium && !isGuest && stats.pendingTrips >= FREE_LIMITS.activeListings) {
-      alert(`Ücretsiz planda aynı anda en fazla ${FREE_LIMITS.activeListings} aktif ilanınız olabilir. Sınırsız ilan için Premium'a geçin.`)
+      toast(`Ücretsiz planda aynı anda en fazla ${FREE_LIMITS.activeListings} aktif ilanınız olabilir. Sınırsız ilan için Premium'a geçin.`)
       setActiveTab("Premium")
       return
     }
@@ -759,7 +760,7 @@ export default function Page() {
           {effectiveTab === "Sefer Hesapla" && <CalculatorView />}
           {effectiveTab === "Araçlar" && <ToolsView />}
           {effectiveTab === "Yardım Merkezi" && <HelpCenterView />}
-          {effectiveTab === "Premium" && <PremiumView />}
+          {effectiveTab === "Premium" && <PremiumView isGuest={isGuest} onLogin={handleLogout} />}
         </main>
       </div>
 
