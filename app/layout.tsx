@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google'
 import { OfflineNotice } from '@/components/OfflineNotice'
 import { ServiceWorkerRegister } from '@/components/ServiceWorkerRegister'
 import { PremiumProvider } from '@/components/PremiumProvider'
+import { Toaster } from '@/components/Toaster'
 import './globals.css'
 
 // Türkçe karakterler (ğ, ş, ı, İ...) için latin-ext alt kümesi gerekli
@@ -68,6 +69,7 @@ export default function RootLayout({
         <ServiceWorkerRegister />
         
         <PremiumProvider>{children}</PremiumProvider>
+        <Toaster />
       </body>
     </html>
   )
