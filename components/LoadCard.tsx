@@ -77,7 +77,7 @@ const highlightMatch = (text: string, query: string) => {
     const isMatch = part.toLocaleLowerCase('tr-TR') === q
 
     return isMatch ? (
-      <mark key={i} className="rounded bg-[#fff1c2] px-0.5 font-semibold text-[#122c4a]">
+      <mark key={i} className="rounded bg-[#fff1c2] dark:bg-amber-400/25 px-0.5 font-semibold text-foreground">
         {part}
       </mark>
     ) : (
@@ -403,9 +403,9 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
       }}
       style={{ contentVisibility: "auto", containIntrinsicSize: "auto 280px" }}
       className={cn(
-        "relative flex h-full cursor-pointer flex-col overflow-hidden rounded-[22px] border bg-white transition-shadow",
-        "shadow-[0_1px_2px_rgba(18,44,74,0.05),0_12px_28px_-18px_rgba(18,44,74,0.28)] hover:shadow-[0_2px_4px_rgba(18,44,74,0.06),0_18px_36px_-18px_rgba(18,44,74,0.34)]",
-        load.urgent ? "border-[#f4cdbf]" : "border-[#e8edf3]"
+        "relative flex h-full cursor-pointer flex-col overflow-hidden rounded-3xl border bg-card transition-shadow",
+        "shadow-sm hover:shadow-md dark:shadow-none",
+        load.urgent ? "border-brand/40" : "border-border"
       )}
     >
       {load.urgent && <span aria-hidden className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-[#e5522f] to-[#f4a259]" />}
@@ -423,10 +423,10 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
               {isUserLoad ? (load.initials || "NK") : "SL"}
             </div>
             <div className="min-w-0">
-              <div className="truncate text-[14px] font-bold leading-tight text-[#122c4a]">
+              <div className="truncate text-[14px] font-bold leading-tight text-foreground">
                 {isUserLoad ? highlightMatch(displayCompany, cleanQuery) : "Saha İlanı"}
               </div>
-              <div className="mt-1 flex items-center gap-1.5 text-[11.5px] text-[#8da0b2]">
+              <div className="mt-1 flex items-center gap-1.5 text-[11.5px] text-muted-foreground">
                 <span
                   className={cn(
                     "inline-flex shrink-0 items-center gap-1",
@@ -439,8 +439,8 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
                 </span>
                 {isUserLoad && (
                   <>
-                    <span className="text-[#cbd5e1]">•</span>
-                    <span className="truncate font-medium text-[#d64526]">Nakliye Cepte</span>
+                    <span className="text-muted-foreground/50">•</span>
+                    <span className="truncate font-medium text-brand">Nakliye Cepte</span>
                   </>
                 )}
               </div>
@@ -456,7 +456,7 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
               className={cn(
                 "grid size-10 place-items-center rounded-full active:scale-90",
                 isFavLoading && "opacity-50",
-                isFavorite ? "text-amber-500" : "text-[#b4c1ce]"
+                isFavorite ? "text-amber-500" : "text-muted-foreground/60"
               )}
             >
               <Star className={cn("size-[21px]", isFavorite && "fill-amber-400")} />
@@ -464,7 +464,7 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
             <button
               onClick={openMenu}
               aria-label="İlan işlemleri"
-              className="grid size-10 place-items-center rounded-full text-[#9aabbb] active:bg-[#eef4f8]"
+              className="grid size-10 place-items-center rounded-full text-muted-foreground active:bg-muted"
             >
               <MoreHorizontal className="size-5" />
             </button>
@@ -473,36 +473,36 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
 
         {/* Güzergâh: tek bakışta nereden → nereye */}
         {route ? (
-          <div className="rounded-2xl border border-[#e3ebf3] bg-gradient-to-br from-white to-[#f1f6fb] px-3.5 py-3 sm:px-4 sm:py-3.5 shadow-[0_1px_0_rgba(18,44,74,0.03)]">
+          <div className="rounded-2xl border border-border bg-muted/60 px-3.5 py-3 sm:px-4 sm:py-3.5 shadow-[0_1px_0_rgba(18,44,74,0.03)]">
             <div className="flex items-center gap-3">
               <Place dot="bg-emerald-500" caption="Çıkış" name={route.from} label={highlightMatch(route.from, cleanQuery)} sub={load.districtOf?.[route.from]} align="left" onClick={onCitySearch ? () => onCitySearch(route.from) : undefined} />
               <div className="flex w-[78px] shrink-0 flex-col items-center sm:w-[108px]">
                 <VehicleIcon vehicle={load.vehicle} className="h-9 w-full sm:h-[50px]" />
-                <span aria-hidden className="mt-1 h-0 w-full border-t-2 border-dotted border-[#b9c8d6]" />
+                <span aria-hidden className="mt-1 h-0 w-full border-t-2 border-dotted border-muted-foreground/40" />
               </div>
-              <Place dot="bg-[#e5522f]" caption="Varış" name={route.to} label={highlightMatch(route.to, cleanQuery)} sub={load.districtOf?.[route.to]} align="right" onClick={onCitySearch ? () => onCitySearch(route.to) : undefined} />
+              <Place dot="bg-brand" caption="Varış" name={route.to} label={highlightMatch(route.to, cleanQuery)} sub={load.districtOf?.[route.to]} align="right" onClick={onCitySearch ? () => onCitySearch(route.to) : undefined} />
             </div>
             {(load.destinations?.length ?? 0) > 1 && (
-              <div className="mt-2.5 flex flex-wrap items-center gap-1.5 border-t border-[#e3ebf3] pt-2.5">
-                <span className="text-[10px] font-bold uppercase tracking-[0.1em] text-[#8da0b2]">Varışlar</span>
+              <div className="mt-2.5 flex flex-wrap items-center gap-1.5 border-t border-border pt-2.5">
+                <span className="text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground">Varışlar</span>
                 {load.destinations!.slice(0, 6).map((c) => (
-                  <button key={c} type="button" disabled={!onCitySearch} onClick={() => onCitySearch?.(c)} className="inline-flex items-center rounded-full border border-[#e3ebf3] bg-white px-2.5 py-1 text-[12.5px] font-bold text-[#122c4a] active:opacity-60">
+                  <button key={c} type="button" disabled={!onCitySearch} onClick={() => onCitySearch?.(c)} className="inline-flex items-center rounded-full border border-border bg-card px-2.5 py-1 text-[12.5px] font-bold text-foreground active:opacity-60">
                     {highlightMatch(c, cleanQuery)}
                   </button>
                 ))}
-                {load.destinations!.length > 6 && <span className="text-xs font-semibold text-[#8da0b2]">+{load.destinations!.length - 6}</span>}
+                {load.destinations!.length > 6 && <span className="text-xs font-semibold text-muted-foreground">+{load.destinations!.length - 6}</span>}
               </div>
             )}
           </div>
         ) : places.length > 0 ? (
           <div className="flex flex-wrap items-center gap-1.5">
             {places.slice(0, 4).map((t) => (
-              <button key={t.city} type="button" disabled={!onCitySearch} onClick={() => onCitySearch?.(t.city)} className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-[#e3ebf3] bg-gradient-to-b from-white to-[#f4f8fc] py-1.5 pl-2.5 pr-3 text-[14px] font-bold text-[#122c4a] active:opacity-60">
-                <MapPin aria-hidden className="size-3.5 shrink-0 text-[#d64526]" />
+              <button key={t.city} type="button" disabled={!onCitySearch} onClick={() => onCitySearch?.(t.city)} className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-border bg-muted/60 py-1.5 pl-2.5 pr-3 text-[14px] font-bold text-foreground active:opacity-60">
+                <MapPin aria-hidden className="size-3.5 shrink-0 text-brand" />
                 <span className="truncate">{highlightMatch(t.label, cleanQuery)}</span>
               </button>
             ))}
-            {places.length > 4 && <span className="text-xs font-semibold text-[#8da0b2]">+{places.length - 4}</span>}
+            {places.length > 4 && <span className="text-xs font-semibold text-muted-foreground">+{places.length - 4}</span>}
           </div>
         ) : null}
 
@@ -510,27 +510,27 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
         {hasSpecs && (
           <div className="flex flex-wrap items-center gap-1.5">
             {load.urgent && (
-              <Tag tone="bg-[#e5522f] text-white">
+              <Tag tone="bg-brand text-white">
                 <Zap className="size-3 fill-white" />
                 ACİL
               </Tag>
             )}
             {load.timing && <Tag tone="bg-emerald-50 text-emerald-700" icon={<Clock className="size-3" />}>{load.timing}</Tag>}
-            {hasVehicle && <Tag tone="bg-[#eef3f8] text-[#2c4a66]">{highlightMatch(load.vehicle, cleanQuery)}</Tag>}
-            {load.trailer && !/13[.,]60/.test(load.vehicle ?? "") && <Tag tone="bg-[#eef3f8] text-[#2c4a66]" icon={<Ruler className="size-3" />}>{load.trailer}</Tag>}
-            {load.tonnage && <Tag tone="bg-[#eef3f8] text-[#2c4a66]" icon={<Weight className="size-3" />}>{load.tonnage}</Tag>}
-            {hasDistance && <Tag tone="bg-[#f1f5f9] text-[#3c566e]">{load.distance}</Tag>}
+            {hasVehicle && <Tag tone="bg-muted text-foreground/80">{highlightMatch(load.vehicle, cleanQuery)}</Tag>}
+            {load.trailer && !/13[.,]60/.test(load.vehicle ?? "") && <Tag tone="bg-muted text-foreground/80" icon={<Ruler className="size-3" />}>{load.trailer}</Tag>}
+            {load.tonnage && <Tag tone="bg-muted text-foreground/80" icon={<Weight className="size-3" />}>{load.tonnage}</Tag>}
+            {hasDistance && <Tag tone="bg-muted text-foreground/80">{load.distance}</Tag>}
             {hasPrice && <Tag tone="bg-emerald-600 text-white">{load.price}</Tag>}
-            {(load.repeatCount ?? 0) > 1 && <Tag tone="bg-[#f1f5f9] text-[#627d98]" icon={<Repeat2 className="size-3" />}>{load.repeatCount} kez paylaşıldı</Tag>}
+            {(load.repeatCount ?? 0) > 1 && <Tag tone="bg-muted text-muted-foreground" icon={<Repeat2 className="size-3" />}>{load.repeatCount} kez paylaşıldı</Tag>}
           </div>
         )}
 
         {/* Yük detayı */}
         <div className="flex-1">
-          <div className="rounded-xl bg-[#f6f8fb] px-3 py-2.5">
+          <div className="rounded-xl bg-muted/60 px-3 py-2.5">
             <p
               ref={textRef}
-              className="line-clamp-4 whitespace-pre-line break-words text-[13.5px] leading-[1.6] text-[#33485e]"
+              className="line-clamp-4 whitespace-pre-line break-words text-[13.5px] leading-[1.6] text-foreground/80"
             >
               {highlightMatch(cargoShown, cleanQuery)}
             </p>
@@ -538,13 +538,13 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
           <button
             type="button"
             onClick={() => setDetailOpen(true)}
-            className="mt-1 inline-flex items-center gap-1 py-1 text-xs font-semibold text-[#315d83]"
+            className="mt-1 inline-flex items-center gap-1 py-1 text-xs font-semibold text-foreground/80"
           >
             {clamped ? "Tamamını gör" : "İlan detayı"}
             <ChevronDown className="size-3.5 -rotate-90" />
           </button>
           {showMessage && (
-            <p className="mt-1 line-clamp-2 text-xs italic leading-relaxed text-[#8da0b2]">
+            <p className="mt-1 line-clamp-2 text-xs italic leading-relaxed text-muted-foreground">
               {highlightMatch(load.message as string, cleanQuery)}
             </p>
           )}
@@ -555,7 +555,7 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
           <div className="grid grid-cols-2 gap-2.5">
             <button
               onClick={handleCall}
-              className="flex h-11 items-center justify-center gap-2 rounded-xl bg-[#122c4a] text-sm font-semibold text-white shadow-[0_6px_14px_-8px_rgba(18,44,74,0.7)] active:scale-[0.98] active:bg-[#1a3d68]"
+              className="flex h-11 items-center justify-center gap-2 rounded-xl bg-primary text-sm font-semibold text-primary-foreground shadow-[0_6px_14px_-8px_rgba(18,44,74,0.7)] active:scale-[0.98] active:opacity-90"
             >
               <Phone className="size-[17px]" />
               Ara
@@ -569,7 +569,7 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
             </button>
           </div>
         ) : (
-          <p className="rounded-xl bg-[#f5f7fa] px-3 py-2.5 text-center text-xs font-medium text-[#8da0b2]">
+          <p className="rounded-xl bg-background px-3 py-2.5 text-center text-xs font-medium text-muted-foreground">
             Bu ilan için telefon numarası belirtilmemiş.
           </p>
         )}
@@ -585,7 +585,7 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
           footer={
             hasPhone ? (
               <div className="grid grid-cols-2 gap-2.5">
-                <button onClick={handleCall} className="flex h-12 items-center justify-center gap-2 rounded-xl bg-[#122c4a] text-sm font-semibold text-white active:bg-[#1a3d68]">
+                <button onClick={handleCall} className="flex h-12 items-center justify-center gap-2 rounded-xl bg-primary text-sm font-semibold text-primary-foreground active:opacity-90">
                   <Phone className="size-[17px]" />
                   Ara
                 </button>
@@ -599,17 +599,17 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
         >
           <div className="space-y-3 pt-1">
             {route && (
-              <div className="flex items-center gap-2 rounded-2xl border border-[#e3ebf3] bg-[#f4f8fc] px-3.5 py-3 text-[15px] font-extrabold text-[#122c4a]">
+              <div className="flex items-center gap-2 rounded-2xl border border-border bg-muted/60 px-3.5 py-3 text-[15px] font-extrabold text-foreground">
                 <span className="min-w-0 truncate">{route.from}</span>
-                <span aria-hidden className="shrink-0 text-[#8da0b2]">→</span>
+                <span aria-hidden className="shrink-0 text-muted-foreground">→</span>
                 <span className="min-w-0 truncate">{route.to}</span>
               </div>
             )}
             {!route && places.length > 0 && (
               <div className="flex flex-wrap gap-1.5">
                 {places.map((t) => (
-                  <span key={t.city} className="inline-flex items-center gap-1.5 rounded-full border border-[#e3ebf3] bg-[#f4f8fc] py-1.5 pl-2.5 pr-3 text-[13.5px] font-bold text-[#122c4a]">
-                    <MapPin aria-hidden className="size-3.5 shrink-0 text-[#d64526]" />
+                  <span key={t.city} className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/60 py-1.5 pl-2.5 pr-3 text-[13.5px] font-bold text-foreground">
+                    <MapPin aria-hidden className="size-3.5 shrink-0 text-brand" />
                     {t.label}
                   </span>
                 ))}
@@ -617,19 +617,19 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
             )}
             {hasSpecs && (
               <div className="flex flex-wrap items-center gap-1.5">
-                {load.urgent && <Tag tone="bg-[#e5522f] text-white"><Zap className="size-3 fill-white" />ACİL</Tag>}
+                {load.urgent && <Tag tone="bg-brand text-white"><Zap className="size-3 fill-white" />ACİL</Tag>}
                 {load.timing && <Tag tone="bg-emerald-50 text-emerald-700" icon={<Clock className="size-3" />}>{load.timing}</Tag>}
-                {hasVehicle && <Tag tone="bg-[#eef3f8] text-[#2c4a66]">{load.vehicle}</Tag>}
-                {load.trailer && !/13[.,]60/.test(load.vehicle ?? "") && <Tag tone="bg-[#eef3f8] text-[#2c4a66]" icon={<Ruler className="size-3" />}>{load.trailer}</Tag>}
-                {load.tonnage && <Tag tone="bg-[#eef3f8] text-[#2c4a66]" icon={<Weight className="size-3" />}>{load.tonnage}</Tag>}
-                {hasDistance && <Tag tone="bg-[#f1f5f9] text-[#3c566e]">{load.distance}</Tag>}
+                {hasVehicle && <Tag tone="bg-muted text-foreground/80">{load.vehicle}</Tag>}
+                {load.trailer && !/13[.,]60/.test(load.vehicle ?? "") && <Tag tone="bg-muted text-foreground/80" icon={<Ruler className="size-3" />}>{load.trailer}</Tag>}
+                {load.tonnage && <Tag tone="bg-muted text-foreground/80" icon={<Weight className="size-3" />}>{load.tonnage}</Tag>}
+                {hasDistance && <Tag tone="bg-muted text-foreground/80">{load.distance}</Tag>}
                 {hasPrice && <Tag tone="bg-emerald-600 text-white">{load.price}</Tag>}
               </div>
             )}
-            <div className="rounded-xl bg-[#f6f8fb] px-3.5 py-3">
-              <p className="whitespace-pre-line break-words text-[14.5px] leading-[1.65] text-[#33485e]">{cargoShown}</p>
+            <div className="rounded-xl bg-muted/60 px-3.5 py-3">
+              <p className="whitespace-pre-line break-words text-[14.5px] leading-[1.65] text-foreground/80">{cargoShown}</p>
             </div>
-            {showMessage && <p className="text-xs italic leading-relaxed text-[#8da0b2]">{load.message}</p>}
+            {showMessage && <p className="text-xs italic leading-relaxed text-muted-foreground">{load.message}</p>}
           </div>
         </Sheet>
       )}
@@ -650,7 +650,7 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
               <button
                 onClick={handleSendReport}
                 disabled={isSubmittingReport}
-                className="h-12 w-full rounded-xl bg-[#d64526] text-sm font-semibold text-white active:bg-[#b93820] disabled:opacity-60"
+                className="h-12 w-full rounded-xl bg-brand text-sm font-semibold text-white active:opacity-90 disabled:opacity-60"
               >
                 {isSubmittingReport ? "Gönderiliyor..." : "Bildirimi Gönder"}
               </button>
@@ -696,11 +696,11 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
                     onClick={() => setReportReason(reason)}
                     className={cn(
                       "flex min-h-12 w-full items-center gap-3 rounded-xl border px-4 py-3 text-left text-sm font-medium",
-                      selected ? "border-[#122c4a] bg-[#122c4a]/5 text-[#122c4a]" : "border-[#e4e9ef] text-[#334e68]"
+                      selected ? "border-primary bg-primary/5 text-foreground" : "border-border text-foreground/80"
                     )}
                   >
-                    <span className={cn("grid size-5 shrink-0 place-items-center rounded-full border-2", selected ? "border-[#122c4a]" : "border-[#c4d0dc]")}>
-                      {selected && <span className="size-2.5 rounded-full bg-[#122c4a]" />}
+                    <span className={cn("grid size-5 shrink-0 place-items-center rounded-full border-2", selected ? "border-primary" : "border-input")}>
+                      {selected && <span className="size-2.5 rounded-full bg-primary" />}
                     </span>
                     {reason}
                   </button>
@@ -709,7 +709,7 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
               <button
                 type="button"
                 onClick={() => setSheetView("menu")}
-                className="px-1 pt-2 text-xs font-semibold text-[#315d83]"
+                className="px-1 pt-2 text-xs font-semibold text-foreground/80"
               >
                 ← Geri dön
               </button>
@@ -731,9 +731,9 @@ function Place({ caption, dot, label, sub, align, onClick, name = "" }: { captio
       disabled={!onClick}
       className={cn("min-w-0 flex-1 active:opacity-60", align === "right" ? "text-right" : "text-left")}
     >
-      <span className={cn("flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.1em] text-[#8da0b2]", align === "right" && "justify-end")}>{dot && <i className={cn("size-1.5 rounded-full", dot)} />}{caption}</span>
-      <span className={cn("mt-0.5 line-clamp-2 break-words font-extrabold leading-tight text-[#122c4a]", size)}>{label}</span>
-      {sub && <span className="block truncate text-[12px] font-semibold text-[#6b8399]">{sub}</span>}
+      <span className={cn("flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground", align === "right" && "justify-end")}>{dot && <i className={cn("size-1.5 rounded-full", dot)} />}{caption}</span>
+      <span className={cn("mt-0.5 line-clamp-2 break-words font-extrabold leading-tight text-foreground", size)}>{label}</span>
+      {sub && <span className="block truncate text-[12px] font-semibold text-muted-foreground">{sub}</span>}
     </button>
   )
 }
@@ -764,13 +764,13 @@ function MenuItem({
       type="button"
       onClick={onClick}
       className={cn(
-        "flex min-h-12 w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-semibold active:bg-[#f0f4f8]",
-        danger ? "text-red-600" : "text-[#122c4a]"
+        "flex min-h-12 w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-semibold active:bg-muted",
+        danger ? "text-red-600" : "text-foreground"
       )}
     >
-      <Icon className={cn("size-[18px] shrink-0", danger ? "text-red-500" : "text-[#627d98]")} />
+      <Icon className={cn("size-[18px] shrink-0", danger ? "text-red-500" : "text-muted-foreground")} />
       <span className="flex-1">{children}</span>
-      {hint && <span className="text-xs font-medium tabular-nums text-[#8da0b2]">{hint}</span>}
+      {hint && <span className="text-xs font-medium tabular-nums text-muted-foreground">{hint}</span>}
     </button>
   )
 }
