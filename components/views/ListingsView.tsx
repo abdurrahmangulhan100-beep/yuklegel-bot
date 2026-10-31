@@ -164,7 +164,7 @@ export function ListingsView({
         <button
           type="button"
           onClick={openPremium}
-          className="flex w-full items-center gap-2 rounded-xl border border-[#f3dfb0] bg-[#fff9ec] px-3 py-2.5 text-left text-xs font-semibold text-[#8a5a00] dark:text-amber-300 active:scale-[0.99]"
+          className="flex w-full items-center gap-2 rounded-xl border border-[#f3dfb0] bg-muted/60 px-3 py-2.5 text-left text-xs font-semibold text-[#8a5a00] dark:text-amber-300 active:scale-[0.99]"
         >
           <Crown className="size-4 shrink-0" />
           {lockedCount > 0
@@ -348,7 +348,7 @@ export function ListingsView({
               <button
                 type="button"
                 onClick={clearExtra}
-                className="inline-flex h-10 items-center gap-1 rounded-xl px-2 text-xs font-semibold text-brand hover:bg-[#fff0ec] dark:bg-brand/15"
+                className="inline-flex h-10 items-center gap-1 rounded-xl px-2 text-xs font-semibold text-brand hover:bg-muted/60 dark:bg-brand/15"
               >
                 <X className="size-3.5" /> Temizle
               </button>
@@ -361,7 +361,7 @@ export function ListingsView({
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1 px-1 text-xs font-medium text-muted-foreground">
           <span><span className="font-bold text-foreground">{visibleLoads.length}</span> ilan gösteriliyor</span>
           {(hasExtraFilters || activeFilter !== "Tümü" || sourceFilter !== "all") && (
-            <button type="button" onClick={clearAll} className="inline-flex min-h-8 items-center gap-1 rounded-full bg-[#fff0ec] dark:bg-brand/15 px-2.5 font-semibold text-brand active:scale-95">
+            <button type="button" onClick={clearAll} className="inline-flex min-h-8 items-center gap-1 rounded-full bg-muted/60 dark:bg-brand/15 px-2.5 font-semibold text-brand active:scale-95">
               <X className="size-3" /> Filtre açık · Temizle
             </button>
           )}
