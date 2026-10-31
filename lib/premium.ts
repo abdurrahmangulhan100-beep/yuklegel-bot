@@ -1,3 +1,5 @@
+import { supabase } from "@/lib/supabase"
+
 // Premium ayarları. Limitleri değiştirmek için sadece bu dosyayı düzenlemeniz yeterli.
 
 export const PREMIUM_SKU = "nakliye_premium_aylik" // Play Console > Abonelikler > Ürün kimliği
@@ -46,16 +48,49 @@ const CONTACT_KEY = "contact_usage"
  * Bir ilanda iletişim kurulabilir mi? Aynı ilan gün içinde bir kez sayılır.
  * Premium ise her zaman true. Limit dolduysa false döner (çağıran Premium'a yönlendirir).
  */
+// Gün, sunucuyla aynı olsun diye Türkiye saatine göre hesaplanır
+const todayTR = () => new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Istanbul" })
+
+function readContactState(): { date: string; ids: string[] } {
+  const today = todayTR()
+  const raw = JSON.parse(localStorage.getItem(CONTACT_KEY) || "null")
+  return raw && raw.date === today ? raw : { date: today, ids: [] }
+}
+
+/** Sunucudaki bugünkü kayıtla yerel kaydı birleştirir (tarayıcı verisi silinse bile sayaç geri gelir) */
+function mergeContactIds(serverIds: unknown) {
+  if (!Array.isArray(serverIds)) return
+  try {
+    const state = readContactState()
+    state.ids = Array.from(new Set([...state.ids, ...serverIds.map(String)]))
+    localStorage.setItem(CONTACT_KEY, JSON.stringify(state))
+  } catch {}
+}
+
+/** Giriş yapmış ücretsiz kullanıcının sunucudaki günlük iletişim kaydını çeker */
+export async function syncContactUsage() {
+  try {
+    const { data } = await supabase.rpc("get_contact_usage")
+    mergeContactIds((data as { ids?: unknown } | null)?.ids)
+  } catch {}
+}
+
+async function recordContactOnServer(listingId: string) {
+  try {
+    const { data } = await supabase.rpc("consume_contact", { p_key: listingId })
+    mergeContactIds((data as { ids?: unknown } | null)?.ids)
+  } catch {}
+}
+
 export function consumeContact(listingId: string, isPremium: boolean): boolean {
   if (isPremium) return true
   try {
-    const today = new Date().toISOString().slice(0, 10)
-    const raw = JSON.parse(localStorage.getItem(CONTACT_KEY) || "null")
-    const state: { date: string; ids: string[] } = raw && raw.date === today ? raw : { date: today, ids: [] }
+    const state = readContactState()
     if (state.ids.includes(listingId)) return true
     if (state.ids.length >= FREE_LIMITS.contactsPerDay) return false
     state.ids.push(listingId)
     localStorage.setItem(CONTACT_KEY, JSON.stringify(state))
+    void recordContactOnServer(listingId) // sunucuya da yaz: yerel veri silinse bile limit korunur
     return true
   } catch {
     return true // depolama erişilemiyorsa kullanıcıyı engelleme
