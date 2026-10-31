@@ -1,5 +1,6 @@
 "use client"
 
+import { toast } from "@/lib/toast"
 import { useState } from "react"
 import { Trash2, Edit3, CheckCircle2, Truck, Plus, RefreshCw, BadgeCheck } from "lucide-react"
 import { supabase } from "@/lib/supabase"
@@ -49,7 +50,7 @@ export function TripsView({ loads, currentUserId, onChanged }: TripsViewProps) {
     const realId = String(id).replace("user-", "")
     
     if (!supabase) {
-      alert("Supabase bağlantısı kurulamadı!")
+      toast("Supabase bağlantısı kurulamadı!")
       return
     }
 
@@ -58,7 +59,7 @@ export function TripsView({ loads, currentUserId, onChanged }: TripsViewProps) {
     setDeletingId(null)
 
     if (error) {
-      alert("Silinirken hata oluştu: " + error.message)
+      toast("Silinirken hata oluştu: " + error.message)
     } else {
       refresh()
     }
@@ -79,7 +80,7 @@ export function TripsView({ loads, currentUserId, onChanged }: TripsViewProps) {
       .eq("id", id.replace("user-", ""))
     setBumpingId(null)
     if (error) {
-      alert("İlan yenilenemedi: " + error.message)
+      toast("İlan yenilenemedi: " + error.message)
       return
     }
     flash("İlanınız listenin en üstüne taşındı.")
