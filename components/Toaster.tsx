@@ -42,7 +42,7 @@ export function Toaster() {
             onClick={() => setItems((prev) => prev.filter((p) => p.id !== t.id))}
             className={cn(
               "pointer-events-auto flex w-full max-w-md items-start gap-2.5 rounded-2xl px-4 py-3 text-left text-[13.5px] font-semibold leading-snug text-white shadow-[0_12px_32px_-12px_rgba(18,44,74,0.6)] animate-rise",
-              t.kind === "error" ? "bg-[#b23a1f]" : t.kind === "success" ? "bg-emerald-600" : "bg-[#122c4a]"
+              t.kind === "error" ? "bg-[#b23a1f]" : t.kind === "success" ? "bg-emerald-600" : "bg-primary"
             )}
           >
             <Icon className="mt-0.5 size-4 shrink-0" />
