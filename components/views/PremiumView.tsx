@@ -4,7 +4,7 @@ import { Check, Crown, Loader2, Minus } from "lucide-react"
 import { usePremium } from "@/components/PremiumProvider"
 import { FREE_FEATURES, PLAY_PACKAGE, PREMIUM_FEATURES, PREMIUM_SKU } from "@/lib/premium"
 
-export function PremiumView() {
+export function PremiumView({ isGuest = false, onLogin }: { isGuest?: boolean; onLogin?: () => void }) {
   const { isPremium, loading, status, expiresAt, canBuyHere, busy, message, price, buy, restore } = usePremium()
 
   const manageUrl = `https://play.google.com/store/account/subscriptions?sku=${PREMIUM_SKU}${PLAY_PACKAGE ? `&package=${PLAY_PACKAGE}` : ""}`
@@ -55,7 +55,14 @@ export function PremiumView() {
 
       {message && <p className="rounded-xl bg-[#eef4f8] px-4 py-3 text-sm text-[#315d83]">{message}</p>}
 
-      {!isPremium && (
+      {!isPremium && isGuest && (
+        <div className="space-y-2 rounded-2xl border border-[#e4e9ef] bg-white p-4 text-center">
+          <p className="text-sm text-[#486581]">Premium almak için önce ücretsiz üye olun veya giriş yapın. Abonelik hesabınıza bağlanır, telefon değiştirseniz de korunur.</p>
+          <button onClick={onLogin} className="h-12 w-full rounded-xl bg-[#122c4a] text-sm font-bold text-white hover:bg-[#1a3d68]">Giriş Yap / Kayıt Ol</button>
+        </div>
+      )}
+
+      {!isPremium && !isGuest && (
         <div className="space-y-2">
           {canBuyHere ? (
             <button
