@@ -68,8 +68,8 @@ export function AdSlot({ className = "", promoOnly = false }: { className?: stri
   return (
     <div className={className}>
       {useAdsense ? (
-        <div className="overflow-hidden rounded-2xl border border-[#e4e9ef] bg-white p-2">
-          <p className="mb-1 text-center text-[10px] font-semibold uppercase tracking-wider text-[#b4c1ce]">Reklam</p>
+        <div className="overflow-hidden rounded-2xl border border-border bg-card p-2">
+          <p className="mb-1 text-center text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">Reklam</p>
           <ins className="adsbygoogle" style={{ display: "block" }} data-ad-client={CLIENT} data-ad-slot={SLOT} data-ad-format="auto" data-full-width-responsive="true" />
         </div>
       ) : (
@@ -88,10 +88,10 @@ export function PremiumPromo() {
     >
       <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-[#f5b301] text-white"><Crown className="size-5" /></span>
       <span className="min-w-0 flex-1">
-        <span className="block text-sm font-bold text-[#122c4a]">Reklamsız ve sınırsız kullanın</span>
+        <span className="block text-sm font-bold text-foreground">Reklamsız ve sınırsız kullanın</span>
         <span className="block text-xs text-[#7a6a3a]">Nakliye Cepte Premium ile sınırsız iletişim ve tüm şoför araçları.</span>
       </span>
-      <span className="shrink-0 rounded-full bg-[#122c4a] px-3 py-1.5 text-xs font-semibold text-white">İncele</span>
+      <span className="shrink-0 rounded-full bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground">İncele</span>
     </button>
   )
 }
