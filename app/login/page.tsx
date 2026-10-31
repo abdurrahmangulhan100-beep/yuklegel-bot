@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
@@ -19,6 +19,30 @@ export default function LoginPage() {
   const [successMsg, setSuccessMsg] = useState("")
   const [accepted, setAccepted] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
+  // Şifre sıfırlama e-postasındaki bağlantıdan gelindiğinde yeni şifre belirleme ekranı açılır
+  const [recovery, setRecovery] = useState(false)
+  const [newPassword, setNewPassword] = useState("")
+
+  useEffect(() => {
+    if (!supabase) return
+    if (typeof window !== "undefined" && /type=recovery/.test(window.location.hash)) setRecovery(true)
+    const { data } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "PASSWORD_RECOVERY") setRecovery(true)
+    })
+    return () => data.subscription.unsubscribe()
+  }, [])
+
+  const handleSetNewPassword = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setErrorMsg("")
+    if (newPassword.length < 6) { setErrorMsg("Şifre en az 6 karakter olmalıdır."); return }
+    setLoading(true)
+    const { error } = await supabase.auth.updateUser({ password: newPassword })
+    setLoading(false)
+    if (error) { setErrorMsg("Şifre güncellenemedi. Bağlantının süresi dolmuş olabilir; 'Şifremi unuttum' ile yeni bağlantı isteyin."); return }
+    setSuccessMsg("Şifreniz güncellendi. Yönlendiriliyorsunuz...")
+    setTimeout(() => { router.push("/"); router.refresh() }, 900)
+  }
 
   const trError = (msg: string) => {
     const m = msg.toLowerCase()
@@ -158,6 +182,38 @@ export default function LoginPage() {
 
   const fieldClass =
     "h-12 w-full rounded-xl border border-[#dbe3ec] bg-[#f7f9fb] px-4 text-base text-[#122c4a] outline-none transition-colors placeholder:text-[#a3b1c0] focus:border-[#122c4a] focus:bg-white focus:ring-4 focus:ring-[#122c4a]/10 md:text-sm"
+
+  if (recovery) {
+    return (
+      <div className="flex min-h-dvh items-center justify-center bg-gradient-to-b from-[#163a63] via-[#122c4a] to-[#0b1d33] p-6">
+        <form onSubmit={handleSetNewPassword} className="animate-rise w-full max-w-md space-y-4 rounded-3xl bg-white p-6 shadow-xl">
+          <h1 className="text-lg font-extrabold text-[#122c4a]">Yeni şifre belirleyin</h1>
+          <p className="text-sm text-[#627d98]">Hesabınız için yeni bir şifre yazın (en az 6 karakter).</p>
+          {errorMsg && <div role="alert" className="rounded-xl border border-red-100 bg-red-50 p-3.5 text-xs font-semibold leading-relaxed text-red-600">{errorMsg}</div>}
+          {successMsg && <div role="status" className="rounded-xl border border-green-100 bg-green-50 p-3.5 text-xs font-semibold leading-relaxed text-green-700">{successMsg}</div>}
+          <div className="relative">
+            <input
+              type={showPassword ? "text" : "password"}
+              required
+              minLength={6}
+              autoComplete="new-password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              placeholder="Yeni şifre"
+              aria-label="Yeni şifre"
+              className={cn(fieldClass, "pr-12")}
+            />
+            <button type="button" onClick={() => setShowPassword((v) => !v)} aria-label={showPassword ? "Şifreyi gizle" : "Şifreyi göster"} className="absolute right-1.5 top-1/2 grid size-9 -translate-y-1/2 place-items-center rounded-lg text-[#8da0b2] hover:bg-[#eef2f6]">
+              {showPassword ? <EyeOff className="size-[18px]" /> : <Eye className="size-[18px]" />}
+            </button>
+          </div>
+          <button type="submit" disabled={loading} className="h-12 w-full rounded-xl bg-[#122c4a] text-sm font-bold text-white disabled:opacity-60">
+            {loading ? "Kaydediliyor..." : "Şifreyi Güncelle"}
+          </button>
+        </form>
+      </div>
+    )
+  }
 
   return (
     <div className="flex min-h-dvh flex-col bg-gradient-to-b from-[#163a63] via-[#122c4a] to-[#0b1d33] lg:items-center lg:justify-center lg:p-6">
