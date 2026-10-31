@@ -41,7 +41,7 @@ const FILTER_ICON: Record<string, VehicleKind> = { "Tümü": "tumu", Acil: "acil
 const FILTER_OPTIONS = ["Tümü", "Acil", "Kapalı Dorse", "Kamyon", "Kamyonet", "Frigo", "Kırkayak", "13.60 Açık Dorse", "Damperli"]
 
 const selectClass =
-  "h-10 min-w-0 flex-1 rounded-xl border border-[#e0e6ed] bg-white px-3 text-[13px] font-semibold text-[#334e68] outline-none transition-colors focus:border-[#122c4a] sm:flex-none sm:min-w-[170px]"
+  "h-10 min-w-0 flex-1 rounded-xl border border-border bg-card px-3 text-[13px] font-semibold text-foreground/80 outline-none transition-colors focus:border-primary sm:flex-none sm:min-w-[170px]"
 
 const byTr = (a: string, b: string) => a.localeCompare(b, "tr-TR")
 
@@ -152,8 +152,8 @@ export function ListingsView({
   const clearAll = () => { setActiveFilter("Tümü"); setSourceFilter("all"); clearExtra() }
 
   const sources: { key: "all" | "user" | "bot"; label: string; count?: number; active: string }[] = [
-    { key: "all", label: "Tümü", count: stats.activeTotal, active: "bg-[#122c4a] text-white shadow-sm" },
-    { key: "user", label: "Nakliye Cepte", count: stats.todayUserCount, active: "bg-[#d64526] text-white shadow-sm" },
+    { key: "all", label: "Tümü", count: stats.activeTotal, active: "bg-primary text-primary-foreground shadow-sm" },
+    { key: "user", label: "Nakliye Cepte", count: stats.todayUserCount, active: "bg-brand text-white shadow-sm" },
     { key: "bot", label: "Saha Ağı", count: stats.botCount, active: "bg-[#315d83] text-white shadow-sm" },
   ]
 
@@ -164,7 +164,7 @@ export function ListingsView({
         <button
           type="button"
           onClick={openPremium}
-          className="flex w-full items-center gap-2 rounded-xl border border-[#f3dfb0] bg-[#fff9ec] px-3 py-2.5 text-left text-xs font-semibold text-[#8a5a00] active:scale-[0.99]"
+          className="flex w-full items-center gap-2 rounded-xl border border-[#f3dfb0] bg-[#fff9ec] px-3 py-2.5 text-left text-xs font-semibold text-[#8a5a00] dark:text-amber-300 active:scale-[0.99]"
         >
           <Crown className="size-4 shrink-0" />
           {lockedCount > 0
@@ -176,16 +176,16 @@ export function ListingsView({
       {/* Başlık */}
       <div className="flex items-end justify-between gap-4">
         <div>
-          <div className="mb-0.5 hidden text-[11px] font-bold uppercase tracking-wider text-[#d64526] sm:block">Pazar Yeri</div>
-          <h1 className="text-xl font-extrabold tracking-tight text-[#122c4a] sm:text-3xl">Güncel İlanlar</h1>
-          <p className="mt-1 hidden text-sm text-[#627d98] sm:block">
+          <div className="mb-0.5 hidden text-[11px] font-bold uppercase tracking-wider text-brand sm:block">Pazar Yeri</div>
+          <h1 className="text-xl font-extrabold tracking-tight text-foreground sm:text-3xl">Güncel İlanlar</h1>
+          <p className="mt-1 hidden text-sm text-muted-foreground sm:block">
             Saha ve kullanıcı ilanları güncel esas alınarak listelenmektedir.
           </p>
-          <SourceInfoButton className="mt-1 -ml-0.5 inline-flex min-h-9 items-center gap-1.5 rounded-full px-1 text-xs font-semibold text-[#315d83] active:opacity-70" />
+          <SourceInfoButton className="mt-1 -ml-0.5 inline-flex min-h-9 items-center gap-1.5 rounded-full px-1 text-xs font-semibold text-foreground/80 active:opacity-70" />
         </div>
         <button
           onClick={() => setIsCreateOpen(true)}
-          className="hidden h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-[#d64526] px-5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#b8381e] sm:inline-flex"
+          className="hidden h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-brand px-5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand/90 sm:inline-flex"
         >
           <Plus className="size-5" />
           İlan Oluştur
@@ -193,7 +193,7 @@ export function ListingsView({
       </div>
 
       {/* Kaynak sekmeleri */}
-      <div className="grid grid-cols-3 gap-1 rounded-2xl border border-[#e4e9ef] bg-white p-1 shadow-[0_1px_2px_rgba(18,44,74,0.04)]">
+      <div className="grid grid-cols-3 gap-1 rounded-2xl border border-border bg-card p-1 shadow-sm dark:shadow-none">
         {sources.map((s) => (
           <button
             key={s.key}
@@ -201,12 +201,12 @@ export function ListingsView({
             aria-pressed={sourceFilter === s.key}
             className={cn(
               "flex min-h-11 flex-col items-center justify-center rounded-xl px-1.5 py-1 transition-all sm:min-h-12 sm:py-1.5",
-              sourceFilter === s.key ? s.active : "text-[#627d98] hover:bg-[#f5f7fa]"
+              sourceFilter === s.key ? s.active : "text-muted-foreground hover:bg-muted"
             )}
           >
             <span className="text-[13px] font-semibold leading-tight">{s.label}</span>
             {typeof s.count === "number" && (
-              <span className={cn("text-[11px] font-medium tabular-nums", sourceFilter === s.key ? "text-white/75" : "text-[#8da0b2]")}>
+              <span className={cn("text-[11px] font-medium tabular-nums", sourceFilter === s.key ? "text-white/75" : "text-muted-foreground")}>
                 {fmt(s.count)}
               </span>
             )}
@@ -225,16 +225,16 @@ export function ListingsView({
                 onClick={() => setActiveFilter(option)}
                 aria-pressed={active}
                 className={cn(
-                  "flex h-11 shrink-0 flex-row items-center gap-1.5 rounded-full border-2 pl-2 pr-3.5 text-[12.5px] font-bold transition-all active:scale-95 sm:h-[96px] sm:w-[112px] sm:flex-col sm:justify-between sm:rounded-2xl sm:px-2 sm:pb-2 sm:pt-2.5",
+                  "flex h-10 shrink-0 flex-row items-center gap-1.5 rounded-full border pl-2 pr-3.5 text-[12.5px] font-semibold transition-all active:scale-95",
                   active
-                    ? "border-[#122c4a] bg-[#eaf1f8] text-[#122c4a] shadow-[0_8px_18px_-12px_rgba(18,44,74,0.7)]"
-                    : "border-[#e4e9ef] bg-white text-[#4a6178] hover:border-[#c4d0dc]"
+                    ? "border-brand bg-brand/10 text-foreground shadow-sm"
+                    : "border-border bg-card text-muted-foreground hover:border-input"
                 )}
               >
-                <span className="flex h-7 w-11 items-center justify-center sm:h-12 sm:w-full">
+                <span className="flex h-6 w-10 items-center justify-center">
                   <VehicleIcon kind={FILTER_ICON[option]} className="h-full w-full" />
                 </span>
-                <span className={cn("whitespace-nowrap", option.length > 10 && "sm:text-[11.5px] sm:tracking-tight")}>{option}</span>
+                <span className={cn("whitespace-nowrap", false)}>{option}</span>
               </button>
             )
           })}
@@ -246,14 +246,14 @@ export function ListingsView({
         <button
           type="button"
           onClick={() => setFilterOpen(true)}
-          className={cn("inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-xl border text-sm font-bold active:scale-[0.99]", extraCount ? "border-[#122c4a] bg-[#eaf1f8] text-[#122c4a]" : "border-[#e0e6ed] bg-white text-[#4a6178]")}
+          className={cn("inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-xl border text-sm font-bold active:scale-[0.99]", extraCount ? "border-primary bg-muted text-foreground" : "border-border bg-card text-muted-foreground")}
         >
           <SlidersHorizontal className="size-4" />
           {from && to ? `${from} → ${to}` : from ? `${from} çıkışlı` : to ? `${to} varışlı` : "Güzergâh ve filtreler"}
-          {extraCount > 0 && <span className="grid size-5 place-items-center rounded-full bg-[#d64526] text-[11px] font-black text-white">{extraCount}</span>}
+          {extraCount > 0 && <span className="grid size-5 place-items-center rounded-full bg-brand text-[11px] font-black text-white">{extraCount}</span>}
         </button>
         {hasExtraFilters && (
-          <button type="button" onClick={clearExtra} aria-label="Filtreleri temizle" className="grid size-11 shrink-0 place-items-center rounded-xl border border-[#e0e6ed] bg-white text-[#d64526] active:scale-95">
+          <button type="button" onClick={clearExtra} aria-label="Filtreleri temizle" className="grid size-11 shrink-0 place-items-center rounded-xl border border-border bg-card text-brand active:scale-95">
             <X className="size-4" />
           </button>
         )}
@@ -264,14 +264,14 @@ export function ListingsView({
         title="Filtreler"
         footer={
           <div className="grid grid-cols-2 gap-2">
-            <button type="button" onClick={clearExtra} className="h-12 rounded-xl border border-[#d9e2ec] bg-white text-sm font-bold text-[#122c4a] active:scale-95">Temizle</button>
-            <button type="button" onClick={() => setFilterOpen(false)} className="h-12 rounded-xl bg-[#122c4a] text-sm font-bold text-white active:scale-95">{visibleLoads.length} ilanı göster</button>
+            <button type="button" onClick={clearExtra} className="h-12 rounded-xl border border-input bg-card text-sm font-bold text-foreground active:scale-95">Temizle</button>
+            <button type="button" onClick={() => setFilterOpen(false)} className="h-12 rounded-xl bg-primary text-sm font-bold text-primary-foreground active:scale-95">{visibleLoads.length} ilanı göster</button>
           </div>
         }
       >
         <div className="space-y-4">
           <label className="block">
-            <span className="mb-1.5 block text-xs font-bold text-[#486581]">Nereden</span>
+            <span className="mb-1.5 block text-xs font-bold text-foreground/80">Nereden</span>
             <select aria-label="Nereden" value={from} onChange={(e) => setFrom(e.target.value)} className={cn(selectClass, "w-full")}>
               <option value="">Tümü</option>
               {from && !fromOptions.some(([c]) => c === from) && <option value={from}>{from} (0)</option>}
@@ -279,7 +279,7 @@ export function ListingsView({
             </select>
           </label>
           <label className="block">
-            <span className="mb-1.5 block text-xs font-bold text-[#486581]">Nereye</span>
+            <span className="mb-1.5 block text-xs font-bold text-foreground/80">Nereye</span>
             <select aria-label="Nereye" value={to} onChange={(e) => setTo(e.target.value)} className={cn(selectClass, "w-full")}>
               <option value="">Tümü</option>
               {to && !toOptions.some(([c]) => c === to) && <option value={to}>{to} (0)</option>}
@@ -287,14 +287,14 @@ export function ListingsView({
             </select>
           </label>
           <div>
-            <span className="mb-1.5 block text-xs font-bold text-[#486581]">Zaman</span>
+            <span className="mb-1.5 block text-xs font-bold text-foreground/80">Zaman</span>
             <div className="grid grid-cols-4 gap-1.5">
               {([["", "Tümü"], ["1h", "1 saat"], ["6h", "6 saat"], ["today", "24 saat"]] as const).map(([k, label]) => (
-                <button key={k} type="button" onClick={() => setAge(k)} aria-pressed={age === k} className={cn("h-10 rounded-xl border text-xs font-bold", age === k ? "border-[#122c4a] bg-[#122c4a] text-white" : "border-[#e0e6ed] bg-white text-[#4a6178]")}>{label}</button>
+                <button key={k} type="button" onClick={() => setAge(k)} aria-pressed={age === k} className={cn("h-10 rounded-xl border text-xs font-bold", age === k ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card text-muted-foreground")}>{label}</button>
               ))}
             </div>
           </div>
-          <button type="button" onClick={() => setOnlyPhone((v) => !v)} aria-pressed={onlyPhone} className={cn("flex h-12 w-full items-center justify-center gap-2 rounded-xl border text-sm font-bold", onlyPhone ? "border-emerald-600 bg-emerald-50 text-emerald-700" : "border-[#e0e6ed] bg-white text-[#4a6178]")}>
+          <button type="button" onClick={() => setOnlyPhone((v) => !v)} aria-pressed={onlyPhone} className={cn("flex h-12 w-full items-center justify-center gap-2 rounded-xl border text-sm font-bold", onlyPhone ? "border-emerald-600 bg-emerald-50 text-emerald-700" : "border-border bg-card text-muted-foreground")}>
             <Phone className="size-4" /> Sadece telefonlu ilanlar
           </button>
         </div>
@@ -305,16 +305,16 @@ export function ListingsView({
         <div className="hidden space-y-2 sm:block">
           <div className="flex items-center gap-2">
             <div className="relative min-w-0 flex-1">
-              <MapPin aria-hidden className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[#8da0b2]" />
+              <MapPin aria-hidden className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               <select aria-label="Nereden" value={from} onChange={(e) => setFrom(e.target.value)} className={cn(selectClass, "w-full pl-9")}>
                 <option value="">Nereden: Tümü</option>
                 {from && !fromOptions.some(([c]) => c === from) && <option value={from}>{from} (0)</option>}
                 {fromOptions.map(([c, n]) => (<option key={c} value={c}>{c} ({n})</option>))}
               </select>
             </div>
-            <ArrowRight aria-hidden className="size-4 shrink-0 text-[#8da0b2]" />
+            <ArrowRight aria-hidden className="size-4 shrink-0 text-muted-foreground" />
             <div className="relative min-w-0 flex-1">
-              <MapPin aria-hidden className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[#8da0b2]" />
+              <MapPin aria-hidden className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               <select aria-label="Nereye" value={to} onChange={(e) => setTo(e.target.value)} className={cn(selectClass, "w-full pl-9")}>
                 <option value="">Nereye: Tümü</option>
                 {to && !toOptions.some(([c]) => c === to) && <option value={to}>{to} (0)</option>}
@@ -324,7 +324,7 @@ export function ListingsView({
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <div className="relative min-w-0 flex-1 sm:flex-none sm:min-w-[170px]">
-              <Clock aria-hidden className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[#8da0b2]" />
+              <Clock aria-hidden className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               <select aria-label="Zaman" value={age} onChange={(e) => setAge(e.target.value as "" | "1h" | "6h" | "today")} className={cn(selectClass, "w-full pl-9")}>
                 <option value="">Zaman: Tümü</option>
                 <option value="1h">Son 1 saat</option>
@@ -338,7 +338,7 @@ export function ListingsView({
               aria-pressed={onlyPhone}
               className={cn(
                 "inline-flex h-10 shrink-0 items-center gap-1.5 rounded-xl border px-3 text-[13px] font-semibold transition-colors",
-                onlyPhone ? "border-emerald-600 bg-emerald-50 text-emerald-700" : "border-[#e0e6ed] bg-white text-[#4a6178]"
+                onlyPhone ? "border-emerald-600 bg-emerald-50 text-emerald-700" : "border-border bg-card text-muted-foreground"
               )}
             >
               <Phone className="size-3.5" />
@@ -348,7 +348,7 @@ export function ListingsView({
               <button
                 type="button"
                 onClick={clearExtra}
-                className="inline-flex h-10 items-center gap-1 rounded-xl px-2 text-xs font-semibold text-[#d64526] hover:bg-[#fff0ec]"
+                className="inline-flex h-10 items-center gap-1 rounded-xl px-2 text-xs font-semibold text-brand hover:bg-[#fff0ec] dark:bg-brand/15"
               >
                 <X className="size-3.5" /> Temizle
               </button>
@@ -358,10 +358,10 @@ export function ListingsView({
       )}
 
       {!loading && (
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 px-1 text-xs font-medium text-[#8da0b2]">
-          <span><span className="font-bold text-[#122c4a]">{visibleLoads.length}</span> ilan gösteriliyor</span>
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 px-1 text-xs font-medium text-muted-foreground">
+          <span><span className="font-bold text-foreground">{visibleLoads.length}</span> ilan gösteriliyor</span>
           {(hasExtraFilters || activeFilter !== "Tümü" || sourceFilter !== "all") && (
-            <button type="button" onClick={clearAll} className="inline-flex min-h-8 items-center gap-1 rounded-full bg-[#fff0ec] px-2.5 font-semibold text-[#d64526] active:scale-95">
+            <button type="button" onClick={clearAll} className="inline-flex min-h-8 items-center gap-1 rounded-full bg-[#fff0ec] dark:bg-brand/15 px-2.5 font-semibold text-brand active:scale-95">
               <X className="size-3" /> Filtre açık · Temizle
             </button>
           )}
@@ -372,43 +372,43 @@ export function ListingsView({
       {loading ? (
         <div className="grid grid-cols-1 items-start gap-3 md:grid-cols-2 xl:grid-cols-3">
           {[0, 1, 2].map((i) => (
-            <div key={i} className="animate-pulse overflow-hidden rounded-2xl border border-[#e4e9ef] bg-white p-4">
+            <div key={i} className="animate-pulse overflow-hidden rounded-2xl border border-border bg-card p-4">
               <div className="flex items-center gap-3">
-                <div className="size-11 rounded-2xl bg-[#eef2f6]" />
+                <div className="size-11 rounded-2xl bg-muted" />
                 <div className="flex-1 space-y-2">
-                  <div className="h-3.5 w-2/5 rounded bg-[#eef2f6]" />
-                  <div className="h-3 w-1/4 rounded bg-[#f3f6f9]" />
+                  <div className="h-3.5 w-2/5 rounded bg-muted" />
+                  <div className="h-3 w-1/4 rounded bg-muted" />
                 </div>
               </div>
-              <div className="mt-4 h-10 rounded-xl bg-[#f3f6f9]" />
+              <div className="mt-4 h-10 rounded-xl bg-muted" />
               <div className="mt-4 space-y-2">
-                <div className="h-3 w-full rounded bg-[#f3f6f9]" />
-                <div className="h-3 w-3/4 rounded bg-[#f3f6f9]" />
+                <div className="h-3 w-full rounded bg-muted" />
+                <div className="h-3 w-3/4 rounded bg-muted" />
               </div>
               <div className="mt-4 grid grid-cols-2 gap-2.5">
-                <div className="h-12 rounded-xl bg-[#eef2f6]" />
-                <div className="h-12 rounded-xl bg-[#eef2f6]" />
+                <div className="h-12 rounded-xl bg-muted" />
+                <div className="h-12 rounded-xl bg-muted" />
               </div>
             </div>
           ))}
         </div>
       ) : visibleLoads.length === 0 ? (
-        <div className="rounded-3xl border border-dashed border-[#cbd5e1] bg-white px-6 py-14 text-center">
-          <div className="mx-auto mb-4 grid size-16 place-items-center rounded-2xl bg-[#eef4f8] text-[#315d83]">
+        <div className="rounded-3xl border border-dashed border-input bg-card px-6 py-14 text-center">
+          <div className="mx-auto mb-4 grid size-16 place-items-center rounded-2xl bg-muted text-foreground/80">
             <PackageSearch className="size-8" />
           </div>
-          <p className="text-base font-bold text-[#122c4a]">Aramanıza uygun aktif ilan bulunamadı</p>
-          <p className="mx-auto mt-1 max-w-xs text-sm text-[#627d98]">
+          <p className="text-base font-bold text-foreground">Aramanıza uygun aktif ilan bulunamadı</p>
+          <p className="mx-auto mt-1 max-w-xs text-sm text-muted-foreground">
             {from && to
               ? `${from} → ${to} güzergâhında şu an ilan yok.`
               : "Filtrelerinizi değiştirmeyi veya arama teriminizi temizlemeyi deneyin."}
           </p>
           {from && to && (
             <div className="mt-4 flex flex-wrap justify-center gap-2">
-              <button onClick={() => setTo("")} className="h-10 rounded-xl border border-[#cbd5e1] bg-white px-4 text-[13px] font-semibold text-[#122c4a]">
+              <button onClick={() => setTo("")} className="h-10 rounded-xl border border-input bg-card px-4 text-[13px] font-semibold text-foreground">
                 Tüm {from} çıkışlı ilanlar
               </button>
-              <button onClick={() => setFrom("")} className="h-10 rounded-xl border border-[#cbd5e1] bg-white px-4 text-[13px] font-semibold text-[#122c4a]">
+              <button onClick={() => setFrom("")} className="h-10 rounded-xl border border-input bg-card px-4 text-[13px] font-semibold text-foreground">
                 Tüm {to} ilanları
               </button>
             </div>
@@ -416,7 +416,7 @@ export function ListingsView({
           {(activeFilter !== "Tümü" || sourceFilter !== "all" || hasExtraFilters) && (
             <button
               onClick={clearAll}
-              className="mt-5 h-11 rounded-xl bg-[#122c4a] px-6 text-sm font-semibold text-white transition-colors hover:bg-[#1a3d68]"
+              className="mt-5 h-11 rounded-xl bg-primary px-6 text-sm font-semibold text-primary-foreground transition-colors hover:opacity-90"
             >
               Filtreleri Temizle
             </button>
@@ -444,7 +444,7 @@ export function ListingsView({
         <div className="flex justify-center pt-2">
           <button
             onClick={onLoadMore}
-            className="h-12 w-full rounded-xl border border-[#cbd5e1] bg-white px-6 text-sm font-semibold text-[#122c4a] transition-colors hover:bg-[#f5f7fa] sm:w-auto"
+            className="h-12 w-full rounded-xl border border-input bg-card px-6 text-sm font-semibold text-foreground transition-colors hover:bg-muted sm:w-auto"
           >
             Daha fazla ilan göster
           </button>
