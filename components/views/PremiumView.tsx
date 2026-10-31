@@ -68,13 +68,16 @@ export function PremiumView() {
             </button>
           ) : (
             <div className="rounded-xl border border-[#e4e9ef] bg-white p-4 text-sm text-[#486581]">
-              Premium satın alımı Google Play'den indirilen Nakliye Cepte uygulamasında yapılır.
+              Premium satın alımı Google Play'den indirilen Nakliye Cepte uygulamasında yapılır. Zaten Premium aldıysanız aynı hesapla uygulamaya giriş yapmanız yeterli; Premium otomatik açılır.
               {storeUrl && <> <a href={storeUrl} className="font-semibold text-[#315d83] underline">Google Play'de aç</a></>}
             </div>
           )}
-          <button onClick={restore} disabled={busy} className="h-11 w-full rounded-xl text-sm font-semibold text-[#315d83] hover:bg-white disabled:opacity-60">
-            Satın alımı geri yükle
-          </button>
+          {canBuyHere && (
+            <button onClick={restore} disabled={busy} className="flex h-11 w-full items-center justify-center gap-2 rounded-xl text-sm font-semibold text-[#315d83] hover:bg-white disabled:opacity-60">
+              {busy && <Loader2 className="size-4 animate-spin" />}
+              Satın alımı geri yükle
+            </button>
+          )}
         </div>
       )}
 
