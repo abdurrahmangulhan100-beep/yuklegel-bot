@@ -52,8 +52,11 @@ export const viewport: Viewport = {
   initialScale: 1,
   viewportFit: 'cover', // çentik / alt çubuk güvenli alanları için
   interactiveWidget: 'resizes-content', // Android'de klavye açılınca arama/form alanları ekrandan taşmasın
-  colorScheme: 'light',
-  themeColor: '#122c4a', // PWA tema rengi uygulamanın ana rengiyle eşleştirildi
+  colorScheme: 'light dark',
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#122c4a' },
+    { media: '(prefers-color-scheme: dark)', color: '#0b1220' },
+  ],
 }
 
 export default function RootLayout({
@@ -62,7 +65,15 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="tr" className={`light ${inter.variable}`}>
+    <html lang="tr" className={inter.variable} suppressHydrationWarning>
+      <head>
+        {/* Tema: kayıtlı seçim yoksa cihaz ayarını izler; ilk boyamadan önce uygulanır (yanıp sönme olmaz) */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `try{var t=localStorage.getItem('theme');var d=t?t==='dark':matchMedia('(prefers-color-scheme: dark)').matches;document.documentElement.classList.add(d?'dark':'light')}catch(e){document.documentElement.classList.add('light')}`,
+          }}
+        />
+      </head>
       <body className="antialiased">
         {/* İnternet bağlantısı koptuğunda otomatik beliren çevrimdışı uyarı ekranı */}
         <OfflineNotice />
