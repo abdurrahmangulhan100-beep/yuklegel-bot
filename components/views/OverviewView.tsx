@@ -54,7 +54,7 @@ export function OverviewView({ loads, currentUserId, onOpenCreate, setActiveTab,
   }, [loads])
 
   const quickActions = [
-    { label: "Sefer Hesapla", icon: Calculator, tab: "Sefer Hesapla", tone: "bg-[#eef4f8] text-[#315d83]" },
+    { label: "Sefer Hesapla", icon: Calculator, tab: "Sefer Hesapla", tone: "bg-muted text-foreground/80" },
     { label: "Gelir & Gider", icon: WalletCards, tab: "Gelir Gider", tone: "bg-emerald-50 text-emerald-600" },
     { label: "Takograf Sayacı", icon: Timer, tab: "Araçlar", tone: "bg-amber-50 text-amber-600" },
   ]
@@ -68,7 +68,7 @@ export function OverviewView({ loads, currentUserId, onOpenCreate, setActiveTab,
     <div className="space-y-5 sm:space-y-6">
       {/* Karşılama + arama */}
       <section className="animate-rise relative overflow-hidden rounded-[28px] bg-gradient-to-br from-[#163a63] via-[#122c4a] to-[#0b1d33] p-5 text-white shadow-[0_14px_34px_rgba(18,44,74,0.28)] sm:p-7">
-        <div className="pointer-events-none absolute -right-10 -top-12 size-48 rounded-full bg-[#e5522f]/30 blur-2xl" />
+        <div className="pointer-events-none absolute -right-10 -top-12 size-48 rounded-full bg-brand/30 blur-2xl" />
         <div className="pointer-events-none absolute -bottom-16 -left-10 size-40 rounded-full bg-[#315d83]/40 blur-2xl" />
         <div className="relative">
           <p className="text-sm font-medium text-white/65">{firstName ? `Merhaba, ${firstName}` : "Hoş geldiniz"}</p>
@@ -79,11 +79,11 @@ export function OverviewView({ loads, currentUserId, onOpenCreate, setActiveTab,
           <button
             type="button"
             onClick={() => setActiveTab("İlanlar")}
-            className="mt-4 flex h-14 w-full items-center gap-3 rounded-2xl bg-white px-4 text-left shadow-lg shadow-black/20 transition-transform active:scale-[0.99] sm:max-w-lg"
+            className="mt-4 flex h-14 w-full items-center gap-3 rounded-2xl bg-card px-4 text-left shadow-lg shadow-black/20 transition-transform active:scale-[0.99] sm:max-w-lg"
           >
-            <Search className="size-5 shrink-0 text-[#8da0b2]" />
-            <span className="min-w-0 flex-1 truncate text-[15px] text-[#8da0b2]">Nereden nereye yük arıyorsunuz?</span>
-            <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-[#e5522f] text-white"><ArrowRight className="size-4" /></span>
+            <Search className="size-5 shrink-0 text-muted-foreground" />
+            <span className="min-w-0 flex-1 truncate text-[15px] text-muted-foreground">Nereden nereye yük arıyorsunuz?</span>
+            <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-brand text-white"><ArrowRight className="size-4" /></span>
           </button>
         </div>
       </section>
@@ -94,13 +94,13 @@ export function OverviewView({ loads, currentUserId, onOpenCreate, setActiveTab,
           <button
             key={x.label}
             onClick={() => setActiveTab(x.tab)}
-            className="flex flex-col items-center gap-2 rounded-3xl border border-[#e4e9ef] bg-white px-1 py-4 shadow-[0_1px_2px_rgba(18,44,74,0.04)] transition-all active:scale-95"
+            className="flex flex-col items-center gap-2 rounded-3xl border border-border bg-card px-1 py-4 shadow-[0_1px_2px_rgba(18,44,74,0.04)] transition-all active:scale-95"
           >
-            <span className="relative grid size-14 place-items-center rounded-full bg-[#fff0ec] text-[#d64526]">
+            <span className="relative grid size-14 place-items-center rounded-full bg-[#fff0ec] dark:bg-brand/15 text-brand">
               <x.icon className="size-6" />
-              {x.badge && <span className="absolute -right-2 -top-1.5 rounded-full bg-[#e5522f] px-1.5 py-0.5 text-[10px] font-bold leading-none text-white ring-2 ring-white">{x.badge}</span>}
+              {x.badge && <span className="absolute -right-2 -top-1.5 rounded-full bg-brand px-1.5 py-0.5 text-[10px] font-bold leading-none text-white ring-2 ring-white">{x.badge}</span>}
             </span>
-            <span className="text-[12px] font-bold text-[#122c4a]">{x.label}</span>
+            <span className="text-[12px] font-bold text-foreground">{x.label}</span>
           </button>
         ))}
       </section>
@@ -108,8 +108,8 @@ export function OverviewView({ loads, currentUserId, onOpenCreate, setActiveTab,
       {/* Popüler araçlar */}
       <section>
         <div className="mb-3 flex items-center justify-between px-1">
-          <h2 className="text-base font-bold text-[#122c4a]">Popüler Araçlar</h2>
-          <button onClick={() => setActiveTab("İlanlar")} className="flex items-center gap-1 text-xs font-semibold text-[#d64526]">Tümünü Gör <ArrowRight className="size-3.5" /></button>
+          <h2 className="text-base font-bold text-foreground">Popüler Araçlar</h2>
+          <button onClick={() => setActiveTab("İlanlar")} className="flex items-center gap-1 text-xs font-semibold text-brand">Tümünü Gör <ArrowRight className="size-3.5" /></button>
         </div>
         <div className="-mx-4 sm:mx-0">
           <div className="no-scrollbar flex gap-2.5 overflow-x-auto px-4 pb-1 sm:flex-wrap sm:px-0">
@@ -117,7 +117,7 @@ export function OverviewView({ loads, currentUserId, onOpenCreate, setActiveTab,
               <button
                 key={name}
                 onClick={() => (onPickFilter ? onPickFilter(name) : setActiveTab("İlanlar"))}
-                className="flex h-[88px] w-[96px] shrink-0 flex-col items-center justify-between rounded-2xl border border-[#e4e9ef] bg-white px-2 pb-2 pt-2.5 text-[11.5px] font-bold text-[#334e68] shadow-[0_1px_2px_rgba(18,44,74,0.04)] transition-all active:scale-95"
+                className="flex h-[88px] w-[96px] shrink-0 flex-col items-center justify-between rounded-2xl border border-border bg-card px-2 pb-2 pt-2.5 text-[11.5px] font-bold text-foreground/80 shadow-[0_1px_2px_rgba(18,44,74,0.04)] transition-all active:scale-95"
               >
                 <span className="flex h-11 w-full items-center justify-center"><VehicleIcon kind={kind} className="h-full w-full" /></span>
                 <span className="whitespace-nowrap">{name}</span>
@@ -131,10 +131,10 @@ export function OverviewView({ loads, currentUserId, onOpenCreate, setActiveTab,
       {urgentLoads.length > 0 && (
         <section>
           <div className="mb-3 flex items-center justify-between px-1">
-            <h2 className="flex items-center gap-1.5 text-base font-bold text-[#122c4a]">
-              <Zap className="size-4 fill-[#d64526] text-[#d64526]" /> Acil Yükler
+            <h2 className="flex items-center gap-1.5 text-base font-bold text-foreground">
+              <Zap className="size-4 fill-[#d64526] text-brand" /> Acil Yükler
             </h2>
-            <button onClick={() => (onOpenUrgent ? onOpenUrgent() : setActiveTab("İlanlar"))} className="flex items-center gap-1 text-xs font-semibold text-[#315d83]">
+            <button onClick={() => (onOpenUrgent ? onOpenUrgent() : setActiveTab("İlanlar"))} className="flex items-center gap-1 text-xs font-semibold text-foreground/80">
               Tümü <ArrowRight className="size-3.5" />
             </button>
           </div>
@@ -147,13 +147,13 @@ export function OverviewView({ loads, currentUserId, onOpenCreate, setActiveTab,
                   className="w-[260px] shrink-0 snap-start rounded-2xl border border-[#f6d6cc] bg-gradient-to-br from-[#fff7f4] to-white p-4 text-left shadow-[0_1px_2px_rgba(214,69,38,0.08)] transition-transform active:scale-[0.98]"
                 >
                   <div className="flex items-center justify-between">
-                    <span className="rounded-full bg-[#d64526] px-2 py-0.5 text-[10px] font-bold text-white">ACİL</span>
-                    <span className="text-[11px] font-medium text-[#8da0b2]">{l.time}</span>
+                    <span className="rounded-full bg-brand px-2 py-0.5 text-[10px] font-bold text-white">ACİL</span>
+                    <span className="text-[11px] font-medium text-muted-foreground">{l.time}</span>
                   </div>
-                  <div className="mt-3 line-clamp-2 text-[15px] font-bold leading-snug text-[#122c4a]">
+                  <div className="mt-3 line-clamp-2 text-[15px] font-bold leading-snug text-foreground">
                     {headline(l)}
                   </div>
-                  <div className="mt-1.5 flex items-center gap-1.5 text-xs text-[#627d98]">
+                  <div className="mt-1.5 flex items-center gap-1.5 text-xs text-muted-foreground">
                     <MapPin className="size-3.5 shrink-0" />
                     <span className="truncate">{(l.cities ?? []).slice(0, 3).join(" · ") || l.vehicle || "Detay için ilana dokunun"}</span>
                   </div>
@@ -166,20 +166,20 @@ export function OverviewView({ loads, currentUserId, onOpenCreate, setActiveTab,
 
       {/* Yoğun bölgeler */}
       {hot.cities.length > 0 && (
-        <section className="rounded-3xl border border-[#e4e9ef] bg-white p-4 shadow-[0_1px_2px_rgba(18,44,74,0.04)] sm:p-6">
-          <h2 className="mb-3 flex items-center gap-1.5 text-base font-bold text-[#122c4a]">
-            <TrendingUp className="size-4 text-[#315d83]" /> İlanı Çok Olan Şehirler
+        <section className="rounded-3xl border border-border bg-card p-4 shadow-[0_1px_2px_rgba(18,44,74,0.04)] sm:p-6">
+          <h2 className="mb-3 flex items-center gap-1.5 text-base font-bold text-foreground">
+            <TrendingUp className="size-4 text-foreground/80" /> İlanı Çok Olan Şehirler
           </h2>
           <div className="flex flex-wrap gap-2">
             {hot.cities.map(([city, n]) => (
               <button
                 key={city}
                 onClick={() => onSelectCity?.(city)}
-                className="inline-flex h-10 items-center gap-2 rounded-full border border-[#e0e6ed] bg-[#f8fafc] pl-3 pr-1.5 text-[13px] font-semibold text-[#122c4a] transition-colors hover:border-[#c4d0dc] active:scale-95"
+                className="inline-flex h-10 items-center gap-2 rounded-full border border-border bg-muted/50 pl-3 pr-1.5 text-[13px] font-semibold text-foreground transition-colors hover:border-input active:scale-95"
               >
-                <MapPin className="size-3.5 text-[#315d83]" />
+                <MapPin className="size-3.5 text-foreground/80" />
                 {city}
-                <span className="grid h-7 min-w-7 place-items-center rounded-full bg-[#122c4a] px-1.5 text-[11px] font-bold tabular-nums text-white">{n}</span>
+                <span className="grid h-7 min-w-7 place-items-center rounded-full bg-primary px-1.5 text-[11px] font-bold tabular-nums text-primary-foreground">{n}</span>
               </button>
             ))}
           </div>
@@ -188,54 +188,54 @@ export function OverviewView({ loads, currentUserId, onOpenCreate, setActiveTab,
 
       {/* Hızlı erişim */}
       <section>
-        <h2 className="mb-3 px-1 text-base font-bold text-[#122c4a]">Araçlar</h2>
+        <h2 className="mb-3 px-1 text-base font-bold text-foreground">Araçlar</h2>
         <div className="grid grid-cols-3 gap-2.5 sm:gap-4">
           {quickActions.map((a) => (
             <button
               key={a.label}
               onClick={() => setActiveTab(a.tab)}
-              className="flex flex-col items-center gap-2 rounded-2xl border border-[#e4e9ef] bg-white px-1 py-3.5 shadow-[0_1px_2px_rgba(18,44,74,0.04)] transition-all hover:shadow-md active:scale-95"
+              className="flex flex-col items-center gap-2 rounded-2xl border border-border bg-card px-1 py-3.5 shadow-[0_1px_2px_rgba(18,44,74,0.04)] transition-all hover:shadow-md active:scale-95"
             >
               <span className={cn("grid size-11 place-items-center rounded-2xl", a.tone)}>
                 <a.icon className="size-[22px]" />
               </span>
-              <span className="text-center text-[11px] font-semibold leading-tight text-[#334e68]">{a.label}</span>
+              <span className="text-center text-[11px] font-semibold leading-tight text-foreground/80">{a.label}</span>
             </button>
           ))}
         </div>
       </section>
 
       {/* Son seferlerim */}
-      <section className="rounded-3xl border border-[#e4e9ef] bg-white p-4 shadow-[0_1px_2px_rgba(18,44,74,0.04)] sm:p-6">
+      <section className="rounded-3xl border border-border bg-card p-4 shadow-[0_1px_2px_rgba(18,44,74,0.04)] sm:p-6">
         <div className="mb-2 flex items-center justify-between">
-          <h2 className="text-base font-bold text-[#122c4a]">Son Seferlerim</h2>
-          <button onClick={() => setActiveTab("Seferlerim")} className="flex items-center gap-1 text-xs font-semibold text-[#315d83]">
+          <h2 className="text-base font-bold text-foreground">Son Seferlerim</h2>
+          <button onClick={() => setActiveTab("Seferlerim")} className="flex items-center gap-1 text-xs font-semibold text-foreground/80">
             Tümünü Gör <ArrowRight className="size-3.5" />
           </button>
         </div>
         {userLoads.length > 0 ? (
-          <ul className="divide-y divide-[#edf0f3]">
+          <ul className="divide-y divide-border">
             {userLoads.slice(0, 3).map((load) => (
               <li key={load.id} className="flex items-center justify-between gap-3 py-3">
                 <div className="min-w-0">
-                  <div className="truncate text-sm font-bold text-[#122c4a]">{headline(load)}</div>
-                  <div className="mt-0.5 truncate text-xs text-[#718397]">{subline(load)}</div>
+                  <div className="truncate text-sm font-bold text-foreground">{headline(load)}</div>
+                  <div className="mt-0.5 truncate text-xs text-muted-foreground">{subline(load)}</div>
                 </div>
                 {load.price && load.price !== "₺0" && (
-                  <div className="shrink-0 text-sm font-extrabold text-[#d64526]">{load.price}</div>
+                  <div className="shrink-0 text-sm font-extrabold text-brand">{load.price}</div>
                 )}
               </li>
             ))}
           </ul>
         ) : (
           <div className="py-8 text-center">
-            <div className="mx-auto mb-3 grid size-14 place-items-center rounded-2xl bg-[#eef4f8] text-[#315d83]">
+            <div className="mx-auto mb-3 grid size-14 place-items-center rounded-2xl bg-muted text-foreground/80">
               <Truck className="size-7" />
             </div>
-            <p className="text-sm text-[#718397]">Henüz size ait bir sefer bulunmuyor.</p>
+            <p className="text-sm text-muted-foreground">Henüz size ait bir sefer bulunmuyor.</p>
             <button
               onClick={onOpenCreate}
-              className="mt-4 inline-flex h-11 items-center gap-2 rounded-xl bg-[#d64526] px-5 text-sm font-semibold text-white transition-colors hover:bg-[#b93820]"
+              className="mt-4 inline-flex h-11 items-center gap-2 rounded-xl bg-brand px-5 text-sm font-semibold text-white transition-colors hover:bg-brand/90"
             >
               <Plus className="size-4" /> İlk ilanını oluştur
             </button>
@@ -245,30 +245,30 @@ export function OverviewView({ loads, currentUserId, onOpenCreate, setActiveTab,
 
       {/* Güncel ilanlar */}
       {latestLoads.length > 0 && (
-        <section className="rounded-3xl border border-[#e4e9ef] bg-white p-4 shadow-[0_1px_2px_rgba(18,44,74,0.04)] sm:p-6">
+        <section className="rounded-3xl border border-border bg-card p-4 shadow-[0_1px_2px_rgba(18,44,74,0.04)] sm:p-6">
           <div className="mb-1 flex items-center justify-between">
-            <h2 className="text-base font-bold text-[#122c4a]">Güncel İlanlar</h2>
-            <button onClick={() => setActiveTab("İlanlar")} className="flex items-center gap-1 text-xs font-semibold text-[#315d83]">
+            <h2 className="text-base font-bold text-foreground">Güncel İlanlar</h2>
+            <button onClick={() => setActiveTab("İlanlar")} className="flex items-center gap-1 text-xs font-semibold text-foreground/80">
               Tümü <ArrowRight className="size-3.5" />
             </button>
           </div>
-          <ul className="divide-y divide-[#edf0f3]">
+          <ul className="divide-y divide-border">
             {latestLoads.map((l) => (
               <li key={l.id}>
                 <button onClick={() => setActiveTab("İlanlar")} className="flex w-full items-center gap-3 py-3 text-left">
                   <span className={cn(
                     "grid size-10 shrink-0 place-items-center rounded-xl text-xs font-bold text-white",
-                    l.source === "user" ? "bg-[#d64526]" : "bg-[#315d83]"
+                    l.source === "user" ? "bg-brand" : "bg-[#315d83]"
                   )}>
                     {l.source === "user" ? (l.initials || "NK") : "SL"}
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-bold text-[#122c4a]">
+                    <span className="block truncate text-sm font-bold text-foreground">
                       {headline(l)}
                     </span>
-                    <span className="mt-0.5 block truncate text-xs text-[#718397]">{subline(l)}</span>
+                    <span className="mt-0.5 block truncate text-xs text-muted-foreground">{subline(l)}</span>
                   </span>
-                  <ChevronRight className="size-4 shrink-0 text-[#b4c1ce]" />
+                  <ChevronRight className="size-4 shrink-0 text-muted-foreground/60" />
                 </button>
               </li>
             ))}
@@ -280,14 +280,14 @@ export function OverviewView({ loads, currentUserId, onOpenCreate, setActiveTab,
 
       <button
         onClick={() => setActiveTab("Yardım Merkezi")}
-        className="flex w-full items-center gap-3 rounded-2xl border border-[#e4e9ef] bg-white p-4 text-left shadow-[0_1px_2px_rgba(18,44,74,0.04)] transition-colors hover:bg-[#fafbfd]"
+        className="flex w-full items-center gap-3 rounded-2xl border border-border bg-card p-4 text-left shadow-[0_1px_2px_rgba(18,44,74,0.04)] transition-colors hover:bg-muted/50"
       >
-        <span className="grid size-10 place-items-center rounded-xl bg-[#eef4f8] text-[#315d83]"><CircleHelp className="size-5" /></span>
+        <span className="grid size-10 place-items-center rounded-xl bg-muted text-foreground/80"><CircleHelp className="size-5" /></span>
         <span className="flex-1">
-          <span className="block text-sm font-bold text-[#122c4a]">Yardıma mı ihtiyacınız var?</span>
-          <span className="block text-xs text-[#718397]">Sık sorulan sorular ve destek</span>
+          <span className="block text-sm font-bold text-foreground">Yardıma mı ihtiyacınız var?</span>
+          <span className="block text-xs text-muted-foreground">Sık sorulan sorular ve destek</span>
         </span>
-        <ChevronRight className="size-4 text-[#b4c1ce]" />
+        <ChevronRight className="size-4 text-muted-foreground/60" />
       </button>
     </div>
   )
