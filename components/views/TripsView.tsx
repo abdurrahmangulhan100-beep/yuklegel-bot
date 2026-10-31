@@ -16,7 +16,7 @@ interface TripsViewProps {
 }
 
 const fieldClass =
-  "h-12 w-full rounded-xl border border-[#dbe3ec] bg-white px-3.5 text-base text-[#122c4a] outline-none transition-colors focus:border-[#122c4a] focus:ring-4 focus:ring-[#122c4a]/10 md:text-sm"
+  "h-12 w-full rounded-xl border border-input bg-card px-3.5 text-base text-foreground outline-none transition-colors focus:border-primary focus:ring-4 focus:ring-ring/10 md:text-sm"
 
 export function TripsView({ loads, currentUserId, onChanged }: TripsViewProps) {
   // Sadece o an oturum açmış kullanıcının (currentUserId) kendi ilanlarını filtreliyoruz
@@ -182,9 +182,9 @@ export function TripsView({ loads, currentUserId, onChanged }: TripsViewProps) {
   return (
     <div className="space-y-5">
       <div>
-        <p className="mb-0.5 text-[11px] font-bold uppercase tracking-wider text-[#d64526]">Operasyon Yönetimi</p>
-        <h1 className="text-2xl font-extrabold tracking-tight text-[#122c4a] sm:text-3xl">Seferlerim</h1>
-        <p className="mt-1 text-sm text-[#718397]">Oluşturduğunuz aktif seferlerinizi takip edin, düzenleyin veya silin.</p>
+        <p className="mb-0.5 text-[11px] font-bold uppercase tracking-wider text-brand">Operasyon Yönetimi</p>
+        <h1 className="text-2xl font-extrabold tracking-tight text-foreground sm:text-3xl">Seferlerim</h1>
+        <p className="mt-1 text-sm text-muted-foreground">Oluşturduğunuz aktif seferlerinizi takip edin, düzenleyin veya silin.</p>
       </div>
 
       {notice && (
@@ -196,16 +196,16 @@ export function TripsView({ loads, currentUserId, onChanged }: TripsViewProps) {
       <div className="grid gap-3">
         {userLoads.length > 0 ? (
           userLoads.map((load) => (
-            <div key={load.id} className="animate-rise overflow-hidden rounded-2xl border border-[#e4e9ef] bg-white shadow-[0_1px_3px_rgba(18,44,74,0.05)]">
+            <div key={load.id} className="animate-rise overflow-hidden rounded-2xl border border-border bg-card shadow-[0_1px_3px_rgba(18,44,74,0.05)]">
               <div className="flex items-start gap-3.5 p-4">
-                <div className="grid size-11 shrink-0 place-items-center rounded-2xl bg-[#eef4f8] text-[#315d83]">
+                <div className="grid size-11 shrink-0 place-items-center rounded-2xl bg-muted text-foreground/80">
                   <Truck className="size-5" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <div className="truncate text-[15px] font-bold text-[#122c4a]">
+                  <div className="truncate text-[15px] font-bold text-foreground">
                     {shortRoute(load.from, load.to) ?? "Güzergah belirtilmemiş"}
                   </div>
-                  <div className="mt-1 truncate text-xs text-[#718397]">
+                  <div className="mt-1 truncate text-xs text-muted-foreground">
                     {[!isMissing(load.cargo) ? load.cargo : "", load.vehicle, load.time].filter(Boolean).join(" • ")}
                   </div>
                   <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-[#e7f5ed] px-2.5 py-1 text-[11px] font-semibold text-[#3b8068]">
@@ -213,32 +213,32 @@ export function TripsView({ loads, currentUserId, onChanged }: TripsViewProps) {
                   </span>
                 </div>
                 {load.price && load.price !== "₺0" && (
-                  <div className="shrink-0 text-right text-lg font-extrabold text-[#d64526]">{load.price}</div>
+                  <div className="shrink-0 text-right text-lg font-extrabold text-brand">{load.price}</div>
                 )}
               </div>
 
-              <div className="grid grid-cols-2 border-t border-[#edf0f3]">
+              <div className="grid grid-cols-2 border-t border-border">
                 <button
                   type="button"
                   onClick={() => handleBump(String(load.id))}
                   disabled={bumpingId === String(load.id)}
-                  className="flex h-12 items-center justify-center gap-2 text-sm font-semibold text-[#315d83] transition-colors hover:bg-[#f5f8fb] disabled:opacity-50"
+                  className="flex h-12 items-center justify-center gap-2 text-sm font-semibold text-foreground/80 transition-colors hover:bg-muted disabled:opacity-50"
                 >
                   <RefreshCw className={`size-4 ${bumpingId === String(load.id) ? "animate-spin" : ""}`} /> Yenile
                 </button>
                 <button
                   type="button"
                   onClick={() => openComplete(load)}
-                  className="flex h-12 items-center justify-center gap-2 border-l border-[#edf0f3] text-sm font-semibold text-emerald-700 transition-colors hover:bg-emerald-50"
+                  className="flex h-12 items-center justify-center gap-2 border-l border-border text-sm font-semibold text-emerald-700 transition-colors hover:bg-emerald-50"
                 >
                   <BadgeCheck className="size-4" /> Tamamlandı
                 </button>
               </div>
-              <div className="grid grid-cols-2 border-t border-[#edf0f3]">
+              <div className="grid grid-cols-2 border-t border-border">
                 <button
                   type="button"
                   onClick={() => { setErrorMsg(null); setEditingLoad(load) }}
-                  className="flex h-12 items-center justify-center gap-2 text-sm font-semibold text-[#315d83] transition-colors hover:bg-[#f5f8fb]"
+                  className="flex h-12 items-center justify-center gap-2 text-sm font-semibold text-foreground/80 transition-colors hover:bg-muted"
                 >
                   <Edit3 className="size-4" /> Düzenle
                 </button>
@@ -246,7 +246,7 @@ export function TripsView({ loads, currentUserId, onChanged }: TripsViewProps) {
                   type="button"
                   onClick={() => handleDelete(load.id)}
                   disabled={deletingId === String(load.id)}
-                  className="flex h-12 items-center justify-center gap-2 border-l border-[#edf0f3] text-sm font-semibold text-[#d64526] transition-colors hover:bg-[#fff6f3] disabled:opacity-50"
+                  className="flex h-12 items-center justify-center gap-2 border-l border-border text-sm font-semibold text-brand transition-colors hover:bg-[#fff6f3] disabled:opacity-50"
                 >
                   <Trash2 className="size-4" /> {deletingId === String(load.id) ? "Siliniyor..." : "Sil"}
                 </button>
@@ -254,12 +254,12 @@ export function TripsView({ loads, currentUserId, onChanged }: TripsViewProps) {
             </div>
           ))
         ) : (
-          <div className="rounded-3xl border border-dashed border-[#ccd6e0] bg-white px-6 py-14 text-center">
-            <div className="mx-auto mb-4 grid size-16 place-items-center rounded-2xl bg-[#eef4f8] text-[#315d83]">
+          <div className="rounded-3xl border border-dashed border-[#ccd6e0] bg-card px-6 py-14 text-center">
+            <div className="mx-auto mb-4 grid size-16 place-items-center rounded-2xl bg-muted text-foreground/80">
               <Truck className="size-8" />
             </div>
-            <p className="text-sm text-[#718397]">Henüz size ait bir sefer/ilan bulunmuyor.</p>
-            <p className="mt-1 text-xs text-[#8da0b2]">Alttaki turuncu <Plus className="mx-0.5 inline size-3.5" /> düğmesiyle ilk ilanınızı verebilirsiniz.</p>
+            <p className="text-sm text-muted-foreground">Henüz size ait bir sefer/ilan bulunmuyor.</p>
+            <p className="mt-1 text-xs text-muted-foreground">Alttaki turuncu <Plus className="mx-0.5 inline size-3.5" /> düğmesiyle ilk ilanınızı verebilirsiniz.</p>
           </div>
         )}
       </div>
@@ -273,7 +273,7 @@ export function TripsView({ loads, currentUserId, onChanged }: TripsViewProps) {
             <button
               type="button"
               onClick={() => setEditingLoad(null)}
-              className="h-12 rounded-xl border border-[#dbe3ec] text-sm font-semibold text-[#334e68] transition-colors hover:bg-[#f5f7fa]"
+              className="h-12 rounded-xl border border-input text-sm font-semibold text-foreground/80 transition-colors hover:bg-muted"
             >
               İptal
             </button>
@@ -281,7 +281,7 @@ export function TripsView({ loads, currentUserId, onChanged }: TripsViewProps) {
               type="submit"
               form="edit-trip-form"
               disabled={saving}
-              className="h-12 rounded-xl bg-[#d64526] text-sm font-semibold text-white transition-colors hover:bg-[#b93820] disabled:opacity-60"
+              className="h-12 rounded-xl bg-brand text-sm font-semibold text-white transition-colors hover:bg-brand/90 disabled:opacity-60"
             >
               {saving ? "Kaydediliyor..." : "Kaydet"}
             </button>
@@ -292,25 +292,25 @@ export function TripsView({ loads, currentUserId, onChanged }: TripsViewProps) {
           <form id="edit-trip-form" key={editingLoad.id} onSubmit={handleUpdate} className="grid gap-4 pt-1">
             {errorMsg && <div className="rounded-xl bg-red-50 p-3 text-xs font-semibold text-red-700">{errorMsg}</div>}
             <div className="grid grid-cols-2 gap-3">
-              <label className="grid gap-1.5 text-xs font-semibold text-[#334e68]">Çıkış Şehri
+              <label className="grid gap-1.5 text-xs font-semibold text-foreground/80">Çıkış Şehri
                 <input name="from" defaultValue={isMissing(editingLoad.from) ? "" : editingLoad.from} required className={fieldClass} />
               </label>
-              <label className="grid gap-1.5 text-xs font-semibold text-[#334e68]">Varış Şehri
+              <label className="grid gap-1.5 text-xs font-semibold text-foreground/80">Varış Şehri
                 <input name="to" defaultValue={isMissing(editingLoad.to) ? "" : editingLoad.to} required className={fieldClass} />
               </label>
             </div>
-            <label className="grid gap-1.5 text-xs font-semibold text-[#334e68]">Yük Detayı
+            <label className="grid gap-1.5 text-xs font-semibold text-foreground/80">Yük Detayı
               <input name="cargo" defaultValue={isMissing(editingLoad.cargo) ? "" : editingLoad.cargo} required className={fieldClass} />
             </label>
             <div className="grid grid-cols-2 gap-3">
-              <label className="grid gap-1.5 text-xs font-semibold text-[#334e68]">Araç Tipi
+              <label className="grid gap-1.5 text-xs font-semibold text-foreground/80">Araç Tipi
                 <input name="vehicle" defaultValue={editingLoad.vehicle} className={fieldClass} />
               </label>
-              <label className="grid gap-1.5 text-xs font-semibold text-[#334e68]">Fiyat (TL)
+              <label className="grid gap-1.5 text-xs font-semibold text-foreground/80">Fiyat (TL)
                 <input name="price" type="number" inputMode="numeric" min={0} defaultValue={editingLoad.price ? editingLoad.price.replace(/[^\d]/g, "") : ""} className={fieldClass} />
               </label>
             </div>
-            <label className="grid gap-1.5 text-xs font-semibold text-[#334e68]">Açıklama / Not (ops.)
+            <label className="grid gap-1.5 text-xs font-semibold text-foreground/80">Açıklama / Not (ops.)
               <input name="message" defaultValue={isMissing(editingLoad.message) ? "" : editingLoad.message} className={fieldClass} />
             </label>
           </form>
@@ -328,7 +328,7 @@ export function TripsView({ loads, currentUserId, onChanged }: TripsViewProps) {
             <button
               type="button"
               onClick={() => setCompleting(null)}
-              className="h-12 rounded-xl border border-[#dbe3ec] text-sm font-semibold text-[#334e68] transition-colors hover:bg-[#f5f7fa]"
+              className="h-12 rounded-xl border border-input text-sm font-semibold text-foreground/80 transition-colors hover:bg-muted"
             >
               Vazgeç
             </button>
@@ -346,20 +346,20 @@ export function TripsView({ loads, currentUserId, onChanged }: TripsViewProps) {
         {completing && (
           <form id="complete-trip-form" onSubmit={handleComplete} className="grid gap-4 pt-1">
             {doneError && <div className="rounded-xl bg-red-50 p-3 text-xs font-semibold text-red-700">{doneError}</div>}
-            <div className="rounded-xl bg-[#f6f9fc] p-3 text-sm font-bold text-[#122c4a]">
+            <div className="rounded-xl bg-muted/50 p-3 text-sm font-bold text-foreground">
               {shortRoute(completing.from, completing.to) ?? completing.cargo}
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <label className="grid gap-1.5 text-xs font-semibold text-[#334e68]">Alınan Tutar (TL)
+              <label className="grid gap-1.5 text-xs font-semibold text-foreground/80">Alınan Tutar (TL)
                 <input value={doneAmount} onChange={(e) => setDoneAmount(e.target.value)} inputMode="decimal" required placeholder="0" className={fieldClass} />
               </label>
-              <label className="grid gap-1.5 text-xs font-semibold text-[#334e68]">Araç Plakası (ops.)
+              <label className="grid gap-1.5 text-xs font-semibold text-foreground/80">Araç Plakası (ops.)
                 <input value={donePlate} onChange={(e) => setDonePlate(e.target.value)} placeholder="42 DLB 59" className={`${fieldClass} uppercase`} />
               </label>
             </div>
-            <label className="flex min-h-12 cursor-pointer items-center gap-3 rounded-xl border border-[#e4e9ef] bg-[#fafbfd] px-3.5">
-              <input type="checkbox" checked={removeAfter} onChange={(e) => setRemoveAfter(e.target.checked)} className="size-5 accent-[#d64526]" />
-              <span className="text-sm font-semibold text-[#122c4a]">İlanı yayından kaldır</span>
+            <label className="flex min-h-12 cursor-pointer items-center gap-3 rounded-xl border border-border bg-muted/50 px-3.5">
+              <input type="checkbox" checked={removeAfter} onChange={(e) => setRemoveAfter(e.target.checked)} className="size-5 accent-brand" />
+              <span className="text-sm font-semibold text-foreground">İlanı yayından kaldır</span>
             </label>
           </form>
         )}
