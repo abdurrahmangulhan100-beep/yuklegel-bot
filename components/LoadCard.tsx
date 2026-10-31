@@ -5,7 +5,6 @@ import { hidePhones } from "@/lib/listings"
 import { Phone, MessageCircle, Star, Check, Ban, Zap, ChevronDown, Share2, Copy, Flag, MoreHorizontal, MapPin, Truck, Clock, Weight, Ruler, Repeat2 } from "lucide-react"
 import { Fragment, memo, useEffect, useRef, useState } from "react"
 import { isMissing } from "@/lib/route"
-import { estimateKm } from "@/lib/distance"
 import { supabase } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
 import { Sheet } from "@/components/Sheet"
@@ -371,7 +370,6 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
     load.fromCity && load.toCity && load.fromCity !== load.toCity ? { from: load.fromCity, to: load.toCity } : null
   // Güzergâh bilinmiyorsa şehirler tek satırda, sade metin olarak gösterilir (kutucuk / rozet yok)
   const places = route ? [] : cityTags
-  const km = route ? estimateKm(route.from, route.to) : null
   // İlanın tazeliği: ilk dakikalar en değerli, rengiyle anlaşılır
   const ageMin = load.createdAt ? (Date.now() - Date.parse(load.createdAt)) / 60000 : NaN
   const fresh = Number.isFinite(ageMin) && ageMin >= 0 ? (ageMin < 15 ? "hot" : ageMin < 60 ? "warm" : "") : ""
@@ -481,7 +479,6 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
               <div className="flex w-[78px] shrink-0 flex-col items-center sm:w-[108px]">
                 <VehicleIcon vehicle={load.vehicle} className="h-9 w-full sm:h-[50px]" />
                 <span aria-hidden className="mt-1 h-0 w-full border-t-2 border-dotted border-[#b9c8d6]" />
-                {km && <span className="mt-1 whitespace-nowrap text-[11px] font-bold tabular-nums text-[#5a7189]" title="Tahmini karayolu mesafesi">≈ {km.toLocaleString("tr-TR")} km</span>}
               </div>
               <Place dot="bg-[#e5522f]" caption="Varış" name={route.to} label={highlightMatch(route.to, cleanQuery)} sub={load.districtOf?.[route.to]} align="right" onClick={onCitySearch ? () => onCitySearch(route.to) : undefined} />
             </div>
