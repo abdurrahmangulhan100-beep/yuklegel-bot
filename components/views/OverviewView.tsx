@@ -96,7 +96,7 @@ export function OverviewView({ loads, currentUserId, onOpenCreate, setActiveTab,
             onClick={() => setActiveTab(x.tab)}
             className="flex flex-col items-center gap-2 rounded-3xl border border-border bg-card px-1 py-4 shadow-[0_1px_2px_rgba(18,44,74,0.04)] transition-all active:scale-95"
           >
-            <span className="relative grid size-14 place-items-center rounded-full bg-[#fff0ec] dark:bg-brand/15 text-brand">
+            <span className="relative grid size-14 place-items-center rounded-full bg-muted/60 dark:bg-brand/15 text-brand">
               <x.icon className="size-6" />
               {x.badge && <span className="absolute -right-2 -top-1.5 rounded-full bg-brand px-1.5 py-0.5 text-[10px] font-bold leading-none text-white ring-2 ring-white">{x.badge}</span>}
             </span>
@@ -144,7 +144,7 @@ export function OverviewView({ loads, currentUserId, onOpenCreate, setActiveTab,
                 <button
                   key={l.id}
                   onClick={() => (onOpenUrgent ? onOpenUrgent() : setActiveTab("İlanlar"))}
-                  className="w-[260px] shrink-0 snap-start rounded-2xl border border-[#f6d6cc] bg-gradient-to-br from-[#fff7f4] to-white p-4 text-left shadow-[0_1px_2px_rgba(214,69,38,0.08)] transition-transform active:scale-[0.98]"
+                  className="w-[260px] shrink-0 snap-start rounded-2xl border border-brand/25 bg-gradient-to-br from-brand/10 to-card p-4 text-left shadow-[0_1px_2px_rgba(214,69,38,0.08)] transition-transform active:scale-[0.98]"
                 >
                   <div className="flex items-center justify-between">
                     <span className="rounded-full bg-brand px-2 py-0.5 text-[10px] font-bold text-white">ACİL</span>
