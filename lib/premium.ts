@@ -12,13 +12,13 @@ export const FREE_LIMITS = {
 }
 
 /** Ücretsiz kullanıcılar yeni ilanları bu kadar dakika gecikmeyle görür (Premium anında görür) */
-export const FREE_DELAY_MINUTES = 10
+export const FREE_DELAY_MINUTES = 15
 
 /** Yalnızca premium kullanıcıların açabildiği Şoför Araçları (ToolsView anahtarları) */
 export const PREMIUM_ONLY_TOOLS = ["planner", "docs", "fuel"]
 
 export const PREMIUM_FEATURES = [
-  "Yeni ilanları anında görme (ücretsiz planda 10 dk gecikmeli)",
+  `Yeni ilanları anında görme (ücretsiz planda ${FREE_DELAY_MINUTES} dk gecikmeli)`,
   "Reklamsız kullanım",
   "Sınırsız Ara / WhatsApp ile iletişim",
   "Sınırsız favori ve aynı anda sınırsız aktif ilan",
