@@ -5,6 +5,7 @@ import { realName } from "@/lib/names"
 import { useEffect, useMemo, useState, useRef, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { Bell, Search, LogIn, X } from "lucide-react"
+import { ThemeToggle } from "@/components/ThemeToggle"
 import { Input } from "@/components/ui/input"
 import { cn, timeAgo } from "@/lib/utils"
 import { supabase } from "@/lib/supabase"
@@ -594,7 +595,7 @@ export default function Page() {
   const urgentTotal = totals ? totals.urgent : 0
 
   return (
-    <div className="min-h-dvh bg-[#f5f7fa] text-[#122c4a]">
+    <div className="min-h-dvh bg-background text-foreground">
       {isSidebarOpen && (
         <button 
           aria-label="Menüyü kapat" 
@@ -617,7 +618,7 @@ export default function Page() {
       />
 
       <div className={cn("min-h-dvh transition-[padding] duration-200 lg:pl-[272px]", isCollapsed && "lg:pl-[78px]")}>
-        <header className="sticky top-0 z-30 border-b border-[#e4e9ef] bg-[#f5f7fa] pt-safe">
+        <header className="sticky top-0 z-30 border-b border-border bg-background pt-safe">
           <div className="flex flex-col gap-2.5 px-4 pb-3 pt-3 sm:px-8 lg:h-[76px] lg:flex-row lg:items-center lg:justify-between lg:gap-4 lg:py-0">
             {/* Mobil: marka + aksiyonlar */}
             <div className="flex items-center justify-between gap-3 lg:hidden">
@@ -626,11 +627,12 @@ export default function Page() {
                 <span className="text-[17px] font-bold tracking-tight">Nakliye Cepte</span>
               </button>
               <div className="flex items-center gap-1.5">
+                <ThemeToggle className="size-10" />
                 <UrgentButton count={urgentTotal} onClick={openUrgent} />
                 {isGuest ? (
                   <button
                     onClick={handleLogout}
-                    className="flex h-10 items-center gap-1.5 rounded-full bg-[#122c4a] px-4 text-xs font-semibold text-white transition-colors hover:bg-[#1a3d68]"
+                    className="flex h-10 items-center gap-1.5 rounded-full bg-primary px-4 text-xs font-semibold text-primary-foreground transition-colors hover:opacity-90"
                   >
                     <LogIn className="size-4" />
                     Giriş
@@ -639,7 +641,7 @@ export default function Page() {
                   <button
                     onClick={() => setActiveTab("Şirket Profili")}
                     aria-label="Profilim"
-                    className="grid size-10 place-items-center rounded-full bg-[#dbe8f2] text-sm font-bold text-[#315d83] transition-colors hover:bg-[#cddfee]"
+                    className="grid size-10 place-items-center rounded-full bg-secondary text-sm font-bold text-foreground transition-colors hover:bg-muted"
                   >
                     {profile.initials}
                   </button>
@@ -649,7 +651,7 @@ export default function Page() {
 
             {/* Arama */}
             <div className={cn("relative w-full lg:w-[380px]", (effectiveTab === "Genel Bakış" || effectiveTab === "overview") && "hidden lg:block")}>
-              <Search className="pointer-events-none absolute left-3.5 top-1/2 size-[18px] -translate-y-1/2 text-[#8da0b2]" />
+              <Search className="pointer-events-none absolute left-3.5 top-1/2 size-[18px] -translate-y-1/2 text-muted-foreground" />
               <Input 
                 value={query} 
                 onChange={(e) => {
@@ -658,14 +660,14 @@ export default function Page() {
                 }} 
                 placeholder="Şehir, firma veya yük ara..." 
                 enterKeyHint="search"
-                className="h-11 w-full rounded-xl border-[#e0e6ed] bg-white pl-10 pr-10 text-base shadow-[0_1px_2px_rgba(18,44,74,0.04)] md:text-sm" 
+                className="h-11 w-full rounded-xl border-border bg-card pl-10 pr-10 text-base shadow-[0_1px_2px_rgba(18,44,74,0.04)] md:text-sm" 
               />
               {query && (
                 <button
                   type="button"
                   aria-label="Aramayı temizle"
                   onClick={() => setQuery("")}
-                  className="absolute right-2 top-1/2 grid size-7 -translate-y-1/2 place-items-center rounded-full bg-[#eef2f6] text-[#627d98] hover:bg-[#e2e8ef]"
+                  className="absolute right-2 top-1/2 grid size-7 -translate-y-1/2 place-items-center rounded-full bg-muted text-muted-foreground hover:bg-accent"
                 >
                   <X className="size-3.5" />
                 </button>
@@ -674,18 +676,19 @@ export default function Page() {
 
             {/* Masaüstü: aksiyonlar */}
             <div className="hidden items-center gap-3 lg:flex">
+              <ThemeToggle />
               <UrgentButton count={urgentTotal} onClick={openUrgent} />
-              <button onClick={() => setActiveTab("Şirket Profili")} className="flex items-center gap-2.5 rounded-xl p-1.5 pr-3 transition-colors hover:bg-white">
-                <div className="grid size-9 place-items-center rounded-full bg-[#dbe8f2] text-sm font-bold text-[#315d83]">{profile.initials}</div>
+              <button onClick={() => setActiveTab("Şirket Profili")} className="flex items-center gap-2.5 rounded-xl p-1.5 pr-3 transition-colors hover:bg-card">
+                <div className="grid size-9 place-items-center rounded-full bg-secondary text-sm font-bold text-foreground">{profile.initials}</div>
                 <div className="text-left">
                   <div className="text-sm font-semibold leading-tight">{profile.authorized_person}</div>
-                  <div className="text-xs text-[#8da0b2]">{profile.company_name}</div>
+                  <div className="text-xs text-muted-foreground">{profile.company_name}</div>
                 </div>
               </button>
               {isGuest && (
                 <button
                   onClick={handleLogout}
-                  className="flex items-center gap-1.5 rounded-xl bg-[#122c4a] px-4 py-2.5 text-xs font-semibold text-white transition-colors hover:bg-[#1a3d68]"
+                  className="flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2.5 text-xs font-semibold text-primary-foreground transition-colors hover:opacity-90"
                   title="Giriş Yap / Kayıt Ol"
                 >
                   <LogIn className="size-4" />
@@ -792,11 +795,11 @@ function UrgentButton({ count, onClick }: { count: number; onClick: () => void }
       onClick={onClick}
       aria-label={count > 0 ? `${count} acil yük` : "Acil yükler"}
       title="Acil yükler"
-      className="relative grid size-10 place-items-center rounded-full text-[#4a6178] transition-colors hover:bg-white"
+      className="relative grid size-10 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-card"
     >
       <Bell className="size-[22px]" />
       {count > 0 && (
-        <span className="absolute -right-0.5 -top-0.5 grid min-w-[18px] place-items-center rounded-full border-2 border-[#f5f7fa] bg-[#d64526] px-1 text-[9px] font-bold leading-[14px] text-white">
+        <span className="absolute -right-0.5 -top-0.5 grid min-w-[18px] place-items-center rounded-full border-2 border-background bg-brand px-1 text-[9px] font-bold leading-[14px] text-white">
           {count > 99 ? "99+" : count}
         </span>
       )}
@@ -806,17 +809,17 @@ function UrgentButton({ count, onClick }: { count: number; onClick: () => void }
 
 function GuestGate({ onLogin }: { onLogin: () => void }) {
   return (
-    <div className="animate-rise mx-auto mt-6 max-w-md rounded-3xl border border-[#e4e9ef] bg-white p-8 text-center shadow-sm">
-      <div className="mx-auto mb-4 grid size-14 place-items-center rounded-2xl bg-[#eef4f8] text-[#315d83]">
+    <div className="animate-rise mx-auto mt-6 max-w-md rounded-3xl border border-border bg-card p-8 text-center shadow-sm">
+      <div className="mx-auto mb-4 grid size-14 place-items-center rounded-2xl bg-muted text-foreground">
         <LogIn className="size-6" />
       </div>
-      <h2 className="text-lg font-bold text-[#122c4a]">Bu bölüm için giriş gerekiyor</h2>
-      <p className="mt-2 text-sm leading-relaxed text-[#627d98]">
+      <h2 className="text-lg font-bold text-foreground">Bu bölüm için giriş gerekiyor</h2>
+      <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
         Favoriler, seferler, gelir-gider ve profil özellikleri için ücretsiz üye olabilir veya giriş yapabilirsiniz.
       </p>
       <button
         onClick={onLogin}
-        className="mt-6 h-12 w-full rounded-xl bg-[#122c4a] px-6 text-sm font-semibold text-white transition-colors hover:bg-[#1a3d68]"
+        className="mt-6 h-12 w-full rounded-xl bg-primary px-6 text-sm font-semibold text-primary-foreground transition-colors hover:opacity-90"
       >
         Giriş Yap / Kayıt Ol
       </button>
