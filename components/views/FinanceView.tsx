@@ -938,8 +938,8 @@ export function FinanceView() {
                             <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
                               <span className="truncate text-sm font-bold text-foreground">{item.category}</span>
                               {item.plate && (
-                                <span className="inline-flex shrink-0 items-center gap-1 rounded bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-[#475569]">
-                                  <Truck className="size-3 text-[#94a3b8]" />
+                                <span className="inline-flex shrink-0 items-center gap-1 rounded bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-foreground/80">
+                                  <Truck className="size-3 text-muted-foreground" />
                                   {item.plate}
                                 </span>
                               )}
@@ -1011,7 +1011,7 @@ export function FinanceView() {
         <form id="fin-form" onSubmit={handleSaveRecord} className="space-y-5 pt-1">
           {formError && <div className="rounded-lg border border-red-200 bg-red-50 p-2.5 text-xs font-semibold text-red-700">{formError}</div>}
 
-          <div className="grid grid-cols-2 gap-1 rounded-xl bg-[#eaeff4] p-1">
+          <div className="grid grid-cols-2 gap-1 rounded-xl bg-muted/60 p-1">
             <button type="button" onClick={() => { setType("income"); setCategory(""); setOtherCat(false) }} className={cn("h-10 rounded-lg text-sm font-semibold transition-colors", type === "income" ? "bg-emerald-600 text-white shadow-sm" : "text-muted-foreground")}>Gelir</button>
             <button type="button" onClick={() => { setType("expense"); setCategory(""); setOtherCat(false) }} className={cn("h-10 rounded-lg text-sm font-semibold transition-colors", type === "expense" ? "bg-brand text-white shadow-sm" : "text-muted-foreground")}>Gider</button>
           </div>
