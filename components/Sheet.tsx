@@ -74,7 +74,7 @@ export function Sheet({ open, onClose, title, subtitle, children, footer, classN
 
       <div
         className={cn(
-          "animate-sheet relative flex max-h-[92dvh] w-full flex-col overflow-hidden rounded-t-[28px] bg-white shadow-2xl sm:max-w-xl sm:rounded-3xl",
+          "animate-sheet relative flex max-h-[92dvh] w-full flex-col overflow-hidden rounded-t-[28px] bg-card shadow-2xl sm:max-w-xl sm:rounded-3xl",
           className
         )}
       >
@@ -83,14 +83,14 @@ export function Sheet({ open, onClose, title, subtitle, children, footer, classN
         {title && (
           <div className="flex items-start justify-between gap-3 px-5 pb-3 pt-3 sm:pt-5">
             <div className="min-w-0">
-              <h2 className="text-lg font-bold leading-tight text-[#122c4a]">{title}</h2>
-              {subtitle && <p className="mt-1 text-xs leading-relaxed text-[#627d98]">{subtitle}</p>}
+              <h2 className="text-lg font-bold leading-tight text-foreground">{title}</h2>
+              {subtitle && <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{subtitle}</p>}
             </div>
             <button
               type="button"
               onClick={onClose}
               aria-label="Kapat"
-              className="grid size-9 shrink-0 place-items-center rounded-full bg-[#f0f4f8] text-[#627d98] transition-colors hover:bg-[#e4e9ef]"
+              className="grid size-9 shrink-0 place-items-center rounded-full bg-muted text-muted-foreground transition-colors hover:bg-muted"
             >
               <X className="size-4" />
             </button>
@@ -100,7 +100,7 @@ export function Sheet({ open, onClose, title, subtitle, children, footer, classN
         <div className="flex-1 overflow-y-auto overscroll-contain px-5 pb-4 pt-1">{children}</div>
 
         {footer && (
-          <div className="shrink-0 border-t border-[#edf0f3] bg-white px-5 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3">
+          <div className="shrink-0 border-t border-border bg-card px-5 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3">
             {footer}
           </div>
         )}
