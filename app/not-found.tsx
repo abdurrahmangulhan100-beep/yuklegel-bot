@@ -1,16 +1,13 @@
 import Link from "next/link"
-import { SearchX } from "lucide-react"
 
 export default function NotFound() {
   return (
-    <div className="flex min-h-dvh flex-col items-center justify-center gap-4 bg-[#f5f7fa] p-6 text-center">
-      <div className="flex size-16 items-center justify-center rounded-full bg-[#e8eef5] text-[#315d83]">
-        <SearchX className="size-8" />
-      </div>
-      <h2 className="text-xl font-bold text-[#122c4a]">Sayfa bulunamadı</h2>
-      <p className="max-w-xs text-sm leading-relaxed text-[#718397]">Aradığınız sayfa taşınmış veya hiç var olmamış olabilir.</p>
-      <Link href="/" className="rounded-xl bg-[#d64526] px-5 py-3 text-sm font-semibold text-white active:scale-95">
-        İlanlara Dön
+    <div className="flex min-h-dvh flex-col items-center justify-center bg-[#f5f7fa] px-6 text-center">
+      <p className="text-5xl font-extrabold text-[#d64526]">404</p>
+      <h1 className="mt-2 text-xl font-extrabold text-[#122c4a]">Sayfa bulunamadı</h1>
+      <p className="mt-2 max-w-sm text-sm text-[#627d98]">Aradığınız sayfa taşınmış veya kaldırılmış olabilir.</p>
+      <Link href="/" className="mt-6 flex h-12 w-full max-w-xs items-center justify-center rounded-xl bg-[#122c4a] text-sm font-bold text-white">
+        Ana sayfaya dön
       </Link>
     </div>
   )
