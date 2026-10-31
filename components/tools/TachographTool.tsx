@@ -211,7 +211,7 @@ export function TachographTool() {
             {driving ? (
               <button
                 onClick={stop}
-                className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-white text-base font-bold text-[#122c4a] shadow-lg transition-transform active:scale-[0.98]"
+                className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-card text-base font-bold text-foreground shadow-lg transition-transform active:scale-[0.98]"
               >
                 <Square className="size-5 fill-[#122c4a]" /> Sürüşü Bitir / Mola
               </button>
@@ -220,7 +220,7 @@ export function TachographTool() {
                 <button
                   onClick={start}
                   disabled={!ready}
-                  className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-[#d64526] text-base font-bold text-white shadow-lg shadow-black/20 transition-transform active:scale-[0.98] disabled:opacity-60"
+                  className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-brand text-base font-bold text-white shadow-lg shadow-black/20 transition-transform active:scale-[0.98] disabled:opacity-60"
                 >
                   <Play className="size-5 fill-white" /> Sürüşe Başla
                 </button>
@@ -231,7 +231,7 @@ export function TachographTool() {
                       onClick={() => setOffset(o.min)}
                       className={cn(
                         "rounded-full px-3 py-1.5 text-[11px] font-semibold transition-colors",
-                        offset === o.min ? "bg-white text-[#122c4a]" : "bg-white/10 text-white/80 hover:bg-white/15"
+                        offset === o.min ? "bg-card text-foreground" : "bg-white/10 text-white/80 hover:bg-white/15"
                       )}
                     >
                       {o.label}
@@ -266,29 +266,29 @@ export function TachographTool() {
       )}
 
       {/* Limitler */}
-      <section className="space-y-4 rounded-2xl border border-[#e4e9ef] bg-white p-4 shadow-[0_1px_2px_rgba(18,44,74,0.04)] sm:p-5">
+      <section className="space-y-4 rounded-2xl border border-border bg-card p-4 shadow-[0_1px_2px_rgba(18,44,74,0.04)] sm:p-5">
         {bars.map((b) => {
           const frac = Math.min(1, b.value / b.max)
           const tone = frac >= 1 ? "bg-red-500" : frac >= 0.85 ? "bg-amber-500" : "bg-emerald-500"
           return (
             <div key={b.label}>
               <div className="mb-1.5 flex items-baseline justify-between gap-2 text-xs">
-                <span className="font-bold text-[#122c4a]">{b.label}</span>
-                <span className="tabular-nums text-[#627d98]">
-                  <strong className="text-[#122c4a]">{fmtHM(b.value)}</strong> / {fmtHM(b.max)}
+                <span className="font-bold text-foreground">{b.label}</span>
+                <span className="tabular-nums text-muted-foreground">
+                  <strong className="text-foreground">{fmtHM(b.value)}</strong> / {fmtHM(b.max)}
                 </span>
               </div>
-              <div className="h-2.5 overflow-hidden rounded-full bg-[#eef2f6]">
+              <div className="h-2.5 overflow-hidden rounded-full bg-muted">
                 <div className={cn("h-full rounded-full transition-all", tone)} style={{ width: `${frac * 100}%` }} />
               </div>
-              {b.note && <p className="mt-1 text-[11px] text-[#8da0b2]">{b.note}</p>}
+              {b.note && <p className="mt-1 text-[11px] text-muted-foreground">{b.note}</p>}
             </div>
           )
         })}
 
         {st.restDeadline && st.dayStart && (
-          <div className="flex items-start gap-2.5 rounded-xl bg-[#f6f9fc] p-3 text-xs leading-relaxed text-[#334e68]">
-            <BedDouble className="mt-0.5 size-4 shrink-0 text-[#315d83]" />
+          <div className="flex items-start gap-2.5 rounded-xl bg-muted/50 p-3 text-xs leading-relaxed text-foreground/80">
+            <BedDouble className="mt-0.5 size-4 shrink-0 text-foreground/80" />
             <span>
               Çalışma gününüz <strong>{fmtDayTime(st.dayStart, now)}</strong> civarında başladı. 11 saatlik günlük dinlenmeye en geç{" "}
               <strong>{fmtDayTime(st.restDeadline, now)}</strong> itibarıyla başlamanız gerekir (9 saatlik kısaltılmış dinlenmede 2 saat daha esner).
@@ -298,26 +298,26 @@ export function TachographTool() {
       </section>
 
       {/* Kayıtlar */}
-      <section className="rounded-2xl border border-[#e4e9ef] bg-white shadow-[0_1px_2px_rgba(18,44,74,0.04)]">
+      <section className="rounded-2xl border border-border bg-card shadow-[0_1px_2px_rgba(18,44,74,0.04)]">
         <button onClick={() => setShowLog((v) => !v)} className="flex w-full items-center justify-between px-4 py-3.5 text-left" aria-expanded={showLog}>
-          <span className="text-sm font-bold text-[#122c4a]">Sürüş kayıtları <span className="font-medium text-[#8da0b2]">({segments.length})</span></span>
-          <span className="text-xs font-semibold text-[#315d83]">{showLog ? "Gizle" : "Göster"}</span>
+          <span className="text-sm font-bold text-foreground">Sürüş kayıtları <span className="font-medium text-muted-foreground">({segments.length})</span></span>
+          <span className="text-xs font-semibold text-foreground/80">{showLog ? "Gizle" : "Göster"}</span>
         </button>
         {showLog && (
-          <div className="space-y-3 border-t border-[#edf0f3] p-4">
+          <div className="space-y-3 border-t border-border p-4">
             {sorted.length === 0 ? (
-              <p className="text-xs text-[#8da0b2]">Henüz kayıt yok.</p>
+              <p className="text-xs text-muted-foreground">Henüz kayıt yok.</p>
             ) : (
-              <ul className="divide-y divide-[#edf0f3]">
+              <ul className="divide-y divide-border">
                 {sorted.map((s) => (
                   <li key={s.id} className="flex items-center justify-between gap-3 py-2.5 text-xs">
                     <div className="min-w-0">
-                      <div className="font-bold text-[#122c4a]">
+                      <div className="font-bold text-foreground">
                         {fmtDayTime(s.start, now)} → {s.end ? fmtTime(s.end) : "devam ediyor"}
                       </div>
-                      <div className="text-[#718397]">{fmtHM((s.end ?? now) - s.start)} sürüş</div>
+                      <div className="text-muted-foreground">{fmtHM((s.end ?? now) - s.start)} sürüş</div>
                     </div>
-                    <button onClick={() => remove(s.id)} aria-label="Kaydı sil" className="grid size-9 place-items-center rounded-full text-[#b4c1ce] hover:bg-red-50 hover:text-red-500">
+                    <button onClick={() => remove(s.id)} aria-label="Kaydı sil" className="grid size-9 place-items-center rounded-full text-muted-foreground/60 hover:bg-red-50 hover:text-red-500">
                       <Trash2 className="size-4" />
                     </button>
                   </li>
@@ -327,7 +327,7 @@ export function TachographTool() {
 
             {!manualOpen ? (
               <div className="flex flex-wrap gap-2">
-                <button onClick={() => setManualOpen(true)} className="inline-flex h-10 items-center gap-1.5 rounded-xl border border-[#dbe3ec] px-3.5 text-xs font-semibold text-[#334e68] hover:bg-[#f5f7fa]">
+                <button onClick={() => setManualOpen(true)} className="inline-flex h-10 items-center gap-1.5 rounded-xl border border-input px-3.5 text-xs font-semibold text-foreground/80 hover:bg-muted">
                   <Plus className="size-4" /> Geçmiş sürüş ekle
                 </button>
                 {segments.length > 0 && (
@@ -337,21 +337,21 @@ export function TachographTool() {
                 )}
               </div>
             ) : (
-              <div className="space-y-2.5 rounded-xl bg-[#f6f9fc] p-3">
+              <div className="space-y-2.5 rounded-xl bg-muted/50 p-3">
                 <div className="grid gap-2.5 sm:grid-cols-2">
-                  <label className="block text-[11px] font-semibold text-[#627d98]">
+                  <label className="block text-[11px] font-semibold text-muted-foreground">
                     Başlangıç
-                    <input type="datetime-local" value={mStart} onChange={(e) => setMStart(e.target.value)} className="mt-1 h-11 w-full rounded-lg border border-[#dbe3ec] bg-white px-2.5 text-base text-[#122c4a] md:text-sm" />
+                    <input type="datetime-local" value={mStart} onChange={(e) => setMStart(e.target.value)} className="mt-1 h-11 w-full rounded-lg border border-input bg-card px-2.5 text-base text-foreground md:text-sm" />
                   </label>
-                  <label className="block text-[11px] font-semibold text-[#627d98]">
+                  <label className="block text-[11px] font-semibold text-muted-foreground">
                     Bitiş
-                    <input type="datetime-local" value={mEnd} onChange={(e) => setMEnd(e.target.value)} className="mt-1 h-11 w-full rounded-lg border border-[#dbe3ec] bg-white px-2.5 text-base text-[#122c4a] md:text-sm" />
+                    <input type="datetime-local" value={mEnd} onChange={(e) => setMEnd(e.target.value)} className="mt-1 h-11 w-full rounded-lg border border-input bg-card px-2.5 text-base text-foreground md:text-sm" />
                   </label>
                 </div>
                 {mError && <p className="text-xs font-semibold text-red-600">{mError}</p>}
                 <div className="flex gap-2">
-                  <button onClick={addManual} className="h-10 rounded-xl bg-[#122c4a] px-4 text-xs font-semibold text-white hover:bg-[#1a3d68]">Ekle</button>
-                  <button onClick={() => { setManualOpen(false); setMError(null) }} className="h-10 rounded-xl px-3 text-xs font-semibold text-[#627d98] hover:bg-white">Vazgeç</button>
+                  <button onClick={addManual} className="h-10 rounded-xl bg-primary px-4 text-xs font-semibold text-primary-foreground hover:opacity-90">Ekle</button>
+                  <button onClick={() => { setManualOpen(false); setMError(null) }} className="h-10 rounded-xl px-3 text-xs font-semibold text-muted-foreground hover:bg-card">Vazgeç</button>
                 </div>
               </div>
             )}
@@ -360,18 +360,18 @@ export function TachographTool() {
       </section>
 
       {/* Kurallar */}
-      <section className="rounded-2xl border border-[#e4e9ef] bg-white shadow-[0_1px_2px_rgba(18,44,74,0.04)]">
+      <section className="rounded-2xl border border-border bg-card shadow-[0_1px_2px_rgba(18,44,74,0.04)]">
         <button onClick={() => setShowRules((v) => !v)} className="flex w-full items-center justify-between px-4 py-3.5 text-left" aria-expanded={showRules}>
-          <span className="flex items-center gap-2 text-sm font-bold text-[#122c4a]"><Info className="size-4 text-[#315d83]" /> Sürüş ve dinlenme kuralları</span>
-          <span className="text-xs font-semibold text-[#315d83]">{showRules ? "Gizle" : "Göster"}</span>
+          <span className="flex items-center gap-2 text-sm font-bold text-foreground"><Info className="size-4 text-foreground/80" /> Sürüş ve dinlenme kuralları</span>
+          <span className="text-xs font-semibold text-foreground/80">{showRules ? "Gizle" : "Göster"}</span>
         </button>
         {showRules && (
-          <ul className="space-y-2 border-t border-[#edf0f3] p-4 text-xs leading-relaxed text-[#334e68]">
+          <ul className="space-y-2 border-t border-border p-4 text-xs leading-relaxed text-foreground/80">
             <li><strong>Kesintisiz sürüş:</strong> en fazla 4 saat 30 dk. Sonrasında 45 dk mola; mola bölünecekse önce en az 15 dk, sonra en az 30 dk verilir.</li>
             <li><strong>Günlük sürüş:</strong> en fazla 9 saat; haftada en çok 2 kez 10 saate çıkarılabilir.</li>
             <li><strong>Günlük dinlenme:</strong> en az 11 saat; haftada en çok 3 kez 9 saate kısaltılabilir.</li>
             <li><strong>Haftalık sürüş:</strong> en fazla 56 saat; art arda iki haftada en fazla 90 saat.</li>
-            <li className="text-[#8da0b2]">Bu sayaç sizin girdiğiniz kayıtlara göre planlama yardımcısıdır. Resmî kayıt takografınızdır; denetimde takograf verileri esas alınır. Kayıtlar yalnızca bu cihazda saklanır.</li>
+            <li className="text-muted-foreground">Bu sayaç sizin girdiğiniz kayıtlara göre planlama yardımcısıdır. Resmî kayıt takografınızdır; denetimde takograf verileri esas alınır. Kayıtlar yalnızca bu cihazda saklanır.</li>
           </ul>
         )}
       </section>
