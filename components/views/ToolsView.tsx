@@ -18,7 +18,7 @@ type ToolKey = "tacho" | "planner" | "docs" | "volume" | "check" | "fuel"
 const TOOLS: { key: ToolKey; title: string; desc: string; icon: LucideIcon; tone: string }[] = [
   { key: "tacho", title: "Takograf Sayacı", desc: "4,5 saat mola, günlük 9 saat ve haftalık 56 saat sürüş limitlerini canlı takip edin.", icon: Timer, tone: "bg-amber-50 text-amber-600" },
   { key: "planner", title: "Varış Süresi Planlayıcı", desc: "Zorunlu mola ve dinlenmeler dahil, yola çıkış saatinize göre tahmini varışı görün.", icon: RouteIcon, tone: "bg-muted text-foreground/80" },
-  { key: "docs", title: "Belge Hatırlatıcı", desc: "Muayene, sigorta, SRC, takograf kalibrasyonu gibi bitiş tarihlerini takip edin.", icon: CalendarClock, tone: "bg-[#fff0ec] dark:bg-brand/15 text-brand" },
+  { key: "docs", title: "Belge Hatırlatıcı", desc: "Muayene, sigorta, SRC, takograf kalibrasyonu gibi bitiş tarihlerini takip edin.", icon: CalendarClock, tone: "bg-muted/60 dark:bg-brand/15 text-brand" },
   { key: "check", title: "Sefer Öncesi Kontrol", desc: "Araç, evrak, yük ve güvenlik ekipmanı için günlük kontrol listesi; kendi maddelerinizi de ekleyin.", icon: ClipboardCheck, tone: "bg-sky-50 text-sky-600" },
   { key: "fuel", title: "Yakıt Defteri", desc: "Yakıt alımlarını kaydedin; ortalama L/100 km tüketiminizi hesaplayıp Sefer Hesapla'ya aktarın.", icon: Fuel, tone: "bg-violet-50 text-violet-600" },
   { key: "volume", title: "Hacim, Desi & Ladin Metre", desc: "Palet ve koli ölçülerinden m³, desi ve LDM hesaplayın; tıra ne kadar sığdığını görün.", icon: Boxes, tone: "bg-emerald-50 text-emerald-600" },
