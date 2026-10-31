@@ -135,15 +135,15 @@ export function CompanyProfileView({ onProfileUpdated }: { onProfileUpdated?: ()
   }
 
   if (loading) {
-    return <div className="p-8 text-center text-sm font-medium text-[#6d8194]">Profil yükleniyor...</div>
+    return <div className="p-8 text-center text-sm font-medium text-muted-foreground">Profil yükleniyor...</div>
   }
 
   return (
     <div className="max-w-2xl space-y-6">
       <div>
-        <span className="text-xs font-semibold text-[#d64526]">Hesap Ayarları</span>
-        <h1 className="text-2xl font-bold text-[#122c4a]">Kullanıcı Profilim</h1>
-        <p className="text-xs text-[#8da0b2]">Kişisel bilgilerinizi ve iletişim kanallarınızı güncelleyin.</p>
+        <span className="text-xs font-semibold text-brand">Hesap Ayarları</span>
+        <h1 className="text-2xl font-bold text-foreground">Kullanıcı Profilim</h1>
+        <p className="text-xs text-muted-foreground">Kişisel bilgilerinizi ve iletişim kanallarınızı güncelleyin.</p>
       </div>
 
       {msg && (
@@ -152,10 +152,10 @@ export function CompanyProfileView({ onProfileUpdated }: { onProfileUpdated?: ()
         </div>
       )}
 
-      <form onSubmit={handleSave} className="space-y-4 rounded-2xl border border-[#e4e9ef] bg-white p-6 shadow-sm">
+      <form onSubmit={handleSave} className="space-y-4 rounded-2xl border border-border bg-card p-6 shadow-sm">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div className="sm:col-span-2">
-            <label className="mb-1 block text-xs font-semibold text-[#6d8194]">Ad Soyad / Unvan</label>
+            <label className="mb-1 block text-xs font-semibold text-muted-foreground">Ad Soyad / Unvan</label>
             <Input 
               value={form.authorized_person} 
               onChange={(e) => setForm({ ...form, authorized_person: e.target.value })} 
@@ -164,7 +164,7 @@ export function CompanyProfileView({ onProfileUpdated }: { onProfileUpdated?: ()
           </div>
 
           <div>
-            <label className="mb-1 block text-xs font-semibold text-[#6d8194]">Telefon Numarası</label>
+            <label className="mb-1 block text-xs font-semibold text-muted-foreground">Telefon Numarası</label>
             <Input 
               value={form.phone} 
               onChange={(e) => setForm({ ...form, phone: e.target.value })} 
@@ -173,7 +173,7 @@ export function CompanyProfileView({ onProfileUpdated }: { onProfileUpdated?: ()
           </div>
 
           <div>
-            <label className="mb-1 block text-xs font-semibold text-[#6d8194]">Şehir / İlçe</label>
+            <label className="mb-1 block text-xs font-semibold text-muted-foreground">Şehir / İlçe</label>
             <Input 
               value={form.city} 
               onChange={(e) => setForm({ ...form, city: e.target.value })} 
@@ -182,7 +182,7 @@ export function CompanyProfileView({ onProfileUpdated }: { onProfileUpdated?: ()
           </div>
 
           <div className="sm:col-span-2">
-            <label className="mb-1 block text-xs font-semibold text-[#6d8194]">E-posta Adresi</label>
+            <label className="mb-1 block text-xs font-semibold text-muted-foreground">E-posta Adresi</label>
             <Input 
               disabled 
               value={form.email} 
@@ -191,7 +191,7 @@ export function CompanyProfileView({ onProfileUpdated }: { onProfileUpdated?: ()
           </div>
         </div>
 
-        <Button type="submit" disabled={saving} className="bg-[#d64526] hover:bg-[#b8381e] text-white cursor-pointer">
+        <Button type="submit" disabled={saving} className="bg-brand hover:bg-brand/90 text-white cursor-pointer">
           {saving ? "Kaydediliyor..." : "Değişiklikleri Kaydet"}
         </Button>
       </form>
@@ -225,7 +225,7 @@ export function CompanyProfileView({ onProfileUpdated }: { onProfileUpdated?: ()
       {/* HESAP SİLME ONAY POP-UP / MODAL */}
       {showDeleteModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white rounded-xl max-w-md w-full p-6 shadow-2xl border border-gray-100 space-y-4">
+          <div className="bg-card rounded-xl max-w-md w-full p-6 shadow-2xl border border-gray-100 space-y-4">
             <div className="flex items-center gap-3 text-red-600">
               <AlertTriangle className="size-6 shrink-0" />
               <h3 className="text-base font-bold">Hesabınızı silmek istediğinize emin misiniz?</h3>
