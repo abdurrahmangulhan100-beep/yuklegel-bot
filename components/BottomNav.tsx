@@ -25,7 +25,7 @@ export function BottomNav({ activeTab, setActiveTab, onOpenCreate, onOpenMenu, f
   return (
     <nav
       aria-label="Ana gezinme"
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-[#e4e9ef] bg-white/90 backdrop-blur-md pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_16px_rgba(18,44,74,0.06)] lg:hidden"
+      className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-white/90 backdrop-blur-md pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_16px_rgba(18,44,74,0.06)] lg:hidden"
     >
       <div className="mx-auto grid h-16 max-w-xl grid-cols-5 items-stretch px-1">
         <Tab icon={LayoutDashboard} label="Ana Sayfa" active={isHome} onClick={() => setActiveTab("Genel Bakış")} />
@@ -36,11 +36,11 @@ export function BottomNav({ activeTab, setActiveTab, onOpenCreate, onOpenMenu, f
             type="button"
             onClick={() => { tap(); onOpenCreate() }}
             aria-label="Yeni ilan oluştur"
-            className="absolute -top-5 grid size-14 place-items-center rounded-full bg-gradient-to-br from-[#e5522f] to-[#c13a1c] text-white shadow-[0_8px_20px_rgba(214,69,38,0.45)] ring-4 ring-white transition-transform active:scale-95"
+            className="absolute -top-5 grid size-14 place-items-center rounded-full bg-gradient-to-br from-brand to-brand/80 text-white shadow-[0_8px_20px_rgba(214,69,38,0.45)] ring-4 ring-white transition-transform active:scale-95"
           >
             <Plus className="size-7" strokeWidth={2.5} />
           </button>
-          <span className="text-[10px] font-semibold text-[#627d98]">İlan Ver</span>
+          <span className="text-[10px] font-semibold text-muted-foreground">İlan Ver</span>
         </div>
 
         <Tab icon={Star} label="Favoriler" active={isFav} badge={favoritesCount} onClick={() => setActiveTab("Favorilerim")} />
@@ -73,17 +73,17 @@ function Tab({
       <span
         className={cn(
           "relative grid h-7 w-12 place-items-center rounded-full transition-colors",
-          active ? "bg-[#e5522f]/12 text-[#d64526]" : "text-[#8da0b2]"
+          active ? "bg-brand/12 text-brand" : "text-muted-foreground"
         )}
       >
         <Icon className="size-[22px]" strokeWidth={active ? 2.4 : 2} />
         {badge ? (
-          <span className="absolute -right-0.5 -top-1 grid min-w-4 place-items-center rounded-full bg-[#d64526] px-1 text-[9px] font-bold leading-4 text-white">
+          <span className="absolute -right-0.5 -top-1 grid min-w-4 place-items-center rounded-full bg-brand px-1 text-[9px] font-bold leading-4 text-white">
             {badge > 99 ? "99+" : badge}
           </span>
         ) : null}
       </span>
-      <span className={cn("text-[10px] font-semibold", active ? "text-[#d64526]" : "text-[#8da0b2]")}>{label}</span>
+      <span className={cn("text-[10px] font-semibold", active ? "text-brand" : "text-muted-foreground")}>{label}</span>
     </button>
   )
 }
