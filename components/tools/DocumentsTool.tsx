@@ -189,7 +189,7 @@ export function DocumentsTool() {
                 </div>
                 {d.note && <p className="mt-2.5 text-xs text-muted-foreground">{d.note}</p>}
                 <div className="mt-3 flex items-center justify-between">
-                  <button onClick={() => renew(d)} className="h-9 rounded-lg bg-muted px-3 text-xs font-semibold text-foreground/80 hover:bg-[#dfeaf3]">
+                  <button onClick={() => renew(d)} className="h-9 rounded-lg bg-muted px-3 text-xs font-semibold text-foreground/80 hover:bg-muted/60">
                     Yenilendi (+1 yıl)
                   </button>
                   <div className="flex items-center">
