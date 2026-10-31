@@ -148,7 +148,7 @@ export function FavoritesView({
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 text-[#8da0b2]">
+      <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
         <div className="mb-3 size-8 animate-spin rounded-full border-2 border-[#d64526] border-t-transparent" />
         <p className="text-sm font-medium">Favorileriniz yükleniyor...</p>
       </div>
@@ -158,18 +158,18 @@ export function FavoritesView({
   return (
     <div className="space-y-4 sm:space-y-5">
       <div>
-        <span className="text-[11px] font-bold uppercase tracking-wider text-[#d64526]">Özel ilan listeniz</span>
-        <h1 className="text-2xl font-extrabold tracking-tight text-[#122c4a] sm:text-3xl">Favori İlanlarım</h1>
-        <p className="mt-1 text-sm text-[#627d98]">Takip etmek üzere kaydettiğiniz tüm yük ve taşıma ilanları burada listelenir.</p>
+        <span className="text-[11px] font-bold uppercase tracking-wider text-brand">Özel ilan listeniz</span>
+        <h1 className="text-2xl font-extrabold tracking-tight text-foreground sm:text-3xl">Favori İlanlarım</h1>
+        <p className="mt-1 text-sm text-muted-foreground">Takip etmek üzere kaydettiğiniz tüm yük ve taşıma ilanları burada listelenir.</p>
       </div>
 
       {filteredLoads.length === 0 ? (
-        <div className="rounded-3xl border border-dashed border-[#cbd5e1] bg-white px-6 py-14 text-center">
+        <div className="rounded-3xl border border-dashed border-input bg-card px-6 py-14 text-center">
           <div className="mx-auto mb-4 grid size-16 place-items-center rounded-2xl bg-amber-50 text-amber-500">
             <Star className="size-8" />
           </div>
-          <p className="text-base font-bold text-[#122c4a]">Henüz favori ilanınız yok</p>
-          <p className="mx-auto mt-1 max-w-xs text-sm text-[#627d98]">İlanlardaki yıldız simgesine dokunarak beğendiğiniz yükleri buraya ekleyebilirsiniz.</p>
+          <p className="text-base font-bold text-foreground">Henüz favori ilanınız yok</p>
+          <p className="mx-auto mt-1 max-w-xs text-sm text-muted-foreground">İlanlardaki yıldız simgesine dokunarak beğendiğiniz yükleri buraya ekleyebilirsiniz.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4 xl:grid-cols-3">
