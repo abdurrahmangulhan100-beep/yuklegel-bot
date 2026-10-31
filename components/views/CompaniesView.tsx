@@ -36,7 +36,7 @@ export function CompaniesView({ loads }: { loads: Load[] }) {
             <div className="flex items-center justify-between border-t border-border pt-4 mt-4">
               <span className="text-sm font-medium text-foreground/80">{comp.phone}</span>
               <div className="flex gap-2">
-                <a href={`https://wa.me/${comp.phone.replace(/\D/g, "")}`} target="_blank" rel="noopener noreferrer" className="p-2 border rounded-lg text-[#3b8068] hover:bg-[#e7f5ed]"><MessageCircle className="size-4" /></a>
+                <a href={`https://wa.me/${comp.phone.replace(/\D/g, "")}`} target="_blank" rel="noopener noreferrer" className="p-2 border rounded-lg text-[#3b8068] hover:bg-muted/60"><MessageCircle className="size-4" /></a>
                 <a href={`tel:${comp.phone}`} className="p-2 border rounded-lg text-foreground/80 hover:bg-muted"><Phone className="size-4" /></a>
               </div>
             </div>
