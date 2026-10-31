@@ -210,18 +210,18 @@ export function CalculatorView() {
   return (
     <div className="space-y-5 pb-4">
       <div>
-        <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-[#d64526]">Maliyet & Teklif Planlama</p>
-        <h1 className="text-2xl font-bold tracking-tight text-[#122c4a] sm:text-3xl">Sefer Hesapla & Navlun Analizi</h1>
-        <p className="mt-1 text-xs text-[#718397]">Km'yi yaz, ne kadara taşıman gerektiğini gör; gelen teklif kârlı mı hemen anla. Değerler cihazında saklanır.</p>
+        <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-brand">Maliyet & Teklif Planlama</p>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Sefer Hesapla & Navlun Analizi</h1>
+        <p className="mt-1 text-xs text-muted-foreground">Km'yi yaz, ne kadara taşıman gerektiğini gör; gelen teklif kârlı mı hemen anla. Değerler cihazında saklanır.</p>
       </div>
 
       {saved.length > 0 && (
         <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 sm:mx-0 sm:px-0">
-          <span className="flex shrink-0 items-center gap-1 text-[11px] font-bold uppercase tracking-wider text-[#8da0b2]"><Bookmark className="size-3" /> Kayıtlı</span>
+          <span className="flex shrink-0 items-center gap-1 text-[11px] font-bold uppercase tracking-wider text-muted-foreground"><Bookmark className="size-3" /> Kayıtlı</span>
           {saved.map((s) => (
-            <span key={s.id} className="flex shrink-0 items-center overflow-hidden rounded-full border border-[#e0e6ed] bg-white text-xs font-semibold text-[#334e68]">
-              <button type="button" onClick={() => { setF({ ...DEFAULTS, ...s.form }); resultRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }) }} className="px-3 py-1.5 hover:bg-[#f0f4f8]">{s.label}</button>
-              <button type="button" aria-label="Sil" onClick={() => setSaved((a) => a.filter((x) => x.id !== s.id))} className="border-l border-[#eef2f6] px-2 py-1.5 text-[#8da0b2] hover:bg-[#fdecea] hover:text-[#d64526]"><X className="size-3" /></button>
+            <span key={s.id} className="flex shrink-0 items-center overflow-hidden rounded-full border border-border bg-card text-xs font-semibold text-foreground/80">
+              <button type="button" onClick={() => { setF({ ...DEFAULTS, ...s.form }); resultRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }) }} className="px-3 py-1.5 hover:bg-muted">{s.label}</button>
+              <button type="button" aria-label="Sil" onClick={() => setSaved((a) => a.filter((x) => x.id !== s.id))} className="border-l border-[#eef2f6] px-2 py-1.5 text-muted-foreground hover:bg-[#fdecea] hover:text-brand"><X className="size-3" /></button>
             </span>
           ))}
         </div>
@@ -234,20 +234,20 @@ export function CalculatorView() {
           <Step n={1} title="Mesafe & Araç" icon={<Scale className="size-4" />}>
             <Label2>Kaç km yüklü gideceksin?</Label2>
             <div className="relative">
-              <Input inputMode="decimal" value={f.km} onChange={(e) => set("km", e.target.value)} placeholder="0" className="h-14 border-[#d9e2ec] bg-[#f8fafc] pr-12 text-2xl font-black text-[#122c4a] focus:bg-white" />
-              <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-sm font-bold text-[#8da0b2]">km</span>
+              <Input inputMode="decimal" value={f.km} onChange={(e) => set("km", e.target.value)} placeholder="0" className="h-14 border-input bg-muted/50 pr-12 text-2xl font-black text-foreground focus:bg-card" />
+              <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-sm font-bold text-muted-foreground">km</span>
             </div>
             <div className="mt-2 flex flex-wrap gap-1.5">
               {KM_PRESETS.map((k) => <Pill key={k} active={num(f.km) === k} onClick={() => set("km", String(k))}>{plain(k, 0)} km</Pill>)}
             </div>
-            <label className="mt-3 flex cursor-pointer items-center gap-3 rounded-xl border border-[#e4e9ef] bg-[#fafbfd] px-3.5 py-3">
-              <input type="checkbox" checked={f.emptyReturn} onChange={(e) => set("emptyReturn", e.target.checked)} className="size-5 accent-[#d64526]" />
-              <span className="text-sm font-bold text-[#122c4a]">Boş dönüyorum <span className="font-medium text-[#8da0b2]">(dönüş km'si de sayılır)</span></span>
+            <label className="mt-3 flex cursor-pointer items-center gap-3 rounded-xl border border-border bg-muted/50 px-3.5 py-3">
+              <input type="checkbox" checked={f.emptyReturn} onChange={(e) => set("emptyReturn", e.target.checked)} className="size-5 accent-brand" />
+              <span className="text-sm font-bold text-foreground">Boş dönüyorum <span className="font-medium text-muted-foreground">(dönüş km'si de sayılır)</span></span>
             </label>
             {f.emptyReturn && (
               <div className="mt-2 flex items-center gap-3 rounded-xl border border-[#f3d9d2] bg-[#fff6f3] p-3">
                 <p className="min-w-0 flex-1 text-[11px] text-[#b5654f]">Boş dönüş km (boşsa gidiş kadar: {plain(c.loadedKm, 0)})</p>
-                <Input inputMode="decimal" value={f.returnKm} onChange={(e) => set("returnKm", e.target.value)} placeholder={String(c.loadedKm || 0)} className="h-10 w-24 border-[#f0cfc6] bg-white text-right text-base font-bold" />
+                <Input inputMode="decimal" value={f.returnKm} onChange={(e) => set("returnKm", e.target.value)} placeholder={String(c.loadedKm || 0)} className="h-10 w-24 border-[#f0cfc6] bg-card text-right text-base font-bold" />
               </div>
             )}
             <div className="mt-4 grid grid-cols-3 gap-2">
@@ -255,7 +255,7 @@ export function CalculatorView() {
                 const active = f.vehicle === v.label
                 return (
                   <button key={v.label} type="button" aria-pressed={active} onClick={() => setF((p) => ({ ...p, vehicle: v.label, consumption: v.lt }))}
-                    className={cn("flex h-[84px] flex-col items-center justify-between rounded-2xl border-2 px-1.5 pb-1.5 pt-2 text-[10.5px] font-bold leading-tight transition-all active:scale-95", active ? "border-[#122c4a] bg-[#eaf1f8] text-[#122c4a]" : "border-[#e4e9ef] bg-white text-[#4a6178] hover:border-[#c4d0dc]")}>
+                    className={cn("flex h-[84px] flex-col items-center justify-between rounded-2xl border-2 px-1.5 pb-1.5 pt-2 text-[10.5px] font-bold leading-tight transition-all active:scale-95", active ? "border-primary bg-muted text-foreground" : "border-border bg-card text-muted-foreground hover:border-input")}>
                     <span className="flex h-9 w-full items-center justify-center"><VehicleIcon kind={v.kind} className="h-full w-full" /></span>
                     <span className="text-center">{v.label}</span>
                   </button>
@@ -277,12 +277,12 @@ export function CalculatorView() {
               </button>
             )}
 
-            <button type="button" onClick={() => setMoreOpen((o) => !o)} aria-expanded={moreOpen} className="mt-4 flex w-full items-center justify-between rounded-xl border border-[#e4e9ef] bg-[#fafbfd] px-3.5 py-3 text-left">
+            <button type="button" onClick={() => setMoreOpen((o) => !o)} aria-expanded={moreOpen} className="mt-4 flex w-full items-center justify-between rounded-xl border border-border bg-muted/50 px-3.5 py-3 text-left">
               <span>
-                <span className="block text-sm font-bold text-[#122c4a]">Diğer giderler</span>
-                <span className="block text-[11px] text-[#8da0b2]">Otoyol, şoför, bakım, ek masraf · toplam {moneyR(other)}</span>
+                <span className="block text-sm font-bold text-foreground">Diğer giderler</span>
+                <span className="block text-[11px] text-muted-foreground">Otoyol, şoför, bakım, ek masraf · toplam {moneyR(other)}</span>
               </span>
-              <ChevronDown className={cn("size-5 text-[#627d98] transition-transform", moreOpen && "rotate-180")} />
+              <ChevronDown className={cn("size-5 text-muted-foreground transition-transform", moreOpen && "rotate-180")} />
             </button>
             {moreOpen && (
               <div className="mt-3 grid gap-3 sm:grid-cols-2">
@@ -298,31 +298,31 @@ export function CalculatorView() {
           <Step n={3} title="Hedef Kâr" icon={<TrendingUp className="size-4" />}>
             <div className="flex items-baseline justify-between">
               <Label2>Maliyetin üzerine</Label2>
-              <span className="text-3xl font-black text-[#d64526]">%{f.margin || 0}</span>
+              <span className="text-3xl font-black text-brand">%{f.margin || 0}</span>
             </div>
-            <input type="range" min={0} max={80} step={1} value={Math.min(80, num(f.margin))} onChange={(e) => set("margin", e.target.value)} aria-label="Hedef kâr oranı" className="mt-1 h-2 w-full cursor-pointer accent-[#d64526]" />
+            <input type="range" min={0} max={80} step={1} value={Math.min(80, num(f.margin))} onChange={(e) => set("margin", e.target.value)} aria-label="Hedef kâr oranı" className="mt-1 h-2 w-full cursor-pointer accent-brand" />
             <div className="mt-2 flex flex-wrap gap-1.5">
               {MARGIN_PRESETS.map((m) => <Pill key={m} active={num(f.margin) === m} onClick={() => set("margin", String(m))}>%{m}</Pill>)}
             </div>
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               <Stepper label="Yük tonajı (ops.)" unit="ton" value={f.tons} onChange={(v) => set("tons", v)} step={1} placeholder="Ton başı için" />
-              <label className="flex min-h-[74px] cursor-pointer items-center gap-3 rounded-xl border border-[#e4e9ef] bg-[#fafbfd] px-3.5">
-                <input type="checkbox" checked={f.vat} onChange={(e) => set("vat", e.target.checked)} className="size-5 accent-[#d64526]" />
+              <label className="flex min-h-[74px] cursor-pointer items-center gap-3 rounded-xl border border-border bg-muted/50 px-3.5">
+                <input type="checkbox" checked={f.vat} onChange={(e) => set("vat", e.target.checked)} className="size-5 accent-brand" />
                 <span>
-                  <span className="block text-sm font-bold text-[#122c4a]">KDV (%20) ekle</span>
-                  <span className="block text-[11px] text-[#8da0b2]">Teklif KDV dahil gösterilir</span>
+                  <span className="block text-sm font-bold text-foreground">KDV (%20) ekle</span>
+                  <span className="block text-[11px] text-muted-foreground">Teklif KDV dahil gösterilir</span>
                 </span>
               </label>
             </div>
           </Step>
 
-          <button type="button" onClick={() => { setF(DEFAULTS); setMoreOpen(false) }} className="mx-auto flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold text-[#627d98] hover:bg-[#f0f4f8]">
+          <button type="button" onClick={() => { setF(DEFAULTS); setMoreOpen(false) }} className="mx-auto flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold text-muted-foreground hover:bg-muted">
             <RotateCcw className="size-3.5" /> Tüm değerleri sıfırla
           </button>
 
           {/* Mobilde sürekli görünen fiyat çubuğu */}
           <div className="sticky bottom-[84px] z-20 lg:hidden">
-            <button type="button" onClick={() => resultRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })} className="flex w-full items-center justify-between rounded-2xl bg-[#122c4a] px-4 py-3 text-left text-white shadow-[0_12px_28px_-10px_rgba(18,44,74,0.8)]">
+            <button type="button" onClick={() => resultRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })} className="flex w-full items-center justify-between rounded-2xl bg-primary px-4 py-3 text-left text-primary-foreground shadow-[0_12px_28px_-10px_rgba(18,44,74,0.8)]">
               <span>
                 <span className="block text-[10px] font-semibold uppercase tracking-wider text-[#ff8a65]">Önerilen navlun</span>
                 <span className="block text-xl font-black leading-tight text-emerald-300">{moneyR(c.finalPrice)}</span>
@@ -334,7 +334,7 @@ export function CalculatorView() {
 
         {/* ============ SONUÇ ============ */}
         <div ref={resultRef} className="scroll-mt-4 space-y-4 lg:sticky lg:top-24 lg:col-span-5 lg:max-h-[calc(100vh-7rem)] lg:overflow-y-auto">
-          <div className="overflow-hidden rounded-3xl border border-[#1e3a5f] bg-white shadow-md">
+          <div className="overflow-hidden rounded-3xl border border-[#1e3a5f] bg-card shadow-md">
             {/* Fiyat başlığı */}
             <div className="bg-gradient-to-br from-[#122c4a] to-[#1d4268] p-5 text-white">
               <div className="flex items-center justify-between">
@@ -356,17 +356,17 @@ export function CalculatorView() {
               {/* Maliyet dağılımı */}
               <div>
                 <div className="mb-2 flex items-baseline justify-between">
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-[#486581]">Maliyet dağılımı</h3>
-                  <span className="text-xs font-bold text-[#122c4a]">{moneyR(c.totalCost)}</span>
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-foreground/80">Maliyet dağılımı</h3>
+                  <span className="text-xs font-bold text-foreground">{moneyR(c.totalCost)}</span>
                 </div>
-                <div className="flex h-4 w-full overflow-hidden rounded-full bg-[#eef2f6]">
+                <div className="flex h-4 w-full overflow-hidden rounded-full bg-muted">
                   {c.parts.map((p) => <div key={p.key} title={`${p.label}: ${moneyR(p.value)}`} style={{ width: `${(p.value / c.totalCost) * 100}%`, background: p.color }} />)}
                 </div>
                 <ul className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1.5">
                   {c.parts.map((p) => (
                     <li key={p.key} className="flex items-center justify-between gap-2 text-[11px]">
-                      <span className="flex min-w-0 items-center gap-1.5 text-[#486581]"><i className="size-2 shrink-0 rounded-full" style={{ background: p.color }} /><span className="truncate">{p.label}</span></span>
-                      <span className="shrink-0 font-bold text-[#122c4a]">%{plain((p.value / c.totalCost) * 100, 0)}</span>
+                      <span className="flex min-w-0 items-center gap-1.5 text-foreground/80"><i className="size-2 shrink-0 rounded-full" style={{ background: p.color }} /><span className="truncate">{p.label}</span></span>
+                      <span className="shrink-0 font-bold text-foreground">%{plain((p.value / c.totalCost) * 100, 0)}</span>
                     </li>
                   ))}
                 </ul>
@@ -378,10 +378,10 @@ export function CalculatorView() {
 
               {/* Teklif ölçer */}
               <div>
-                <h3 className="mb-1 text-xs font-bold uppercase tracking-wider text-[#486581]">Gelen teklifi değerlendir</h3>
+                <h3 className="mb-1 text-xs font-bold uppercase tracking-wider text-foreground/80">Gelen teklifi değerlendir</h3>
                 <div className="relative">
-                  <Input inputMode="decimal" value={f.offer} onChange={(e) => set("offer", e.target.value)} placeholder="Karşı tarafın teklifi (₺)" className="h-12 border-[#d9e2ec] bg-[#f8fafc] pr-10 text-lg font-bold focus:bg-white" />
-                  {f.offer && <button type="button" aria-label="Temizle" onClick={() => set("offer", "")} className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-1.5 text-[#8da0b2] hover:bg-[#eef2f6]"><X className="size-4" /></button>}
+                  <Input inputMode="decimal" value={f.offer} onChange={(e) => set("offer", e.target.value)} placeholder="Karşı tarafın teklifi (₺)" className="h-12 border-input bg-muted/50 pr-10 text-lg font-bold focus:bg-card" />
+                  {f.offer && <button type="button" aria-label="Temizle" onClick={() => set("offer", "")} className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-1.5 text-muted-foreground hover:bg-muted"><X className="size-4" /></button>}
                 </div>
                 <Meter cost={c.totalCost} price={c.price} offer={c.offer} />
                 {verdict && (
@@ -394,17 +394,17 @@ export function CalculatorView() {
 
               {/* Pazarlık rehberi */}
               <div>
-                <h3 className="mb-2 text-xs font-bold uppercase tracking-wider text-[#486581]">Pazarlık rehberi</h3>
+                <h3 className="mb-2 text-xs font-bold uppercase tracking-wider text-foreground/80">Pazarlık rehberi</h3>
                 <div className="grid grid-cols-2 gap-2">
-                  <div className="rounded-xl border border-[#e4e9ef] bg-[#fafbfd] p-3">
-                    <p className="text-[10px] font-semibold uppercase tracking-wide text-[#8da0b2]">İlk söyleyeceğin</p>
-                    <p className="mt-0.5 text-lg font-black text-[#122c4a]">{moneyR(c.openPrice)}</p>
-                    <p className="text-[10px] text-[#8da0b2]">%10 pazarlık payı bırakır</p>
+                  <div className="rounded-xl border border-border bg-muted/50 p-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">İlk söyleyeceğin</p>
+                    <p className="mt-0.5 text-lg font-black text-foreground">{moneyR(c.openPrice)}</p>
+                    <p className="text-[10px] text-muted-foreground">%10 pazarlık payı bırakır</p>
                   </div>
-                  <div className="rounded-xl border border-[#e4e9ef] bg-[#fafbfd] p-3">
-                    <p className="text-[10px] font-semibold uppercase tracking-wide text-[#8da0b2]">İnebileceğin en alt</p>
-                    <p className="mt-0.5 text-lg font-black text-[#d64526]">{moneyR(c.floorPrice)}</p>
-                    <p className="text-[10px] text-[#8da0b2]">Maliyet + %10 kâr</p>
+                  <div className="rounded-xl border border-border bg-muted/50 p-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">İnebileceğin en alt</p>
+                    <p className="mt-0.5 text-lg font-black text-brand">{moneyR(c.floorPrice)}</p>
+                    <p className="text-[10px] text-muted-foreground">Maliyet + %10 kâr</p>
                   </div>
                 </div>
               </div>
@@ -414,26 +414,26 @@ export function CalculatorView() {
                 <a href={`https://wa.me/?text=${encodeURIComponent(shareText())}`} target="_blank" rel="noopener noreferrer" className="flex h-12 items-center justify-center gap-2 rounded-xl bg-[#059669] text-sm font-bold text-white transition-colors hover:bg-[#047857]">
                   <MessageCircle className="size-4" /> WhatsApp
                 </a>
-                <button type="button" onClick={handleShare} className="flex h-12 items-center justify-center gap-2 rounded-xl bg-[#122c4a] text-sm font-bold text-white transition-colors hover:bg-[#1d4268]">
+                <button type="button" onClick={handleShare} className="flex h-12 items-center justify-center gap-2 rounded-xl bg-primary text-sm font-bold text-primary-foreground transition-colors hover:bg-[#1d4268]">
                   {copied ? <Check className="size-4 text-emerald-300" /> : typeof navigator !== "undefined" && "share" in navigator ? <Share2 className="size-4" /> : <Copy className="size-4" />}
                   {copied ? "Kopyalandı" : "Paylaş / Kopyala"}
                 </button>
               </div>
               <div className="rounded-2xl bg-[#f3f7fb] p-3 ring-1 ring-[#e3ebf3]">
-                <p className="mb-2 px-1 text-[11px] font-bold uppercase tracking-wider text-[#8da0b2]">Gelir Gider'e aktar</p>
+                <p className="mb-2 px-1 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Gelir Gider'e aktar</p>
                 <div className="grid grid-cols-2 gap-2">
                   <button type="button" onClick={() => toFinance("income")} className="flex h-12 items-center justify-center gap-2 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 text-sm font-bold text-white shadow-[0_8px_18px_-8px_rgba(5,150,105,0.8)] active:scale-95">
                     <Wallet className="size-4" /> Gelir
                   </button>
-                  <button type="button" onClick={() => toFinance("expense")} className="flex h-12 items-center justify-center gap-2 rounded-xl bg-white text-sm font-bold text-[#c13a1c] ring-1 ring-[#f0cfc6] active:scale-95">
+                  <button type="button" onClick={() => toFinance("expense")} className="flex h-12 items-center justify-center gap-2 rounded-xl bg-card text-sm font-bold text-[#c13a1c] ring-1 ring-[#f0cfc6] active:scale-95">
                     <Receipt className="size-4" /> Masraf
                   </button>
                 </div>
               </div>
-              <button type="button" onClick={saveCurrent} className="flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-[#e0e6ed] bg-white text-sm font-bold text-[#334e68] hover:bg-[#f6f8fb]">
+              <button type="button" onClick={saveCurrent} className="flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-border bg-card text-sm font-bold text-foreground/80 hover:bg-[#f6f8fb]">
                 <Bookmark className="size-4" /> Bu hesabı kaydet
               </button>
-              <p className="text-[11px] leading-snug text-[#8da0b2]">* Kâr, maliyetin üzerine eklenen orandır. Tutarlar tahminidir; yol ve piyasa koşullarına göre değişebilir.</p>
+              <p className="text-[11px] leading-snug text-muted-foreground">* Kâr, maliyetin üzerine eklenen orandır. Tutarlar tahminidir; yol ve piyasa koşullarına göre değişebilir.</p>
             </div>
           </div>
         </div>
@@ -446,10 +446,10 @@ export function CalculatorView() {
 
 function Step({ n, title, icon, children }: { n: number; title: string; icon: React.ReactNode; children: React.ReactNode }) {
   return (
-    <section className="rounded-2xl border border-[#e4e9ef] bg-white p-4 shadow-sm sm:p-5">
+    <section className="rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
       <div className="mb-3 flex items-center gap-2.5">
-        <span className="flex size-7 items-center justify-center rounded-full bg-[#122c4a] text-xs font-black text-white">{n}</span>
-        <h2 className="text-sm font-bold text-[#122c4a]">{title}</h2>
+        <span className="flex size-7 items-center justify-center rounded-full bg-primary text-xs font-black text-primary-foreground">{n}</span>
+        <h2 className="text-sm font-bold text-foreground">{title}</h2>
         <span className="ml-auto text-[#b0bfcd]">{icon}</span>
       </div>
       {children}
@@ -458,12 +458,12 @@ function Step({ n, title, icon, children }: { n: number; title: string; icon: Re
 }
 
 function Label2({ children }: { children: React.ReactNode }) {
-  return <p className="mb-1.5 text-xs font-semibold text-[#486581]">{children}</p>
+  return <p className="mb-1.5 text-xs font-semibold text-foreground/80">{children}</p>
 }
 
 function Pill({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
-    <button type="button" onClick={onClick} className={cn("rounded-full border px-3 py-1.5 text-xs font-bold transition-colors", active ? "border-[#122c4a] bg-[#122c4a] text-white" : "border-[#e0e6ed] bg-white text-[#627d98] hover:border-[#c4d0dc]")}>
+    <button type="button" onClick={onClick} className={cn("rounded-full border px-3 py-1.5 text-xs font-bold transition-colors", active ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card text-muted-foreground hover:border-input")}>
       {children}
     </button>
   )
@@ -479,12 +479,12 @@ function Stepper({ label, unit, value, onChange, step, placeholder }: { label: s
     <div>
       <Label2>{label}</Label2>
       <div className="flex items-center gap-1.5">
-        <button type="button" aria-label="Azalt" onClick={() => bump(-1)} className="flex size-11 shrink-0 items-center justify-center rounded-xl border border-[#e0e6ed] bg-white text-[#486581] active:scale-95"><Minus className="size-4" /></button>
+        <button type="button" aria-label="Azalt" onClick={() => bump(-1)} className="flex size-11 shrink-0 items-center justify-center rounded-xl border border-border bg-card text-foreground/80 active:scale-95"><Minus className="size-4" /></button>
         <div className="relative min-w-0 flex-1">
-          <Input inputMode="decimal" value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder ?? "0"} className="h-11 border-[#d9e2ec] bg-[#f8fafc] pr-[4.5rem] text-center text-base font-bold focus:bg-white" />
-          <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] font-semibold text-[#8da0b2]">{unit}</span>
+          <Input inputMode="decimal" value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder ?? "0"} className="h-11 border-input bg-muted/50 pr-[4.5rem] text-center text-base font-bold focus:bg-card" />
+          <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] font-semibold text-muted-foreground">{unit}</span>
         </div>
-        <button type="button" aria-label="Artır" onClick={() => bump(1)} className="flex size-11 shrink-0 items-center justify-center rounded-xl border border-[#e0e6ed] bg-white text-[#486581] active:scale-95"><Plus className="size-4" /></button>
+        <button type="button" aria-label="Artır" onClick={() => bump(1)} className="flex size-11 shrink-0 items-center justify-center rounded-xl border border-border bg-card text-foreground/80 active:scale-95"><Plus className="size-4" /></button>
       </div>
     </div>
   )
@@ -511,7 +511,7 @@ function Meter({ cost, price, offer }: { cost: number; price: number; offer: num
     <div className={cn("relative mb-9 mt-3", offer > 0 ? "pt-9" : "pt-1")}>
       {offer > 0 && (
         <div className="absolute top-0 -translate-x-1/2" style={{ left: `${keep(pos(offer))}%` }}>
-          <div className="rounded-lg bg-[#122c4a] px-2 py-1 text-[11px] font-black text-white shadow">{moneyR(offer)}</div>
+          <div className="rounded-lg bg-primary px-2 py-1 text-[11px] font-black text-primary-foreground shadow">{moneyR(offer)}</div>
           <div className="mx-auto size-0 border-x-[5px] border-t-[6px] border-x-transparent border-t-[#122c4a]" />
         </div>
       )}
@@ -522,11 +522,11 @@ function Meter({ cost, price, offer }: { cost: number; price: number; offer: num
       </div>
       <div className="absolute -translate-x-1/2 text-center" style={{ left: `${keep(pCost)}%`, top: offer > 0 ? "3.1rem" : "1.6rem" }}>
         <p className="text-[10px] font-bold text-red-500">Zarar etmeme sınırı</p>
-        <p className="text-[10px] font-semibold text-[#627d98]">{moneyR(cost)}</p>
+        <p className="text-[10px] font-semibold text-muted-foreground">{moneyR(cost)}</p>
       </div>
       <div className="absolute -translate-x-1/2 text-center" style={{ left: `${keep(pPrice)}%`, top: offer > 0 ? "3.1rem" : "1.6rem" }}>
         <p className="text-[10px] font-bold text-emerald-600">Hedef</p>
-        <p className="text-[10px] font-semibold text-[#627d98]">{moneyR(price)}</p>
+        <p className="text-[10px] font-semibold text-muted-foreground">{moneyR(price)}</p>
       </div>
     </div>
   )
