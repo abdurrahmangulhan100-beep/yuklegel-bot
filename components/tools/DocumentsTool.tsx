@@ -141,7 +141,7 @@ export function DocumentsTool() {
       <div className="flex items-center justify-between gap-3">
         <div>
           {urgent > 0 ? (
-            <p className="flex items-center gap-1.5 text-sm font-bold text-[#d64526]">
+            <p className="flex items-center gap-1.5 text-sm font-bold text-brand">
               <FileWarning className="size-4" /> {urgent} belgenin süresi dolmak üzere veya geçmiş
             </p>
           ) : docs.length > 0 ? (
@@ -149,21 +149,21 @@ export function DocumentsTool() {
               <CheckCircle2 className="size-4" /> Yaklaşan bir bitiş tarihi yok
             </p>
           ) : (
-            <p className="text-sm text-[#718397]">Muayene, sigorta, SRC gibi belgelerinizin bitiş tarihlerini ekleyin.</p>
+            <p className="text-sm text-muted-foreground">Muayene, sigorta, SRC gibi belgelerinizin bitiş tarihlerini ekleyin.</p>
           )}
         </div>
-        <button onClick={openNew} className="inline-flex h-11 shrink-0 items-center gap-1.5 rounded-xl bg-[#d64526] px-4 text-sm font-semibold text-white shadow-sm hover:bg-[#b8381e]">
+        <button onClick={openNew} className="inline-flex h-11 shrink-0 items-center gap-1.5 rounded-xl bg-brand px-4 text-sm font-semibold text-white shadow-sm hover:bg-brand/90">
           <Plus className="size-4" /> Belge Ekle
         </button>
       </div>
 
       {sorted.length === 0 ? (
-        <div className="rounded-3xl border border-dashed border-[#cbd5e1] bg-white px-6 py-12 text-center">
-          <div className="mx-auto mb-3 grid size-14 place-items-center rounded-2xl bg-[#eef4f8] text-[#315d83]">
+        <div className="rounded-3xl border border-dashed border-input bg-card px-6 py-12 text-center">
+          <div className="mx-auto mb-3 grid size-14 place-items-center rounded-2xl bg-muted text-foreground/80">
             <CalendarClock className="size-7" />
           </div>
-          <p className="text-sm font-bold text-[#122c4a]">Henüz belge eklemediniz</p>
-          <p className="mx-auto mt-1 max-w-xs text-xs text-[#718397]">Tarihi geçen muayene veya sigorta cezaya yol açar. Buraya ekleyin, kalan günü takip edin.</p>
+          <p className="text-sm font-bold text-foreground">Henüz belge eklemediniz</p>
+          <p className="mx-auto mt-1 max-w-xs text-xs text-muted-foreground">Tarihi geçen muayene veya sigorta cezaya yol açar. Buraya ekleyin, kalan günü takip edin.</p>
         </div>
       ) : (
         <ul className="grid gap-3 md:grid-cols-2">
@@ -173,30 +173,30 @@ export function DocumentsTool() {
             // 365 günlük skalaya göre kalan oran (görsel ipucu)
             const frac = Math.max(0.04, Math.min(1, days / 365))
             return (
-              <li key={d.id} className="rounded-2xl border border-[#e4e9ef] bg-white p-4 shadow-[0_1px_2px_rgba(18,44,74,0.04)]">
+              <li key={d.id} className="rounded-2xl border border-border bg-card p-4 shadow-[0_1px_2px_rgba(18,44,74,0.04)]">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <div className="truncate text-[15px] font-bold text-[#122c4a]">{d.type}</div>
-                    <div className="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs text-[#718397]">
-                      {d.plate && <span className="font-semibold text-[#334e68]">{d.plate}</span>}
+                    <div className="truncate text-[15px] font-bold text-foreground">{d.type}</div>
+                    <div className="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
+                      {d.plate && <span className="font-semibold text-foreground/80">{d.plate}</span>}
                       <span>{new Date(d.due + "T00:00:00").toLocaleDateString("tr-TR", { day: "numeric", month: "long", year: "numeric" })}</span>
                     </div>
                   </div>
                   <span className={cn("shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-bold", s.tone)}>{s.label}</span>
                 </div>
-                <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-[#eef2f6]">
+                <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-muted">
                   <div className={cn("h-full rounded-full", s.bar)} style={{ width: `${days < 0 ? 100 : frac * 100}%` }} />
                 </div>
-                {d.note && <p className="mt-2.5 text-xs text-[#627d98]">{d.note}</p>}
+                {d.note && <p className="mt-2.5 text-xs text-muted-foreground">{d.note}</p>}
                 <div className="mt-3 flex items-center justify-between">
-                  <button onClick={() => renew(d)} className="h-9 rounded-lg bg-[#eef4f8] px-3 text-xs font-semibold text-[#315d83] hover:bg-[#dfeaf3]">
+                  <button onClick={() => renew(d)} className="h-9 rounded-lg bg-muted px-3 text-xs font-semibold text-foreground/80 hover:bg-[#dfeaf3]">
                     Yenilendi (+1 yıl)
                   </button>
                   <div className="flex items-center">
-                    <button onClick={() => openEdit(d)} aria-label="Düzenle" className="grid size-9 place-items-center rounded-full text-[#b4c1ce] hover:bg-[#eef4f8] hover:text-[#315d83]">
+                    <button onClick={() => openEdit(d)} aria-label="Düzenle" className="grid size-9 place-items-center rounded-full text-muted-foreground/60 hover:bg-muted hover:text-foreground">
                       <Pencil className="size-4" />
                     </button>
-                    <button onClick={() => remove(d)} aria-label="Sil" className="grid size-9 place-items-center rounded-full text-[#b4c1ce] hover:bg-red-50 hover:text-red-500">
+                    <button onClick={() => remove(d)} aria-label="Sil" className="grid size-9 place-items-center rounded-full text-muted-foreground/60 hover:bg-red-50 hover:text-red-500">
                       <Trash2 className="size-4" />
                     </button>
                   </div>
@@ -207,28 +207,28 @@ export function DocumentsTool() {
         </ul>
       )}
 
-      <p className="px-1 text-[11px] leading-relaxed text-[#8da0b2]">Kayıtlar yalnızca bu cihazda saklanır; uygulama verisini silerseniz kaybolur. Hatırlatma, uygulamayı açtığınızda görünür.</p>
+      <p className="px-1 text-[11px] leading-relaxed text-muted-foreground">Kayıtlar yalnızca bu cihazda saklanır; uygulama verisini silerseniz kaybolur. Hatırlatma, uygulamayı açtığınızda görünür.</p>
 
       <Sheet
         open={open}
         onClose={() => setOpen(false)}
         title={editing ? "Belgeyi Düzenle" : "Belge Ekle"}
         footer={
-          <button onClick={save} className="h-12 w-full rounded-xl bg-[#122c4a] text-sm font-semibold text-white hover:bg-[#1a3d68]">
+          <button onClick={save} className="h-12 w-full rounded-xl bg-primary text-sm font-semibold text-primary-foreground hover:opacity-90">
             {editing ? "Güncelle" : "Kaydet"}
           </button>
         }
       >
         <div className="space-y-3.5 pt-1">
-          <label className="block text-xs font-semibold text-[#334e68]">
+          <label className="block text-xs font-semibold text-foreground/80">
             Belge türü
-            <select value={type} onChange={(e) => setType(e.target.value)} className="mt-1.5 h-12 w-full rounded-xl border border-[#dbe3ec] bg-white px-3 text-base text-[#122c4a] md:text-sm">
+            <select value={type} onChange={(e) => setType(e.target.value)} className="mt-1.5 h-12 w-full rounded-xl border border-input bg-card px-3 text-base text-foreground md:text-sm">
               {DOC_TYPES.map((t) => (
                 <option key={t}>{t}</option>
               ))}
             </select>
           </label>
-          <label className="block text-xs font-semibold text-[#334e68]">
+          <label className="block text-xs font-semibold text-foreground/80">
             Plaka / Kişi (ops.)
             <Input list="doc-plates" value={plate} onChange={(e) => setPlate(e.target.value)} placeholder="Örn: 42 ABC 123" className="mt-1.5 h-12 text-base uppercase md:text-sm" />
             <datalist id="doc-plates">
@@ -237,11 +237,11 @@ export function DocumentsTool() {
               ))}
             </datalist>
           </label>
-          <label className="block text-xs font-semibold text-[#334e68]">
+          <label className="block text-xs font-semibold text-foreground/80">
             Bitiş tarihi
-            <input type="date" value={due} onChange={(e) => setDue(e.target.value)} className="mt-1.5 h-12 w-full rounded-xl border border-[#dbe3ec] bg-white px-3 text-base text-[#122c4a] md:text-sm" />
+            <input type="date" value={due} onChange={(e) => setDue(e.target.value)} className="mt-1.5 h-12 w-full rounded-xl border border-input bg-card px-3 text-base text-foreground md:text-sm" />
           </label>
-          <label className="block text-xs font-semibold text-[#334e68]">
+          <label className="block text-xs font-semibold text-foreground/80">
             Not (ops.)
             <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Poliçe no, acente vb." className="mt-1.5 h-12 text-base md:text-sm" />
           </label>
