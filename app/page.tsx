@@ -64,10 +64,11 @@ const trVariants = (t: string) => {
 const categoryOr = (cat: string): { bot: string; user: string } | null => {
   const terms = CATEGORY_TERMS[cat]
   if (!terms) return null
-  const extra = cat === "Acil" ? ["urgent.eq.true"] : []
-  const mk = (fields: string[]) => [...extra, ...fields.flatMap((f) => terms.flatMap((t) => trVariants(t).map((v) => `${f}.ilike.%${v}%`)))].join(",")
+  // "urgent" sütunu yalnızca kullanıcı ilanları (listings) tablosunda garanti: bot_listings'te sütun yoksa tüm sorgu hata verip
+  // Acil filtresini boş döndürüyordu. Saha ilanlarında yalnızca metindeki "acil" aranır.
+  const mk = (fields: string[], withUrgent = false) => [...(withUrgent && cat === "Acil" ? ["urgent.eq.true"] : []), ...fields.flatMap((f) => terms.flatMap((t) => trVariants(t).map((v) => `${f}.ilike.%${v}%`)))].join(",")
   // Kullanıcı ilanında araç tipi formdan seçilir ve metinde geçmeyebilir: vehicle_type sütunu da aranmalı
-  return { bot: mk(["cargo_detail"]), user: mk(["cargo_detail", "message", "vehicle_type"]) }
+  return { bot: mk(["cargo_detail"]), user: mk(["cargo_detail", "message", "vehicle_type"], true) }
 }
 
 // Araç filtresi: her ilan tek kategoriye girer (lib/route.ts classifyVehicle); kategoriler birbirine karışmaz
@@ -237,7 +238,7 @@ export default function Page() {
         late(supabase.from("listings").select("id", head)),
         late(supabase.from("bot_listings").select("id", head).gte("created_at", cutoff)),
         late(supabase.from("listings").select("id", head).eq("urgent", true)),
-        late(supabase.from("bot_listings").select("id", head).eq("urgent", true).gte("created_at", cutoff)),
+        late(supabase.from("bot_listings").select("id", head).ilike("cargo_detail", "%acil%").gte("created_at", cutoff)),
       ])
       setTotals({ user: u.count ?? 0, bot: b.count ?? 0, urgent: (uu.count ?? 0) + (bu.count ?? 0) })
 
