@@ -1,9 +1,11 @@
 "use client"
 
+import { toast } from "@/lib/toast"
 import { hidePhones } from "@/lib/listings"
 import { Phone, MessageCircle, Star, Check, Ban, Zap, ChevronDown, Share2, Copy, Flag, MoreHorizontal, MapPin, Truck, Clock, Weight, Ruler, Repeat2 } from "lucide-react"
 import { Fragment, memo, useEffect, useRef, useState } from "react"
 import { isMissing } from "@/lib/route"
+import { estimateKm } from "@/lib/distance"
 import { supabase } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
 import { Sheet } from "@/components/Sheet"
@@ -185,7 +187,7 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
   // Ücretsiz planda günlük iletişim limiti (aynı ilan gün içinde bir kez sayılır)
   const allowContact = () => {
     if (consumeContact(String(load.id), isPremium)) return true
-    alert(contactLimitMessage())
+    toast(contactLimitMessage())
     openPremium()
     return false
   }
@@ -258,7 +260,7 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
 
     const isGuest = typeof window !== "undefined" ? localStorage.getItem("is_guest") === "true" : false
     if (isGuest) {
-      alert("Favorilere ilan ekleyebilmek için lütfen ücretsiz üye olunuz veya giriş yapınız.")
+      toast("Favorilere ilan ekleyebilmek için lütfen ücretsiz üye olunuz veya giriş yapınız.")
       return
     }
 
@@ -270,7 +272,7 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
 
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) {
-        alert("Favorilere eklemek için oturum açmanız gerekmektedir.")
+        toast("Favorilere eklemek için oturum açmanız gerekmektedir.")
         return
       }
 
@@ -294,7 +296,7 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
             .select("listing_id", { count: "exact", head: true })
             .eq("user_id", user.id)
           if ((count ?? 0) >= FREE_LIMITS.favorites) {
-            alert(`Ücretsiz planda en fazla ${FREE_LIMITS.favorites} favori ekleyebilirsiniz. Sınırsız favori için Premium'a geçin.`)
+            toast(`Ücretsiz planda en fazla ${FREE_LIMITS.favorites} favori ekleyebilirsiniz. Sınırsız favori için Premium'a geçin.`)
             openPremium()
             return
           }
@@ -317,7 +319,7 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
       }
     } catch (err) {
       console.error("Favori işlemi hatası:", err)
-      alert("Favori işlemi gerçekleştirilemedi. Lütfen tekrar deneyin.")
+      toast("Favori işlemi gerçekleştirilemedi. Lütfen tekrar deneyin.")
     } finally {
       setIsFavLoading(false)
     }
@@ -342,7 +344,7 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
       }, 1500)
     } catch (err) {
       console.error("Şikayet gönderilemedi:", err)
-      alert("Şikayet gönderilemedi. Lütfen internet bağlantınızı kontrol edip tekrar deneyin.")
+      toast("Şikayet gönderilemedi. Lütfen internet bağlantınızı kontrol edip tekrar deneyin.")
     } finally {
       setIsSubmittingReport(false)
     }
@@ -369,6 +371,7 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
     load.fromCity && load.toCity && load.fromCity !== load.toCity ? { from: load.fromCity, to: load.toCity } : null
   // Güzergâh bilinmiyorsa şehirler tek satırda, sade metin olarak gösterilir (kutucuk / rozet yok)
   const places = route ? [] : cityTags
+  const km = route ? estimateKm(route.from, route.to) : null
   // İlanın tazeliği: ilk dakikalar en değerli, rengiyle anlaşılır
   const ageMin = load.createdAt ? (Date.now() - Date.parse(load.createdAt)) / 60000 : NaN
   const fresh = Number.isFinite(ageMin) && ageMin >= 0 ? (ageMin < 15 ? "hot" : ageMin < 60 ? "warm" : "") : ""
@@ -402,14 +405,14 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
       }}
       style={{ contentVisibility: "auto", containIntrinsicSize: "auto 280px" }}
       className={cn(
-        "relative cursor-pointer overflow-hidden rounded-[22px] border bg-white transition-shadow",
+        "relative flex h-full cursor-pointer flex-col overflow-hidden rounded-[22px] border bg-white transition-shadow",
         "shadow-[0_1px_2px_rgba(18,44,74,0.05),0_12px_28px_-18px_rgba(18,44,74,0.28)] hover:shadow-[0_2px_4px_rgba(18,44,74,0.06),0_18px_36px_-18px_rgba(18,44,74,0.34)]",
         load.urgent ? "border-[#f4cdbf]" : "border-[#e8edf3]"
       )}
     >
       {load.urgent && <span aria-hidden className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-[#e5522f] to-[#f4a259]" />}
 
-      <div className="flex flex-col gap-3 p-3.5 sm:gap-3.5 sm:p-4">
+      <div className="flex flex-1 flex-col gap-3 p-3.5 sm:gap-3.5 sm:p-4">
         {/* Üst: kaynak + zaman + aksiyonlar */}
         <div className="flex items-center justify-between gap-2">
           <div className="flex min-w-0 items-center gap-3">
@@ -474,12 +477,13 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
         {route ? (
           <div className="rounded-2xl border border-[#e3ebf3] bg-gradient-to-br from-white to-[#f1f6fb] px-3.5 py-3 sm:px-4 sm:py-3.5 shadow-[0_1px_0_rgba(18,44,74,0.03)]">
             <div className="flex items-center gap-3">
-              <Place dot="bg-emerald-500" caption="Çıkış" label={highlightMatch(route.from, cleanQuery)} sub={load.districtOf?.[route.from]} align="left" onClick={onCitySearch ? () => onCitySearch(route.from) : undefined} />
-              <div aria-hidden className="flex w-[84px] shrink-0 flex-col items-center sm:w-[124px]">
-                <VehicleIcon vehicle={load.vehicle} className="h-9 w-full sm:h-[52px]" />
-                <span className="mt-1 h-0 w-full border-t-2 border-dotted border-[#b9c8d6]" />
+              <Place dot="bg-emerald-500" caption="Çıkış" name={route.from} label={highlightMatch(route.from, cleanQuery)} sub={load.districtOf?.[route.from]} align="left" onClick={onCitySearch ? () => onCitySearch(route.from) : undefined} />
+              <div className="flex w-[78px] shrink-0 flex-col items-center sm:w-[108px]">
+                <VehicleIcon vehicle={load.vehicle} className="h-9 w-full sm:h-[50px]" />
+                <span aria-hidden className="mt-1 h-0 w-full border-t-2 border-dotted border-[#b9c8d6]" />
+                {km && <span className="mt-1 whitespace-nowrap text-[11px] font-bold tabular-nums text-[#5a7189]" title="Tahmini karayolu mesafesi">≈ {km.toLocaleString("tr-TR")} km</span>}
               </div>
-              <Place dot="bg-[#e5522f]" caption="Varış" label={highlightMatch(route.to, cleanQuery)} sub={load.districtOf?.[route.to]} align="right" onClick={onCitySearch ? () => onCitySearch(route.to) : undefined} />
+              <Place dot="bg-[#e5522f]" caption="Varış" name={route.to} label={highlightMatch(route.to, cleanQuery)} sub={load.districtOf?.[route.to]} align="right" onClick={onCitySearch ? () => onCitySearch(route.to) : undefined} />
             </div>
             {(load.destinations?.length ?? 0) > 1 && (
               <div className="mt-2.5 flex flex-wrap items-center gap-1.5 border-t border-[#e3ebf3] pt-2.5">
@@ -525,7 +529,7 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
         )}
 
         {/* Yük detayı */}
-        <div>
+        <div className="flex-1">
           <div className="rounded-xl bg-[#f6f8fb] px-3 py-2.5">
             <p
               ref={textRef}
@@ -720,7 +724,9 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
   )
 })
 
-function Place({ caption, dot, label, sub, align, onClick }: { caption: string; dot?: string; label: React.ReactNode; sub?: string; align: "left" | "right"; onClick?: () => void }) {
+function Place({ caption, dot, label, sub, align, onClick, name = "" }: { caption: string; dot?: string; label: React.ReactNode; sub?: string; align: "left" | "right"; onClick?: () => void; name?: string }) {
+  // Uzun il adları ("Afyonkarahisar", "Kahramanmaraş") üç nokta ile kesilmesin: yazı küçülür, gerekirse 2 satıra bölünür
+  const size = name.length > 12 ? "text-[13.5px] sm:text-[15px]" : name.length > 9 ? "text-[15px] sm:text-[16.5px]" : "text-[17px]"
   return (
     <button
       type="button"
@@ -729,7 +735,7 @@ function Place({ caption, dot, label, sub, align, onClick }: { caption: string; 
       className={cn("min-w-0 flex-1 active:opacity-60", align === "right" ? "text-right" : "text-left")}
     >
       <span className={cn("flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.1em] text-[#8da0b2]", align === "right" && "justify-end")}>{dot && <i className={cn("size-1.5 rounded-full", dot)} />}{caption}</span>
-      <span className="mt-0.5 block truncate text-[17px] font-extrabold leading-tight text-[#122c4a]">{label}</span>
+      <span className={cn("mt-0.5 line-clamp-2 break-words font-extrabold leading-tight text-[#122c4a]", size)}>{label}</span>
       {sub && <span className="block truncate text-[12px] font-semibold text-[#6b8399]">{sub}</span>}
     </button>
   )
