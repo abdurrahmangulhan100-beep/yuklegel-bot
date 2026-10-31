@@ -181,7 +181,7 @@ export default function LoginPage() {
   }
 
   const fieldClass =
-    "h-12 w-full rounded-xl border border-input bg-[#f7f9fb] px-4 text-base text-foreground outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-primary focus:bg-card focus:ring-4 focus:ring-ring/10 md:text-sm"
+    "h-12 w-full rounded-xl border border-input bg-muted/60 px-4 text-base text-foreground outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-primary focus:bg-card focus:ring-4 focus:ring-ring/10 md:text-sm"
 
   if (recovery) {
     return (
@@ -311,7 +311,7 @@ export default function LoginPage() {
             </div>
 
             {isSignUp && (
-              <label className="flex cursor-pointer items-start gap-3 rounded-xl bg-[#f7f9fb] p-3.5 text-xs leading-relaxed text-muted-foreground">
+              <label className="flex cursor-pointer items-start gap-3 rounded-xl bg-muted/60 p-3.5 text-xs leading-relaxed text-muted-foreground">
                 <input type="checkbox" checked={accepted} onChange={(e) => setAccepted(e.target.checked)} className="mt-0.5 size-5 shrink-0 accent-brand" />
                 <span>
                   <Link href="/privacy" target="_blank" className="font-semibold text-foreground/80 underline">Gizlilik Politikası</Link>
@@ -329,7 +329,7 @@ export default function LoginPage() {
             </button>
           </form>
 
-          <div className="my-5 flex items-center gap-3 text-[11px] font-semibold uppercase tracking-wider text-[#a3b1c0]">
+          <div className="my-5 flex items-center gap-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
             <span className="h-px flex-1 bg-muted" /> veya <span className="h-px flex-1 bg-muted" />
           </div>
 
