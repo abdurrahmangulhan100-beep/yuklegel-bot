@@ -208,7 +208,7 @@ export function TripsView({ loads, currentUserId, onChanged }: TripsViewProps) {
                   <div className="mt-1 truncate text-xs text-muted-foreground">
                     {[!isMissing(load.cargo) ? load.cargo : "", load.vehicle, load.time].filter(Boolean).join(" • ")}
                   </div>
-                  <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-[#e7f5ed] px-2.5 py-1 text-[11px] font-semibold text-[#3b8068]">
+                  <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-muted/60 px-2.5 py-1 text-[11px] font-semibold text-[#3b8068]">
                     <CheckCircle2 className="size-3" /> Aktif Sefer
                   </span>
                 </div>
@@ -246,7 +246,7 @@ export function TripsView({ loads, currentUserId, onChanged }: TripsViewProps) {
                   type="button"
                   onClick={() => handleDelete(load.id)}
                   disabled={deletingId === String(load.id)}
-                  className="flex h-12 items-center justify-center gap-2 border-l border-border text-sm font-semibold text-brand transition-colors hover:bg-[#fff6f3] disabled:opacity-50"
+                  className="flex h-12 items-center justify-center gap-2 border-l border-border text-sm font-semibold text-brand transition-colors hover:bg-muted/60 disabled:opacity-50"
                 >
                   <Trash2 className="size-4" /> {deletingId === String(load.id) ? "Siliniyor..." : "Sil"}
                 </button>
@@ -254,7 +254,7 @@ export function TripsView({ loads, currentUserId, onChanged }: TripsViewProps) {
             </div>
           ))
         ) : (
-          <div className="rounded-3xl border border-dashed border-[#ccd6e0] bg-card px-6 py-14 text-center">
+          <div className="rounded-3xl border border-dashed border-border bg-card px-6 py-14 text-center">
             <div className="mx-auto mb-4 grid size-16 place-items-center rounded-2xl bg-muted text-foreground/80">
               <Truck className="size-8" />
             </div>
