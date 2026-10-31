@@ -35,17 +35,17 @@ export function PremiumView({ isGuest = false, onLogin }: { isGuest?: boolean; o
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2">
-        <div className="rounded-2xl border border-[#e4e9ef] bg-white p-4">
-          <p className="mb-3 text-xs font-bold uppercase tracking-wider text-[#8da0b2]">Ücretsiz</p>
-          <ul className="space-y-2 text-sm text-[#486581]">
+        <div className="rounded-2xl border border-border bg-card p-4">
+          <p className="mb-3 text-xs font-bold uppercase tracking-wider text-muted-foreground">Ücretsiz</p>
+          <ul className="space-y-2 text-sm text-foreground/80">
             {FREE_FEATURES.map((f) => (
-              <li key={f} className="flex gap-2"><Minus className="mt-0.5 size-4 shrink-0 text-[#b4c1ce]" />{f}</li>
+              <li key={f} className="flex gap-2"><Minus className="mt-0.5 size-4 shrink-0 text-muted-foreground/60" />{f}</li>
             ))}
           </ul>
         </div>
-        <div className="rounded-2xl border-2 border-[#f5b301] bg-white p-4">
-          <p className="mb-3 text-xs font-bold uppercase tracking-wider text-[#b58200]">Premium</p>
-          <ul className="space-y-2 text-sm text-[#122c4a]">
+        <div className="rounded-2xl border-2 border-[#f5b301] bg-card p-4">
+          <p className="mb-3 text-xs font-bold uppercase tracking-wider text-[#b58200] dark:text-amber-300">Premium</p>
+          <ul className="space-y-2 text-sm text-foreground">
             {PREMIUM_FEATURES.map((f) => (
               <li key={f} className="flex gap-2"><Check className="mt-0.5 size-4 shrink-0 text-emerald-600" />{f}</li>
             ))}
@@ -53,12 +53,12 @@ export function PremiumView({ isGuest = false, onLogin }: { isGuest?: boolean; o
         </div>
       </div>
 
-      {message && <p className="rounded-xl bg-[#eef4f8] px-4 py-3 text-sm text-[#315d83]">{message}</p>}
+      {message && <p className="rounded-xl bg-muted px-4 py-3 text-sm text-foreground/80">{message}</p>}
 
       {!isPremium && isGuest && (
-        <div className="space-y-2 rounded-2xl border border-[#e4e9ef] bg-white p-4 text-center">
-          <p className="text-sm text-[#486581]">Premium almak için önce ücretsiz üye olun veya giriş yapın. Abonelik hesabınıza bağlanır, telefon değiştirseniz de korunur.</p>
-          <button onClick={onLogin} className="h-12 w-full rounded-xl bg-[#122c4a] text-sm font-bold text-white hover:bg-[#1a3d68]">Giriş Yap / Kayıt Ol</button>
+        <div className="space-y-2 rounded-2xl border border-border bg-card p-4 text-center">
+          <p className="text-sm text-foreground/80">Premium almak için önce ücretsiz üye olun veya giriş yapın. Abonelik hesabınıza bağlanır, telefon değiştirseniz de korunur.</p>
+          <button onClick={onLogin} className="h-12 w-full rounded-xl bg-primary text-sm font-bold text-primary-foreground hover:opacity-90">Giriş Yap / Kayıt Ol</button>
         </div>
       )}
 
@@ -68,19 +68,19 @@ export function PremiumView({ isGuest = false, onLogin }: { isGuest?: boolean; o
             <button
               onClick={buy}
               disabled={busy || loading}
-              className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#d64526] text-sm font-bold text-white transition-colors hover:bg-[#c13a1c] disabled:opacity-60"
+              className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-brand text-sm font-bold text-white transition-colors hover:bg-[#c13a1c] disabled:opacity-60"
             >
               {busy && <Loader2 className="size-4 animate-spin" />}
               Premium'a Geç
             </button>
           ) : (
-            <div className="rounded-xl border border-[#e4e9ef] bg-white p-4 text-sm text-[#486581]">
+            <div className="rounded-xl border border-border bg-card p-4 text-sm text-foreground/80">
               Premium satın alımı Google Play'den indirilen Nakliye Cepte uygulamasında yapılır. Zaten Premium aldıysanız aynı hesapla uygulamaya giriş yapmanız yeterli; Premium otomatik açılır.
-              {storeUrl && <> <a href={storeUrl} className="font-semibold text-[#315d83] underline">Google Play'de aç</a></>}
+              {storeUrl && <> <a href={storeUrl} className="font-semibold text-foreground/80 underline">Google Play'de aç</a></>}
             </div>
           )}
           {canBuyHere && (
-            <button onClick={restore} disabled={busy} className="flex h-11 w-full items-center justify-center gap-2 rounded-xl text-sm font-semibold text-[#315d83] hover:bg-white disabled:opacity-60">
+            <button onClick={restore} disabled={busy} className="flex h-11 w-full items-center justify-center gap-2 rounded-xl text-sm font-semibold text-foreground/80 hover:bg-card disabled:opacity-60">
               {busy && <Loader2 className="size-4 animate-spin" />}
               Satın alımı geri yükle
             </button>
@@ -89,12 +89,12 @@ export function PremiumView({ isGuest = false, onLogin }: { isGuest?: boolean; o
       )}
 
       {isPremium && (
-        <a href={manageUrl} className="block h-12 w-full rounded-xl border border-[#e4e9ef] bg-white text-center text-sm font-semibold leading-[3rem] text-[#315d83] hover:bg-[#f5f7fa]">
+        <a href={manageUrl} className="block h-12 w-full rounded-xl border border-border bg-card text-center text-sm font-semibold leading-[3rem] text-foreground/80 hover:bg-muted">
           Aboneliği yönet / iptal et
         </a>
       )}
 
-      <p className="px-1 text-xs leading-relaxed text-[#8da0b2]">
+      <p className="px-1 text-xs leading-relaxed text-muted-foreground">
         Abonelik aylıktır ve iptal edilmediği sürece her ay Google Play hesabınızdan otomatik yenilenir. İstediğiniz zaman Google Play &gt; Abonelikler bölümünden iptal edebilirsiniz; iptal sonrası mevcut dönemin sonuna kadar Premium kullanmaya devam edersiniz. Ödeme Google Play tarafından işlenir.
       </p>
     </div>
