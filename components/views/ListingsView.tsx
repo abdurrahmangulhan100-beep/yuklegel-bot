@@ -423,7 +423,7 @@ export function ListingsView({
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-1 items-start gap-3 md:grid-cols-2 md:gap-4 xl:grid-cols-3">
+        <div className="grid grid-cols-1 items-stretch gap-3 md:grid-cols-2 md:gap-4 xl:grid-cols-3">
           {renderedItems.map((load) => (
             <LoadCard
               key={load.id}
