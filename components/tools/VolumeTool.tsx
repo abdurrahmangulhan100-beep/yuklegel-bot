@@ -58,17 +58,17 @@ export function VolumeTool() {
     m3: Math.min(1.5, t.m3 / TRUCK.m3),
   }
 
-  const inp = "h-11 w-full rounded-lg border border-[#d9e2ec] bg-[#f8fafc] px-2.5 text-base text-[#122c4a] outline-none focus:border-[#122c4a] focus:bg-white md:text-sm"
+  const inp = "h-11 w-full rounded-lg border border-input bg-muted/50 px-2.5 text-base text-foreground outline-none focus:border-primary focus:bg-card md:text-sm"
 
   return (
     <div className="grid gap-5 lg:grid-cols-12">
       <section className="space-y-3 lg:col-span-7">
         {rows.map((r, i) => (
-          <div key={r.id} className="rounded-2xl border border-[#e4e9ef] bg-white p-4 shadow-[0_1px_2px_rgba(18,44,74,0.04)]">
+          <div key={r.id} className="rounded-2xl border border-border bg-card p-4 shadow-[0_1px_2px_rgba(18,44,74,0.04)]">
             <div className="mb-3 flex items-center justify-between">
-              <span className="text-xs font-bold text-[#122c4a]">Yük kalemi {i + 1}</span>
+              <span className="text-xs font-bold text-foreground">Yük kalemi {i + 1}</span>
               {rows.length > 1 && (
-                <button onClick={() => setRows((p) => p.filter((x) => x.id !== r.id))} aria-label="Kalemi sil" className="grid size-8 place-items-center rounded-full text-[#b4c1ce] hover:bg-red-50 hover:text-red-500">
+                <button onClick={() => setRows((p) => p.filter((x) => x.id !== r.id))} aria-label="Kalemi sil" className="grid size-8 place-items-center rounded-full text-muted-foreground/60 hover:bg-red-50 hover:text-red-500">
                   <Trash2 className="size-4" />
                 </button>
               )}
@@ -80,7 +80,7 @@ export function VolumeTool() {
                   key={p.label}
                   type="button"
                   onClick={() => upd(r.id, { w: p.w, l: p.l, h: p.h })}
-                  className="rounded-full border border-[#e0e6ed] bg-white px-2.5 py-1 text-[11px] font-semibold text-[#627d98] hover:border-[#c4d0dc]"
+                  className="rounded-full border border-border bg-card px-2.5 py-1 text-[11px] font-semibold text-muted-foreground hover:border-input"
                 >
                   {p.label}
                 </button>
@@ -103,7 +103,7 @@ export function VolumeTool() {
             </div>
           </div>
         ))}
-        <button onClick={() => setRows((p) => [...p, blank()])} className="inline-flex h-11 items-center gap-1.5 rounded-xl border border-[#dbe3ec] bg-white px-4 text-sm font-semibold text-[#334e68] hover:bg-[#f5f7fa]">
+        <button onClick={() => setRows((p) => [...p, blank()])} className="inline-flex h-11 items-center gap-1.5 rounded-xl border border-input bg-card px-4 text-sm font-semibold text-foreground/80 hover:bg-muted">
           <Plus className="size-4" /> Kalem ekle
         </button>
       </section>
@@ -126,12 +126,12 @@ export function VolumeTool() {
           )}
         </div>
 
-        <div className="rounded-2xl border border-[#e4e9ef] bg-white p-4 shadow-[0_1px_2px_rgba(18,44,74,0.04)]">
-          <h3 className="mb-3 text-sm font-bold text-[#122c4a]">Standart tıra (13,60 m) göre doluluk</h3>
+        <div className="rounded-2xl border border-border bg-card p-4 shadow-[0_1px_2px_rgba(18,44,74,0.04)]">
+          <h3 className="mb-3 text-sm font-bold text-foreground">Standart tıra (13,60 m) göre doluluk</h3>
           <Meter label="Zemin (LDM)" frac={fill.ldm} text={`${fmt(t.ldm)} / ${TRUCK.ldm}`} />
           {t.kg > 0 && <Meter label="Ağırlık" frac={fill.kg} text={`${fmt(t.kg / 1000)} / ~${TRUCK.tons} ton`} />}
           <Meter label="Hacim" frac={fill.m3} text={`${fmt(t.m3)} / ~${TRUCK.m3} m³`} />
-          <p className="mt-3 text-[11px] leading-relaxed text-[#8da0b2]">
+          <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">
             Yaklaşık değerlerdir: 13,60 m tır ≈ 33 euro palet, ≈ 24 ton, ≈ 90 m³. Desi = en × boy × yükseklik ÷ 3000. Gerçek kapasite araca ve yük tipine göre değişir.
           </p>
         </div>
@@ -142,7 +142,7 @@ export function VolumeTool() {
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <label className="block text-[11px] font-semibold text-[#627d98]">
+    <label className="block text-[11px] font-semibold text-muted-foreground">
       {label}
       <div className="mt-1">{children}</div>
     </label>
@@ -163,10 +163,10 @@ function Meter({ label, frac, text }: { label: string; frac: number; text: strin
   return (
     <div className="mb-3 last:mb-0">
       <div className="mb-1 flex justify-between text-xs">
-        <span className="font-semibold text-[#122c4a]">{label}</span>
-        <span className={cn("tabular-nums", over ? "font-bold text-red-600" : "text-[#627d98]")}>{over ? "Tıra sığmaz · " : ""}{text}</span>
+        <span className="font-semibold text-foreground">{label}</span>
+        <span className={cn("tabular-nums", over ? "font-bold text-red-600" : "text-muted-foreground")}>{over ? "Tıra sığmaz · " : ""}{text}</span>
       </div>
-      <div className="h-2 overflow-hidden rounded-full bg-[#eef2f6]">
+      <div className="h-2 overflow-hidden rounded-full bg-muted">
         <div className={cn("h-full rounded-full", over ? "bg-red-500" : frac > 0.85 ? "bg-amber-500" : "bg-emerald-500")} style={{ width: `${Math.min(100, frac * 100)}%` }} />
       </div>
     </div>
