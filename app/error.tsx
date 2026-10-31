@@ -1,32 +1,25 @@
 "use client"
 
 import { useEffect } from "react"
-import { AlertTriangle, RefreshCw } from "lucide-react"
 
+// Beklenmedik bir hatada beyaz ekran yerine kullanıcıya anlaşılır bir ekran gösterir
 export default function Error({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
   useEffect(() => {
     console.error("Uygulama hatası:", error)
   }, [error])
 
   return (
-    <div className="flex min-h-dvh flex-col items-center justify-center gap-4 bg-[#f5f7fa] p-6 text-center">
-      <div className="flex size-16 items-center justify-center rounded-full bg-red-100 text-red-600">
-        <AlertTriangle className="size-8" />
-      </div>
-      <h2 className="text-xl font-bold text-[#122c4a]">Bir şeyler ters gitti</h2>
-      <p className="max-w-xs text-sm leading-relaxed text-[#718397]">
-        Beklenmedik bir hata oluştu. Tekrar denemek genellikle sorunu çözer.
+    <div className="flex min-h-dvh flex-col items-center justify-center bg-[#f5f7fa] px-6 text-center">
+      <h1 className="text-xl font-extrabold text-[#122c4a]">Bir sorun oluştu</h1>
+      <p className="mt-2 max-w-sm text-sm text-[#627d98]">
+        Sayfa yüklenirken beklenmedik bir hata oldu. İnternet bağlantınızı kontrol edip tekrar deneyin.
       </p>
-      <div className="flex gap-3">
-        <button
-          onClick={reset}
-          className="inline-flex items-center gap-2 rounded-xl bg-[#d64526] px-5 py-3 text-sm font-semibold text-white active:scale-95"
-        >
-          <RefreshCw className="size-4" />
-          Tekrar Dene
+      <div className="mt-6 flex w-full max-w-xs flex-col gap-2">
+        <button onClick={() => reset()} className="h-12 rounded-xl bg-[#122c4a] text-sm font-bold text-white">
+          Tekrar dene
         </button>
-        <a href="/" className="rounded-xl border border-[#e4e9ef] bg-white px-5 py-3 text-sm font-semibold text-[#122c4a]">
-          Ana Sayfa
+        <a href="/" className="flex h-12 items-center justify-center rounded-xl text-sm font-semibold text-[#315d83] hover:bg-white">
+          Ana sayfaya dön
         </a>
       </div>
     </div>
