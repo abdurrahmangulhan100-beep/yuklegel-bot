@@ -181,14 +181,14 @@ export default function LoginPage() {
   }
 
   const fieldClass =
-    "h-12 w-full rounded-xl border border-[#dbe3ec] bg-[#f7f9fb] px-4 text-base text-[#122c4a] outline-none transition-colors placeholder:text-[#a3b1c0] focus:border-[#122c4a] focus:bg-white focus:ring-4 focus:ring-[#122c4a]/10 md:text-sm"
+    "h-12 w-full rounded-xl border border-input bg-[#f7f9fb] px-4 text-base text-foreground outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-primary focus:bg-card focus:ring-4 focus:ring-ring/10 md:text-sm"
 
   if (recovery) {
     return (
       <div className="flex min-h-dvh items-center justify-center bg-gradient-to-b from-[#163a63] via-[#122c4a] to-[#0b1d33] p-6">
-        <form onSubmit={handleSetNewPassword} className="animate-rise w-full max-w-md space-y-4 rounded-3xl bg-white p-6 shadow-xl">
-          <h1 className="text-lg font-extrabold text-[#122c4a]">Yeni şifre belirleyin</h1>
-          <p className="text-sm text-[#627d98]">Hesabınız için yeni bir şifre yazın (en az 6 karakter).</p>
+        <form onSubmit={handleSetNewPassword} className="animate-rise w-full max-w-md space-y-4 rounded-3xl bg-card p-6 shadow-xl">
+          <h1 className="text-lg font-extrabold text-foreground">Yeni şifre belirleyin</h1>
+          <p className="text-sm text-muted-foreground">Hesabınız için yeni bir şifre yazın (en az 6 karakter).</p>
           {errorMsg && <div role="alert" className="rounded-xl border border-red-100 bg-red-50 p-3.5 text-xs font-semibold leading-relaxed text-red-600">{errorMsg}</div>}
           {successMsg && <div role="status" className="rounded-xl border border-green-100 bg-green-50 p-3.5 text-xs font-semibold leading-relaxed text-green-700">{successMsg}</div>}
           <div className="relative">
@@ -203,11 +203,11 @@ export default function LoginPage() {
               aria-label="Yeni şifre"
               className={cn(fieldClass, "pr-12")}
             />
-            <button type="button" onClick={() => setShowPassword((v) => !v)} aria-label={showPassword ? "Şifreyi gizle" : "Şifreyi göster"} className="absolute right-1.5 top-1/2 grid size-9 -translate-y-1/2 place-items-center rounded-lg text-[#8da0b2] hover:bg-[#eef2f6]">
+            <button type="button" onClick={() => setShowPassword((v) => !v)} aria-label={showPassword ? "Şifreyi gizle" : "Şifreyi göster"} className="absolute right-1.5 top-1/2 grid size-9 -translate-y-1/2 place-items-center rounded-lg text-muted-foreground hover:bg-muted">
               {showPassword ? <EyeOff className="size-[18px]" /> : <Eye className="size-[18px]" />}
             </button>
           </div>
-          <button type="submit" disabled={loading} className="h-12 w-full rounded-xl bg-[#122c4a] text-sm font-bold text-white disabled:opacity-60">
+          <button type="submit" disabled={loading} className="h-12 w-full rounded-xl bg-primary text-sm font-bold text-primary-foreground disabled:opacity-60">
             {loading ? "Kaydediliyor..." : "Şifreyi Güncelle"}
           </button>
         </form>
@@ -219,7 +219,7 @@ export default function LoginPage() {
     <div className="flex min-h-dvh flex-col bg-gradient-to-b from-[#163a63] via-[#122c4a] to-[#0b1d33] lg:items-center lg:justify-center lg:p-6">
       {/* Üst marka alanı */}
       <div className="relative px-6 pb-10 pt-[calc(2.5rem+env(safe-area-inset-top))] text-center text-white lg:pb-6 lg:pt-0">
-        <div className="pointer-events-none absolute -right-8 top-4 size-40 rounded-full bg-[#d64526]/25 blur-3xl" />
+        <div className="pointer-events-none absolute -right-8 top-4 size-40 rounded-full bg-brand/25 blur-3xl" />
         <div className="pointer-events-none absolute -left-10 top-24 size-36 rounded-full bg-[#315d83]/40 blur-3xl" />
         <div className="relative">
           <LogoMark size={92} className="mx-auto mb-3 drop-shadow-[0_12px_24px_rgba(0,0,0,0.35)]" />
@@ -235,10 +235,10 @@ export default function LoginPage() {
       </div>
 
       {/* Form kartı */}
-      <div className="animate-rise relative flex-1 rounded-t-[32px] bg-white px-6 pb-[calc(2rem+env(safe-area-inset-bottom))] pt-7 shadow-[0_-12px_40px_rgba(0,0,0,0.18)] lg:w-full lg:max-w-md lg:flex-none lg:rounded-3xl lg:pb-8">
+      <div className="animate-rise relative flex-1 rounded-t-[32px] bg-card px-6 pb-[calc(2rem+env(safe-area-inset-bottom))] pt-7 shadow-[0_-12px_40px_rgba(0,0,0,0.18)] lg:w-full lg:max-w-md lg:flex-none lg:rounded-3xl lg:pb-8">
         <div className="mx-auto w-full max-w-md">
           {/* Giriş / Kayıt sekmesi */}
-          <div className="mb-6 grid grid-cols-2 gap-1 rounded-2xl bg-[#eef2f6] p-1" role="tablist">
+          <div className="mb-6 grid grid-cols-2 gap-1 rounded-2xl bg-muted p-1" role="tablist">
             {[
               { signUp: false, label: "Giriş Yap" },
               { signUp: true, label: "Kayıt Ol" },
@@ -251,7 +251,7 @@ export default function LoginPage() {
                 onClick={() => { setIsSignUp(t.signUp); setErrorMsg(""); setSuccessMsg("") }}
                 className={cn(
                   "h-11 rounded-xl text-sm font-semibold transition-all",
-                  isSignUp === t.signUp ? "bg-white text-[#122c4a] shadow-sm" : "text-[#627d98]"
+                  isSignUp === t.signUp ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
                 )}
               >
                 {t.label}
@@ -264,7 +264,7 @@ export default function LoginPage() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label htmlFor="email" className="mb-1.5 block text-xs font-semibold text-[#4a6178]">E-posta Adresi</label>
+              <label htmlFor="email" className="mb-1.5 block text-xs font-semibold text-muted-foreground">E-posta Adresi</label>
               <input
                 id="email"
                 type="email"
@@ -280,7 +280,7 @@ export default function LoginPage() {
             </div>
 
             <div>
-              <label htmlFor="password" className="mb-1.5 block text-xs font-semibold text-[#4a6178]">Şifre</label>
+              <label htmlFor="password" className="mb-1.5 block text-xs font-semibold text-muted-foreground">Şifre</label>
               <div className="relative">
                 <input
                   id="password"
@@ -296,14 +296,14 @@ export default function LoginPage() {
                   type="button"
                   onClick={() => setShowPassword((v) => !v)}
                   aria-label={showPassword ? "Şifreyi gizle" : "Şifreyi göster"}
-                  className="absolute right-1.5 top-1/2 grid size-9 -translate-y-1/2 place-items-center rounded-lg text-[#8da0b2] hover:bg-[#eef2f6]"
+                  className="absolute right-1.5 top-1/2 grid size-9 -translate-y-1/2 place-items-center rounded-lg text-muted-foreground hover:bg-muted"
                 >
                   {showPassword ? <EyeOff className="size-[18px]" /> : <Eye className="size-[18px]" />}
                 </button>
               </div>
               {!isSignUp && (
                 <div className="mt-2 text-right">
-                  <button type="button" onClick={handleForgotPassword} className="text-xs font-semibold text-[#315d83] hover:underline">
+                  <button type="button" onClick={handleForgotPassword} className="text-xs font-semibold text-foreground/80 hover:underline">
                     Şifremi unuttum
                   </button>
                 </div>
@@ -311,10 +311,10 @@ export default function LoginPage() {
             </div>
 
             {isSignUp && (
-              <label className="flex cursor-pointer items-start gap-3 rounded-xl bg-[#f7f9fb] p-3.5 text-xs leading-relaxed text-[#4a6178]">
-                <input type="checkbox" checked={accepted} onChange={(e) => setAccepted(e.target.checked)} className="mt-0.5 size-5 shrink-0 accent-[#d64526]" />
+              <label className="flex cursor-pointer items-start gap-3 rounded-xl bg-[#f7f9fb] p-3.5 text-xs leading-relaxed text-muted-foreground">
+                <input type="checkbox" checked={accepted} onChange={(e) => setAccepted(e.target.checked)} className="mt-0.5 size-5 shrink-0 accent-brand" />
                 <span>
-                  <Link href="/privacy" target="_blank" className="font-semibold text-[#315d83] underline">Gizlilik Politikası</Link>
+                  <Link href="/privacy" target="_blank" className="font-semibold text-foreground/80 underline">Gizlilik Politikası</Link>
                   &apos;nı okudum ve kabul ediyorum.
                 </span>
               </label>
@@ -323,21 +323,21 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="h-12 w-full rounded-xl bg-[#d64526] text-sm font-semibold text-white shadow-md shadow-[#d64526]/25 transition-all hover:bg-[#b93820] active:scale-[0.99] disabled:opacity-60"
+              className="h-12 w-full rounded-xl bg-brand text-sm font-semibold text-white shadow-md shadow-[#d64526]/25 transition-all hover:bg-brand/90 active:scale-[0.99] disabled:opacity-60"
             >
               {loading ? "İşlem yapılıyor..." : (isSignUp ? "Hesap Oluştur" : "Giriş Yap")}
             </button>
           </form>
 
           <div className="my-5 flex items-center gap-3 text-[11px] font-semibold uppercase tracking-wider text-[#a3b1c0]">
-            <span className="h-px flex-1 bg-[#e4e9ef]" /> veya <span className="h-px flex-1 bg-[#e4e9ef]" />
+            <span className="h-px flex-1 bg-muted" /> veya <span className="h-px flex-1 bg-muted" />
           </div>
 
           <button
             type="button"
             onClick={handleGoogleLogin}
             disabled={loading}
-            className="mb-3 flex h-12 w-full items-center justify-center gap-3 rounded-xl border border-[#dbe3ec] bg-white text-sm font-semibold text-[#122c4a] transition-colors hover:bg-[#f5f7fa] disabled:opacity-60"
+            className="mb-3 flex h-12 w-full items-center justify-center gap-3 rounded-xl border border-input bg-card text-sm font-semibold text-foreground transition-colors hover:bg-muted disabled:opacity-60"
           >
             <svg viewBox="0 0 48 48" className="size-5" aria-hidden="true">
               <path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.9 6.1C12.4 13.6 17.7 9.5 24 9.5z"/>
@@ -347,7 +347,7 @@ export default function LoginPage() {
             </svg>
             Google ile devam et
           </button>
-          <p className="mb-3 text-center text-[11px] text-[#8da0b2]">
+          <p className="mb-3 text-center text-[11px] text-muted-foreground">
             Google ile devam ederek <Link href="/kullanim-kosullari" target="_blank" className="underline">Kullanım Koşulları</Link> ve <Link href="/privacy" target="_blank" className="underline">Gizlilik Politikası</Link>&apos;nı kabul etmiş olursunuz.
           </p>
 
@@ -355,12 +355,12 @@ export default function LoginPage() {
             type="button"
             onClick={handleGuestLogin}
             disabled={loading}
-            className="h-12 w-full rounded-xl border border-[#dbe3ec] bg-white text-sm font-semibold text-[#122c4a] transition-colors hover:bg-[#f5f7fa] disabled:opacity-60"
+            className="h-12 w-full rounded-xl border border-input bg-card text-sm font-semibold text-foreground transition-colors hover:bg-muted disabled:opacity-60"
           >
             Misafir Olarak Göz At
           </button>
 
-          <div className="mt-6 flex flex-wrap justify-center gap-x-5 gap-y-2 text-[11px] font-medium text-[#8da0b2]">
+          <div className="mt-6 flex flex-wrap justify-center gap-x-5 gap-y-2 text-[11px] font-medium text-muted-foreground">
             <Link href="/hakkimizda" className="hover:underline">Hakkımızda</Link>
             <Link href="/rehber" className="hover:underline">Rehber</Link>
             <Link href="/privacy" className="hover:underline">Gizlilik Politikası</Link>
