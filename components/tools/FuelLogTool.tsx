@@ -146,8 +146,8 @@ export function FuelLogTool() {
   }
 
   const fieldClass =
-    "h-12 w-full rounded-xl border border-[#dbe3ec] bg-white px-3.5 text-base text-[#122c4a] outline-none transition-colors focus:border-[#122c4a] focus:ring-4 focus:ring-[#122c4a]/10 md:text-sm"
-  const labelClass = "mb-1.5 block text-xs font-semibold text-[#334e68]"
+    "h-12 w-full rounded-xl border border-input bg-card px-3.5 text-base text-foreground outline-none transition-colors focus:border-primary focus:ring-4 focus:ring-ring/10 md:text-sm"
+  const labelClass = "mb-1.5 block text-xs font-semibold text-foreground/80"
 
   return (
     <div className="space-y-4">
@@ -170,7 +170,7 @@ export function FuelLogTool() {
         <button
           type="button"
           onClick={openForm}
-          className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-[#d64526] text-sm font-semibold text-white shadow-sm active:scale-[0.98]"
+          className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-brand text-sm font-semibold text-white shadow-sm active:scale-[0.98]"
         >
           <Plus className="size-4" /> Yakıt Ekle
         </button>
@@ -178,7 +178,7 @@ export function FuelLogTool() {
           type="button"
           onClick={sendToCalculator}
           disabled={stats.avg <= 0 && stats.lastPrice <= 0}
-          className="inline-flex h-12 items-center justify-center gap-2 rounded-xl border border-[#dbe3ec] bg-white text-sm font-semibold text-[#122c4a] active:scale-[0.98] disabled:opacity-40"
+          className="inline-flex h-12 items-center justify-center gap-2 rounded-xl border border-input bg-card text-sm font-semibold text-foreground active:scale-[0.98] disabled:opacity-40"
         >
           {sent ? <Check className="size-4 text-emerald-600" /> : <ArrowRightLeft className="size-4" />}
           {sent ? "Aktarıldı" : "Sefer Hesapla'ya aktar"}
@@ -186,35 +186,35 @@ export function FuelLogTool() {
       </div>
 
       {list.length === 0 ? (
-        <div className="rounded-3xl border border-dashed border-[#cbd5e1] bg-white px-6 py-12 text-center">
-          <div className="mx-auto mb-3 grid size-14 place-items-center rounded-2xl bg-[#eef4f8] text-[#315d83]">
+        <div className="rounded-3xl border border-dashed border-input bg-card px-6 py-12 text-center">
+          <div className="mx-auto mb-3 grid size-14 place-items-center rounded-2xl bg-muted text-foreground/80">
             <Fuel className="size-7" />
           </div>
-          <p className="text-sm font-bold text-[#122c4a]">Henüz yakıt kaydı yok</p>
-          <p className="mx-auto mt-1 max-w-xs text-xs text-[#718397]">Her yakıt aldığınızda kilometre, litre ve tutarı girin; ortalama tüketiminizi otomatik hesaplayalım.</p>
+          <p className="text-sm font-bold text-foreground">Henüz yakıt kaydı yok</p>
+          <p className="mx-auto mt-1 max-w-xs text-xs text-muted-foreground">Her yakıt aldığınızda kilometre, litre ve tutarı girin; ortalama tüketiminizi otomatik hesaplayalım.</p>
         </div>
       ) : (
-        <ul className="divide-y divide-[#edf0f3] overflow-hidden rounded-2xl border border-[#e4e9ef] bg-white shadow-[0_1px_2px_rgba(18,44,74,0.04)]">
+        <ul className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card shadow-[0_1px_2px_rgba(18,44,74,0.04)]">
           {list.map((f) => (
             <li key={f.id} className="flex items-center gap-3 px-4 py-3">
               <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2 text-sm font-bold text-[#122c4a]">
+                <div className="flex items-center gap-2 text-sm font-bold text-foreground">
                   <span className="tabular-nums">{fmt(f.km, 0)} km</span>
                   {!f.full && <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-700">Kısmi</span>}
                   {stats.per[f.id] !== undefined && (
                     <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700">{fmt(stats.per[f.id])} L/100km</span>
                   )}
                 </div>
-                <div className="mt-0.5 text-xs text-[#718397]">
+                <div className="mt-0.5 text-xs text-muted-foreground">
                   {new Date(f.date + "T00:00:00").toLocaleDateString("tr-TR", { day: "numeric", month: "short", year: "numeric" })} • {fmt(f.liters)} L • {fmt(f.total / f.liters, 2)} ₺/L
                 </div>
               </div>
-              <div className="shrink-0 text-sm font-extrabold tabular-nums text-[#122c4a]">{money(f.total)}</div>
+              <div className="shrink-0 text-sm font-extrabold tabular-nums text-foreground">{money(f.total)}</div>
               <button
                 type="button"
                 onClick={() => remove(f.id)}
                 aria-label="Kaydı sil"
-                className="grid size-10 shrink-0 place-items-center rounded-full text-[#b4c1ce] active:bg-red-50 active:text-red-600"
+                className="grid size-10 shrink-0 place-items-center rounded-full text-muted-foreground/60 active:bg-red-50 active:text-red-600"
               >
                 <Trash2 className="size-4" />
               </button>
@@ -231,7 +231,7 @@ export function FuelLogTool() {
         footer={
           <div className="space-y-2.5">
             {err && <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-xs font-semibold text-red-700">{err}</div>}
-            <button type="submit" form="fuel-form" className="h-12 w-full rounded-xl bg-[#d64526] text-sm font-semibold text-white active:bg-[#b93820]">
+            <button type="submit" form="fuel-form" className="h-12 w-full rounded-xl bg-brand text-sm font-semibold text-white active:bg-[#b93820]">
               Kaydet
             </button>
           </div>
@@ -259,13 +259,13 @@ export function FuelLogTool() {
           <label
             className={cn(
               "flex min-h-14 cursor-pointer items-center gap-3 rounded-2xl border p-3.5 transition-colors",
-              form.full ? "border-[#122c4a] bg-[#122c4a]/5" : "border-[#e4e9ef] bg-white"
+              form.full ? "border-primary bg-primary/5" : "border-border bg-card"
             )}
           >
             <input type="checkbox" checked={form.full} onChange={(e) => setForm({ ...form, full: e.target.checked })} className="size-5 shrink-0 accent-[#122c4a]" />
             <span>
-              <span className="block text-sm font-semibold text-[#122c4a]">Depoyu tamamen doldurdum</span>
-              <span className="block text-xs text-[#718397]">Tüketim hesabı için tam depo kayıtları kullanılır.</span>
+              <span className="block text-sm font-semibold text-foreground">Depoyu tamamen doldurdum</span>
+              <span className="block text-xs text-muted-foreground">Tüketim hesabı için tam depo kayıtları kullanılır.</span>
             </span>
           </label>
         </form>
