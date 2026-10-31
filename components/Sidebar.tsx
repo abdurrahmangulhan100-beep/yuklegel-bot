@@ -46,7 +46,7 @@ export function Sidebar({
 
   return (
     <aside className={cn(
-      "fixed inset-y-0 left-0 z-50 flex w-[288px] max-w-[86vw] flex-col bg-[#122c4a] text-white shadow-2xl transition-all duration-300 lg:w-[272px] lg:max-w-none lg:translate-x-0 border-r border-white/10",
+      "fixed inset-y-0 left-0 z-50 flex w-[288px] max-w-[86vw] flex-col bg-sidebar text-white shadow-2xl transition-all duration-300 lg:w-[272px] lg:max-w-none lg:translate-x-0 border-r border-white/10",
       isSidebarOpen ? "translate-x-0" : "-translate-x-full",
       isCollapsed && "lg:w-[78px]"
     )}>
@@ -58,7 +58,7 @@ export function Sidebar({
             <div className="text-[10px] uppercase tracking-[0.2em] text-white/50 font-semibold">Nakliye Ağı</div>
           </div>
         )}
-        <button aria-label="Menüyü kapat" className="ml-auto grid size-9 place-items-center rounded-full text-white/70 hover:bg-white/10 lg:hidden transition-colors" onClick={() => setIsSidebarOpen(false)}>
+        <button aria-label="Menüyü kapat" className="ml-auto grid size-9 place-items-center rounded-full text-white/70 hover:bg-card/10 lg:hidden transition-colors" onClick={() => setIsSidebarOpen(false)}>
           <X className="size-5" />
         </button>
       </div>
@@ -68,9 +68,9 @@ export function Sidebar({
         <button
           type="button"
           onClick={() => go("Şirket Profili")}
-          className="mx-3 mb-2 flex items-center gap-3 rounded-2xl bg-white/[0.07] p-3 text-left transition-colors hover:bg-white/10 lg:hidden"
+          className="mx-3 mb-2 flex items-center gap-3 rounded-2xl bg-white/[0.07] p-3 text-left transition-colors hover:bg-card/10 lg:hidden"
         >
-          <div className="grid size-10 shrink-0 place-items-center rounded-full bg-[#dbe8f2] text-sm font-bold text-[#315d83]">{profile.initials}</div>
+          <div className="grid size-10 shrink-0 place-items-center rounded-full bg-secondary text-sm font-bold text-foreground">{profile.initials}</div>
           <div className="min-w-0">
             <div className="truncate text-sm font-semibold">{profile.authorized_person}</div>
             <div className="truncate text-xs text-white/55">{profile.company_name}</div>
@@ -99,11 +99,11 @@ export function Sidebar({
         <div className="my-3 h-px bg-white/10" />
         <p className={cn("px-3 pb-1 text-[10px] font-bold uppercase tracking-[0.2em] text-white/40", isCollapsed && "sr-only")}>Yasal & Gizlilik</p>
 
-        <Link href="/privacy" onClick={() => setIsSidebarOpen(false)} className={cn("flex min-h-12 w-full items-center gap-3.5 rounded-xl px-3.5 py-3 text-sm font-medium text-white/70 transition-all hover:bg-white/10 hover:text-white", isCollapsed && "justify-center px-0")} title={isCollapsed ? "Gizlilik Politikası" : undefined}>
+        <Link href="/privacy" onClick={() => setIsSidebarOpen(false)} className={cn("flex min-h-12 w-full items-center gap-3.5 rounded-xl px-3.5 py-3 text-sm font-medium text-white/70 transition-all hover:bg-card/10 hover:text-white", isCollapsed && "justify-center px-0")} title={isCollapsed ? "Gizlilik Politikası" : undefined}>
           <ShieldCheck className="size-5 shrink-0 text-emerald-400" />
           {!isCollapsed && <span>Gizlilik Politikası</span>}
         </Link>
-        <Link href="/kullanim-kosullari" onClick={() => setIsSidebarOpen(false)} className={cn("flex min-h-12 w-full items-center gap-3.5 rounded-xl px-3.5 py-3 text-sm font-medium text-white/70 transition-all hover:bg-white/10 hover:text-white", isCollapsed && "justify-center px-0")} title={isCollapsed ? "Kullanım Koşulları" : undefined}>
+        <Link href="/kullanim-kosullari" onClick={() => setIsSidebarOpen(false)} className={cn("flex min-h-12 w-full items-center gap-3.5 rounded-xl px-3.5 py-3 text-sm font-medium text-white/70 transition-all hover:bg-card/10 hover:text-white", isCollapsed && "justify-center px-0")} title={isCollapsed ? "Kullanım Koşulları" : undefined}>
           <FileText className="size-5 shrink-0 text-sky-300" />
           {!isCollapsed && <span>Kullanım Koşulları</span>}
         </Link>
@@ -126,7 +126,7 @@ export function Sidebar({
         </div>
       </nav>
 
-      <button aria-label={isCollapsed ? "Menüyü genişlet" : "Menüyü daralt"} className="m-3.5 hidden items-center justify-center rounded-xl bg-white/5 py-2.5 text-white/60 hover:bg-white/10 hover:text-white transition-colors lg:flex" onClick={() => setIsCollapsed(!isCollapsed)}>
+      <button aria-label={isCollapsed ? "Menüyü genişlet" : "Menüyü daralt"} className="m-3.5 hidden items-center justify-center rounded-xl bg-white/5 py-2.5 text-white/60 hover:bg-card/10 hover:text-white transition-colors lg:flex" onClick={() => setIsCollapsed(!isCollapsed)}>
         {isCollapsed ? <ChevronRight className="size-5" /> : <div className="flex items-center gap-2 text-xs font-medium"><ChevronLeft className="size-4" /><span>Menüyü Daralt</span></div>}
       </button>
       <div className="pb-safe lg:hidden" />
@@ -141,8 +141,8 @@ function NavItem({ icon: Icon, label, active, collapsed, badge, onClick }: { ico
       onClick={onClick} 
       aria-current={active ? "page" : undefined}
       className={cn(
-        "flex min-h-12 w-full items-center gap-3.5 rounded-xl px-3.5 py-3 text-sm font-medium text-white/70 transition-all hover:bg-white/10 hover:text-white", 
-        active && "bg-[#d64526] text-white font-semibold shadow-md hover:bg-[#d64526]", 
+        "flex min-h-12 w-full items-center gap-3.5 rounded-xl px-3.5 py-3 text-sm font-medium text-white/70 transition-all hover:bg-card/10 hover:text-white", 
+        active && "bg-brand text-white font-semibold shadow-md hover:bg-brand", 
         collapsed && "justify-center px-0"
       )} 
       title={collapsed ? label : undefined}
