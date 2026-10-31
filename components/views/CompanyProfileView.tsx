@@ -1,5 +1,6 @@
 "use client"
 
+import { toast } from "@/lib/toast"
 import { useEffect, useState } from "react"
 import { supabase } from "@/lib/supabase"
 import { Input } from "@/components/ui/input"
@@ -101,7 +102,7 @@ export function CompanyProfileView({ onProfileUpdated }: { onProfileUpdated?: ()
   // GOOGLE PLAY ZORUNLU HESAP VE VERİ SİLME İŞLEVİ
   const handleDeleteAccount = async () => {
     if (deleteConfirmation !== "SIL") {
-      alert("Lütfen işlemi onaylamak için 'SIL' yazın.")
+      toast("Lütfen işlemi onaylamak için 'SIL' yazın.")
       return
     }
 
@@ -111,7 +112,7 @@ export function CompanyProfileView({ onProfileUpdated }: { onProfileUpdated?: ()
 
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) {
-        alert("Oturum bulunamadı.")
+        toast("Oturum bulunamadı.")
         return
       }
 
@@ -123,11 +124,11 @@ export function CompanyProfileView({ onProfileUpdated }: { onProfileUpdated?: ()
       await supabase.auth.signOut()
       localStorage.clear()
 
-      alert("Hesabınız ve tüm verileriniz kalıcı olarak silindi.")
-      window.location.href = "/"
+      toast("Hesabınız ve tüm verileriniz kalıcı olarak silindi.", "success")
+      setTimeout(() => { window.location.href = "/" }, 1800)
     } catch (err: any) {
       console.error("Hesap silme hatası:", err)
-      alert("Hesap silinirken bir hata oluştu: " + err.message)
+      toast("Hesap silinirken bir hata oluştu: " + err.message)
     } finally {
       setDeleting(false)
     }
