@@ -81,7 +81,7 @@ export function PremiumProvider({ children }: { children: React.ReactNode }) {
       body: JSON.stringify(purchaseToken ? { purchaseToken } : {}),
     })
     const json = await res.json().catch(() => ({}))
-    return { ok: res.ok, ...json } as { ok: boolean; premium?: boolean; status?: string; expiresAt?: string; error?: string }
+    return { ok: res.ok, ...json } as { ok: boolean; premium?: boolean; status?: string; expiresAt?: string; error?: string; pending?: boolean }
   }, [])
 
   // Doğrulama sonucunu doğrudan uygular: load() başka bir istek sürerken hemen dönüyordu ve satın alan kullanıcı Premium'u geç görüyordu
@@ -97,7 +97,7 @@ export function PremiumProvider({ children }: { children: React.ReactNode }) {
     let last: Awaited<ReturnType<typeof callVerify>> = null
     for (let i = 0; i < 3; i++) {
       try { last = await callVerify(purchaseToken) } catch { last = null }
-      if (last?.ok && last.premium) return last
+      if (last?.ok && (last.premium || last.pending)) return last // bekleyen ödemede tekrar denemek faydasız
       if (last && !last.ok && (last as { error?: string }).error?.includes("başka bir hesaba")) return last // tekrar denemenin anlamı yok
       await new Promise((res) => setTimeout(res, 1500 * (i + 1)))
     }
@@ -151,6 +151,7 @@ export function PremiumProvider({ children }: { children: React.ReactNode }) {
       if (!mine) { setMessage("Bu Google hesabında aktif bir abonelik bulunamadı."); return }
       const r = await verifyWithRetry(mine.purchaseToken)
       if (r?.ok && r.premium) { applyResult(r); setMessage("Premium aboneliğiniz geri yüklendi.") }
+      else if (r?.ok && r.pending) setMessage("Ödemeniz hâlâ onay bekliyor. Onaylanınca Premium otomatik açılır.")
       else setMessage(r?.error || "Abonelik doğrulanamadı. İnternet bağlantınızı kontrol edip tekrar deneyin.")
     } catch (e) {
       const err = e as { name?: string; message?: string }
@@ -178,6 +179,9 @@ export function PremiumProvider({ children }: { children: React.ReactNode }) {
         applyResult(r) // Premium anında açılır
         await response.complete("success")
         setMessage("Premium aktif! Tüm özellikler açıldı, teşekkürler.")
+      } else if (r?.ok && r.pending) {
+        await response.complete("unknown")
+        setMessage("Ödemeniz onay bekliyor. Google onaylayınca Premium otomatik açılır; uygulamayı kapatıp açabilirsiniz.")
       } else {
         // Ödeme alınmış olabilir: "fail" demek yerine durumu belirsiz bırak, kullanıcı geri yükleyebilsin
         await response.complete("unknown")
