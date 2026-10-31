@@ -84,6 +84,26 @@ export function PremiumProvider({ children }: { children: React.ReactNode }) {
     return { ok: res.ok, ...json } as { ok: boolean; premium?: boolean; status?: string; expiresAt?: string; error?: string }
   }, [])
 
+  // Doğrulama sonucunu doğrudan uygular: load() başka bir istek sürerken hemen dönüyordu ve satın alan kullanıcı Premium'u geç görüyordu
+  const applyResult = useCallback((r: { premium?: boolean; status?: string; expiresAt?: string } | null | undefined) => {
+    if (!r) return
+    setIsPremium(!!r.premium)
+    setStatus(r.status ?? null)
+    setExpiresAt(r.expiresAt ?? null)
+  }, [])
+
+  // Satın almadan hemen sonra Google kaydı birkaç saniye geç görünebilir veya ağ takılabilir: 3 kez dener
+  const verifyWithRetry = useCallback(async (purchaseToken: string) => {
+    let last: Awaited<ReturnType<typeof callVerify>> = null
+    for (let i = 0; i < 3; i++) {
+      try { last = await callVerify(purchaseToken) } catch { last = null }
+      if (last?.ok && last.premium) return last
+      if (last && !last.ok && (last as { error?: string }).error?.includes("başka bir hesaba")) return last // tekrar denemenin anlamı yok
+      await new Promise((res) => setTimeout(res, 1500 * (i + 1)))
+    }
+    return last
+  }, [callVerify])
+
   const load = useCallback(async () => {
     if (!supabase) { setLoading(false); return }
     if (loadingRef.current) return
@@ -129,16 +149,16 @@ export function PremiumProvider({ children }: { children: React.ReactNode }) {
       const purchases: { itemId: string; purchaseToken: string }[] = await service.listPurchases()
       const mine = purchases.find((p) => p.itemId === PREMIUM_SKU)
       if (!mine) { setMessage("Bu Google hesabında aktif bir abonelik bulunamadı."); return }
-      const r = await callVerify(mine.purchaseToken)
-      if (r?.ok && r.premium) { setMessage("Premium aboneliğiniz geri yüklendi."); await load() }
-      else setMessage(r?.error || "Abonelik doğrulanamadı.")
+      const r = await verifyWithRetry(mine.purchaseToken)
+      if (r?.ok && r.premium) { applyResult(r); setMessage("Premium aboneliğiniz geri yüklendi.") }
+      else setMessage(r?.error || "Abonelik doğrulanamadı. İnternet bağlantınızı kontrol edip tekrar deneyin.")
     } catch (e) {
       const err = e as { name?: string; message?: string }
       setMessage(`Geri yükleme başarısız: ${err?.name || ""} ${err?.message || ""}`)
     } finally {
       setBusy(false)
     }
-  }, [callVerify, load])
+  }, [verifyWithRetry, applyResult])
 
   const buy = useCallback(async () => {
     setMessage(null)
@@ -153,14 +173,15 @@ export function PremiumProvider({ children }: { children: React.ReactNode }) {
       const response = await request.show()
       const purchaseToken: string | undefined = (response.details as { purchaseToken?: string }).purchaseToken
       if (!purchaseToken) { await response.complete("fail"); setMessage("Satın alma tamamlanamadı."); return }
-      const r = await callVerify(purchaseToken)
+      const r = await verifyWithRetry(purchaseToken)
       if (r?.ok && r.premium) {
+        applyResult(r) // Premium anında açılır
         await response.complete("success")
-        setMessage("Premium aktif! Teşekkürler.")
-        await load()
+        setMessage("Premium aktif! Tüm özellikler açıldı, teşekkürler.")
       } else {
-        await response.complete("fail")
-        setMessage(r?.error || "Satın alma doğrulanamadı. Ücret alındıysa birkaç dakika sonra 'Satın alımı geri yükle' deneyin.")
+        // Ödeme alınmış olabilir: "fail" demek yerine durumu belirsiz bırak, kullanıcı geri yükleyebilsin
+        await response.complete("unknown")
+        setMessage(r?.error || "Ödemeniz alındı ancak doğrulama tamamlanamadı. Birkaç dakika sonra 'Satın alımı geri yükle'ye dokunun; ücret tekrar alınmaz.")
       }
     } catch (e) {
       const err = e as { name?: string; message?: string }
@@ -170,7 +191,7 @@ export function PremiumProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setBusy(false)
     }
-  }, [callVerify, load])
+  }, [verifyWithRetry, applyResult])
 
   // İlk yükleme + oturum değişimi
   useEffect(() => {
@@ -232,11 +253,11 @@ export function PremiumProvider({ children }: { children: React.ReactNode }) {
         const mine = purchases.find((p) => p.itemId === PREMIUM_SKU)
         if (mine) {
           const r = await callVerify(mine.purchaseToken)
-          if (r?.ok && r.premium) await load()
+          if (r?.ok && r.premium) applyResult(r)
         }
       } catch {}
     })()
-  }, [loading, isPremium, canBuyHere, callVerify, load])
+  }, [loading, isPremium, canBuyHere, callVerify, applyResult])
 
   const value = useMemo(
     () => ({ isPremium, loading, status, expiresAt, canBuyHere, busy, message, price, buy, restore, refresh: load }),
