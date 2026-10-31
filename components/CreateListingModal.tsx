@@ -210,15 +210,15 @@ export function CreateListingModal({ isOpen, onClose, onSuccess }: CreateListing
   }
 
   const fieldClass =
-    "h-12 w-full rounded-xl border border-[#dbe3ec] bg-white px-3.5 text-base text-[#122c4a] outline-none transition-colors placeholder:text-[#a3b1c0] focus:border-[#122c4a] focus:ring-4 focus:ring-[#122c4a]/10 disabled:opacity-50 md:text-sm"
-  const labelClass = "mb-1.5 block text-xs font-semibold text-[#334e68]"
-  const sectionClass = "space-y-3.5 rounded-2xl border border-[#edf0f3] bg-[#fafbfd] p-4"
+    "h-12 w-full rounded-xl border border-input bg-card px-3.5 text-base text-foreground outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-primary focus:ring-4 focus:ring-ring/10 disabled:opacity-50 md:text-sm"
+  const labelClass = "mb-1.5 block text-xs font-semibold text-foreground/80"
+  const sectionClass = "space-y-3.5 rounded-2xl border border-border bg-muted/50 p-4"
 
   const footer = isGuestUser ? (
     <button
       type="button"
       onClick={() => { handleClose(); router.push("/login") }}
-      className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#122c4a] text-sm font-semibold text-white transition-colors hover:bg-[#1a3d68]"
+      className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary text-sm font-semibold text-primary-foreground transition-colors hover:opacity-90"
     >
       <LogIn className="size-4" />
       Giriş Yap / Kayıt Ol
@@ -235,7 +235,7 @@ export function CreateListingModal({ isOpen, onClose, onSuccess }: CreateListing
         <button
           type="button"
           onClick={handleClose}
-          className="h-12 rounded-xl border border-[#dbe3ec] text-sm font-semibold text-[#334e68] transition-colors hover:bg-[#f5f7fa]"
+          className="h-12 rounded-xl border border-input text-sm font-semibold text-foreground/80 transition-colors hover:bg-muted"
         >
           İptal
         </button>
@@ -243,7 +243,7 @@ export function CreateListingModal({ isOpen, onClose, onSuccess }: CreateListing
           type="submit"
           form="create-listing-form"
           disabled={loading || !acceptedTerms}
-          className="flex h-12 items-center justify-center gap-2 rounded-xl bg-[#d64526] text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#b93820] disabled:cursor-not-allowed disabled:opacity-50"
+          className="flex h-12 items-center justify-center gap-2 rounded-xl bg-brand text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand/90 disabled:cursor-not-allowed disabled:opacity-50"
         >
           <ShieldCheck className="size-4" />
           <span>{loading ? "Yayınlanıyor..." : "İlanı Yayınla"}</span>
@@ -262,11 +262,11 @@ export function CreateListingModal({ isOpen, onClose, onSuccess }: CreateListing
     >
       {isGuestUser ? (
         <div className="py-8 text-center">
-          <div className="mx-auto mb-4 grid size-16 place-items-center rounded-2xl bg-[#eef4f8] text-[#315d83]">
+          <div className="mx-auto mb-4 grid size-16 place-items-center rounded-2xl bg-muted text-foreground/80">
             <ShieldAlert className="size-8" />
           </div>
-          <p className="text-base font-bold text-[#122c4a]">İlan vermek için giriş yapın</p>
-          <p className="mx-auto mt-1.5 max-w-xs text-sm leading-relaxed text-[#627d98]">
+          <p className="text-base font-bold text-foreground">İlan vermek için giriş yapın</p>
+          <p className="mx-auto mt-1.5 max-w-xs text-sm leading-relaxed text-muted-foreground">
             Misafir hesaplar ilan ekleyemez. Ücretsiz üye olarak dakikalar içinde ilan yayınlayabilirsiniz.
           </p>
         </div>
@@ -305,7 +305,7 @@ export function CreateListingModal({ isOpen, onClose, onSuccess }: CreateListing
 
           {/* Güzergah */}
           <div className={sectionClass}>
-            <div className="text-[11px] font-bold uppercase tracking-wider text-[#8da0b2]">Güzergah</div>
+            <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Güzergah</div>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className={labelClass} htmlFor="cl-from">Çıkış Şehri</label>
@@ -336,7 +336,7 @@ export function CreateListingModal({ isOpen, onClose, onSuccess }: CreateListing
 
           {/* Yük & araç */}
           <div className={sectionClass}>
-            <div className="text-[11px] font-bold uppercase tracking-wider text-[#8da0b2]">Yük ve Araç</div>
+            <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Yük ve Araç</div>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className={labelClass} htmlFor="cl-cargo">Yük Cinsi</label>
@@ -355,7 +355,7 @@ export function CreateListingModal({ isOpen, onClose, onSuccess }: CreateListing
 
           {/* Fiyat */}
           <div className={sectionClass}>
-            <div className="text-[11px] font-bold uppercase tracking-wider text-[#8da0b2]">Fiyatlandırma</div>
+            <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Fiyatlandırma</div>
             <div className="grid grid-cols-2 gap-1 rounded-xl bg-[#eaeff4] p-1" role="radiogroup" aria-label="Fiyatlandırma türü">
               {[
                 { value: "total", label: "Götürü / Toplam" },
@@ -369,7 +369,7 @@ export function CreateListingModal({ isOpen, onClose, onSuccess }: CreateListing
                   onClick={() => setFormData({ ...formData, priceType: opt.value })}
                   className={cn(
                     "h-10 rounded-lg text-[13px] font-semibold transition-all",
-                    formData.priceType === opt.value ? "bg-white text-[#122c4a] shadow-sm" : "text-[#627d98]"
+                    formData.priceType === opt.value ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
                   )}
                 >
                   {opt.label}
@@ -410,7 +410,7 @@ export function CreateListingModal({ isOpen, onClose, onSuccess }: CreateListing
             htmlFor="urgent"
             className={cn(
               "flex min-h-14 cursor-pointer items-center gap-3 rounded-2xl border p-3.5 transition-colors",
-              formData.isUrgent ? "border-[#d64526] bg-[#fff6f3]" : "border-[#e4e9ef] bg-white"
+              formData.isUrgent ? "border-[#d64526] bg-[#fff6f3]" : "border-border bg-card"
             )}
           >
             <input
@@ -418,11 +418,11 @@ export function CreateListingModal({ isOpen, onClose, onSuccess }: CreateListing
               id="urgent"
               checked={formData.isUrgent}
               onChange={(e) => setFormData({ ...formData, isUrgent: e.target.checked })}
-              className="size-5 shrink-0 cursor-pointer accent-[#d64526]"
+              className="size-5 shrink-0 cursor-pointer accent-brand"
             />
             <span>
-              <span className="block text-sm font-semibold text-[#122c4a]">Acil ilan olarak işaretle</span>
-              <span className="block text-xs text-[#718397]">İlanınız öne çıkarılır ve acil yükler arasında görünür.</span>
+              <span className="block text-sm font-semibold text-foreground">Acil ilan olarak işaretle</span>
+              <span className="block text-xs text-muted-foreground">İlanınız öne çıkarılır ve acil yükler arasında görünür.</span>
             </span>
           </label>
 
@@ -433,10 +433,10 @@ export function CreateListingModal({ isOpen, onClose, onSuccess }: CreateListing
                 type="checkbox"
                 checked={acceptedTerms}
                 onChange={(e) => setAcceptedTerms(e.target.checked)}
-                className="mt-0.5 size-5 shrink-0 cursor-pointer accent-[#d64526]"
+                className="mt-0.5 size-5 shrink-0 cursor-pointer accent-brand"
               />
               <span className="text-xs leading-relaxed text-[#4a5568]">
-                İlanımda <strong>yasalara aykırı, yanıltıcı veya genel ahlaka uymayan</strong> içerik bulunmadığını, aksi takdirde ilanımın silineceğini ve hesabımın engellenebileceğini bildiren <a href="/privacy" target="_blank" rel="noopener noreferrer" className="font-semibold text-[#d64526] underline">Kullanım Koşulları & Topluluk Kurallarını</a> okudum ve kabul ediyorum.
+                İlanımda <strong>yasalara aykırı, yanıltıcı veya genel ahlaka uymayan</strong> içerik bulunmadığını, aksi takdirde ilanımın silineceğini ve hesabımın engellenebileceğini bildiren <a href="/privacy" target="_blank" rel="noopener noreferrer" className="font-semibold text-brand underline">Kullanım Koşulları & Topluluk Kurallarını</a> okudum ve kabul ediyorum.
               </span>
             </label>
           </div>
