@@ -154,13 +154,13 @@ export function ChecklistTool() {
           </button>
         </div>
         <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/15">
-          <div className="h-full rounded-full bg-white transition-all" style={{ width: `${total ? (done / total) * 100 : 0}%` }} />
+          <div className="h-full rounded-full bg-card transition-all" style={{ width: `${total ? (done / total) * 100 : 0}%` }} />
         </div>
       </div>
 
       {groups.map((g) => (
-        <section key={g.key} className="rounded-2xl border border-[#e4e9ef] bg-white p-2 shadow-[0_1px_2px_rgba(18,44,74,0.04)] sm:p-3">
-          <h3 className="px-3 pb-1 pt-2 text-[11px] font-bold uppercase tracking-wider text-[#8da0b2]">{g.title}</h3>
+        <section key={g.key} className="rounded-2xl border border-border bg-card p-2 shadow-[0_1px_2px_rgba(18,44,74,0.04)] sm:p-3">
+          <h3 className="px-3 pb-1 pt-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{g.title}</h3>
           <ul>
             {g.items.map((item) => {
               const on = checked.includes(item.id)
@@ -170,19 +170,19 @@ export function ChecklistTool() {
                     type="button"
                     onClick={() => toggle(item.id)}
                     aria-pressed={on}
-                    className="flex min-h-12 flex-1 items-center gap-3 rounded-xl px-3 py-2 text-left active:bg-[#f5f7fa]"
+                    className="flex min-h-12 flex-1 items-center gap-3 rounded-xl px-3 py-2 text-left active:bg-background"
                   >
-                    <span className={cn("grid size-6 shrink-0 place-items-center rounded-lg border-2 transition-colors", on ? "border-emerald-600 bg-emerald-600 text-white" : "border-[#c4d0dc] bg-white")}>
+                    <span className={cn("grid size-6 shrink-0 place-items-center rounded-lg border-2 transition-colors", on ? "border-emerald-600 bg-emerald-600 text-white" : "border-input bg-card")}>
                       {on && <Check className="size-4" strokeWidth={3} />}
                     </span>
-                    <span className={cn("text-sm font-medium", on ? "text-[#8da0b2] line-through" : "text-[#122c4a]")}>{item.text}</span>
+                    <span className={cn("text-sm font-medium", on ? "text-muted-foreground line-through" : "text-foreground")}>{item.text}</span>
                   </button>
                   {item.custom && (
                     <button
                       type="button"
                       onClick={() => removeCustom(item.id)}
                       aria-label="Maddeyi sil"
-                      className="mr-1 grid size-10 shrink-0 place-items-center rounded-full text-[#b4c1ce] active:bg-red-50 active:text-red-600"
+                      className="mr-1 grid size-10 shrink-0 place-items-center rounded-full text-muted-foreground/60 active:bg-red-50 active:text-red-600"
                     >
                       <Trash2 className="size-4" />
                     </button>
@@ -201,18 +201,18 @@ export function ChecklistTool() {
           onKeyDown={(e) => { if (e.key === "Enter") addCustom() }}
           placeholder="Kendi maddenizi ekleyin (örn: Termos, şarj aleti)"
           maxLength={80}
-          className="h-12 min-w-0 flex-1 rounded-xl border border-[#dbe3ec] bg-white px-3.5 text-base text-[#122c4a] outline-none placeholder:text-[#a3b1c0] focus:border-[#122c4a] focus:ring-4 focus:ring-[#122c4a]/10 md:text-sm"
+          className="h-12 min-w-0 flex-1 rounded-xl border border-input bg-card px-3.5 text-base text-foreground outline-none placeholder:text-muted-foreground/70 focus:border-primary focus:ring-4 focus:ring-ring/10 md:text-sm"
         />
         <button
           type="button"
           onClick={addCustom}
           disabled={!draft.trim()}
-          className="inline-flex h-12 shrink-0 items-center gap-1.5 rounded-xl bg-[#122c4a] px-4 text-sm font-semibold text-white disabled:opacity-40"
+          className="inline-flex h-12 shrink-0 items-center gap-1.5 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground disabled:opacity-40"
         >
           <Plus className="size-4" /> Ekle
         </button>
       </div>
-      <p className="text-[11px] leading-relaxed text-[#8da0b2]">Liste her gün yeniden başlar. Eklediğiniz maddeler cihazınızda saklanır.</p>
+      <p className="text-[11px] leading-relaxed text-muted-foreground">Liste her gün yeniden başlar. Eklediğiniz maddeler cihazınızda saklanır.</p>
     </div>
   )
 }
