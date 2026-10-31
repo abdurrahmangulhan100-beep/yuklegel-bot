@@ -74,13 +74,13 @@
   --chart-5: oklch(0.269 0 0);
   --radius: 0.75rem;
   --brand: #d64526;
-  --sidebar: #122c4a;
-  --sidebar-foreground: #ffffff;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #122c4a;
   --sidebar-primary: #d64526;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #1a3d68;
-  --sidebar-accent-foreground: #ffffff;
-  --sidebar-border: rgba(255, 255, 255, 0.1);
+  --sidebar-accent: #f1f4f8;
+  --sidebar-accent-foreground: #122c4a;
+  --sidebar-border: #e6ebf1;
   --sidebar-ring: #315d83;
 }
 
@@ -301,3 +301,6 @@
 .dark .border-amber-300{border-color:rgb(251 191 36/.3)}
 .dark .border-gray-100{border-color:var(--border)}
 .dark input,.dark textarea,.dark select{color-scheme:dark}
+
+/* Gece modunda araç görselleri koyu zeminde kaybolmasın */
+.dark img[src^="/vehicles/"]{filter:drop-shadow(0 0 1px rgba(255,255,255,.6)) brightness(1.15) saturate(1.1)}
