@@ -104,7 +104,7 @@ Deno.serve(async (req: Request) => {
       return json(req, { error: "Kayıt hatası" }, 500)
     }
 
-    return json(req, { premium: ev.entitled, status: ev.status, expiresAt: ev.expiresAt })
+    return json(req, { premium: ev.entitled, status: ev.status, expiresAt: ev.expiresAt, pending: ev.pending })
   } catch (e) {
     console.error("premium verify hatası:", e)
     return json(req, { error: "Sunucu hatası" }, 500)
