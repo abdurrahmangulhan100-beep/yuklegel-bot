@@ -190,7 +190,11 @@ export function CreateListingModal({ isOpen, onClose, onSuccess }: CreateListing
         setErrorMsg(
           error.code === "42501"
             ? "Bu işlem için yetkiniz yok. Çıkış yapıp tekrar giriş yapmayı deneyin."
-            : "İlan şu an kaydedilemedi. İnternet bağlantınızı kontrol edip tekrar deneyin."
+            : error.message?.includes("ilan_limit")
+              ? "Saatlik ilan sınırına ulaştınız. Lütfen bir süre sonra tekrar deneyin."
+              : error.message?.includes("ilan_tekrar")
+                ? "Bu ilanı kısa süre önce zaten yayınladınız."
+                : "İlan şu an kaydedilemedi. İnternet bağlantınızı kontrol edip tekrar deneyin."
         )
         return
       }
