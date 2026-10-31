@@ -618,7 +618,7 @@ export default function Page() {
       />
 
       <div className={cn("min-h-dvh transition-[padding] duration-200 lg:pl-[272px]", isCollapsed && "lg:pl-[78px]")}>
-        <header className="sticky top-0 z-30 border-b border-border bg-background pt-safe">
+        <header className="sticky top-0 z-30 border-b border-border bg-background/80 backdrop-blur-xl pt-safe">
           <div className="flex flex-col gap-2.5 px-4 pb-3 pt-3 sm:px-8 lg:h-[76px] lg:flex-row lg:items-center lg:justify-between lg:gap-4 lg:py-0">
             {/* Mobil: marka + aksiyonlar */}
             <div className="flex items-center justify-between gap-3 lg:hidden">
