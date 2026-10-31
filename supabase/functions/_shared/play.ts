@@ -58,6 +58,8 @@ export type Evaluated = {
   expiresAt: string | null
   orderId: string | null
   needsAck: boolean
+  /** Ödeme henüz onaylanmadı (ör. bekleyen/yavaş ödeme yöntemi). Onaylanınca RTDN ile otomatik aktif olur. */
+  pending: boolean
 }
 
 // deno-lint-ignore no-explicit-any
@@ -76,6 +78,7 @@ export function evaluate(sub: any): Evaluated | null {
     expiresAt,
     orderId: sub.latestOrderId || null,
     needsAck: entitled && sub.acknowledgementState === "ACKNOWLEDGEMENT_STATE_PENDING",
+    pending: sub.subscriptionState === "SUBSCRIPTION_STATE_PENDING",
   }
 }
 
