@@ -159,7 +159,7 @@ export function NotificationSettings() {
   // Ücretsiz kullanıcı: kilitli kart
   if (!premiumLoading && !isPremium) {
     return (
-      <div className="space-y-3 rounded-2xl border border-[#f3dfb0] bg-[#fff9ec] p-5 shadow-sm">
+      <div className="space-y-3 rounded-2xl border border-[#f3dfb0] bg-muted/60 p-5 shadow-sm">
         <div className="flex items-start gap-3">
           <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-[#fdecc4] text-[#8a5a00] dark:text-amber-300">
             <Lock className="size-5" />
@@ -186,7 +186,7 @@ export function NotificationSettings() {
     <div className="space-y-4 rounded-2xl border border-border bg-card p-5 shadow-sm">
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-start gap-3">
-          <span className={`grid size-10 shrink-0 place-items-center rounded-xl ${on ? "bg-[#e7f6ec] text-[#1f9d55]" : "bg-muted text-foreground/80"}`}>
+          <span className={`grid size-10 shrink-0 place-items-center rounded-xl ${on ? "bg-muted/60 text-[#1f9d55]" : "bg-muted text-foreground/80"}`}>
             {on ? <Bell className="size-5" /> : <BellOff className="size-5" />}
           </span>
           <div className="min-w-0">
@@ -209,10 +209,10 @@ export function NotificationSettings() {
       </div>
 
       {state === "unsupported" && (
-        <p className="rounded-lg bg-[#fff6e5] dark:bg-amber-400/15 p-3 text-xs text-[#8a5a00] dark:text-amber-300">Bu cihaz veya tarayıcı bildirimleri desteklemiyor.</p>
+        <p className="rounded-lg bg-muted/60 dark:bg-amber-400/15 p-3 text-xs text-[#8a5a00] dark:text-amber-300">Bu cihaz veya tarayıcı bildirimleri desteklemiyor.</p>
       )}
       {state === "denied" && (
-        <p className="rounded-lg bg-[#fff6e5] dark:bg-amber-400/15 p-3 text-xs text-[#8a5a00] dark:text-amber-300">
+        <p className="rounded-lg bg-muted/60 dark:bg-amber-400/15 p-3 text-xs text-[#8a5a00] dark:text-amber-300">
           Bildirim izni engellenmiş. Telefon ayarlarından Nakliye Cepte için bildirimlere izin verip sayfayı yenileyin.
         </p>
       )}
