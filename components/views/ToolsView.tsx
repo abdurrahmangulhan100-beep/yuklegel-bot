@@ -17,8 +17,8 @@ type ToolKey = "tacho" | "planner" | "docs" | "volume" | "check" | "fuel"
 
 const TOOLS: { key: ToolKey; title: string; desc: string; icon: LucideIcon; tone: string }[] = [
   { key: "tacho", title: "Takograf Sayacı", desc: "4,5 saat mola, günlük 9 saat ve haftalık 56 saat sürüş limitlerini canlı takip edin.", icon: Timer, tone: "bg-amber-50 text-amber-600" },
-  { key: "planner", title: "Varış Süresi Planlayıcı", desc: "Zorunlu mola ve dinlenmeler dahil, yola çıkış saatinize göre tahmini varışı görün.", icon: RouteIcon, tone: "bg-[#eef4f8] text-[#315d83]" },
-  { key: "docs", title: "Belge Hatırlatıcı", desc: "Muayene, sigorta, SRC, takograf kalibrasyonu gibi bitiş tarihlerini takip edin.", icon: CalendarClock, tone: "bg-[#fff0ec] text-[#d64526]" },
+  { key: "planner", title: "Varış Süresi Planlayıcı", desc: "Zorunlu mola ve dinlenmeler dahil, yola çıkış saatinize göre tahmini varışı görün.", icon: RouteIcon, tone: "bg-muted text-foreground/80" },
+  { key: "docs", title: "Belge Hatırlatıcı", desc: "Muayene, sigorta, SRC, takograf kalibrasyonu gibi bitiş tarihlerini takip edin.", icon: CalendarClock, tone: "bg-[#fff0ec] dark:bg-brand/15 text-brand" },
   { key: "check", title: "Sefer Öncesi Kontrol", desc: "Araç, evrak, yük ve güvenlik ekipmanı için günlük kontrol listesi; kendi maddelerinizi de ekleyin.", icon: ClipboardCheck, tone: "bg-sky-50 text-sky-600" },
   { key: "fuel", title: "Yakıt Defteri", desc: "Yakıt alımlarını kaydedin; ortalama L/100 km tüketiminizi hesaplayıp Sefer Hesapla'ya aktarın.", icon: Fuel, tone: "bg-violet-50 text-violet-600" },
   { key: "volume", title: "Hacim, Desi & Ladin Metre", desc: "Palet ve koli ölçülerinden m³, desi ve LDM hesaplayın; tıra ne kadar sığdığını görün.", icon: Boxes, tone: "bg-emerald-50 text-emerald-600" },
@@ -56,10 +56,10 @@ export function ToolsView() {
     return (
       <div className="space-y-5">
         <div>
-          <button onClick={() => setActive(null)} className="mb-2 inline-flex h-10 items-center gap-1.5 rounded-full bg-white px-3.5 text-xs font-semibold text-[#315d83] ring-1 ring-[#e4e9ef] hover:bg-[#f5f7fa]">
+          <button onClick={() => setActive(null)} className="mb-2 inline-flex h-10 items-center gap-1.5 rounded-full bg-card px-3.5 text-xs font-semibold text-foreground/80 ring-1 ring-[#e4e9ef] hover:bg-muted">
             <ArrowLeft className="size-4" /> Tüm araçlar
           </button>
-          <h1 className="text-2xl font-extrabold tracking-tight text-[#122c4a] sm:text-3xl">{current.title}</h1>
+          <h1 className="text-2xl font-extrabold tracking-tight text-foreground sm:text-3xl">{current.title}</h1>
         </div>
         {active === "tacho" && <TachographTool />}
         {active === "planner" && <TripPlannerTool />}
@@ -74,9 +74,9 @@ export function ToolsView() {
   return (
     <div className="space-y-5">
       <div>
-        <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-[#d64526]">Yolda yanınızda</p>
-        <h1 className="text-2xl font-extrabold tracking-tight text-[#122c4a] sm:text-3xl">Şoför Araçları</h1>
-        <p className="mt-1 text-sm text-[#627d98]">Sürüş, evrak, yakıt ve yük planlaması için pratik araçlar. Veriler yalnızca cihazınızda saklanır.</p>
+        <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-brand">Yolda yanınızda</p>
+        <h1 className="text-2xl font-extrabold tracking-tight text-foreground sm:text-3xl">Şoför Araçları</h1>
+        <p className="mt-1 text-sm text-muted-foreground">Sürüş, evrak, yakıt ve yük planlaması için pratik araçlar. Veriler yalnızca cihazınızda saklanır.</p>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2">
@@ -87,23 +87,23 @@ export function ToolsView() {
             <button
               key={t.key}
               onClick={() => (locked ? openPremium() : setActive(t.key))}
-              className="group flex items-start gap-4 rounded-2xl border border-[#e4e9ef] bg-white p-4 text-left shadow-[0_1px_2px_rgba(18,44,74,0.04)] transition-all hover:shadow-md active:scale-[0.99] sm:p-5"
+              className="group flex items-start gap-4 rounded-2xl border border-border bg-card p-4 text-left shadow-[0_1px_2px_rgba(18,44,74,0.04)] transition-all hover:shadow-md active:scale-[0.99] sm:p-5"
             >
               <span className={cn("grid size-12 shrink-0 place-items-center rounded-2xl", t.tone)}>
                 <t.icon className="size-6" />
               </span>
               <span className="min-w-0 flex-1">
                 <span className="flex items-center gap-2">
-                  <span className="text-[15px] font-bold text-[#122c4a]">{t.title}</span>
+                  <span className="text-[15px] font-bold text-foreground">{t.title}</span>
                   {locked ? (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-[#fff1cf] px-2 py-0.5 text-[10px] font-bold text-[#b58200]"><Crown className="size-3" />PREMIUM</span>
+                    <span className="inline-flex items-center gap-1 rounded-full bg-[#fff1cf] px-2 py-0.5 text-[10px] font-bold text-[#b58200] dark:text-amber-300"><Crown className="size-3" />PREMIUM</span>
                   ) : (
                     b && <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-bold", b.tone)}>{b.text}</span>
                   )}
                 </span>
-                <span className="mt-1 block text-xs leading-relaxed text-[#718397]">{t.desc}</span>
+                <span className="mt-1 block text-xs leading-relaxed text-muted-foreground">{t.desc}</span>
               </span>
-              <ChevronRight className="mt-1 size-4 shrink-0 text-[#b4c1ce] transition-transform group-hover:translate-x-0.5" />
+              <ChevronRight className="mt-1 size-4 shrink-0 text-muted-foreground/60 transition-transform group-hover:translate-x-0.5" />
             </button>
           )
         })}
