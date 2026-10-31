@@ -1,5 +1,6 @@
 "use client"
 
+import { toast } from "@/lib/toast"
 import { useState, useEffect, useMemo, useCallback } from "react"
 import { supabase } from "@/lib/supabase"
 import {
@@ -428,7 +429,7 @@ export function FinanceView() {
     if (!confirm("Bu kaydı silmek istediğinize emin misiniz?")) return
     const { error } = await supabase.from("finances").delete().eq("id", item.id)
     if (error) {
-      alert("Silinemedi: " + error.message)
+      toast("Silinemedi: " + error.message)
       return
     }
     fetchFinances()
