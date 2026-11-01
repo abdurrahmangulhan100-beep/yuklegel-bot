@@ -117,10 +117,10 @@ export function OverviewView({ loads, currentUserId, onOpenCreate, setActiveTab,
               <button
                 key={name}
                 onClick={() => (onPickFilter ? onPickFilter(name) : setActiveTab("İlanlar"))}
-                className="flex h-[88px] w-[96px] shrink-0 flex-col items-center justify-between rounded-2xl border border-border bg-card px-2 pb-2 pt-2.5 text-[11.5px] font-bold text-foreground/80 shadow-[0_1px_2px_rgba(18,44,74,0.04)] transition-all active:scale-95"
+                className="flex h-[92px] w-[104px] shrink-0 flex-col items-center justify-between gap-1 rounded-2xl border border-border bg-card px-1.5 pb-2 pt-2 text-[11px] font-bold leading-tight text-foreground/80 shadow-[0_1px_2px_rgba(18,44,74,0.04)] transition-all active:scale-95"
               >
-                <span className="flex h-11 w-full items-center justify-center"><VehicleIcon kind={kind} className="h-full w-full" /></span>
-                <span className="whitespace-nowrap">{name}</span>
+                <span className="flex h-11 w-full items-center justify-center rounded-xl dark:bg-white/[0.07] dark:px-1"><VehicleIcon kind={kind} className="h-[84%] w-full" /></span>
+                <span className="line-clamp-1 w-full text-center">{name}</span>
               </button>
             ))}
           </div>
