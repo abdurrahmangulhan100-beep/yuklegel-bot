@@ -4,7 +4,6 @@ import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
-import { signOutClean } from "@/lib/push"
 import { Eye, EyeOff, Truck, ShieldCheck, Zap } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { LogoMark } from "@/components/Logo"
@@ -167,7 +166,7 @@ export default function LoginPage() {
     setLoading(true)
     try {
       // Misafir moduna geçerken eski Supabase oturumunu KESİNLİKLE kapat
-      await signOutClean()
+      if (supabase) await supabase.auth.signOut()
       localStorage.removeItem("favorite_loads")
       localStorage.setItem("is_guest", "true")
       
