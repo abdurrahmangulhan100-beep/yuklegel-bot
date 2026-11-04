@@ -16,7 +16,7 @@ export function ContentPage({ title, subtitle, children }: { title: string; subt
       <div className="mx-auto max-w-3xl">
         <div className="mb-4 flex items-center justify-between">
           <Link href="/" className="text-lg font-extrabold tracking-tight text-foreground">Nakliye Cepte</Link>
-          <Link href="/login" className="inline-flex items-center gap-1.5 rounded-lg bg-background px-3 py-2 text-xs font-semibold text-foreground/80 hover:text-foreground">
+          <Link href="/" className="inline-flex items-center gap-1.5 rounded-lg bg-background px-3 py-2 text-xs font-semibold text-foreground/80 hover:text-foreground">
             <ArrowLeft className="size-4" /> Uygulamaya git
           </Link>
         </div>
