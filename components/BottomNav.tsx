@@ -25,7 +25,7 @@ export function BottomNav({ activeTab, setActiveTab, onOpenCreate, onOpenMenu, f
   return (
     <nav
       aria-label="Ana gezinme"
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card/90 backdrop-blur-md pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_16px_rgba(18,44,74,0.06)] lg:hidden"
+      className="glass fixed inset-x-0 bottom-0 z-40 border-t border-border/70 pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_24px_rgba(18,44,74,0.08)] lg:hidden"
     >
       <div className="mx-auto grid h-16 max-w-xl grid-cols-5 items-stretch px-1">
         <Tab icon={LayoutDashboard} label="Ana Sayfa" active={isHome} onClick={() => setActiveTab("Genel Bakış")} />
@@ -36,7 +36,7 @@ export function BottomNav({ activeTab, setActiveTab, onOpenCreate, onOpenMenu, f
             type="button"
             onClick={() => { tap(); onOpenCreate() }}
             aria-label="Yeni ilan oluştur"
-            className="absolute -top-5 grid size-14 place-items-center rounded-full bg-gradient-to-br from-brand to-brand/80 text-white shadow-[0_8px_20px_rgba(214,69,38,0.45)] ring-4 ring-white transition-transform active:scale-95"
+            className="absolute -top-5 grid size-14 place-items-center rounded-full bg-brand-gradient text-white shadow-[0_8px_20px_rgba(214,69,38,0.45)] ring-4 ring-background transition-transform active:scale-95"
           >
             <Plus className="size-7" strokeWidth={2.5} />
           </button>
@@ -73,7 +73,7 @@ function Tab({
       <span
         className={cn(
           "relative grid h-7 w-12 place-items-center rounded-full transition-colors",
-          active ? "bg-brand/12 text-brand" : "text-muted-foreground"
+          active ? "bg-brand/15 text-brand" : "text-muted-foreground"
         )}
       >
         <Icon className="size-[22px]" strokeWidth={active ? 2.4 : 2} />
