@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
@@ -12,6 +12,13 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [errorMsg, setErrorMsg] = useState("")
   const [accepted, setAccepted] = useState(true)
+
+  // Zaten giriş yapılmışsa login ekranında bekletme
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session) router.replace("/")
+    })
+  }, [router])
 
   const handleGoogleLogin = async () => {
     setErrorMsg("")
