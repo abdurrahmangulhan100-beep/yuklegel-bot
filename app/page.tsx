@@ -237,9 +237,10 @@ export default function Page() {
       const dc = delayCutoff(isPremiumRef.current)
       const late = <T extends { lte: (c: string, v: string) => T }>(q: T) => (dc ? q.lte("created_at", dc) : q)
       const [u, b, uu, bu] = await Promise.all([
-        late(supabase.from("listings").select("id", head)),
+        // Kullanıcı ilanları tüm hesaplarda anında görünür.
+        supabase.from("listings").select("id", head),
         late(supabase.from("bot_listings").select("id", head).gte("created_at", cutoff)),
-        late(supabase.from("listings").select("id", head).eq("urgent", true)),
+        supabase.from("listings").select("id", head).eq("urgent", true),
         late(supabase.from("bot_listings").select("id", head).ilike("cargo_detail", "%acil%").gte("created_at", cutoff)),
       ])
       setTotals({ user: u.count ?? 0, bot: b.count ?? 0, urgent: (uu.count ?? 0) + (bu.count ?? 0) })
@@ -265,10 +266,10 @@ export default function Page() {
       let userReq = supabase.from("listings").select("*")
       let botReq = supabase.from("bot_listings").select("*").gte("created_at", botCutoff())
 
-      // Ücretsiz plan: yeni ilanlar FREE_DELAY_MINUTES dakika sonra görünür (kendi ilanların aşağıda ayrıca gelir)
+      // Kullanıcı ilanları tüm hesaplarda anında görünür.
+      // Ücretsiz plan gecikmesi yalnızca bot/saha ilanlarına uygulanır.
       const dc = delayCutoff(isPremiumRef.current)
       if (dc) {
-        userReq = userReq.lte("created_at", dc)
         botReq = botReq.lte("created_at", dc)
       }
 
