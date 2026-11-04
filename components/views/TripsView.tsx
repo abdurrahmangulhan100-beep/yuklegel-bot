@@ -48,14 +48,24 @@ export function TripsView({ loads, currentUserId, onChanged }: TripsViewProps) {
     if (!confirm("Bu seferi/ilanı silmek istediğinize emin misiniz?")) return
     
     const realId = String(id).replace("user-", "")
-    
+
+    // İstemci tarafındaki liste filtresine ek olarak yazma sorgusunu da kullanıcıya bağla.
+    if (!currentUserId) {
+      toast("İlanı silmek için giriş yapmalısınız.")
+      return
+    }
+
     if (!supabase) {
       toast("Supabase bağlantısı kurulamadı!")
       return
     }
 
     setDeletingId(String(id))
-    const { error } = await supabase.from("listings").delete().eq("id", realId)
+    const { error } = await supabase
+      .from("listings")
+      .delete()
+      .eq("id", realId)
+      .eq("user_id", currentUserId)
     setDeletingId(null)
 
     if (error) {
@@ -72,12 +82,13 @@ export function TripsView({ loads, currentUserId, onChanged }: TripsViewProps) {
 
   // İlanı listenin en üstüne taşır (yeniden yayınlamadan)
   const handleBump = async (id: string) => {
-    if (!supabase) return
+    if (!supabase || !currentUserId) return
     setBumpingId(id)
     const { error } = await supabase
       .from("listings")
       .update({ created_at: new Date().toISOString() })
       .eq("id", id.replace("user-", ""))
+      .eq("user_id", currentUserId)
     setBumpingId(null)
     if (error) {
       toast("İlan yenilenemedi: " + error.message)
@@ -97,7 +108,7 @@ export function TripsView({ loads, currentUserId, onChanged }: TripsViewProps) {
 
   const handleComplete = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!completing || !supabase) return
+    if (!completing || !supabase || !currentUserId) return
     const amountNum = Number(doneAmount.replace(",", "."))
     if (!Number.isFinite(amountNum) || amountNum <= 0) {
       setDoneError("Lütfen sıfırdan büyük bir tutar girin.")
@@ -130,7 +141,11 @@ export function TripsView({ loads, currentUserId, onChanged }: TripsViewProps) {
     }
 
     if (removeAfter) {
-      const { error: delError } = await supabase.from("listings").delete().eq("id", String(completing.id).replace("user-", ""))
+      const { error: delError } = await supabase
+        .from("listings")
+        .delete()
+        .eq("id", String(completing.id).replace("user-", ""))
+        .eq("user_id", currentUserId)
       if (delError) {
         setDoneSaving(false)
         setDoneError("Gelir eklendi ama ilan kaldırılamadı: " + delError.message)
@@ -151,6 +166,11 @@ export function TripsView({ loads, currentUserId, onChanged }: TripsViewProps) {
     setErrorMsg(null)
 
     const realId = String(editingLoad.id).replace("user-", "")
+    if (!currentUserId) {
+      setSaving(false)
+      setErrorMsg("İlanı düzenlemek için giriş yapmalısınız.")
+      return
+    }
     const formData = new FormData(e.currentTarget)
     const priceNum = Number(formData.get("price"))
     
@@ -168,7 +188,11 @@ export function TripsView({ loads, currentUserId, onChanged }: TripsViewProps) {
       return
     }
 
-    const { error } = await supabase.from("listings").update(updatedData).eq("id", realId)
+    const { error } = await supabase
+      .from("listings")
+      .update(updatedData)
+      .eq("id", realId)
+      .eq("user_id", currentUserId)
 
     setSaving(false)
     if (error) {
