@@ -23,6 +23,6 @@ export function VehicleIcon({ vehicle, kind, className }: { vehicle?: string | n
   const k = kind ?? vehicleKind(vehicle)
   return (
     // eslint-disable-next-line @next/next/no-img-element
-    <img src={`/vehicles/${k}.webp`} alt="" aria-hidden draggable={false} loading="lazy" decoding="async" className={cn("select-none object-contain [filter:drop-shadow(0_1px_1px_rgba(18,44,74,0.18))] dark:[filter:brightness(1.45)_saturate(1.15)_contrast(1.05)_drop-shadow(0_0_5px_rgba(120,170,255,0.28))]", className)} />
+    <img src={`/vehicles/${k}.webp`} alt="" aria-hidden draggable={false} loading="lazy" decoding="async" className={cn("select-none object-contain [filter:drop-shadow(0_1px_1px_rgba(18,44,74,0.18))] dark:[filter:brightness(1.12)_saturate(1.08)]", className)} />
   )
 }
