@@ -49,7 +49,7 @@
 
 :root {
   color-scheme: light;
-  --background: #f5f7fa;
+  --background: #f3f6fb;
   --foreground: #122c4a;
   --card: #ffffff;
   --card-foreground: #122c4a;
@@ -59,12 +59,12 @@
   --primary-foreground: #ffffff;
   --secondary: #eef4f8;
   --secondary-foreground: #122c4a;
-  --muted: #f0f4f8;
-  --muted-foreground: #627d98;
+  --muted: #eef2f8;
+  --muted-foreground: #5a6f88;
   --accent: #eef4f8;
   --accent-foreground: #122c4a;
   --destructive: #d64526;
-  --border: #e4e9ef;
+  --border: #e2e8f1;
   --input: #dbe3ec;
   --ring: #315d83;
   --chart-1: oklch(0.87 0 0);
@@ -72,13 +72,13 @@
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
-  --radius: 0.75rem;
+  --radius: 0.875rem;
   --brand: #d64526;
   --sidebar: #ffffff;
   --sidebar-foreground: #122c4a;
   --sidebar-primary: #d64526;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #f1f4f8;
+  --sidebar-accent: #eef2f8;
   --sidebar-accent-foreground: #122c4a;
   --sidebar-border: #e6ebf1;
   --sidebar-ring: #315d83;
@@ -86,17 +86,17 @@
 
 .dark {
   color-scheme: dark;
-  --background: #0b1220;
+  --background: #080e1a;
   --foreground: #e8eef6;
-  --card: #121b2c;
+  --card: #101a2b;
   --card-foreground: #e8eef6;
-  --popover: #121b2c;
+  --popover: #101a2b;
   --popover-foreground: #e8eef6;
   --primary: #e8eef6;
   --primary-foreground: #0b1220;
   --secondary: #182338;
   --secondary-foreground: #e8eef6;
-  --muted: #182338;
+  --muted: #16223a;
   --muted-foreground: #93a4bb;
   --accent: #182338;
   --accent-foreground: #e8eef6;
@@ -105,7 +105,7 @@
   --input: rgba(255, 255, 255, 0.12);
   --ring: #f26a3d;
   --brand: #f26a3d;
-  --sidebar: #0e1626;
+  --sidebar: #0b1424;
   --sidebar-foreground: #e8eef6;
   --sidebar-primary: #f26a3d;
   --sidebar-primary-foreground: #ffffff;
@@ -121,7 +121,10 @@
   }
   html {
     -webkit-text-size-adjust: 100%;
-    background-color: #f5f7fa;
+    background-color: #f3f6fb;
+  }
+  html.dark {
+    background-color: #080e1a;
   }
   body {
     @apply bg-background text-foreground;
@@ -304,3 +307,27 @@
 
 /* Gece modunda araç görselleri koyu zeminde kaybolmasın */
 .dark img[src^="/vehicles/"]{filter:drop-shadow(0 0 1px rgba(255,255,255,.6)) brightness(1.15) saturate(1.1)}
+
+
+/* ---- Modern görünüm yardımcıları ---- */
+@utility bg-brand-gradient {
+  background-image: linear-gradient(135deg, #f26a3d 0%, #d64526 100%);
+}
+@utility bg-navy-gradient {
+  background-image: linear-gradient(135deg, #1b4572 0%, #122c4a 60%, #0b1d33 100%);
+}
+@utility shadow-card {
+  box-shadow: 0 1px 2px rgba(18, 44, 74, 0.05), 0 6px 20px rgba(18, 44, 74, 0.06);
+}
+@utility shadow-card-hover {
+  box-shadow: 0 2px 4px rgba(18, 44, 74, 0.06), 0 12px 28px rgba(18, 44, 74, 0.10);
+}
+@utility glass {
+  background-color: color-mix(in srgb, var(--card) 82%, transparent);
+  backdrop-filter: blur(14px) saturate(1.4);
+  -webkit-backdrop-filter: blur(14px) saturate(1.4);
+}
+.dark .shadow-card,
+.dark .shadow-card-hover {
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 8px 24px rgba(0, 0, 0, 0.35);
+}
