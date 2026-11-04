@@ -1,12 +1,13 @@
 "use client"
 
 import { useMemo } from "react"
-import { Truck, Package, Zap, ArrowRight, Plus, Calculator, WalletCards, CircleHelp, ChevronRight, MapPin, TrendingUp, Timer, Search, Star } from "lucide-react"
+import { Truck, Package, Zap, ArrowRight, Plus, Calculator, WalletCards, CircleHelp, ChevronRight, MapPin, TrendingUp, Timer, Search, Star, Crown } from "lucide-react"
 import { VehicleIcon, type VehicleKind } from "@/components/VehicleIcon"
 import { Load } from "@/components/LoadCard"
 import { cn } from "@/lib/utils"
 import { AdSlot } from "@/components/AdSlot"
 import { hidePhones } from "@/lib/listings"
+import { usePremium } from "@/components/PremiumProvider"
 
 type OverviewProps = {
   loads: Load[];
@@ -35,6 +36,7 @@ const headline = (l: Load) => {
 const subline = (l: Load) => [(l.cities ?? []).slice(0, 3).join(" · "), l.vehicle, l.time].filter(Boolean).join(" • ")
 
 export function OverviewView({ loads, currentUserId, onOpenCreate, setActiveTab, totalCount, urgentCount, userName, onSelectCity, onOpenUrgent, onPickFilter, favoritesCount = 0 }: OverviewProps) {
+  const { isPremium } = usePremium()
   // SADECE O ANKİ KULLANICININ İLANLARINI FİLTRELE
   const userLoads = loads.filter(
     (l) => l.source === "user" && l.userId && currentUserId && l.userId === currentUserId
@@ -94,16 +96,32 @@ export function OverviewView({ loads, currentUserId, onOpenCreate, setActiveTab,
           <button
             key={x.label}
             onClick={() => setActiveTab(x.tab)}
-            className="flex flex-col items-center gap-2 rounded-3xl border border-border bg-card px-1 py-4 shadow-[0_1px_2px_rgba(18,44,74,0.04)] transition-all active:scale-95"
+            className="flex flex-col items-center gap-2 rounded-3xl border border-border bg-card px-1 py-4 shadow-card transition-all active:scale-95"
           >
             <span className="relative grid size-14 place-items-center rounded-full bg-muted/60 dark:bg-brand/15 text-brand">
               <x.icon className="size-6" />
-              {x.badge && <span className="absolute -right-2 -top-1.5 rounded-full bg-brand px-1.5 py-0.5 text-[10px] font-bold leading-none text-white ring-2 ring-white">{x.badge}</span>}
+              {x.badge && <span className="absolute -right-2 -top-1.5 rounded-full bg-brand px-1.5 py-0.5 text-[10px] font-bold leading-none text-white ring-2 ring-card">{x.badge}</span>}
             </span>
             <span className="text-[12px] font-bold text-foreground">{x.label}</span>
           </button>
         ))}
       </section>
+
+      {/* Premium bandı */}
+      {!isPremium && (
+        <button
+          type="button"
+          onClick={() => setActiveTab("Premium")}
+          className="group flex w-full items-center gap-3 rounded-2xl bg-navy-gradient p-4 text-left text-white shadow-card transition-transform active:scale-[0.99]"
+        >
+          <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-brand-gradient shadow-md shadow-[#d64526]/30"><Crown className="size-5" /></span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-bold">Premium ile daha fazlasını açın</span>
+            <span className="block text-xs text-white/65">Anlık ilanlar, sınırsız ilan ve gelişmiş araçlar</span>
+          </span>
+          <ArrowRight className="size-4 shrink-0 text-white/70 transition-transform group-hover:translate-x-0.5" />
+        </button>
+      )}
 
       {/* Popüler araçlar */}
       <section>
@@ -117,9 +135,9 @@ export function OverviewView({ loads, currentUserId, onOpenCreate, setActiveTab,
               <button
                 key={name}
                 onClick={() => (onPickFilter ? onPickFilter(name) : setActiveTab("İlanlar"))}
-                className="flex h-[92px] w-[104px] shrink-0 flex-col items-center justify-between gap-1 rounded-2xl border border-border bg-card px-1.5 pb-2 pt-2 text-[11px] font-bold leading-tight text-foreground/80 shadow-[0_1px_2px_rgba(18,44,74,0.04)] transition-all active:scale-95"
+                className="flex h-[92px] w-[104px] shrink-0 flex-col items-center justify-between gap-1 rounded-2xl border border-border bg-card px-1.5 pb-2 pt-2 text-[11px] font-bold leading-tight text-foreground/80 shadow-card transition-all active:scale-95"
               >
-                <span className="flex h-11 w-full items-center justify-center rounded-xl dark:bg-white/[0.07] dark:px-1"><VehicleIcon kind={kind} className="h-[84%] w-full" /></span>
+                <span className="flex h-11 w-full items-center justify-center rounded-xl dark:px-1"><VehicleIcon kind={kind} className="h-[84%] w-full" /></span>
                 <span className="line-clamp-1 w-full text-center">{name}</span>
               </button>
             ))}
@@ -166,7 +184,7 @@ export function OverviewView({ loads, currentUserId, onOpenCreate, setActiveTab,
 
       {/* Yoğun bölgeler */}
       {hot.cities.length > 0 && (
-        <section className="rounded-3xl border border-border bg-card p-4 shadow-[0_1px_2px_rgba(18,44,74,0.04)] sm:p-6">
+        <section className="rounded-3xl border border-border bg-card p-4 shadow-card sm:p-6">
           <h2 className="mb-3 flex items-center gap-1.5 text-base font-bold text-foreground">
             <TrendingUp className="size-4 text-foreground/80" /> İlanı Çok Olan Şehirler
           </h2>
@@ -194,7 +212,7 @@ export function OverviewView({ loads, currentUserId, onOpenCreate, setActiveTab,
             <button
               key={a.label}
               onClick={() => setActiveTab(a.tab)}
-              className="flex flex-col items-center gap-2 rounded-2xl border border-border bg-card px-1 py-3.5 shadow-[0_1px_2px_rgba(18,44,74,0.04)] transition-all hover:shadow-md active:scale-95"
+              className="flex flex-col items-center gap-2 rounded-2xl border border-border bg-card px-1 py-3.5 shadow-card transition-all hover:shadow-md active:scale-95"
             >
               <span className={cn("grid size-11 place-items-center rounded-2xl", a.tone)}>
                 <a.icon className="size-[22px]" />
@@ -205,8 +223,9 @@ export function OverviewView({ loads, currentUserId, onOpenCreate, setActiveTab,
         </div>
       </section>
 
+      <div className="grid gap-5 sm:gap-6 lg:grid-cols-2 lg:items-start">
       {/* Son seferlerim */}
-      <section className="rounded-3xl border border-border bg-card p-4 shadow-[0_1px_2px_rgba(18,44,74,0.04)] sm:p-6">
+      <section className="rounded-3xl border border-border bg-card p-4 shadow-card sm:p-6">
         <div className="mb-2 flex items-center justify-between">
           <h2 className="text-base font-bold text-foreground">Son Seferlerim</h2>
           <button onClick={() => setActiveTab("Seferlerim")} className="flex items-center gap-1 text-xs font-semibold text-foreground/80">
@@ -245,7 +264,7 @@ export function OverviewView({ loads, currentUserId, onOpenCreate, setActiveTab,
 
       {/* Güncel ilanlar */}
       {latestLoads.length > 0 && (
-        <section className="rounded-3xl border border-border bg-card p-4 shadow-[0_1px_2px_rgba(18,44,74,0.04)] sm:p-6">
+        <section className="rounded-3xl border border-border bg-card p-4 shadow-card sm:p-6">
           <div className="mb-1 flex items-center justify-between">
             <h2 className="text-base font-bold text-foreground">Güncel İlanlar</h2>
             <button onClick={() => setActiveTab("İlanlar")} className="flex items-center gap-1 text-xs font-semibold text-foreground/80">
@@ -276,11 +295,13 @@ export function OverviewView({ loads, currentUserId, onOpenCreate, setActiveTab,
         </section>
       )}
 
+      </div>
+
       <AdSlot promoOnly />
 
       <button
         onClick={() => setActiveTab("Yardım Merkezi")}
-        className="flex w-full items-center gap-3 rounded-2xl border border-border bg-card p-4 text-left shadow-[0_1px_2px_rgba(18,44,74,0.04)] transition-colors hover:bg-muted/50"
+        className="flex w-full items-center gap-3 rounded-2xl border border-border bg-card p-4 text-left shadow-card transition-colors hover:bg-muted/50"
       >
         <span className="grid size-10 place-items-center rounded-xl bg-muted text-foreground/80"><CircleHelp className="size-5" /></span>
         <span className="flex-1">
