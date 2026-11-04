@@ -4,7 +4,7 @@ import { toast } from "@/lib/toast"
 import { realName } from "@/lib/names"
 import { useEffect, useMemo, useState, useRef, useCallback } from "react"
 import { useRouter } from "next/navigation"
-import { Bell, Search, LogIn, X } from "lucide-react"
+import { Bell, Search, LogIn, X, LayoutGrid } from "lucide-react"
 import { ThemeToggle } from "@/components/ThemeToggle"
 import { Input } from "@/components/ui/input"
 import { cn, timeAgo } from "@/lib/utils"
@@ -22,7 +22,7 @@ import { FinanceView } from "@/components/views/FinanceView"
 import { HelpCenterView } from "@/components/views/HelpCenterView"
 import { ToolsView } from "@/components/views/ToolsView"
 import { CreateListingModal } from "@/components/CreateListingModal"
-import { Sidebar } from "@/components/Sidebar"
+import { AppLauncher } from "@/components/AppLauncher"
 import { BottomNav } from "@/components/BottomNav"
 import { LogoMark } from "@/components/Logo"
 import { PremiumView } from "@/components/views/PremiumView"
@@ -100,7 +100,6 @@ export default function Page() {
   const queryRef = useRef("")
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
-  const [isCollapsed, setIsCollapsed] = useState(false)
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [activeTab, setActiveTab] = useState("Genel Bakış")
@@ -597,28 +596,20 @@ export default function Page() {
 
   return (
     <div className="min-h-dvh bg-background text-foreground">
-      {isSidebarOpen && (
-        <button 
-          aria-label="Menüyü kapat" 
-          className="animate-fade fixed inset-0 z-[45] bg-[#0b1d33]/55 lg:hidden" 
-          onClick={() => setIsSidebarOpen(false)} 
-        />
-      )}
-      
-      <Sidebar 
-        activeTab={activeTab} 
-        setActiveTab={setActiveTab} 
-        loadsCount={totalActive} 
+      <AppLauncher
+        open={isSidebarOpen}
+        onClose={() => setIsSidebarOpen(false)}
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        loadsCount={totalActive}
         favoritesCount={favoriteIds.length}
-        isCollapsed={isCollapsed} 
-        setIsCollapsed={setIsCollapsed} 
-        isSidebarOpen={isSidebarOpen} 
-        setIsSidebarOpen={setIsSidebarOpen} 
         isGuest={isGuest}
+        isPremium={isPremium}
         profile={profile}
+        onLogout={handleLogout}
       />
 
-      <div className={cn("min-h-dvh transition-[padding] duration-200 lg:pl-[272px]", isCollapsed && "lg:pl-[78px]")}>
+      <div className="min-h-dvh">
         <header className="sticky top-0 z-30 border-b border-border bg-background/80 backdrop-blur-xl pt-safe">
           <div className="flex flex-col gap-2.5 px-4 pb-3 pt-3 sm:px-8 lg:h-[76px] lg:flex-row lg:items-center lg:justify-between lg:gap-4 lg:py-0">
             {/* Mobil: marka + aksiyonlar */}
@@ -650,8 +641,38 @@ export default function Page() {
               </div>
             </div>
 
+            {/* Masaüstü: marka + üst gezinme (yan menü yerine) */}
+            <div className="hidden items-center gap-1 lg:flex">
+              <button onClick={() => setActiveTab("Genel Bakış")} className="mr-3 flex items-center gap-2.5" aria-label="Ana sayfa">
+                <LogoMark size={40} tile className="shrink-0 rounded-[10px] shadow-sm" />
+                <span className="text-[17px] font-bold tracking-tight">Nakliye Cepte</span>
+              </button>
+              {[
+                { tab: "Genel Bakış", label: "Ana Sayfa" },
+                { tab: "İlanlar", label: "İlanlar" },
+                { tab: "Seferlerim", label: "Seferlerim" },
+                { tab: "Gelir Gider", label: "Gelir & Gider" },
+                { tab: "Sefer Hesapla", label: "Sefer Hesapla" },
+              ].map((n) => {
+                const on = n.tab === "Genel Bakış" ? (activeTab === "Genel Bakış" || activeTab === "overview") : activeTab === n.tab
+                return (
+                  <button
+                    key={n.tab}
+                    onClick={() => setActiveTab(n.tab)}
+                    aria-current={on ? "page" : undefined}
+                    className={cn("rounded-xl px-3 py-2 text-sm font-medium transition-colors", on ? "bg-brand/10 font-semibold text-brand" : "text-muted-foreground hover:bg-card hover:text-foreground")}
+                  >
+                    {n.label}
+                  </button>
+                )
+              })}
+              <button onClick={() => setIsSidebarOpen(true)} className="ml-1 flex items-center gap-1.5 rounded-xl border border-border bg-card px-3 py-2 text-sm font-semibold text-foreground transition-colors hover:border-brand/40" aria-label="Tüm bölümler">
+                <LayoutGrid className="size-4" /> Tümü
+              </button>
+            </div>
+
             {/* Arama */}
-            <div className={cn("relative w-full lg:w-[380px]", (effectiveTab === "Genel Bakış" || effectiveTab === "overview") && "hidden lg:block")}>
+            <div className={cn("relative w-full lg:w-[200px] xl:w-[300px]", (effectiveTab === "Genel Bakış" || effectiveTab === "overview") && "hidden lg:block")}>
               <Search className="pointer-events-none absolute left-3.5 top-1/2 size-[18px] -translate-y-1/2 text-muted-foreground" />
               <Input 
                 value={query} 
@@ -681,7 +702,7 @@ export default function Page() {
               <UrgentButton count={urgentTotal} onClick={openUrgent} />
               <button onClick={() => setActiveTab("Şirket Profili")} className="flex items-center gap-2.5 rounded-xl p-1.5 pr-3 transition-colors hover:bg-card">
                 <div className="grid size-9 place-items-center rounded-full bg-secondary text-sm font-bold text-foreground">{profile.initials}</div>
-                <div className="text-left">
+                <div className="hidden text-left xl:block">
                   <div className="text-sm font-semibold leading-tight">{profile.authorized_person}</div>
                   <div className="text-xs text-muted-foreground">{profile.company_name}</div>
                 </div>
