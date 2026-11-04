@@ -306,7 +306,7 @@
 .dark input,.dark textarea,.dark select{color-scheme:dark}
 
 /* Gece modunda araç görselleri koyu zeminde kaybolmasın */
-.dark img[src^="/vehicles/"]{filter:drop-shadow(0 0 1px rgba(255,255,255,.6)) brightness(1.15) saturate(1.1)}
+.dark img[src^="/vehicles/"]{filter:brightness(1.12) saturate(1.08)}
 
 
 /* ---- Modern görünüm yardımcıları ---- */
