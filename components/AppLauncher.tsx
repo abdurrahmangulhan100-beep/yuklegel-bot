@@ -71,8 +71,8 @@ export function AppLauncher({ open, onClose, activeTab, setActiveTab, loadsCount
       </div>
 
       <div className="mt-4 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-[11px] font-medium text-muted-foreground">
-        <Link href="/privacy" onClick={onClose} className="inline-flex items-center gap-1 hover:text-foreground"><ShieldCheck className="size-3.5" /> Gizlilik</Link>
-        <Link href="/kullanim-kosullari" onClick={onClose} className="inline-flex items-center gap-1 hover:text-foreground"><FileText className="size-3.5" /> Kullanım Koşulları</Link>
+        <Link href="/privacy" target="_blank" rel="noopener" className="inline-flex items-center gap-1 hover:text-foreground"><ShieldCheck className="size-3.5" /> Gizlilik</Link>
+        <Link href="/kullanim-kosullari" target="_blank" rel="noopener" className="inline-flex items-center gap-1 hover:text-foreground"><FileText className="size-3.5" /> Kullanım Koşulları</Link>
         {!isGuest && <button type="button" onClick={() => go("Şirket Profili")} className="hover:text-foreground">Hesabımı Sil</button>}
       </div>
 
