@@ -1,151 +1,21 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
-import { Eye, EyeOff, Truck, ShieldCheck, Zap } from "lucide-react"
-import { cn } from "@/lib/utils"
 import { LogoMark } from "@/components/Logo"
+import { Truck, Zap, ShieldCheck } from "lucide-react"
 
 export default function LoginPage() {
   const router = useRouter()
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
   const [loading, setLoading] = useState(false)
-  const [isSignUp, setIsSignUp] = useState(false)
   const [errorMsg, setErrorMsg] = useState("")
-  const [successMsg, setSuccessMsg] = useState("")
-  const [accepted, setAccepted] = useState(false)
-  const [showPassword, setShowPassword] = useState(false)
-  // Şifre sıfırlama e-postasındaki bağlantıdan gelindiğinde yeni şifre belirleme ekranı açılır
-  const [recovery, setRecovery] = useState(false)
-  const [newPassword, setNewPassword] = useState("")
-
-  useEffect(() => {
-    if (!supabase) return
-    if (typeof window !== "undefined" && /type=recovery/.test(window.location.hash)) setRecovery(true)
-    const { data } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "PASSWORD_RECOVERY") setRecovery(true)
-    })
-    return () => data.subscription.unsubscribe()
-  }, [])
-
-  const handleSetNewPassword = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setErrorMsg("")
-    if (newPassword.length < 6) { setErrorMsg("Şifre en az 6 karakter olmalıdır."); return }
-    setLoading(true)
-    const { error } = await supabase.auth.updateUser({ password: newPassword })
-    setLoading(false)
-    if (error) { setErrorMsg("Şifre güncellenemedi. Bağlantının süresi dolmuş olabilir; 'Şifremi unuttum' ile yeni bağlantı isteyin."); return }
-    setSuccessMsg("Şifreniz güncellendi. Yönlendiriliyorsunuz...")
-    setTimeout(() => { router.push("/"); router.refresh() }, 900)
-  }
-
-  const trError = (msg: string) => {
-    const m = msg.toLowerCase()
-    if (m.includes("already registered") || m.includes("already been registered")) return "Bu e-posta adresi zaten kayıtlı. Giriş yapmayı deneyin."
-    if (m.includes("password") && m.includes("6")) return "Şifre en az 6 karakter olmalıdır."
-    if (m.includes("valid email") || m.includes("invalid email")) return "Geçerli bir e-posta adresi girin."
-    if (m.includes("rate limit")) return "Çok fazla deneme yapıldı. Lütfen biraz bekleyip tekrar deneyin."
-    return "İşlem tamamlanamadı. Lütfen tekrar deneyin."
-  }
-
-  const handleForgotPassword = async () => {
-    setErrorMsg("")
-    setSuccessMsg("")
-    if (!email) {
-      setErrorMsg("Şifre sıfırlama için önce e-posta adresinizi yazın.")
-      return
-    }
-    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: `${window.location.origin}/login` })
-    if (error) setErrorMsg(trError(error.message))
-    else setSuccessMsg("Şifre sıfırlama bağlantısı e-posta adresinize gönderildi.")
-  }
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
-    setErrorMsg("")
-    setSuccessMsg("")
-
-    if (isSignUp && !accepted) {
-      setErrorMsg("Devam etmek için Gizlilik Politikası'nı kabul etmelisiniz.")
-      setLoading(false)
-      return
-    }
-
-    if (!supabase) {
-      setErrorMsg("Veritabanı bağlantısı kurulamadı.")
-      setLoading(false)
-      return
-    }
-
-    try {
-      // Önce misafir durumunu ve eski oturum izlerini sil
-      localStorage.removeItem("is_guest")
-
-      if (isSignUp) {
-        const { data, error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            data: {
-              company_name: "Nakliye Cepte Kullanıcısı",
-              authorized_person: email.split("@")[0]
-            }
-          }
-        })
-
-        if (error) {
-          setErrorMsg(trError(error.message))
-        } else {
-          if (data?.user && data.session) {
-            await supabase.from("profiles").upsert({
-              id: data.user.id,
-              email: email,
-              company_name: "Nakliye Cepte Kullanıcısı",
-              authorized_person: email.split("@")[0],
-              updated_at: new Date().toISOString()
-            })
-          }
-          
-          // Kayıt sonrası otomatik oturum açmayı dene
-          const { error: signInError } = await supabase.auth.signInWithPassword({ email, password })
-          
-          if (signInError) {
-            setSuccessMsg("Kayıt oluşturuldu. Lütfen e-postanızı onaylayın veya giriş yapın.")
-          } else {
-            setSuccessMsg("Kayıt başarılı! Yönlendiriliyorsunuz...")
-            setTimeout(() => {
-              router.push("/")
-              router.refresh()
-            }, 800)
-          }
-        }
-      } else {
-        const { data, error } = await supabase.auth.signInWithPassword({ email, password })
-        
-        if (error) {
-          setErrorMsg("Giriş başarısız: Şifre hatalı veya hesap bulunamadı.")
-        } else if (data?.user) {
-          router.push("/")
-          router.refresh()
-        }
-      }
-    } catch (err: any) {
-      console.error(err)
-      setErrorMsg("Bir sorun oluştu. Lütfen tekrar deneyin.")
-    } finally {
-      setLoading(false)
-    }
-  }
+  const [accepted, setAccepted] = useState(true)
 
   const handleGoogleLogin = async () => {
     setErrorMsg("")
-    setSuccessMsg("")
-    if (!supabase) { setErrorMsg("Veritabanı bağlantısı kurulamadı."); return }
+    if (!accepted) { setErrorMsg("Devam etmek için koşulları kabul etmelisiniz."); return }
     setLoading(true)
     try {
       localStorage.removeItem("is_guest")
@@ -162,210 +32,81 @@ export default function LoginPage() {
     }
   }
 
-  const handleGuestLogin = async () => {
+  const handleGuest = async () => {
     setLoading(true)
     try {
-      // Misafir moduna geçerken eski Supabase oturumunu KESİNLİKLE kapat
-      if (supabase) await supabase.auth.signOut()
+      await supabase.auth.signOut()
       localStorage.removeItem("favorite_loads")
       localStorage.setItem("is_guest", "true")
-      
       router.push("/")
       router.refresh()
-    } catch (err) {
-      console.error("Misafir giriş hatası:", err)
     } finally {
       setLoading(false)
     }
   }
 
-  const fieldClass =
-    "h-12 w-full rounded-xl border border-input bg-muted/60 px-4 text-base text-foreground outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-primary focus:bg-card focus:ring-4 focus:ring-ring/10 md:text-sm"
-
-  if (recovery) {
-    return (
-      <div className="flex min-h-dvh items-center justify-center bg-gradient-to-b from-[#163a63] via-[#122c4a] to-[#0b1d33] p-6">
-        <form onSubmit={handleSetNewPassword} className="animate-rise w-full max-w-md space-y-4 rounded-3xl bg-card p-6 shadow-xl">
-          <h1 className="text-lg font-extrabold text-foreground">Yeni şifre belirleyin</h1>
-          <p className="text-sm text-muted-foreground">Hesabınız için yeni bir şifre yazın (en az 6 karakter).</p>
-          {errorMsg && <div role="alert" className="rounded-xl border border-red-100 bg-red-50 p-3.5 text-xs font-semibold leading-relaxed text-red-600">{errorMsg}</div>}
-          {successMsg && <div role="status" className="rounded-xl border border-green-100 bg-green-50 p-3.5 text-xs font-semibold leading-relaxed text-green-700">{successMsg}</div>}
-          <div className="relative">
-            <input
-              type={showPassword ? "text" : "password"}
-              required
-              minLength={6}
-              autoComplete="new-password"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              placeholder="Yeni şifre"
-              aria-label="Yeni şifre"
-              className={cn(fieldClass, "pr-12")}
-            />
-            <button type="button" onClick={() => setShowPassword((v) => !v)} aria-label={showPassword ? "Şifreyi gizle" : "Şifreyi göster"} className="absolute right-1.5 top-1/2 grid size-9 -translate-y-1/2 place-items-center rounded-lg text-muted-foreground hover:bg-muted">
-              {showPassword ? <EyeOff className="size-[18px]" /> : <Eye className="size-[18px]" />}
-            </button>
-          </div>
-          <button type="submit" disabled={loading} className="h-12 w-full rounded-xl bg-primary text-sm font-bold text-primary-foreground disabled:opacity-60">
-            {loading ? "Kaydediliyor..." : "Şifreyi Güncelle"}
-          </button>
-        </form>
-      </div>
-    )
-  }
-
   return (
-    <div className="flex min-h-dvh flex-col bg-gradient-to-b from-[#163a63] via-[#122c4a] to-[#0b1d33] lg:items-center lg:justify-center lg:p-6">
-      {/* Üst marka alanı */}
-      <div className="relative px-6 pb-10 pt-[calc(2.5rem+env(safe-area-inset-top))] text-center text-white lg:pb-6 lg:pt-0">
-        <div className="pointer-events-none absolute -right-8 top-4 size-40 rounded-full bg-brand/25 blur-3xl" />
-        <div className="pointer-events-none absolute -left-10 top-24 size-36 rounded-full bg-[#315d83]/40 blur-3xl" />
-        <div className="relative">
-          <LogoMark size={92} className="mx-auto mb-3 drop-shadow-[0_12px_24px_rgba(0,0,0,0.35)]" />
-          <h1 className="text-[26px] font-extrabold tracking-tight">Nakliye Cepte</h1>
-          <p className="mt-1.5 text-sm text-white/65">Türkiye&apos;nin yük ve taşıma ilan platformu</p>
+    <div className="flex min-h-dvh items-center justify-center bg-gradient-to-br from-[#163a63] via-[#122c4a] to-[#0b1d33] px-4 py-8 pt-[calc(2rem+env(safe-area-inset-top))] pb-[calc(2rem+env(safe-area-inset-bottom))]">
+      <div className="pointer-events-none fixed -right-16 top-10 size-64 rounded-full bg-brand/25 blur-3xl" />
+      <div className="pointer-events-none fixed -left-20 bottom-10 size-64 rounded-full bg-[#315d83]/40 blur-3xl" />
 
-          <div className="mx-auto mt-5 flex max-w-sm items-center justify-center gap-2 text-[11px] font-semibold text-white/80">
+      <div className="animate-rise relative w-full max-w-[380px]">
+        <div className="mb-6 text-center text-white">
+          <LogoMark size={72} className="mx-auto mb-3 drop-shadow-[0_10px_20px_rgba(0,0,0,0.35)]" />
+          <h1 className="text-2xl font-extrabold tracking-tight">Nakliye Cepte</h1>
+          <p className="mt-1 text-[13px] text-white/65">Yük bul, aracını doldur. WhatsApp karmaşası yok.</p>
+          <div className="mt-4 flex flex-wrap items-center justify-center gap-2 text-[11px] font-semibold text-white/80">
             <span className="inline-flex items-center gap-1 rounded-full bg-white/10 px-2.5 py-1 ring-1 ring-white/15"><Truck className="size-3.5" /> Güncel yükler</span>
-            <span className="inline-flex items-center gap-1 rounded-full bg-white/10 px-2.5 py-1 ring-1 ring-white/15"><Zap className="size-3.5" /> Hızlı iletişim</span>
+            <span className="inline-flex items-center gap-1 rounded-full bg-white/10 px-2.5 py-1 ring-1 ring-white/15"><Zap className="size-3.5" /> Hızlı</span>
             <span className="inline-flex items-center gap-1 rounded-full bg-white/10 px-2.5 py-1 ring-1 ring-white/15"><ShieldCheck className="size-3.5" /> Güvenli</span>
           </div>
         </div>
-      </div>
 
-      {/* Form kartı */}
-      <div className="animate-rise relative flex-1 rounded-t-[32px] bg-card px-6 pb-[calc(2rem+env(safe-area-inset-bottom))] pt-7 shadow-[0_-12px_40px_rgba(0,0,0,0.18)] lg:w-full lg:max-w-md lg:flex-none lg:rounded-3xl lg:pb-8">
-        <div className="mx-auto w-full max-w-md">
-          {/* Giriş / Kayıt sekmesi */}
-          <div className="mb-6 grid grid-cols-2 gap-1 rounded-2xl bg-muted p-1" role="tablist">
-            {[
-              { signUp: false, label: "Giriş Yap" },
-              { signUp: true, label: "Kayıt Ol" },
-            ].map((t) => (
-              <button
-                key={t.label}
-                type="button"
-                role="tab"
-                aria-selected={isSignUp === t.signUp}
-                onClick={() => { setIsSignUp(t.signUp); setErrorMsg(""); setSuccessMsg("") }}
-                className={cn(
-                  "h-11 rounded-xl text-sm font-semibold transition-all",
-                  isSignUp === t.signUp ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
-                )}
-              >
-                {t.label}
-              </button>
-            ))}
-          </div>
-
-          {errorMsg && <div role="alert" className="mb-4 rounded-xl border border-red-100 bg-red-50 p-3.5 text-xs font-semibold leading-relaxed text-red-600">{errorMsg}</div>}
-          {successMsg && <div role="status" className="mb-4 rounded-xl border border-green-100 bg-green-50 p-3.5 text-xs font-semibold leading-relaxed text-green-700">{successMsg}</div>}
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label htmlFor="email" className="mb-1.5 block text-xs font-semibold text-muted-foreground">E-posta Adresi</label>
-              <input
-                id="email"
-                type="email"
-                required
-                autoComplete="email"
-                inputMode="email"
-                autoCapitalize="none"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="ornek@mail.com"
-                className={fieldClass}
-              />
-            </div>
-
-            <div>
-              <label htmlFor="password" className="mb-1.5 block text-xs font-semibold text-muted-foreground">Şifre</label>
-              <div className="relative">
-                <input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  required
-                  autoComplete={isSignUp ? "new-password" : "current-password"}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className={cn(fieldClass, "pr-12")}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((v) => !v)}
-                  aria-label={showPassword ? "Şifreyi gizle" : "Şifreyi göster"}
-                  className="absolute right-1.5 top-1/2 grid size-9 -translate-y-1/2 place-items-center rounded-lg text-muted-foreground hover:bg-muted"
-                >
-                  {showPassword ? <EyeOff className="size-[18px]" /> : <Eye className="size-[18px]" />}
-                </button>
-              </div>
-              {!isSignUp && (
-                <div className="mt-2 text-right">
-                  <button type="button" onClick={handleForgotPassword} className="text-xs font-semibold text-foreground/80 hover:underline">
-                    Şifremi unuttum
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {isSignUp && (
-              <label className="flex cursor-pointer items-start gap-3 rounded-xl bg-muted/60 p-3.5 text-xs leading-relaxed text-muted-foreground">
-                <input type="checkbox" checked={accepted} onChange={(e) => setAccepted(e.target.checked)} className="mt-0.5 size-5 shrink-0 accent-brand" />
-                <span>
-                  <Link href="/privacy" target="_blank" className="font-semibold text-foreground/80 underline">Gizlilik Politikası</Link>
-                  &apos;nı okudum ve kabul ediyorum.
-                </span>
-              </label>
-            )}
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="h-12 w-full rounded-xl bg-brand text-sm font-semibold text-white shadow-md shadow-[#d64526]/25 transition-all hover:bg-brand/90 active:scale-[0.99] disabled:opacity-60"
-            >
-              {loading ? "İşlem yapılıyor..." : (isSignUp ? "Hesap Oluştur" : "Giriş Yap")}
-            </button>
-          </form>
-
-          <div className="my-5 flex items-center gap-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-            <span className="h-px flex-1 bg-muted" /> veya <span className="h-px flex-1 bg-muted" />
-          </div>
+        <div className="rounded-3xl bg-card p-5 shadow-[0_20px_60px_rgba(0,0,0,0.35)]">
+          {errorMsg && (
+            <div role="alert" className="mb-3 rounded-xl border border-red-100 bg-red-50 p-3 text-xs font-semibold leading-relaxed text-red-600">{errorMsg}</div>
+          )}
 
           <button
             type="button"
             onClick={handleGoogleLogin}
             disabled={loading}
-            className="mb-3 flex h-12 w-full items-center justify-center gap-3 rounded-xl border border-input bg-card text-sm font-semibold text-foreground transition-colors hover:bg-muted disabled:opacity-60"
+            className="flex h-12 w-full items-center justify-center gap-3 rounded-xl border border-input bg-card text-sm font-semibold text-foreground shadow-sm transition-colors hover:bg-muted active:scale-[0.99] disabled:opacity-60"
           >
             <svg viewBox="0 0 48 48" className="size-5" aria-hidden="true">
-              <path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.9 6.1C12.4 13.6 17.7 9.5 24 9.5z"/>
-              <path fill="#4285F4" d="M46.1 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.4c-.5 2.9-2.2 5.3-4.6 6.9l7.1 5.5c4.2-3.9 7.2-9.6 7.2-16.9z"/>
-              <path fill="#FBBC05" d="M10.5 28.7c-.5-1.4-.8-2.9-.8-4.7s.3-3.2.8-4.7l-7.9-6.1C.9 16.4 0 20.1 0 24s.9 7.6 2.6 10.8l7.9-6.1z"/>
-              <path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.1-5.5c-2 1.4-4.9 2.3-8.8 2.3-6.3 0-11.6-4.1-13.5-9.8l-7.9 6.1C6.5 42.6 14.6 48 24 48z"/>
+              <path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.9 6.1C12.4 13.6 17.7 9.5 24 9.5z" />
+              <path fill="#4285F4" d="M46.1 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.4c-.5 2.9-2.2 5.3-4.6 6.9l7.1 5.5c4.2-3.9 7.2-9.6 7.2-16.9z" />
+              <path fill="#FBBC05" d="M10.5 28.7c-.5-1.4-.8-2.9-.8-4.7s.3-3.2.8-4.7l-7.9-6.1C.9 16.4 0 20.1 0 24s.9 7.6 2.6 10.8l7.9-6.1z" />
+              <path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.1-5.5c-2 1.4-4.9 2.3-8.8 2.3-6.3 0-11.6-4.1-13.5-9.8l-7.9 6.1C6.5 42.6 14.6 48 24 48z" />
             </svg>
-            Google ile devam et
+            {loading ? "Yönlendiriliyor..." : "Google ile devam et"}
           </button>
-          <p className="mb-3 text-center text-[11px] text-muted-foreground">
-            Google ile devam ederek <Link href="/kullanim-kosullari" target="_blank" className="underline">Kullanım Koşulları</Link> ve <Link href="/privacy" target="_blank" className="underline">Gizlilik Politikası</Link>&apos;nı kabul etmiş olursunuz.
-          </p>
+
+          <label className="mt-3 flex cursor-pointer items-start gap-2.5 text-[11px] leading-relaxed text-muted-foreground">
+            <input type="checkbox" checked={accepted} onChange={(e) => setAccepted(e.target.checked)} className="mt-0.5 size-4 shrink-0 accent-brand" />
+            <span>
+              <Link href="/kullanim-kosullari" target="_blank" className="font-semibold text-foreground/80 underline">Kullanım Koşulları</Link> ve{" "}
+              <Link href="/privacy" target="_blank" className="font-semibold text-foreground/80 underline">Gizlilik Politikası</Link>&apos;nı kabul ediyorum.
+            </span>
+          </label>
+
+          <div className="my-3 h-px bg-border" />
 
           <button
             type="button"
-            onClick={handleGuestLogin}
+            onClick={handleGuest}
             disabled={loading}
-            className="h-12 w-full rounded-xl border border-input bg-card text-sm font-semibold text-foreground transition-colors hover:bg-muted disabled:opacity-60"
+            className="h-10 w-full rounded-xl text-[13px] font-semibold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-60"
           >
-            Misafir Olarak Göz At
+            Üye olmadan göz at
           </button>
+        </div>
 
-          <div className="mt-6 flex flex-wrap justify-center gap-x-5 gap-y-2 text-[11px] font-medium text-muted-foreground">
-            <Link href="/hakkimizda" className="hover:underline">Hakkımızda</Link>
-            <Link href="/rehber" className="hover:underline">Rehber</Link>
-            <Link href="/privacy" className="hover:underline">Gizlilik Politikası</Link>
-            <Link href="/kullanim-kosullari" className="hover:underline">Kullanım Koşulları</Link>
-            <Link href="/delete-account" className="hover:underline">Hesap Silme</Link>
-          </div>
+        <div className="mt-5 flex flex-wrap justify-center gap-x-4 gap-y-1.5 text-[11px] font-medium text-white/60">
+          <Link href="/hakkimizda" className="hover:text-white">Hakkımızda</Link>
+          <Link href="/rehber" className="hover:text-white">Rehber</Link>
+          <Link href="/privacy" className="hover:text-white">Gizlilik</Link>
+          <Link href="/delete-account" className="hover:text-white">Hesap Silme</Link>
         </div>
       </div>
     </div>
