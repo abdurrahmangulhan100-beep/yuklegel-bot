@@ -142,7 +142,7 @@ function NavItem({ icon: Icon, label, active, collapsed, badge, onClick }: { ico
       aria-current={active ? "page" : undefined}
       className={cn(
         "flex min-h-12 w-full items-center gap-3.5 rounded-xl px-3.5 py-3 text-sm font-medium text-sidebar-foreground/70 transition-all hover:bg-sidebar-foreground/5 hover:text-sidebar-foreground", 
-        active && "bg-brand/10 text-brand font-semibold hover:bg-brand/10", 
+        active && "relative bg-brand/10 text-brand font-semibold hover:bg-brand/10 before:absolute before:left-0 before:top-2.5 before:bottom-2.5 before:w-1 before:rounded-r-full before:bg-brand", 
         collapsed && "justify-center px-0"
       )} 
       title={collapsed ? label : undefined}
@@ -151,7 +151,7 @@ function NavItem({ icon: Icon, label, active, collapsed, badge, onClick }: { ico
       {!collapsed && (
         <>
           <span className="truncate">{label}</span>
-          {badge && <span className="ml-auto rounded-full bg-sidebar-foreground/10 px-2.5 py-0.5 text-[11px] font-bold text-sidebar-foreground">{badge}</span>}
+          {badge && <span className={cn("ml-auto rounded-full px-2.5 py-0.5 text-[11px] font-bold", badge === "PRO" || badge === "YENİ" ? "bg-brand-gradient text-white" : badge === "AKTİF" ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-300" : "bg-sidebar-foreground/10 text-sidebar-foreground")}>{badge}</span>}
         </>
       )}
     </button>
