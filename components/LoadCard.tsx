@@ -494,17 +494,37 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
               </div>
             )}
           </div>
-        ) : places.length > 0 ? (
-          <div className="flex flex-wrap items-center gap-1.5">
-            {places.slice(0, 4).map((t) => (
-              <button key={t.city} type="button" disabled={!onCitySearch} onClick={() => onCitySearch?.(t.city)} className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-border bg-muted/60 py-1.5 pl-2.5 pr-3 text-[14px] font-bold text-foreground active:opacity-60">
-                <MapPin aria-hidden className="size-3.5 shrink-0 text-brand" />
-                <span className="truncate">{highlightMatch(t.label, cleanQuery)}</span>
-              </button>
-            ))}
-            {places.length > 4 && <span className="text-xs font-semibold text-muted-foreground">+{places.length - 4}</span>}
+        ) : (
+          <div className="rounded-2xl bg-muted/60 px-3.5 py-3 sm:px-4 sm:py-3.5">
+            <div className="flex items-center gap-3">
+              <div className="min-w-0 flex-1">
+                <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground"><i className="size-1.5 rounded-full bg-brand" />Konum</span>
+                {places.length > 0 ? (
+                  <div className="mt-1 flex flex-col items-start gap-0.5">
+                    {places.slice(0, 3).map((t, i) => (
+                      <button
+                        key={t.city}
+                        type="button"
+                        disabled={!onCitySearch}
+                        onClick={() => onCitySearch?.(t.city)}
+                        className={cn("max-w-full text-left font-extrabold leading-tight text-foreground active:opacity-60", i === 0 ? "line-clamp-2 break-words text-[16px] sm:text-[17px]" : "truncate text-[13px] text-foreground/80")}
+                      >
+                        {highlightMatch(t.label, cleanQuery)}
+                      </button>
+                    ))}
+                    {places.length > 3 && <span className="text-xs font-semibold text-muted-foreground">+{places.length - 3}</span>}
+                  </div>
+                ) : (
+                  <span className="mt-1 block text-[13px] font-semibold text-muted-foreground">Güzergâh ilan metninde</span>
+                )}
+              </div>
+              <div className="flex w-[78px] shrink-0 flex-col items-center sm:w-[108px]">
+                <VehicleIcon vehicle={load.vehicle} className="h-9 w-full sm:h-[50px]" />
+                <span aria-hidden className="mt-1 h-0 w-full border-t-2 border-dotted border-muted-foreground/40" />
+              </div>
+            </div>
           </div>
-        ) : null}
+        )}
 
         {/* Özellikler: tek tip, sakin görünüm; yalnızca acil ve zamanlama renkli */}
         {hasSpecs && (
