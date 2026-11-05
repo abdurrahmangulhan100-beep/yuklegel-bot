@@ -217,7 +217,7 @@ export function TripsView({ loads, currentUserId, onChanged }: TripsViewProps) {
         </div>
       )}
 
-      <div className="grid gap-3">
+      <div className="grid grid-cols-1 gap-3">
         {userLoads.length > 0 ? (
           userLoads.map((load) => (
             <div key={load.id} className="animate-rise overflow-hidden rounded-2xl border border-border bg-card shadow-[0_1px_3px_rgba(18,44,74,0.05)]">
