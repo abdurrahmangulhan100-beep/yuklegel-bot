@@ -122,6 +122,8 @@
   html {
     -webkit-text-size-adjust: 100%;
     background-color: #f3f6fb;
+    /* Hiçbir öğe ekran genişliğini aşıp sayfayı yana kaydırmasın / küçültmesin */
+    overflow-x: clip;
   }
   html.dark {
     background-color: #080e1a;
@@ -129,6 +131,8 @@
   body {
     @apply bg-background text-foreground;
     min-height: 100dvh;
+    max-width: 100%;
+    overflow-x: clip;
     -webkit-tap-highlight-color: transparent;
     overscroll-behavior-y: none;
   }
