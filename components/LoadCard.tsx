@@ -774,20 +774,30 @@ function Stat({ icon, label, value, strong }: { icon: React.ReactNode; label: st
   )
 }
 function RouteCost({ from, to, fromDistrict, toDistrict }: { from?: string; to?: string; fromDistrict?: string; toDistrict?: string }) {
-  const { price, live, updatedAt } = useFuelPrice(from)
+  const { price, live, loading: fuelLoading, updatedAt } = useFuelPrice(from)
   const tableEstimate = tripEstimate(from, to, null)
   const [routeKm, setRouteKm] = useState<{ km: number; hours: number } | null>(null)
+  const [routeLoading, setRouteLoading] = useState(false)
+  const [routeFailed, setRouteFailed] = useState(false)
 
   useEffect(() => {
     let alive = true
     setRouteKm(null)
-    if (!from || !to || from === to) return
+    setRouteFailed(false)
+    if (!from || !to || from === to) { setRouteLoading(false); return }
     if (tableEstimate?.exact) {
       setRouteKm({ km: tableEstimate.km, hours: tableEstimate.hours })
+      setRouteLoading(false)
       return
     }
+    setRouteLoading(true)
     placeKm(from, fromDistrict, to, toDistrict).then((result) => {
-      if (alive && result) setRouteKm(result)
+      if (!alive) return
+      setRouteKm(result)
+      setRouteFailed(!result)
+      setRouteLoading(false)
+    }).catch(() => {
+      if (alive) { setRouteFailed(true); setRouteLoading(false) }
     })
     return () => { alive = false }
   }, [from, to, fromDistrict, toDistrict])
@@ -796,6 +806,10 @@ function RouteCost({ from, to, fromDistrict, toDistrict }: { from?: string; to?:
   const km = routeKm?.km ?? (tableEstimate?.exact ? tableEstimate.km : null)
   const liters = km && km > 0 ? Math.round((km / 100) * AVG_CONSUMPTION) : null
   const cost = liters !== null && price !== null && live ? Math.round((liters * price) / 10) * 10 : null
+  const routeValue = km ? `${fmt(km)} km` : routeLoading ? "Hesaplanıyor" : routeFailed ? "Rota bulunamadı" : "—"
+  const fuelMessage = live && price !== null
+    ? `Motorin ₺${price.toLocaleString("tr-TR", { maximumFractionDigits: 2 })}/lt · ${agoLabel(updatedAt)}`
+    : fuelLoading ? "Yakıt fiyatı alınıyor" : "Güncel yakıt verisi yok"
   const fmt = (n: number) => n.toLocaleString("tr-TR")
   const Stat = ({ icon, label, value, strong }: { icon: React.ReactNode; label: string; value: string; strong?: boolean }) => (
     <div className="flex min-w-0 flex-col items-center gap-1 px-1 text-center">
@@ -804,18 +818,17 @@ function RouteCost({ from, to, fromDistrict, toDistrict }: { from?: string; to?:
     </div>
   )
   return (
-    <div className="overflow-hidden rounded-2xl border border-border/80 bg-card shadow-[0_2px_10px_rgba(18,44,74,0.045)]">
-      <div className="grid grid-cols-3 divide-x divide-border/80 px-1 py-3">
-        <Stat icon={<RouteIcon className="size-3.5" />} label="Mesafe" value={km ? `${fmt(km)} km` : "Hesaplanıyor"} />
+    <div className="overflow-hidden rounded-[18px] border border-border/80 bg-card shadow-[0_3px_12px_rgba(18,44,74,0.045)]">
+      <div className="grid grid-cols-3 divide-x divide-border/70 px-1 py-3.5">
+        <Stat icon={<RouteIcon className="size-3.5" />} label="Mesafe" value={routeValue} />
         <Stat icon={<Fuel className="size-3.5" />} label="Yakıt" value={liters !== null ? `${fmt(liters)} lt` : "—"} />
         <Stat icon={<Wallet className="size-3.5" />} label="Ort. masraf" value={cost !== null ? `₺${fmt(cost)}` : "—"} strong />
       </div>
-      <div className="flex items-center justify-between gap-2 border-t border-border/60 bg-muted/25 px-3 py-1.5 text-[10px] text-muted-foreground">
+      <div aria-live="polite" className="flex items-center justify-between gap-2 border-t border-border/60 bg-muted/25 px-3 py-2 text-[10px] text-muted-foreground">
         <span className="inline-flex min-w-0 items-center gap-1.5">
-          <span className={cn("size-1.5 shrink-0 rounded-full", live ? "bg-emerald-500" : "bg-amber-400")} />
-          {live && price !== null ? `Motorin ₺${price.toLocaleString("tr-TR", { maximumFractionDigits: 2 })}/lt · ${agoLabel(updatedAt)}` : "Güncel yakıt verisi bekleniyor"}
+          <span className={cn("size-1.5 shrink-0 rounded-full", live ? "bg-emerald-500" : fuelLoading ? "animate-pulse bg-amber-400" : "bg-slate-400")} />
+          <span className="truncate">{fuelMessage}</span>
         </span>
-        <span className="shrink-0">{AVG_CONSUMPTION} lt/100 km</span>
       </div>
     </div>
   )
