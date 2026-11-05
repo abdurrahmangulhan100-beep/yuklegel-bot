@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Star } from "lucide-react"
+import { Star, BookmarkCheck, PackageOpen, Sparkles } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { LoadCard, Load } from "@/components/LoadCard"
 import { mapUserListing, mapBotListing, type DatabaseListing } from "@/lib/listings"
@@ -148,28 +148,63 @@ export function FavoritesView({
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
-        <div className="mb-3 size-8 animate-spin rounded-full border-2 border-[#d64526] border-t-transparent" />
-        <p className="text-sm font-medium">Favorileriniz yükleniyor...</p>
+      <div className="mx-auto w-full max-w-6xl space-y-4">
+        <div className="space-y-2">
+          <div className="h-3 w-28 animate-pulse rounded-full bg-muted" />
+          <div className="h-8 w-52 animate-pulse rounded-xl bg-muted" />
+          <div className="h-4 w-64 animate-pulse rounded-lg bg-muted" />
+        </div>
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {[0, 1, 2].map((n) => (
+            <div key={n} className="h-56 animate-pulse rounded-[24px] border border-border bg-card" />
+          ))}
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="space-y-4 sm:space-y-5">
-      <div>
-        <span className="text-[11px] font-bold uppercase tracking-wider text-brand">Özel ilan listeniz</span>
-        <h1 className="text-2xl font-extrabold tracking-tight text-foreground sm:text-3xl">Favori İlanlarım</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Takip etmek üzere kaydettiğiniz tüm yük ve taşıma ilanları burada listelenir.</p>
-      </div>
+    <div className="mx-auto w-full max-w-6xl space-y-4 sm:space-y-5">
+      <header className="relative overflow-hidden rounded-[26px] border border-border/80 bg-card p-4 shadow-sm sm:rounded-[30px] sm:p-6">
+        <div aria-hidden className="pointer-events-none absolute -right-12 -top-16 size-44 rounded-full bg-amber-400/[0.09] blur-2xl" />
+        <div className="relative flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <div className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-amber-700 dark:text-amber-300">
+              <Sparkles className="size-3" /> Kişisel listen
+            </div>
+            <h1 className="text-[22px] font-extrabold tracking-tight text-foreground sm:text-3xl">Favoriler</h1>
+            <p className="mt-1 max-w-md text-xs leading-relaxed text-muted-foreground sm:text-sm">
+              Daha sonra incelemek istediğin yükler burada.
+            </p>
+          </div>
+          <div className="grid size-12 shrink-0 place-items-center rounded-2xl bg-amber-500/10 text-amber-600 sm:size-14 sm:rounded-[20px]">
+            <BookmarkCheck className="size-6 sm:size-7" />
+          </div>
+        </div>
+        <div className="relative mt-4 flex items-center gap-2 border-t border-border/70 pt-3">
+          <div className="flex min-w-0 flex-1 items-center gap-2 text-xs text-muted-foreground">
+            <PackageOpen className="size-4 shrink-0" />
+            <span>Kaydedilen ilan</span>
+          </div>
+          <span className="rounded-full bg-muted px-3 py-1.5 text-xs font-extrabold tabular-nums text-foreground">
+            {filteredLoads.length.toLocaleString("tr-TR")}
+          </span>
+        </div>
+      </header>
 
       {filteredLoads.length === 0 ? (
-        <div className="rounded-3xl border border-dashed border-input bg-card px-6 py-14 text-center">
-          <div className="mx-auto mb-4 grid size-16 place-items-center rounded-2xl bg-amber-50 text-amber-500">
-            <Star className="size-8" />
+        <div className="rounded-[26px] border border-dashed border-border bg-card px-5 py-12 text-center sm:rounded-[30px] sm:py-16">
+          <div className="mx-auto mb-4 grid size-16 place-items-center rounded-[22px] bg-amber-500/10 text-amber-600">
+            <Star className="size-7" />
           </div>
-          <p className="text-base font-bold text-foreground">Henüz favori ilanınız yok</p>
-          <p className="mx-auto mt-1 max-w-xs text-sm text-muted-foreground">İlanlardaki yıldız simgesine dokunarak beğendiğiniz yükleri buraya ekleyebilirsiniz.</p>
+          <p className="text-base font-bold text-foreground">
+            {searchQuery ? "Aramana uygun favori bulunamadı" : "Henüz favori ilan yok"}
+          </p>
+          <p className="mx-auto mt-1.5 max-w-xs text-xs leading-relaxed text-muted-foreground sm:text-sm">
+            {searchQuery
+              ? "Farklı bir şehir, firma veya yük adıyla tekrar arayabilirsin."
+              : "İlan kartlarındaki yıldız simgesine dokunarak ilgilendiğin yükleri burada saklayabilirsin."}
+          </p>
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4 xl:grid-cols-3">
