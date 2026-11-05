@@ -7,7 +7,8 @@ import { PackageSearch, Plus, X, MapPin, Crown, ArrowLeftRight, TrendingUp } fro
 import { usePremium } from "@/components/PremiumProvider"
 import { FREE_DELAY_MINUTES, openPremium } from "@/lib/premium"
 import { cn } from "@/lib/utils"
-import { CITY_NAMES } from "@/lib/route"
+import { CITY_NAMES, analyzeListing } from "@/lib/route"
+import { supabase } from "@/lib/supabase"
 import { SourceInfoButton } from "@/components/SourceInfo"
 
 type ListingsViewProps = {
@@ -47,6 +48,62 @@ const selectClass =
   "h-10 min-w-0 flex-1 rounded-xl border border-border bg-card px-3 text-[13px] font-semibold text-foreground/80 outline-none transition-colors focus:border-primary sm:flex-none sm:min-w-[170px]"
 
 const byTr = (a: string, b: string) => a.localeCompare(b, "tr-TR")
+
+// ---- Güzergâh sayıları: seçilen şehir için TÜM ilanlarda "nereye/nereden kaç ilan var" ----
+type CityStat = { total: number; map: Map<string, number>; failed?: boolean }
+const STAT_TTL = 2 * 60_000
+const statCache = new Map<string, { at: number; stat: CityStat }>()
+const cityVariants = (t: string) => {
+  const ascii = t.replace(/ı/g, "i").replace(/İ/g, "I").replace(/ş/g, "s").replace(/Ş/g, "S").replace(/ğ/g, "g").replace(/Ğ/g, "G").replace(/ü/g, "u").replace(/Ü/g, "U").replace(/ö/g, "o").replace(/Ö/g, "O").replace(/ç/g, "c").replace(/Ç/g, "C")
+  return Array.from(new Set([t, ascii, t.toLocaleLowerCase("tr-TR"), t.toLocaleUpperCase("tr-TR"), ascii.toLowerCase(), ascii.toUpperCase()]))
+}
+
+/** mode "dest": city çıkışlı ilanların varış şehirleri; mode "orig": city varışlı ilanların çıkış şehirleri. Veri tasarrufu için yalnızca gerekli sütunlar çekilir. */
+async function loadStat(city: string, mode: "dest" | "orig", premium: boolean): Promise<CityStat> {
+  const key = `${mode}|${city}|${premium ? 1 : 0}`
+  const hit = statCache.get(key)
+  if (hit && Date.now() - hit.at < STAT_TTL) return hit.stat
+  if (!supabase) return { total: 0, map: new Map(), failed: true }
+  try {
+    const or = (fields: string[]) => fields.flatMap((f) => cityVariants(city).map((v) => `${f}.ilike.%${v}%`)).join(",")
+    const cutoff = new Date(Date.now() - 14 * 86400000).toISOString()
+    let bq = supabase.from("bot_listings").select("from_city,to_city,cargo_detail").gte("created_at", cutoff).or(or(["from_city", "to_city", "cargo_detail"]))
+    if (!premium) bq = bq.lte("created_at", new Date(Date.now() - FREE_DELAY_MINUTES * 60000).toISOString())
+    const uq = supabase.from("listings").select("from_city,to_city,cargo_detail,message").or(or(["from_city", "to_city", "cargo_detail", "message"]))
+    const [b, u] = await Promise.all([
+      bq.order("created_at", { ascending: false }).limit(400),
+      uq.order("created_at", { ascending: false }).limit(400),
+    ])
+    if (b.error && u.error) throw b.error
+    const rows: { r: any; user: boolean }[] = [
+      ...((u.data as any[]) ?? []).map((r) => ({ r, user: true })),
+      ...((b.data as any[]) ?? []).map((r) => ({ r, user: false })),
+    ]
+    const map = new Map<string, number>()
+    let total = 0
+    for (const { r, user } of rows) {
+      const a: any = analyzeListing({ from: r.from_city, to: r.to_city, cargo: r.cargo_detail, message: user ? r.message : undefined, trustFields: user })
+      const fromCity: string | undefined = a.from?.city
+      const toCity: string | undefined = a.to?.city
+      const cities: string[] = a.cities ?? []
+      const dests: string[] = a.destinations ?? []
+      const origins = Array.from(new Set([fromCity, ...(fromCity ? [] : cities)].filter(Boolean) as string[]))
+      const targets = Array.from(new Set([toCity, ...dests, ...(toCity ? [] : cities)].filter(Boolean) as string[]))
+      const ok = mode === "dest" ? origins.includes(city) : targets.includes(city)
+      if (!ok) continue
+      total++
+      for (const c of mode === "dest" ? targets : origins) {
+        if (c === city) continue
+        map.set(c, (map.get(c) ?? 0) + 1)
+      }
+    }
+    const stat = { total, map }
+    statCache.set(key, { at: Date.now(), stat })
+    return stat
+  } catch {
+    return { total: 0, map: new Map(), failed: true }
+  }
+}
 
 export function ListingsView({
   loads,
@@ -97,6 +154,69 @@ export function ListingsView({
 
   // Şehir listesi tüm iller (sunucu tüm ilanlarda arar); sayfadaki 60 ilana bağlı değildir
   const cityList = useMemo(() => [...CITY_NAMES].sort(byTr), [])
+
+  // Seçilen şehre göre diğer listedeki şehirlerin ilan sayıları (tüm ilanlar)
+  const [destStat, setDestStat] = useState<CityStat | null>(null) // from seçiliyken: varışlar
+  const [origStat, setOrigStat] = useState<CityStat | null>(null) // to seçiliyken: çıkışlar
+  useEffect(() => {
+    setDestStat(null)
+    if (!from) return
+    let dead = false
+    loadStat(from, "dest", isPremium).then((st) => { if (!dead) setDestStat(st) })
+    return () => { dead = true }
+  }, [from, isPremium])
+  useEffect(() => {
+    setOrigStat(null)
+    if (!to) return
+    let dead = false
+    loadStat(to, "orig", isPremium).then((st) => { if (!dead) setOrigStat(st) })
+    return () => { dead = true }
+  }, [to, isPremium])
+
+  // Sayısı olan şehirler önce ve sayısıyla, kalanlar "İlanı olmayanlar" grubunda
+  const renderCityOptions = (stat: CityStat | null, anchor: string, selected: string) => {
+    if (!stat || stat.failed) return cityList.map((c) => <option key={c} value={c}>{c}</option>)
+    const keep = (c: string) => c !== anchor || c === selected
+    const withCount = cityList.filter((c) => keep(c) && (stat.map.get(c) ?? 0) > 0).sort((a, b) => (stat.map.get(b) ?? 0) - (stat.map.get(a) ?? 0) || byTr(a, b))
+    const rest = cityList.filter((c) => keep(c) && !withCount.includes(c))
+    return (
+      <>
+        {withCount.length > 0 && (
+          <optgroup label="İlanı olanlar">
+            {withCount.map((c) => <option key={c} value={c}>{c} ({stat.map.get(c)})</option>)}
+          </optgroup>
+        )}
+        <optgroup label="İlanı olmayanlar">
+          {rest.map((c) => <option key={c} value={c}>{c}</option>)}
+        </optgroup>
+      </>
+    )
+  }
+
+  // Seçime göre tek satırlık durum: ilan var mı yok mu
+  const routeHint = (() => {
+    if (from && to) {
+      if (!destStat) return { text: "Güzergâh kontrol ediliyor…", tone: "muted" as const }
+      if (destStat.failed) return null
+      const n = destStat.map.get(to) ?? 0
+      return n > 0 ? { text: `${from} → ${to}: ${n} ilan var`, tone: "ok" as const } : { text: `${from} → ${to} güzergâhında şu an ilan yok`, tone: "none" as const }
+    }
+    if (from) {
+      if (!destStat) return { text: "Varış şehirleri kontrol ediliyor…", tone: "muted" as const }
+      if (destStat.failed) return null
+      return destStat.total > 0
+        ? { text: `${from} çıkışlı ${destStat.total} ilan · ${destStat.map.size} farklı varış`, tone: "ok" as const }
+        : { text: `${from} çıkışlı ilan bulunamadı`, tone: "none" as const }
+    }
+    if (to) {
+      if (!origStat) return { text: "Çıkış şehirleri kontrol ediliyor…", tone: "muted" as const }
+      if (origStat.failed) return null
+      return origStat.total > 0
+        ? { text: `${to} varışlı ${origStat.total} ilan · ${origStat.map.size} farklı çıkış`, tone: "ok" as const }
+        : { text: `${to} varışlı ilan bulunamadı`, tone: "none" as const }
+    }
+    return null
+  })()
 
   const visibleLoads = useMemo(() => {
     return loads.filter((l) => {
@@ -226,7 +346,7 @@ export function ListingsView({
             <MapPin aria-hidden className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-emerald-500" />
             <select aria-label="Nereden" value={from} onChange={(e) => setFrom(e.target.value)} className={cn(selectClass, "w-full bg-muted/50 pl-9")}>
               <option value="">Nereden</option>
-              {cityList.map((c) => (<option key={c} value={c}>{c}</option>))}
+              {renderCityOptions(to ? origStat : null, to, from)}
             </select>
           </div>
           <button
@@ -241,10 +361,23 @@ export function ListingsView({
             <MapPin aria-hidden className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-brand" />
             <select aria-label="Nereye" value={to} onChange={(e) => setTo(e.target.value)} className={cn(selectClass, "w-full bg-muted/50 pl-9")}>
               <option value="">Nereye</option>
-              {cityList.map((c) => (<option key={c} value={c}>{c}</option>))}
+              {renderCityOptions(from ? destStat : null, from, to)}
             </select>
           </div>
         </div>
+        {routeHint && (
+          <p
+            role="status"
+            className={cn(
+              "mt-2 px-1 text-xs font-semibold",
+              routeHint.tone === "ok" && "text-emerald-600",
+              routeHint.tone === "none" && "text-amber-600",
+              routeHint.tone === "muted" && "text-muted-foreground"
+            )}
+          >
+            {routeHint.text}
+          </p>
+        )}
       </div>
 
       {/* Popüler güzergâhlar: tek dokunuşla uygula */}
