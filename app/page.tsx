@@ -73,6 +73,12 @@ const categoryOr = (cat: string): { bot: string; user: string } | null => {
   return { bot: mk(["cargo_detail"]), user: mk(["cargo_detail", "message", "vehicle_type"], true) }
 }
 
+// Güzergâh şehri: şehir alanlarında ve ilan metninde geçen tüm yazım biçimleri, TÜM ilanlar arasında sunucuda aranır
+const cityOr = (city: string): { bot: string; user: string } => {
+  const mk = (fields: string[]) => fields.flatMap((f) => trVariants(city).map((v) => `${f}.ilike.%${v}%`)).join(",")
+  return { bot: mk(["from_city", "to_city", "cargo_detail"]), user: mk(["from_city", "to_city", "cargo_detail", "message"]) }
+}
+
 // Araç filtresi: her ilan tek kategoriye girer (lib/route.ts classifyVehicle); kategoriler birbirine karışmaz
 const FILTER_TO_CATEGORY: Record<string, string> = {
   "Kırkayak": "Kırkayak", Frigo: "Frigo", Damperli: "Damperli", Kamyon: "Kamyon", Kamyonet: "Kamyonet",
@@ -93,6 +99,7 @@ export default function Page() {
   const [loads, setLoads] = useState<Load[]>([])
   const [favoriteIds, setFavoriteIds] = useState<string[]>([])
   const [activeFilter, setActiveFilter] = useState("Tümü")
+  const [route, setRoute] = useState({ from: "", to: "" }) // Nereden / Nereye: tüm ilanlar arasında sunucuda filtrelenir
   const [sourceFilter, setSourceFilter] = useState<"all" | "user" | "bot">("all")
   
   const [query, setQuery] = useState("")
@@ -114,6 +121,7 @@ export default function Page() {
   const reqIdRef = useRef(0)
   const pageSizeRef = useRef(PAGE_SIZE)
   const activeFilterRef = useRef("Tümü")
+  const routeRef = useRef({ from: "", to: "" })
   const currentUserIdRef = useRef<string | null>(null)
   const isPremiumRef = useRef(false) // premium doğrulanana kadar false: ücretsiz gibi (gecikmeli) davranır
 
@@ -303,7 +311,15 @@ export default function Page() {
         userReq = userReq.or(catOr.user)
         botReq = botReq.or(catOr.bot)
       }
-      const effSize = catOr ? size * 3 : size
+      // Nereden / Nereye: iki şehir de ilanda geçmeli (art arda .or = VE). Yön ayrımı listede yapılır.
+      const { from: rFrom, to: rTo } = routeRef.current
+      for (const city of [rFrom, rTo]) {
+        if (!city) continue
+        const c = cityOr(city)
+        userReq = userReq.or(c.user)
+        botReq = botReq.or(c.bot)
+      }
+      const effSize = catOr || rFrom || rTo ? size * 3 : size
 
       // Kullanıcının kendi ilanları sayfalamadan bağımsız olarak her zaman gelsin
       const myId = currentUserIdRef.current
@@ -369,6 +385,18 @@ export default function Page() {
     hasLoadedRef.current = false // kısa bir yükleniyor görünümü: boş sonuç ekranı yanıp sönmesin
     fetchListings(queryRef.current, pageSizeRef.current)
   }, [activeFilter, isCheckingAuth, fetchListings])
+  const lastRouteRef = useRef("|")
+  useEffect(() => {
+    routeRef.current = route
+    const key = `${route.from}|${route.to}`
+    if (lastRouteRef.current === key) return
+    lastRouteRef.current = key
+    if (isCheckingAuth) return
+    setPageSize(PAGE_SIZE)
+    pageSizeRef.current = PAGE_SIZE
+    hasLoadedRef.current = false
+    fetchListings(queryRef.current, PAGE_SIZE)
+  }, [route, isCheckingAuth, fetchListings])
   useEffect(() => { currentUserIdRef.current = currentUserId }, [currentUserId])
   useEffect(() => { isPremiumRef.current = isPremium }, [isPremium])
 
@@ -757,6 +785,9 @@ export default function Page() {
               hasMore={hasMore}
               onLoadMore={() => setPageSize((p) => p + PAGE_SIZE)}
               lockedCount={lockedCount}
+              from={route.from}
+              to={route.to}
+              onRouteChange={(f: string, t: string) => setRoute({ from: f, to: t })}
             />
             </>
           )}
