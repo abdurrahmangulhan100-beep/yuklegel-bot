@@ -2,8 +2,8 @@
 import { useEffect, useState } from "react"
 import { supabase } from "@/lib/supabase"
 
-const LIVE_MS = 24 * 60 * 60 * 1000
-const REFRESH_MS = 6 * 60 * 60 * 1000
+const FRESH_MS = 6 * 60 * 60 * 1000
+const REFRESH_MS = FRESH_MS
 const PROVINCE_CODES: Record<string, number> = {
   Adana: 1, Adıyaman: 2, Afyonkarahisar: 3, Ağrı: 4, Amasya: 5, Ankara: 6, Antalya: 7, Artvin: 8, Aydın: 9,
   Balıkesir: 10, Bilecik: 11, Bingöl: 12, Bitlis: 13, Bolu: 14, Burdur: 15, Bursa: 16, Çanakkale: 17,
@@ -55,15 +55,28 @@ export function agoLabel(iso: string | null): string {
   return `${Math.round(m / 1440)} gün önce`
 }
 
-export function useFuelPrice(originCity?: string): { price: number | null; live: boolean; updatedAt: string | null } {
+export function useFuelPrice(originCity?: string): { price: number | null; live: boolean; loading: boolean; updatedAt: string | null } {
   const code = originCity ? PROVINCE_CODES[originCity] : undefined
   const [fuel, setFuel] = useState<Fuel | null>(code ? cache.get(code) ?? null : null)
+  const [loading, setLoading] = useState(Boolean(code))
   useEffect(() => {
     let alive = true
-    if (!code || !supabase) { setFuel(null); return }
-    load(code).then((value) => { if (alive) setFuel(value) })
+    if (!code || !supabase) { setFuel(null); setLoading(false); return }
+    setLoading(true)
+    load(code).then((value) => {
+      if (!alive) return
+      setFuel(value)
+      setLoading(false)
+    }).catch(() => {
+      if (alive) { setFuel(null); setLoading(false) }
+    })
     const onFocus = () => {
-      if (document.visibilityState === "visible") load(code).then((value) => { if (alive) setFuel(value) })
+      if (document.visibilityState === "visible") {
+        setLoading(true)
+        load(code).then((value) => {
+          if (alive) { setFuel(value); setLoading(false) }
+        }).catch(() => { if (alive) setLoading(false) })
+      }
     }
     window.addEventListener("focus", onFocus)
     return () => {
@@ -71,6 +84,6 @@ export function useFuelPrice(originCity?: string): { price: number | null; live:
       window.removeEventListener("focus", onFocus)
     }
   }, [code])
-  const live = Boolean(fuel?.updatedAt) && Date.now() - new Date(fuel!.updatedAt as string).getTime() <= LIVE_MS
-  return { price: live ? fuel!.price : null, live, updatedAt: live ? fuel!.updatedAt : null }
+  const live = Boolean(fuel?.updatedAt) && Date.now() - new Date(fuel!.updatedAt as string).getTime() <= FRESH_MS
+  return { price: live ? fuel!.price : null, live, loading, updatedAt: live ? fuel!.updatedAt : null }
 }
