@@ -1,30 +1,52 @@
-// Güncel mazot fiyatı (app_settings.fuel_diesel): tüm kartlar için tek sefer çekilir, bellekte tutulur (ekstra istek yok)
+// Motorin fiyatı çıkış iline göre Opet'ten otomatik alınır ve Supabase'de il bazında önbelleklenir.
 import { useEffect, useState } from "react"
 import { supabase } from "@/lib/supabase"
 
-/** app_settings'te fuel_diesel yoksa kullanılan varsayılan (Sefer Hesapla ile aynı) */
-export const DEFAULT_FUEL_PRICE = 42
-/** Bu süreden eski fiyat "canlı" sayılmaz (otomatik güncelleme durmuş demektir) */
-const FRESH_MS = 3 * 86400000
-
+const LIVE_MS = 24 * 60 * 60 * 1000
+const REFRESH_MS = 6 * 60 * 60 * 1000
+const PROVINCE_CODES: Record<string, number> = {
+  Adana: 1, Adıyaman: 2, Afyonkarahisar: 3, Ağrı: 4, Amasya: 5, Ankara: 6, Antalya: 7, Artvin: 8, Aydın: 9,
+  Balıkesir: 10, Bilecik: 11, Bingöl: 12, Bitlis: 13, Bolu: 14, Burdur: 15, Bursa: 16, Çanakkale: 17,
+  Çankırı: 18, Çorum: 19, Denizli: 20, Diyarbakır: 21, Edirne: 22, Elazığ: 23, Erzincan: 24, Erzurum: 25,
+  Eskişehir: 26, Gaziantep: 27, Giresun: 28, Gümüşhane: 29, Hakkari: 30, Hatay: 31, Isparta: 32, Mersin: 33,
+  İstanbul: 34, İzmir: 35, Kars: 36, Kastamonu: 37, Kayseri: 38, Kırklareli: 39, Kırşehir: 40, Kocaeli: 41,
+  Konya: 42, Kütahya: 43, Malatya: 44, Manisa: 45, Kahramanmaraş: 46, Mardin: 47, Muğla: 48, Muş: 49,
+  Nevşehir: 50, Niğde: 51, Ordu: 52, Rize: 53, Sakarya: 54, Samsun: 55, Siirt: 56, Sinop: 57, Sivas: 58,
+  Tekirdağ: 59, Tokat: 60, Trabzon: 61, Tunceli: 62, Şanlıurfa: 63, Uşak: 64, Van: 65, Yozgat: 66,
+  Zonguldak: 67, Aksaray: 68, Bayburt: 69, Karaman: 70, Kırıkkale: 71, Batman: 72, Şırnak: 73, Bartın: 74,
+  Ardahan: 75, Iğdır: 76, Yalova: 77, Karabük: 78, Kilis: 79, Osmaniye: 80, Düzce: 81,
+}
 type Fuel = { price: number; updatedAt: string | null }
-let cached: Fuel | null = null
-let pending: Promise<Fuel | null> | null = null
+const cache = new Map<number, Fuel | null>()
+const pending = new Map<number, Promise<Fuel | null>>()
 
-function load(): Promise<Fuel | null> {
-  if (cached) return Promise.resolve(cached)
-  if (!supabase) return Promise.resolve(null)
-  pending ??= Promise.resolve(supabase.from("app_settings").select("value,updated_at").eq("key", "fuel_diesel").maybeSingle())
-    .then(({ data }) => {
-      const v = data ? parseFloat(String(data.value).replace(",", ".")) : 0
-      cached = v > 0 ? { price: v, updatedAt: data?.updated_at ?? null } : null
-      return cached
-    })
-    .catch(() => null)
-  return pending
+async function readPrice(code: number): Promise<Fuel | null> {
+  if (!supabase) return null
+  const key = `fuel_diesel_${code}`
+  const { data } = await supabase.from("app_settings").select("value,updated_at").eq("key", key).maybeSingle()
+  const price = data ? parseFloat(String(data.value).replace(",", ".")) : 0
+  return price > 0 && data?.updated_at ? { price, updatedAt: data.updated_at } : null
 }
 
-/** "2 saat önce" / "dün" gibi kısa güncelleme etiketi */
+async function load(code: number): Promise<Fuel | null> {
+  if (!supabase) return null
+  const hit = cache.get(code)
+  if (hit?.updatedAt && Date.now() - new Date(hit.updatedAt).getTime() < REFRESH_MS) return hit
+  if (pending.has(code)) return pending.get(code)!
+  const task = (async () => {
+    let current = await readPrice(code)
+    if (!current || !current.updatedAt || Date.now() - new Date(current.updatedAt).getTime() > REFRESH_MS) {
+      // Edge Function her il için en fazla 6 saatte bir Opet kaynağına çıkar.
+      await supabase.functions.invoke("fuel-price-sync", { body: { provinceCode: code } }).catch(() => null)
+      current = await readPrice(code)
+    }
+    cache.set(code, current)
+    return current
+  })().catch(() => cache.get(code) ?? null).finally(() => pending.delete(code))
+  pending.set(code, task)
+  return task
+}
+
 export function agoLabel(iso: string | null): string {
   if (!iso) return ""
   const m = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000))
@@ -33,13 +55,22 @@ export function agoLabel(iso: string | null): string {
   return `${Math.round(m / 1440)} gün önce`
 }
 
-export function useFuelPrice(): { price: number; live: boolean; updatedAt: string | null } {
-  const [f, setF] = useState<Fuel | null>(cached)
+export function useFuelPrice(originCity?: string): { price: number | null; live: boolean; updatedAt: string | null } {
+  const code = originCity ? PROVINCE_CODES[originCity] : undefined
+  const [fuel, setFuel] = useState<Fuel | null>(code ? cache.get(code) ?? null : null)
   useEffect(() => {
     let alive = true
-    load().then((v) => { if (alive && v) setF(v) })
-    return () => { alive = false }
-  }, [])
-  const fresh = Boolean(f?.updatedAt) && Date.now() - new Date(f!.updatedAt as string).getTime() < FRESH_MS
-  return { price: f?.price ?? DEFAULT_FUEL_PRICE, live: fresh, updatedAt: f?.updatedAt ?? null }
+    if (!code || !supabase) { setFuel(null); return }
+    load(code).then((value) => { if (alive) setFuel(value) })
+    const onFocus = () => {
+      if (document.visibilityState === "visible") load(code).then((value) => { if (alive) setFuel(value) })
+    }
+    window.addEventListener("focus", onFocus)
+    return () => {
+      alive = false
+      window.removeEventListener("focus", onFocus)
+    }
+  }, [code])
+  const live = Boolean(fuel?.updatedAt) && Date.now() - new Date(fuel!.updatedAt as string).getTime() <= LIVE_MS
+  return { price: live ? fuel!.price : null, live, updatedAt: live ? fuel!.updatedAt : null }
 }
