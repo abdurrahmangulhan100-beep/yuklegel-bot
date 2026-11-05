@@ -803,8 +803,8 @@ export default function Page() {
           )}
           {effectiveTab === "Seferlerim" && (
             <TripsView
-              loads={visibleLoads}
               currentUserId={currentUserId}
+              onOpenCreate={requestCreate}
               onChanged={() => {
                 fetchListings(queryRef.current, pageSizeRef.current)
                 fetchCounts()
