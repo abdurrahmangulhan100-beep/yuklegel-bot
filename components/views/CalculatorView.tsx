@@ -2,8 +2,8 @@
 
 import { useMemo, useState } from "react"
 import { ArrowDownUp, Fuel, Gauge, MapPin, Navigation, RefreshCw, Route, Wallet } from "lucide-react"
-import { CITY_LIST, placeKm } from "@/lib/distance"
-import { useFuelPrice, agoLabel } from "@/lib/fuel"
+import { CITY_LIST, getRouteDiag, placeKm } from "@/lib/distance"
+import { useFuelPrice, agoLabel, getFuelDiag, provinceCode } from "@/lib/fuel"
 import { cn } from "@/lib/utils"
 
 const num = (value: string, fallback = 0) => {
@@ -33,6 +33,7 @@ export function CalculatorView() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   const [label, setLabel] = useState("")
+  const [diagText, setDiagText] = useState("")
 
   const fuel = useFuelPrice(canon(fromCity))
   const unit = fuel.price ?? fuel.lastPrice // taze yoksa son bilinen fiyat (etiketle gösterilir)
@@ -47,6 +48,7 @@ export function CalculatorView() {
     setLoading(true); setError(""); setKm(null)
     try {
       const r = await placeKm(a, fromDistrict.trim() || undefined, b, toDistrict.trim() || undefined)
+      setDiagText(r ? "" : getRouteDiag())
       if (!r) setError("Yol mesafesi alınamadı. İl/ilçe adını kontrol edin ya da bağlantınızı kontrol edip tekrar deneyin.")
       else {
         setKm(r.km)
@@ -99,7 +101,7 @@ export function CalculatorView() {
               {unit ? `Motorin ${try2.format(unit)} / L` : fuel.loading ? "Motorin fiyatı alınıyor…" : "Motorin fiyatı alınamadı"}
             </span>
             <span className="block truncate text-muted-foreground">
-              {fuel.live ? `Opet · ${canon(fromCity)} · ${agoLabel(fuel.updatedAt)}` : stale ? `Güncel değil · son bilinen: ${agoLabel(fuel.lastUpdatedAt)}` : "Çıkış ilinin canlı fiyatı gerekli"}
+              {!unit && !fuel.loading && getFuelDiag(provinceCode(canon(fromCity))) ? `Neden: ${getFuelDiag(provinceCode(canon(fromCity)))}` : fuel.live ? `Opet · ${canon(fromCity)} · ${agoLabel(fuel.updatedAt)}` : stale ? `Güncel değil · son bilinen: ${agoLabel(fuel.lastUpdatedAt)}` : "Çıkış ilinin canlı fiyatı gerekli"}
             </span>
           </span>
         </span>
@@ -129,7 +131,7 @@ export function CalculatorView() {
           </div>
         </div>
 
-        {error && <p role="alert" className="mt-3 rounded-xl bg-red-500/10 px-3 py-2.5 text-xs font-medium text-red-600">{error}</p>}
+        {error && <p role="alert" className="mt-3 rounded-xl bg-red-500/10 px-3 py-2.5 text-xs font-medium text-red-600">{error}{diagText && <span className="mt-1 block text-[10px] font-normal opacity-80">Neden: {diagText}</span>}</p>}
 
         <button type="button" onClick={calculate} disabled={loading} className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-brand-gradient py-3.5 text-[15px] font-extrabold text-white shadow-lg shadow-[#d64526]/25 transition active:scale-[.98] disabled:opacity-60">
           {loading ? <RefreshCw className="size-5 animate-spin" /> : <Navigation className="size-5" />}
