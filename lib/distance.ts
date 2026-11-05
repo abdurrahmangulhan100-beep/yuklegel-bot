@@ -85,19 +85,23 @@ const writeLocal = (key: string, km: number) => {
 }
 const timeout = (ms: number) => (typeof AbortSignal !== "undefined" && "timeout" in AbortSignal ? AbortSignal.timeout(ms) : undefined)
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
+let diag: string[] = []
+/** Son mesafe denemesinde hangi adımın neden başarısız olduğu (ekranda küçük tanı satırı için) */
+export const getRouteDiag = () => diag.join(" · ")
 
 async function viaEdge(a: string, b: string): Promise<number | null> {
   const base = process.env.NEXT_PUBLIC_SUPABASE_URL
-  if (!base) return null
+  if (!base) { diag.push("sunucu: adres yok"); return null }
   try {
     const r = await fetch(`${base}/functions/v1/route-km?from=${encodeURIComponent(a)}&to=${encodeURIComponent(b)}`, {
       headers: { apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "" },
       signal: timeout(25000),
     })
-    if (!r.ok) return null
+    if (!r.ok) { diag.push(`sunucu: HTTP ${r.status}`); return null }
     const j = await r.json()
-    return j && j.km > 0 ? Math.round(j.km) : null
-  } catch { return null }
+    if (!(j && j.km > 0)) { diag.push("sunucu: boş yanıt"); return null }
+    return Math.round(j.km)
+  } catch { diag.push("sunucu: ulaşılamadı"); return null }
 }
 
 const geoCache = new Map<string, [number, number]>()
@@ -108,13 +112,13 @@ async function geocode(place: string): Promise<[number, number] | null> {
   const q = district ? `${district}, ${city}, Türkiye` : `${city}, Türkiye`
   try {
     const r = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=tr&accept-language=tr&q=${encodeURIComponent(q)}`, { signal: timeout(12000) })
-    if (!r.ok) return null
+    if (!r.ok) { diag.push(`konum(${place}): HTTP ${r.status}`); return null }
     const j = await r.json()
     const lat = parseFloat(j?.[0]?.lat), lon = parseFloat(j?.[0]?.lon)
-    if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null
+    if (!Number.isFinite(lat) || !Number.isFinite(lon)) { diag.push(`konum bulunamadı: ${place}`); return null }
     geoCache.set(place, [lat, lon])
     return [lat, lon]
-  } catch { return null }
+  } catch { diag.push(`konum(${place}): ağ/engel`); return null }
 }
 
 async function viaOsm(a: string, b: string): Promise<number | null> {
@@ -126,8 +130,9 @@ async function viaOsm(a: string, b: string): Promise<number | null> {
     const r = await fetch(`https://router.project-osrm.org/route/v1/driving/${from[1]},${from[0]};${to[1]},${to[0]}?overview=false`, { signal: timeout(15000) })
     const j = await r.json()
     const m = j?.routes?.[0]?.distance
-    return j?.code === "Ok" && m > 0 ? Math.round(m / 1000) : null
-  } catch { return null }
+    if (!(j?.code === "Ok" && m > 0)) { diag.push(`yol: ${j?.code ?? "yanıt yok"}`); return null }
+    return Math.round(m / 1000)
+  } catch { diag.push("yol: ağ/engel"); return null }
 }
 
 const placeCache = new Map<string, Promise<PlaceKm | null>>()
@@ -151,7 +156,7 @@ export function placeKm(fromCity: string, fromDistrict: string | undefined, toCi
   const saved = typeof window !== "undefined" ? readLocal(key) : null
   const p: Promise<PlaceKm | null> = saved
     ? Promise.resolve({ km: saved, hours: driveHours(saved) })
-    : run(async () => (await viaEdge(a, b)) ?? (await viaOsm(a, b)))
+    : run(async () => { diag = []; return (await viaEdge(a, b)) ?? (await viaOsm(a, b)) })
         .then((km) => {
           if (!km) { placeCache.delete(key); return null }
           if (typeof window !== "undefined") writeLocal(key, km)
