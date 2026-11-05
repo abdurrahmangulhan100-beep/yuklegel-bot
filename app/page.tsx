@@ -113,6 +113,7 @@ export default function Page() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [isGuest, setIsGuest] = useState(false)
   const [totals, setTotals] = useState<{ user: number; bot: number; urgent: number } | null>(null)
+  const [last24h, setLast24h] = useState<number | null>(null)
   const [pageSize, setPageSize] = useState(PAGE_SIZE)
   const [hasMore, setHasMore] = useState(false)
   const [lockedCount, setLockedCount] = useState(0) // ücretsiz kullanıcının henüz göremediği (son 10 dk) ilan sayısı
@@ -251,6 +252,10 @@ export default function Page() {
         late(supabase.from("bot_listings").select("id", head).ilike("cargo_detail", "%acil%").gte("created_at", cutoff)),
       ])
       setTotals({ user: u.count ?? 0, bot: b.count ?? 0, urgent: (uu.count ?? 0) + (bu.count ?? 0) })
+
+      // Son 24 saatte sisteme düşen gerçek ilan sayısı (yalnızca sayı döner; recent_listing_count zaten kurulu)
+      const { data: d24, error: e24 } = await supabase.rpc("recent_listing_count", { p_since: new Date(Date.now() - 86400000).toISOString() })
+      if (!e24 && typeof d24 === "number") setLast24h(d24)
 
       // Ücretsiz plan: gecikme penceresindeki (henüz gösterilmeyen) ilan sayısı -> "Premium üyeler şu an görüyor" uyarısı
       if (dc) {
@@ -552,9 +557,10 @@ export default function Page() {
       todayUserCount: totals ? totals.user : visibleLoads.filter(l => l.source === "user").length,
       botCount: totals ? totals.bot : visibleLoads.filter(l => l.source === "bot").length,
       pendingTrips: visibleLoads.filter(l => l.source === "user" && l.userId === currentUserId).length,
-      activeRoutesCount: uniqueRoutes
+      activeRoutesCount: uniqueRoutes,
+      last24h: last24h ?? undefined,
     }
-  }, [visibleLoads, totals, currentUserId])
+  }, [visibleLoads, totals, currentUserId, last24h])
 
   const handleLogout = async () => {
     try {
@@ -755,6 +761,7 @@ export default function Page() {
             <OverviewView 
               loads={visibleLoads} 
               totalCount={totalActive}
+              last24h={last24h ?? undefined}
               urgentCount={totals ? totals.urgent : undefined}
               currentUserId={currentUserId}
               userName={isGuest ? undefined : profile.authorized_person}
