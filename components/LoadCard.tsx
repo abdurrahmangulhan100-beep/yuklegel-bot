@@ -2,11 +2,11 @@
 
 import { toast } from "@/lib/toast"
 import { hidePhones } from "@/lib/listings"
-import { Phone, MessageCircle, Star, Check, Ban, Zap, ChevronDown, Share2, Copy, Flag, MoreHorizontal, MapPin, Truck, Clock, Weight, Ruler, Repeat2, Route as RouteIcon, Fuel, Wallet, ExternalLink } from "lucide-react"
+import { Phone, MessageCircle, Star, Check, Ban, Zap, ChevronDown, Share2, Copy, Flag, MoreHorizontal, MapPin, Truck, Clock, Weight, Ruler, Repeat2, Route as RouteIcon, Fuel, Wallet, BadgeCheck, Timer } from "lucide-react"
 import { Fragment, memo, useEffect, useRef, useState } from "react"
 import { isMissing } from "@/lib/route"
-import { mapsUrl, tripEstimate } from "@/lib/distance"
-import { useFuelPrice } from "@/lib/fuel"
+import { placeKm, tripEstimate, fmtHours, AVG_CONSUMPTION } from "@/lib/distance"
+import { useFuelPrice, agoLabel } from "@/lib/fuel"
 import { supabase } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
 import { Sheet } from "@/components/Sheet"
@@ -547,7 +547,7 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
           </div>
         )}
 
-        <RouteCost from={load.fromCity} to={load.toCity} />
+        <RouteCost from={load.fromCity} to={load.toCity} fromDistrict={load.fromCity ? load.districtOf?.[load.fromCity] : undefined} toDistrict={load.toCity ? load.districtOf?.[load.toCity] : undefined} />
 
         {/* Yük detayı */}
         <div className="flex-1">
@@ -650,7 +650,7 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
                 {hasPrice && <Tag tone="bg-emerald-600 text-white">{load.price}</Tag>}
               </div>
             )}
-            <RouteCost from={load.fromCity} to={load.toCity} />
+            <RouteCost from={load.fromCity} to={load.toCity} fromDistrict={load.fromCity ? load.districtOf?.[load.fromCity] : undefined} toDistrict={load.toCity ? load.districtOf?.[load.toCity] : undefined} />
             <div className="rounded-xl bg-muted/60 px-3.5 py-3">
               <p className="whitespace-pre-line break-words text-[14.5px] leading-[1.65] text-foreground/80">{cargoShown}</p>
             </div>
@@ -773,24 +773,45 @@ function Stat({ icon, label, value, strong }: { icon: React.ReactNode; label: st
     </div>
   )
 }
-function RouteCost({ from, to }: { from?: string; to?: string }) {
-  const { price, live } = useFuelPrice()
+function RouteCost({ from, to, fromDistrict, toDistrict }: { from?: string; to?: string; fromDistrict?: string; toDistrict?: string }) {
+  const { price, live, updatedAt } = useFuelPrice()
   const t = tripEstimate(from, to, price)
+  // İlçe biliniyorsa il bazlı değer anında görünür, kesin ilçe km'si gelince yerini alır
+  const [exactKm, setExactKm] = useState<{ km: number; hours: number } | null>(null)
+  useEffect(() => {
+    setExactKm(null)
+    if (!from || !to || !(fromDistrict || toDistrict)) return
+    let alive = true
+    placeKm(from, fromDistrict, to, toDistrict).then((r) => { if (alive && r) setExactKm(r) })
+    return () => { alive = false }
+  }, [from, to, fromDistrict, toDistrict])
   if (!t || !from || !to) return null
+  const km = exactKm?.km ?? t.km
+  const hours = exactKm?.hours ?? t.hours
+  const liters = Math.round((km / 100) * AVG_CONSUMPTION)
+  const cost = Math.round((liters * price) / 10) * 10
+  const exact = Boolean(exactKm) || t.exact
+  const place = (c: string, d?: string) => (d ? `${c} · ${d}` : c)
   return (
-    <div className="rounded-2xl border border-border bg-gradient-to-br from-brand/[0.07] via-card to-card p-2.5">
-      <div className="grid grid-cols-3 divide-x divide-border">
-        <Stat icon={<RouteIcon className="size-3" />} label="Mesafe" value={`${t.exact ? "" : "≈ "}${fmt(t.km)} km`} />
-        <Stat icon={<Fuel className="size-3" />} label="Yakıt" value={`${fmt(t.liters)} lt`} />
-        <Stat icon={<Wallet className="size-3" />} label="Masraf" value={t.cost !== null ? `₺${fmt(t.cost)}` : "-"} strong />
-      </div>
-      <div className="mt-2 flex items-center justify-between gap-2 border-t border-border/70 pt-2 text-[11.5px] text-muted-foreground">
-        <span className="inline-flex items-center gap-1.5">
-          <span className={cn("size-1.5 rounded-full", live ? "bg-emerald-500" : "bg-muted-foreground/40")} aria-hidden />
-          Mazot ₺{price.toLocaleString("tr-TR", { maximumFractionDigits: 2 })}/lt
+    <div className="overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-brand/[0.07] via-card to-card">
+      <div className="flex items-center justify-between gap-2 px-3 pt-2.5">
+        <span className="min-w-0 truncate text-[11.5px] font-bold text-foreground/80">{place(from, fromDistrict)} → {place(to, toDistrict)}</span>
+        <span className={cn("inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] font-bold", exact ? "bg-emerald-500/10 text-emerald-600" : "bg-muted text-muted-foreground")}>
+          {exact && <BadgeCheck className="size-3" />}{exact ? "Yol km" : "Tahmini"}
         </span>
-        <a href={mapsUrl(from, to)} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}
-          className="inline-flex items-center gap-1 font-semibold text-brand active:scale-95">Haritada aç<ExternalLink className="size-3" /></a>
+      </div>
+      <div className="grid grid-cols-4 divide-x divide-border px-1 py-2.5">
+        <Stat icon={<RouteIcon className="size-3" />} label="Mesafe" value={`${exact ? "" : "≈ "}${fmt(km)} km`} />
+        <Stat icon={<Timer className="size-3" />} label="Süre" value={fmtHours(hours)} />
+        <Stat icon={<Fuel className="size-3" />} label="Yakıt" value={`${fmt(liters)} lt`} />
+        <Stat icon={<Wallet className="size-3" />} label="Masraf" value={`₺${fmt(cost)}`} strong />
+      </div>
+      <div className="flex items-center justify-between gap-2 border-t border-border/70 bg-muted/30 px-3 py-1.5 text-[11px] text-muted-foreground">
+        <span className="inline-flex items-center gap-1.5">
+          <span className={cn("size-1.5 rounded-full", live ? "bg-emerald-500" : "bg-amber-400")} aria-hidden />
+          Mazot ₺{price.toLocaleString("tr-TR", { maximumFractionDigits: 2 })}/lt{live && updatedAt ? ` · ${agoLabel(updatedAt)}` : " · güncel değil"}
+        </span>
+        <span>{AVG_CONSUMPTION} lt/100 km · tek yön</span>
       </div>
     </div>
   )
