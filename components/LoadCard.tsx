@@ -2,7 +2,7 @@
 
 import { toast } from "@/lib/toast"
 import { hidePhones } from "@/lib/listings"
-import { Phone, MessageCircle, Star, Check, Ban, Zap, ChevronDown, Share2, Copy, Flag, MoreHorizontal, MapPin, Truck, Clock, Weight, Ruler, Repeat2 } from "lucide-react"
+import { Phone, MessageCircle, Star, Check, Ban, Zap, ChevronDown, Share2, Copy, Flag, MoreHorizontal, MapPin, Truck, Clock, Weight, Ruler, Repeat2, Route as RouteIcon, Fuel, Wallet, ExternalLink } from "lucide-react"
 import { Fragment, memo, useEffect, useRef, useState } from "react"
 import { isMissing } from "@/lib/route"
 import { mapsUrl, tripEstimate } from "@/lib/distance"
@@ -763,18 +763,35 @@ function Place({ caption, dot, label, sub, align, onClick, name = "" }: { captio
   )
 }
 
-/** Mesafe + yakıt tahmini (32 lt/100 km): yalnızca çıkış ve varış şehri belliyse görünür */
+/** Mesafe + yakıt tahmini (32 lt/100 km, güncel mazot fiyatı): yalnızca çıkış ve varış şehri belliyse görünür */
 const fmt = (n: number) => n.toLocaleString("tr-TR")
+function Stat({ icon, label, value, strong }: { icon: React.ReactNode; label: string; value: string; strong?: boolean }) {
+  return (
+    <div className="flex min-w-0 flex-col items-center gap-0.5 px-1 text-center">
+      <span className="flex items-center gap-1 text-[10.5px] font-bold uppercase tracking-wider text-muted-foreground">{icon}{label}</span>
+      <span className={cn("max-w-full truncate text-[15px] font-extrabold tabular-nums", strong ? "text-brand" : "text-foreground")}>{value}</span>
+    </div>
+  )
+}
 function RouteCost({ from, to }: { from?: string; to?: string }) {
-  const fuel = useFuelPrice()
-  const t = tripEstimate(from, to, fuel)
+  const { price, live } = useFuelPrice()
+  const t = tripEstimate(from, to, price)
   if (!t || !from || !to) return null
   return (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-border bg-card px-3 py-2 text-[12.5px] text-muted-foreground">
-      <span className="inline-flex items-center gap-1 font-bold text-foreground"><MapPin className="size-3.5 text-brand" />{t.exact ? "" : "≈ "}{fmt(t.km)} km</span>
-      <span>~{fmt(t.liters)} lt</span>
-      {t.cost !== null && <span className="font-semibold text-foreground">~₺{fmt(t.cost)} yakıt</span>}
-      <a href={mapsUrl(from, to)} target="_blank" rel="noopener noreferrer" className="ml-auto font-semibold text-brand active:scale-95" onClick={(e) => e.stopPropagation()}>Haritada aç</a>
+    <div className="rounded-2xl border border-border bg-gradient-to-br from-brand/[0.07] via-card to-card p-2.5">
+      <div className="grid grid-cols-3 divide-x divide-border">
+        <Stat icon={<RouteIcon className="size-3" />} label="Mesafe" value={`${t.exact ? "" : "≈ "}${fmt(t.km)} km`} />
+        <Stat icon={<Fuel className="size-3" />} label="Yakıt" value={`${fmt(t.liters)} lt`} />
+        <Stat icon={<Wallet className="size-3" />} label="Masraf" value={t.cost !== null ? `₺${fmt(t.cost)}` : "-"} strong />
+      </div>
+      <div className="mt-2 flex items-center justify-between gap-2 border-t border-border/70 pt-2 text-[11.5px] text-muted-foreground">
+        <span className="inline-flex items-center gap-1.5">
+          <span className={cn("size-1.5 rounded-full", live ? "bg-emerald-500" : "bg-muted-foreground/40")} aria-hidden />
+          Mazot ₺{price.toLocaleString("tr-TR", { maximumFractionDigits: 2 })}/lt
+        </span>
+        <a href={mapsUrl(from, to)} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}
+          className="inline-flex items-center gap-1 font-semibold text-brand active:scale-95">Haritada aç<ExternalLink className="size-3" /></a>
+      </div>
     </div>
   )
 }
