@@ -20,6 +20,7 @@ type ListingsViewProps = {
     pendingTrips: number
     activeRoutesCount: number
     botCount?: number
+    last24h?: number
   }
   loading: boolean
   activeFilter: string
@@ -310,7 +311,10 @@ export function ListingsView({
             </span>
           </h1>
           <p className="mt-0.5 text-xs text-muted-foreground sm:text-sm">
-            {fmt(stats.activeTotal)} aktif ilan · WhatsApp gruplarında aramak yerine güzergâhını seç, ara.
+            {typeof stats.last24h === "number" && stats.last24h > 0 && (
+              <><b className="font-bold text-foreground">{fmt(stats.last24h)}</b> yeni ilan son 24 saatte · </>
+            )}
+            {fmt(stats.activeTotal)} aktif ilan · güzergâhını seç, ara.
           </p>
           <SourceInfoButton className="mt-0.5 -ml-0.5 inline-flex min-h-9 items-center gap-1.5 rounded-full px-1 text-xs font-semibold text-foreground/80 active:opacity-70" />
         </div>
