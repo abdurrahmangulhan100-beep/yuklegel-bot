@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react"
 import { Load, LoadCard } from "@/components/LoadCard"
+import { estimateKm } from "@/lib/distance"
 import { VehicleIcon, type VehicleKind } from "@/components/VehicleIcon"
 import { PackageSearch, Plus, X, MapPin, Crown, ArrowLeftRight, TrendingUp } from "lucide-react"
 import { usePremium } from "@/components/PremiumProvider"
@@ -218,14 +219,19 @@ export function ListingsView({
     return null
   })()
 
+  const [sort, setSort] = useState<"new" | "near" | "far">("new")
   const visibleLoads = useMemo(() => {
-    return loads.filter((l) => {
+    const list = loads.filter((l) => {
       if (from && !matchFrom(l, from)) return false
       if (to && !matchTo(l, to)) return false
       if (from && to && from !== to && l.fromCity && l.toCity && !(l.fromCity === from && matchTo(l, to))) return false
       return true
     })
-  }, [loads, from, to])
+    if (sort === "new") return list
+    // Mesafe sırası: km'si bilinmeyen ilanlar (şehir çifti yok) sona gider
+    const km = (l: Load) => estimateKm(l.fromCity, l.toCity) ?? Infinity
+    return [...list].sort((a, b) => (sort === "near" ? km(a) - km(b) : (km(b) === Infinity ? -1 : km(b)) - (km(a) === Infinity ? -1 : km(a))))
+  }, [loads, from, to, sort])
 
   // Tek dokunuşla güzergâh: ilanlarda en çok geçen çıkış → varış çiftleri
   const popularRoutes = useMemo(() => {
@@ -430,6 +436,14 @@ export function ListingsView({
       {!loading && (
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1 px-1 text-xs font-medium text-muted-foreground">
           <span><span className="font-bold text-foreground">{visibleLoads.length}</span> ilan gösteriliyor</span>
+          <label className="ml-auto inline-flex items-center gap-1.5">
+            <span className="sr-only">Sırala</span>
+            <select value={sort} onChange={(e) => setSort(e.target.value as "new" | "near" | "far")} className="h-8 rounded-full border border-border bg-card px-2.5 text-xs font-semibold text-foreground">
+              <option value="new">En yeni</option>
+              <option value="near">Mesafe: yakın → uzak</option>
+              <option value="far">Mesafe: uzak → yakın</option>
+            </select>
+          </label>
           {(hasExtraFilters || activeFilter !== "Tümü" || sourceFilter !== "all") && (
             <button type="button" onClick={clearAll} className="inline-flex min-h-8 items-center gap-1 rounded-full bg-muted/60 dark:bg-brand/15 px-2.5 font-semibold text-brand active:scale-95">
               <X className="size-3" /> Filtre açık · Temizle
