@@ -3,8 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { Load, LoadCard } from "@/components/LoadCard"
 import { VehicleIcon, type VehicleKind } from "@/components/VehicleIcon"
-import { PackageSearch, Plus, Phone, X, MapPin, Crown, Clock, ArrowRight, SlidersHorizontal } from "lucide-react"
-import { Sheet } from "@/components/Sheet"
+import { PackageSearch, Plus, Phone, X, MapPin, Crown, Clock, ArrowLeftRight, Zap, TrendingUp } from "lucide-react"
 import { usePremium } from "@/components/PremiumProvider"
 import { FREE_DELAY_MINUTES, openPremium } from "@/lib/premium"
 import { cn } from "@/lib/utils"
@@ -71,6 +70,7 @@ export function ListingsView({
   const [to, setTo] = useState("")
   const [age, setAge] = useState<"" | "1h" | "6h" | "today">("")
   const [onlyPhone, setOnlyPhone] = useState(false)
+  const [urgentFirst, setUrgentFirst] = useState(false)
 
   // Son seçilen GÜZERGÂH bu cihazda hatırlansın. "Zaman" ve "Sadece telefonlu" filtreleri bilerek hatırlanmaz:
   // eskiden bunlar da saklanıyordu ve kullanıcı bir hafta sonra uygulamayı açınca "1 saat" filtresi yüzünden listeyi boş görüyordu.
@@ -112,7 +112,7 @@ export function ListingsView({
   const visibleLoads = useMemo(() => {
     const now = Date.now()
     const maxAge = age === "1h" ? 3600_000 : age === "6h" ? 6 * 3600_000 : age === "today" ? 24 * 3600_000 : 0
-    return loads.filter((l) => {
+    const list = loads.filter((l) => {
       if (from && !matchFrom(l, from)) return false
       if (to && !matchTo(l, to)) return false
       if (from && to && from !== to && l.fromCity && l.toCity && !(l.fromCity === from && matchTo(l, to))) return false
@@ -120,13 +120,28 @@ export function ListingsView({
       if (onlyPhone && isMissing(l.phone)) return false
       return true
     })
-  }, [loads, from, to, age, onlyPhone])
+    // Array.sort kararlıdır: acil olanlar öne gelir, kendi aralarında yeni→eski sıra korunur
+    return urgentFirst ? [...list].sort((a, b) => Number(Boolean(b.urgent)) - Number(Boolean(a.urgent))) : list
+  }, [loads, from, to, age, onlyPhone, urgentFirst])
+
+  // Tek dokunuşla güzergâh: ilanlarda en çok geçen çıkış → varış çiftleri
+  const popularRoutes = useMemo(() => {
+    const m = new Map<string, { from: string; to: string; n: number }>()
+    for (const l of loads) {
+      if (!l.fromCity || !l.toCity || l.fromCity === l.toCity) continue
+      const k = `${l.fromCity}>${l.toCity}`
+      const e = m.get(k)
+      if (e) e.n++
+      else m.set(k, { from: l.fromCity, to: l.toCity, n: 1 })
+    }
+    return Array.from(m.values()).sort((a, b) => b.n - a.n || byTr(a.from, b.from)).slice(0, 8)
+  }, [loads])
 
   // Uzun listeyi tek seferde çizmek mobilde kasmaya yol açar: ekran kaydıkça parça parça ekle
   const CHUNK = 20
   const [shown, setShown] = useState(CHUNK)
   const sentinelRef = useRef<HTMLDivElement | null>(null)
-  const filterKey = `${activeFilter}|${sourceFilter}|${from}|${to}|${age}|${onlyPhone}|${searchQuery}`
+  const filterKey = `${activeFilter}|${sourceFilter}|${from}|${to}|${age}|${onlyPhone}|${urgentFirst}|${searchQuery}`
   useEffect(() => { setShown(CHUNK) }, [filterKey])
 
   const renderedItems = useMemo(() => visibleLoads.slice(0, shown), [visibleLoads, shown])
@@ -145,11 +160,10 @@ export function ListingsView({
 
   const favoriteSet = useMemo(() => new Set(favoriteIds), [favoriteIds])
 
-  const [filterOpen, setFilterOpen] = useState(false)
-  const extraCount = [from, to, age, onlyPhone].filter(Boolean).length
-  const hasExtraFilters = Boolean(from || to || age || onlyPhone)
-  const clearExtra = () => { setFrom(""); setTo(""); setAge(""); setOnlyPhone(false) }
+  const hasExtraFilters = Boolean(from || to || age || onlyPhone || urgentFirst)
+  const clearExtra = () => { setFrom(""); setTo(""); setAge(""); setOnlyPhone(false); setUrgentFirst(false) }
   const clearAll = () => { setActiveFilter("Tümü"); setSourceFilter("all"); clearExtra() }
+  const swapRoute = () => { setFrom(to); setTo(from) }
 
   const sources: { key: "all" | "user" | "bot"; label: string; count?: number; active: string }[] = [
     { key: "all", label: "Tümü", count: stats.activeTotal, active: "bg-primary text-primary-foreground shadow-sm" },
@@ -157,38 +171,52 @@ export function ListingsView({
     { key: "bot", label: "Saha Ağı", count: stats.botCount, active: "bg-[#315d83] text-white shadow-sm" },
   ]
 
+  const chip = (on: boolean) =>
+    cn(
+      "inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border px-3.5 text-[12.5px] font-semibold transition-all active:scale-95",
+      on ? "border-brand bg-brand/10 text-foreground shadow-sm" : "border-border bg-card text-muted-foreground"
+    )
+
   return (
-    <div className="space-y-4 sm:space-y-5">
-      {/* Ücretsiz plan: gecikme bilgisi + Premium'a yönlendirme */}
+    <div className="space-y-3.5 sm:space-y-5">
+      {/* Ücretsiz plan: tek satırlık, sakin Premium bilgisi */}
       {!premiumLoading && !isPremium && (
         <button
           type="button"
           onClick={openPremium}
-          className="flex w-full items-center gap-2 rounded-xl border border-[#f3dfb0] bg-muted/60 px-3 py-2.5 text-left text-xs font-semibold text-[#8a5a00] dark:text-amber-300 active:scale-[0.99]"
+          className="flex w-full items-center gap-2 rounded-2xl border border-amber-400/40 bg-amber-500/10 px-3 py-2 text-left text-xs font-semibold text-amber-700 active:scale-[0.99] dark:text-amber-300"
         >
           <Crown className="size-4 shrink-0" />
-          {lockedCount > 0
-            ? `Son ${FREE_DELAY_MINUTES} dakikada ${lockedCount} yeni ilan eklendi. Premium üyeler bunları şu an görüyor, siz ${FREE_DELAY_MINUTES} dk sonra göreceksiniz. Anında görmek için Premium'a geçin.`
-            : `Ücretsiz planda yeni ilanlar ${FREE_DELAY_MINUTES} dakika gecikmeyle görünür. Anında görmek için Premium'a geçin.`}
+          <span className="min-w-0 flex-1">
+            {lockedCount > 0
+              ? `${lockedCount} yeni ilan Premium'da şu an açık, siz ${FREE_DELAY_MINUTES} dk sonra göreceksiniz`
+              : `Ücretsiz planda yeni ilanlar ${FREE_DELAY_MINUTES} dk gecikmeli görünür`}
+          </span>
+          <span className="shrink-0 rounded-full bg-amber-500 px-2.5 py-1 text-[11px] font-bold text-white">Anında gör</span>
         </button>
       )}
 
       {/* Başlık */}
       <div className="flex items-end justify-between gap-4">
-        <div>
-          <div className="mb-0.5 hidden text-[11px] font-bold uppercase tracking-wider text-brand sm:block">Pazar Yeri</div>
-          <h1 className="text-xl font-extrabold tracking-tight text-foreground sm:text-3xl">Güncel İlanlar</h1>
-          <p className="mt-1 hidden text-sm text-muted-foreground sm:block">
-            Saha ve kullanıcı ilanları güncel esas alınarak listelenmektedir.
+        <div className="min-w-0">
+          <h1 className="flex items-center gap-2 text-xl font-extrabold tracking-tight text-foreground sm:text-3xl">
+            İlanlar
+            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-bold text-emerald-600">
+              <span aria-hidden className="size-1.5 animate-pulse rounded-full bg-emerald-500" />
+              Canlı
+            </span>
+          </h1>
+          <p className="mt-0.5 text-xs text-muted-foreground sm:text-sm">
+            {fmt(stats.activeTotal)} aktif ilan · WhatsApp gruplarında aramak yerine güzergâhını seç, ara.
           </p>
-          <SourceInfoButton className="mt-1 -ml-0.5 inline-flex min-h-9 items-center gap-1.5 rounded-full px-1 text-xs font-semibold text-foreground/80 active:opacity-70" />
+          <SourceInfoButton className="mt-0.5 -ml-0.5 inline-flex min-h-9 items-center gap-1.5 rounded-full px-1 text-xs font-semibold text-foreground/80 active:opacity-70" />
         </div>
         <button
           onClick={() => setIsCreateOpen(true)}
           className="hidden h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-brand px-5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand/90 sm:inline-flex"
         >
           <Plus className="size-5" />
-          İlan Oluştur
+          İlan Ver
         </button>
       </div>
 
@@ -214,6 +242,78 @@ export function ListingsView({
         ))}
       </div>
 
+      {/* Güzergâh: Nereden ⇄ Nereye (mobilde de her zaman görünür) */}
+      <div className="rounded-2xl border border-border bg-card p-2.5 shadow-sm dark:shadow-none">
+        <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+          <div className="relative min-w-0">
+            <MapPin aria-hidden className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-emerald-500" />
+            <select aria-label="Nereden" value={from} onChange={(e) => setFrom(e.target.value)} className={cn(selectClass, "w-full bg-muted/50 pl-9")}>
+              <option value="">Nereden</option>
+              {from && !fromOptions.some(([c]) => c === from) && <option value={from}>{from} (0)</option>}
+              {fromOptions.map(([c, n]) => (<option key={c} value={c}>{c} ({n})</option>))}
+            </select>
+          </div>
+          <button
+            type="button"
+            onClick={swapRoute}
+            aria-label="Çıkış ve varışı değiştir"
+            className="grid size-10 place-items-center rounded-full border border-border bg-card text-muted-foreground active:scale-90"
+          >
+            <ArrowLeftRight className="size-4" />
+          </button>
+          <div className="relative min-w-0">
+            <MapPin aria-hidden className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-brand" />
+            <select aria-label="Nereye" value={to} onChange={(e) => setTo(e.target.value)} className={cn(selectClass, "w-full bg-muted/50 pl-9")}>
+              <option value="">Nereye</option>
+              {to && !toOptions.some(([c]) => c === to) && <option value={to}>{to} (0)</option>}
+              {toOptions.map(([c, n]) => (<option key={c} value={c}>{c} ({n})</option>))}
+            </select>
+          </div>
+        </div>
+
+        {/* Hızlı filtreler (yatay kaydırma) */}
+        <div className="no-scrollbar -mx-2.5 mt-2.5 flex items-center gap-2 overflow-x-auto px-2.5 sm:mx-0 sm:flex-wrap sm:px-0">
+          {([["1h", "Son 1 saat"], ["6h", "6 saat"], ["today", "24 saat"]] as const).map(([k, label]) => (
+            <button key={k} type="button" onClick={() => setAge(age === k ? "" : k)} aria-pressed={age === k} className={chip(age === k)}>
+              <Clock className="size-3.5" />{label}
+            </button>
+          ))}
+          <button type="button" onClick={() => setOnlyPhone((v) => !v)} aria-pressed={onlyPhone} className={chip(onlyPhone)}>
+            <Phone className="size-3.5" />Telefonlu
+          </button>
+          <button type="button" onClick={() => setUrgentFirst((v) => !v)} aria-pressed={urgentFirst} className={chip(urgentFirst)}>
+            <Zap className="size-3.5" />Acil önce
+          </button>
+          {hasExtraFilters && (
+            <button type="button" onClick={clearExtra} className="inline-flex h-9 shrink-0 items-center gap-1 rounded-full px-2.5 text-xs font-semibold text-brand active:scale-95">
+              <X className="size-3.5" />Temizle
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Popüler güzergâhlar: tek dokunuşla uygula */}
+      {!loading && !from && !to && popularRoutes.length > 0 && (
+        <div>
+          <div className="mb-1.5 flex items-center gap-1.5 px-1 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+            <TrendingUp className="size-3.5 text-brand" />Popüler güzergâhlar
+          </div>
+          <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 sm:mx-0 sm:flex-wrap sm:px-0">
+            {popularRoutes.map((r) => (
+              <button
+                key={`${r.from}>${r.to}`}
+                type="button"
+                onClick={() => { setFrom(r.from); setTo(r.to) }}
+                className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-border bg-card px-3 text-[12.5px] font-semibold text-foreground active:scale-95"
+              >
+                {r.from}<span aria-hidden className="text-muted-foreground">→</span>{r.to}
+                <span className="rounded-full bg-brand/10 px-1.5 text-[11px] font-bold tabular-nums text-brand">{r.n}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Araç / tip çipleri (yatay kaydırma) */}
       <div className="-mx-4 sm:mx-0">
         <div className="no-scrollbar flex items-stretch gap-2.5 overflow-x-auto px-4 pb-1.5 sm:flex-wrap sm:px-0">
@@ -226,136 +326,18 @@ export function ListingsView({
                 aria-pressed={active}
                 className={cn(
                   "flex h-10 shrink-0 flex-row items-center gap-1.5 rounded-full border pl-2 pr-3.5 text-[12.5px] font-semibold transition-all active:scale-95",
-                  active
-                    ? "border-brand bg-brand/10 text-foreground shadow-sm"
-                    : "border-border bg-card text-muted-foreground hover:border-input"
+                  active ? "border-brand bg-brand/10 text-foreground shadow-sm" : "border-border bg-card text-muted-foreground hover:border-input"
                 )}
               >
                 <span className="flex h-6 w-10 items-center justify-center">
                   <VehicleIcon kind={FILTER_ICON[option]} className="h-full w-full" />
                 </span>
-                <span className={cn("whitespace-nowrap", false)}>{option}</span>
+                <span className="whitespace-nowrap">{option}</span>
               </button>
             )
           })}
         </div>
       </div>
-
-      {/* Mobil: tek "Filtreler" düğmesi + alttan açılan pencere */}
-      <div className="flex items-center gap-2 sm:hidden">
-        <button
-          type="button"
-          onClick={() => setFilterOpen(true)}
-          className={cn("inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-xl border text-sm font-bold active:scale-[0.99]", extraCount ? "border-primary bg-muted text-foreground" : "border-border bg-card text-muted-foreground")}
-        >
-          <SlidersHorizontal className="size-4" />
-          {from && to ? `${from} → ${to}` : from ? `${from} çıkışlı` : to ? `${to} varışlı` : "Güzergâh ve filtreler"}
-          {extraCount > 0 && <span className="grid size-5 place-items-center rounded-full bg-brand text-[11px] font-black text-white">{extraCount}</span>}
-        </button>
-        {hasExtraFilters && (
-          <button type="button" onClick={clearExtra} aria-label="Filtreleri temizle" className="grid size-11 shrink-0 place-items-center rounded-xl border border-border bg-card text-brand active:scale-95">
-            <X className="size-4" />
-          </button>
-        )}
-      </div>
-      <Sheet
-        open={filterOpen}
-        onClose={() => setFilterOpen(false)}
-        title="Filtreler"
-        footer={
-          <div className="grid grid-cols-2 gap-2">
-            <button type="button" onClick={clearExtra} className="h-12 rounded-xl border border-input bg-card text-sm font-bold text-foreground active:scale-95">Temizle</button>
-            <button type="button" onClick={() => setFilterOpen(false)} className="h-12 rounded-xl bg-primary text-sm font-bold text-primary-foreground active:scale-95">{visibleLoads.length} ilanı göster</button>
-          </div>
-        }
-      >
-        <div className="space-y-4">
-          <label className="block">
-            <span className="mb-1.5 block text-xs font-bold text-foreground/80">Nereden</span>
-            <select aria-label="Nereden" value={from} onChange={(e) => setFrom(e.target.value)} className={cn(selectClass, "w-full")}>
-              <option value="">Tümü</option>
-              {from && !fromOptions.some(([c]) => c === from) && <option value={from}>{from} (0)</option>}
-              {fromOptions.map(([c, n]) => (<option key={c} value={c}>{c} ({n})</option>))}
-            </select>
-          </label>
-          <label className="block">
-            <span className="mb-1.5 block text-xs font-bold text-foreground/80">Nereye</span>
-            <select aria-label="Nereye" value={to} onChange={(e) => setTo(e.target.value)} className={cn(selectClass, "w-full")}>
-              <option value="">Tümü</option>
-              {to && !toOptions.some(([c]) => c === to) && <option value={to}>{to} (0)</option>}
-              {toOptions.map(([c, n]) => (<option key={c} value={c}>{c} ({n})</option>))}
-            </select>
-          </label>
-          <div>
-            <span className="mb-1.5 block text-xs font-bold text-foreground/80">Zaman</span>
-            <div className="grid grid-cols-4 gap-1.5">
-              {([["", "Tümü"], ["1h", "1 saat"], ["6h", "6 saat"], ["today", "24 saat"]] as const).map(([k, label]) => (
-                <button key={k} type="button" onClick={() => setAge(k)} aria-pressed={age === k} className={cn("h-10 rounded-xl border text-xs font-bold", age === k ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card text-muted-foreground")}>{label}</button>
-              ))}
-            </div>
-          </div>
-          <button type="button" onClick={() => setOnlyPhone((v) => !v)} aria-pressed={onlyPhone} className={cn("flex h-12 w-full items-center justify-center gap-2 rounded-xl border text-sm font-bold", onlyPhone ? "border-emerald-600 bg-emerald-50 text-emerald-700" : "border-border bg-card text-muted-foreground")}>
-            <Phone className="size-4" /> Sadece telefonlu ilanlar
-          </button>
-        </div>
-      </Sheet>
-
-      {/* Güzergâh filtresi: Nereden → Nereye */}
-      {(fromOptions.length > 0 || toOptions.length > 0 || hasExtraFilters) && (
-        <div className="hidden space-y-2 sm:block">
-          <div className="flex items-center gap-2">
-            <div className="relative min-w-0 flex-1">
-              <MapPin aria-hidden className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-              <select aria-label="Nereden" value={from} onChange={(e) => setFrom(e.target.value)} className={cn(selectClass, "w-full pl-9")}>
-                <option value="">Nereden: Tümü</option>
-                {from && !fromOptions.some(([c]) => c === from) && <option value={from}>{from} (0)</option>}
-                {fromOptions.map(([c, n]) => (<option key={c} value={c}>{c} ({n})</option>))}
-              </select>
-            </div>
-            <ArrowRight aria-hidden className="size-4 shrink-0 text-muted-foreground" />
-            <div className="relative min-w-0 flex-1">
-              <MapPin aria-hidden className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-              <select aria-label="Nereye" value={to} onChange={(e) => setTo(e.target.value)} className={cn(selectClass, "w-full pl-9")}>
-                <option value="">Nereye: Tümü</option>
-                {to && !toOptions.some(([c]) => c === to) && <option value={to}>{to} (0)</option>}
-                {toOptions.map(([c, n]) => (<option key={c} value={c}>{c} ({n})</option>))}
-              </select>
-            </div>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="relative min-w-0 flex-1 sm:flex-none sm:min-w-[170px]">
-              <Clock aria-hidden className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-              <select aria-label="Zaman" value={age} onChange={(e) => setAge(e.target.value as "" | "1h" | "6h" | "today")} className={cn(selectClass, "w-full pl-9")}>
-                <option value="">Zaman: Tümü</option>
-                <option value="1h">Son 1 saat</option>
-                <option value="6h">Son 6 saat</option>
-                <option value="today">Son 24 saat</option>
-              </select>
-            </div>
-            <button
-              type="button"
-              onClick={() => setOnlyPhone((v) => !v)}
-              aria-pressed={onlyPhone}
-              className={cn(
-                "inline-flex h-10 shrink-0 items-center gap-1.5 rounded-xl border px-3 text-[13px] font-semibold transition-colors",
-                onlyPhone ? "border-emerald-600 bg-emerald-50 text-emerald-700" : "border-border bg-card text-muted-foreground"
-              )}
-            >
-              <Phone className="size-3.5" />
-              Telefonlu
-            </button>
-            {hasExtraFilters && (
-              <button
-                type="button"
-                onClick={clearExtra}
-                className="inline-flex h-10 items-center gap-1 rounded-xl px-2 text-xs font-semibold text-brand hover:bg-muted/60 dark:bg-brand/15"
-              >
-                <X className="size-3.5" /> Temizle
-              </button>
-            )}
-          </div>
-        </div>
-      )}
 
       {!loading && (
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1 px-1 text-xs font-medium text-muted-foreground">
