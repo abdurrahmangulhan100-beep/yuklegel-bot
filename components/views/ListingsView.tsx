@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { Load, LoadCard } from "@/components/LoadCard"
 import { estimateKm } from "@/lib/distance"
 import { VehicleIcon, type VehicleKind } from "@/components/VehicleIcon"
-import { PackageSearch, Plus, X, MapPin, Crown, ArrowLeftRight, TrendingUp } from "lucide-react"
+import { PackageSearch, Plus, X, MapPin, Crown, ArrowLeftRight, TrendingUp, Search } from "lucide-react"
 import { usePremium } from "@/components/PremiumProvider"
 import { FREE_DELAY_MINUTES, openPremium } from "@/lib/premium"
 import { cn } from "@/lib/utils"
@@ -319,11 +319,13 @@ export function ListingsView({
           <SourceInfoButton className="mt-0.5 -ml-0.5 inline-flex min-h-9 items-center gap-1.5 rounded-full px-1 text-xs font-semibold text-foreground/80 active:opacity-70" />
         </div>
         <button
+          type="button"
+          aria-label="Yeni ilan oluştur"
           onClick={() => setIsCreateOpen(true)}
-          className="hidden h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-brand px-5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand/90 sm:inline-flex"
+          className="inline-flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-xl bg-brand px-3 text-xs font-bold text-white shadow-sm shadow-brand/15 transition-all hover:bg-brand/90 active:scale-[0.97] sm:h-11 sm:gap-2 sm:px-5 sm:text-sm"
         >
-          <Plus className="size-5" />
-          İlan Ver
+          <Plus className="size-4 sm:size-5" />
+          <span className="hidden min-[390px]:inline">İlan Ver</span>
         </button>
       </div>
 
@@ -335,7 +337,7 @@ export function ListingsView({
             onClick={() => setSourceFilter(s.key)}
             aria-pressed={sourceFilter === s.key}
             className={cn(
-              "flex min-h-11 flex-col items-center justify-center rounded-xl px-1.5 py-1 transition-all sm:min-h-12 sm:py-1.5",
+              "flex min-h-11 flex-col items-center justify-center rounded-xl px-1.5 py-1 transition-all active:scale-[0.98] sm:min-h-12 sm:py-1.5",
               sourceFilter === s.key ? s.active : "text-muted-foreground hover:bg-muted"
             )}
           >
@@ -354,7 +356,7 @@ export function ListingsView({
         <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
           <div className="relative min-w-0">
             <MapPin aria-hidden className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-emerald-500" />
-            <select aria-label="Nereden" value={from} onChange={(e) => setFrom(e.target.value)} className={cn(selectClass, "w-full bg-muted/50 pl-9")}>
+            <select aria-label="Nereden" value={from} onChange={(e) => setFrom(e.target.value)} className={cn(selectClass, "h-11 w-full rounded-xl border-0 bg-muted/55 pl-9 text-[13px] font-semibold focus-visible:ring-2 focus-visible:ring-brand/30")}>
               <option value="">Nereden</option>
               {renderCityOptions(to ? origStat : null, to, from)}
             </select>
@@ -369,7 +371,7 @@ export function ListingsView({
           </button>
           <div className="relative min-w-0">
             <MapPin aria-hidden className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-brand" />
-            <select aria-label="Nereye" value={to} onChange={(e) => setTo(e.target.value)} className={cn(selectClass, "w-full bg-muted/50 pl-9")}>
+            <select aria-label="Nereye" value={to} onChange={(e) => setTo(e.target.value)} className={cn(selectClass, "h-11 w-full rounded-xl border-0 bg-muted/55 pl-9 text-[13px] font-semibold focus-visible:ring-2 focus-visible:ring-brand/30")}>
               <option value="">Nereye</option>
               {renderCityOptions(from ? destStat : null, from, to)}
             </select>
@@ -437,8 +439,15 @@ export function ListingsView({
         </div>
       </div>
 
+      {!loading && searchQuery.trim().length > 0 && (
+        <div className="flex min-w-0 items-center gap-2 rounded-xl bg-brand/[0.06] px-3 py-2 text-xs text-foreground">
+          <Search className="size-3.5 shrink-0 text-brand" />
+          <span className="truncate">Arama: <b>{searchQuery}</b></span>
+        </div>
+      )}
+
       {!loading && (
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 px-1 text-xs font-medium text-muted-foreground">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-xl border border-border/70 bg-card/70 px-3 py-2 text-xs font-medium text-muted-foreground">
           <span><span className="font-bold text-foreground">{visibleLoads.length}</span> ilan gösteriliyor</span>
           <label className="ml-auto inline-flex items-center gap-1.5">
             <span className="sr-only">Sırala</span>
