@@ -17,6 +17,10 @@ const PROVINCE_CODES: Record<string, number> = {
   Ardahan: 75, Iğdır: 76, Yalova: 77, Karabük: 78, Kilis: 79, Osmaniye: 80, Düzce: 81,
 }
 type Fuel = { price: number; updatedAt: string | null }
+const fuelDiag = new Map<number, string>()
+/** Son yakıt denemesinin başarısızlık nedeni (tanı satırı için) */
+export const getFuelDiag = (code?: number) => (code ? fuelDiag.get(code) ?? "" : "")
+export const provinceCode = (city?: string) => (city ? PROVINCE_CODES[city] : undefined)
 const cache = new Map<number, Fuel | null>()
 const pending = new Map<number, Promise<Fuel | null>>()
 
@@ -37,7 +41,9 @@ async function load(code: number): Promise<Fuel | null> {
     let current = await readPrice(code)
     if (!current || !current.updatedAt || Date.now() - new Date(current.updatedAt).getTime() > REFRESH_MS) {
       // Edge Function her il için en fazla 6 saatte bir Opet kaynağına çıkar.
-      await supabase.functions.invoke("fuel-price-sync", { body: { provinceCode: code } }).catch(() => null)
+      const res = await supabase.functions.invoke("fuel-price-sync", { body: { provinceCode: code } }).catch(() => null)
+      const reason = !res ? "sunucuya ulaşılamadı" : res.error ? `sunucu hatası (${res.error.context?.status ?? res.error.message ?? "?"})` : res.data?.ok === false ? `kaynak: ${res.data.error}${res.data.status ? ` ${res.data.status}` : ""}` : ""
+      if (reason) fuelDiag.set(code, reason); else fuelDiag.delete(code)
       current = await readPrice(code)
     }
     cache.set(code, current)
