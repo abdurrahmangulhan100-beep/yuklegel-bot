@@ -55,7 +55,7 @@ export function agoLabel(iso: string | null): string {
   return `${Math.round(m / 1440)} gün önce`
 }
 
-export function useFuelPrice(originCity?: string): { price: number | null; live: boolean; loading: boolean; updatedAt: string | null } {
+export function useFuelPrice(originCity?: string): { price: number | null; live: boolean; loading: boolean; updatedAt: string | null; lastPrice: number | null; lastUpdatedAt: string | null } {
   const code = originCity ? PROVINCE_CODES[originCity] : undefined
   const [fuel, setFuel] = useState<Fuel | null>(code ? cache.get(code) ?? null : null)
   const [loading, setLoading] = useState(Boolean(code))
@@ -85,5 +85,6 @@ export function useFuelPrice(originCity?: string): { price: number | null; live:
     }
   }, [code])
   const live = Boolean(fuel?.updatedAt) && Date.now() - new Date(fuel!.updatedAt as string).getTime() <= FRESH_MS
-  return { price: live ? fuel!.price : null, live, loading, updatedAt: live ? fuel!.updatedAt : null }
+  // price/updatedAt yalnızca taze (6 sa) veride dolu; lastPrice son bilinen değeri (eski olsa da) verir, ekran "güncel değil" etiketiyle gösterebilir
+  return { price: live ? fuel!.price : null, live, loading, updatedAt: live ? fuel!.updatedAt : null, lastPrice: fuel?.price ?? null, lastUpdatedAt: fuel?.updatedAt ?? null }
 }
