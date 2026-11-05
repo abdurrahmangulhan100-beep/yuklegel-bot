@@ -25,7 +25,7 @@ export function BottomNav({ activeTab, setActiveTab, onOpenCreate, onOpenMenu, f
   return (
     <nav
       aria-label="Ana gezinme"
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-white/70 bg-white/90 pb-[env(safe-area-inset-bottom)] shadow-[0_-10px_32px_rgba(15,35,60,0.10)] backdrop-blur-2xl dark:border-white/10 dark:bg-[#0b1424]/92 lg:hidden"
+      className="fixed inset-x-0 bottom-0 z-40 border-t border-border/80 bg-background/90 pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_30px_rgba(20,35,55,0.08)] backdrop-blur-2xl dark:border-white/10 dark:bg-[#0b1424]/90 lg:hidden"
     >
       <div className="mx-auto grid h-[68px] max-w-xl grid-cols-5 items-center px-2">
         <Tab icon={Home} label="Ana Sayfa" active={isHome} onClick={() => setActiveTab("Genel Bakış")} />
@@ -36,7 +36,7 @@ export function BottomNav({ activeTab, setActiveTab, onOpenCreate, onOpenMenu, f
             type="button"
             onClick={() => { tap(); onOpenCreate() }}
             aria-label="Yeni ilan oluştur"
-            className="-mt-7 grid size-[54px] place-items-center rounded-[19px] bg-gradient-to-br from-[#ed6845] to-[#cf3e24] text-white shadow-[0_9px_22px_rgba(207,62,36,0.34)] ring-[5px] ring-[#f3f6fb] transition-transform active:scale-95 dark:ring-[#080e1a]"
+            className="-mt-7 grid size-[54px] place-items-center rounded-[19px] bg-gradient-to-br from-[#f36b47] to-[#df4829] text-white shadow-[0_9px_22px_rgba(207,62,36,0.34)] ring-[5px] ring-[#f3f6fb] transition-transform active:scale-95 dark:ring-[#080e1a]"
           >
             <Plus className="size-7" strokeWidth={2.6} />
           </button>
@@ -72,7 +72,7 @@ function Tab({
     >
       <span className={cn(
         "relative grid size-9 place-items-center rounded-[14px] transition-all duration-200",
-        active ? "bg-[#eaf0f8] text-[#244d78] dark:bg-[#1c304a] dark:text-[#a9c9ed]" : "text-[#8190a3] dark:text-[#91a0b4]"
+        active ? "bg-brand/10 text-brand dark:bg-brand/15 dark:text-[#ff9a7e]" : "text-[#8190a3] dark:text-[#91a0b4]"
       )}>
         <Icon className="size-[21px]" strokeWidth={active ? 2.5 : 2} />
         {badge ? (
@@ -81,7 +81,7 @@ function Tab({
           </span>
         ) : null}
       </span>
-      <span className={cn("max-w-full truncate text-[10px] font-semibold", active ? "text-[#244d78] dark:text-[#a9c9ed]" : "text-muted-foreground")}>{label}</span>
+      <span className={cn("max-w-full truncate text-[10px] font-semibold", active ? "text-brand dark:text-[#ff9a7e]" : "text-muted-foreground")}>{label}</span>
     </button>
   )
 }
