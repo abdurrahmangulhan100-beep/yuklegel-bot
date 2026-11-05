@@ -223,9 +223,9 @@ export function OverviewView({ loads, currentUserId, onOpenCreate, setActiveTab,
         </div>
       </section>
 
-      <div className="grid gap-5 sm:gap-6 lg:grid-cols-2 lg:items-start">
+      <div className="grid grid-cols-1 gap-5 sm:gap-6 lg:grid-cols-2 lg:items-start">
       {/* Son seferlerim */}
-      <section className="rounded-3xl border border-border bg-card p-4 shadow-card sm:p-6">
+      <section className="min-w-0 rounded-3xl border border-border bg-card p-4 shadow-card sm:p-6">
         <div className="mb-2 flex items-center justify-between">
           <h2 className="text-base font-bold text-foreground">Son Seferlerim</h2>
           <button onClick={() => setActiveTab("Seferlerim")} className="flex items-center gap-1 text-xs font-semibold text-foreground/80">
@@ -264,7 +264,7 @@ export function OverviewView({ loads, currentUserId, onOpenCreate, setActiveTab,
 
       {/* Güncel ilanlar */}
       {latestLoads.length > 0 && (
-        <section className="rounded-3xl border border-border bg-card p-4 shadow-card sm:p-6">
+        <section className="min-w-0 rounded-3xl border border-border bg-card p-4 shadow-card sm:p-6">
           <div className="mb-1 flex items-center justify-between">
             <h2 className="text-base font-bold text-foreground">Güncel İlanlar</h2>
             <button onClick={() => setActiveTab("İlanlar")} className="flex items-center gap-1 text-xs font-semibold text-foreground/80">
@@ -274,7 +274,7 @@ export function OverviewView({ loads, currentUserId, onOpenCreate, setActiveTab,
           <ul className="divide-y divide-border">
             {latestLoads.map((l) => (
               <li key={l.id}>
-                <button onClick={() => setActiveTab("İlanlar")} className="flex w-full items-center gap-3 py-3 text-left">
+                <button onClick={() => setActiveTab("İlanlar")} className="flex w-full min-w-0 items-center gap-3 py-3 text-left">
                   <span className={cn(
                     "grid size-10 shrink-0 place-items-center rounded-xl text-xs font-bold text-white",
                     l.source === "user" ? "bg-brand" : "bg-[#315d83]"
