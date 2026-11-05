@@ -13,13 +13,14 @@ export function PremiumView({ isGuest = false, onLogin }: { isGuest?: boolean; o
 
   return (
     <div className="mx-auto max-w-2xl space-y-5">
-      <div className="rounded-3xl bg-gradient-to-br from-[#122c4a] to-[#1f4b6e] p-6 text-white shadow-lg sm:p-8">
-        <span className="mb-3 grid size-12 place-items-center rounded-2xl bg-[#f5b301] text-white"><Crown className="size-6" /></span>
-        <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">Nakliye Cepte Premium</h1>
-        <p className="mt-1 text-sm text-white/70">Daha hızlı iş bulun, sınırsız iletişim kurun, reklamsız kullanın.</p>
+      <div className="relative overflow-hidden rounded-[28px] bg-navy-gradient p-6 text-white shadow-card sm:p-8">
+        <div aria-hidden className="pointer-events-none absolute -right-10 -top-10 size-44 rounded-full bg-brand/25 blur-3xl" />
+        <span className="relative mb-4 grid size-12 place-items-center rounded-2xl bg-brand-gradient text-white shadow-lg shadow-[#d64526]/30"><Crown className="size-6" /></span>
+        <h1 className="relative text-[26px] font-black tracking-tight sm:text-3xl">Nakliye Cepte Premium</h1>
+        <p className="relative mt-1 text-sm text-white/70">Daha hızlı iş bulun, sınırsız iletişim kurun, reklamsız kullanın.</p>
 
         {isPremium ? (
-          <div className="mt-5 rounded-2xl bg-white/10 p-4 text-sm">
+          <div className="relative mt-5 rounded-2xl bg-white/10 p-4 text-sm backdrop-blur">
             <p className="font-semibold">Premium aktif ✓</p>
             {dateText && (
               <p className="mt-0.5 text-white/70">
@@ -28,23 +29,23 @@ export function PremiumView({ isGuest = false, onLogin }: { isGuest?: boolean; o
             )}
           </div>
         ) : (
-          <div className="mt-5">
-            <p className="text-3xl font-extrabold">{price ?? "Aylık abonelik"}{price && <span className="text-base font-medium text-white/70"> / ay</span>}</p>
+          <div className="relative mt-5">
+            <p className="text-4xl font-black tracking-tight">{price ?? "Aylık abonelik"}{price && <span className="text-base font-medium text-white/70"> / ay</span>}</p>
           </div>
         )}
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2">
-        <div className="rounded-2xl border border-border bg-card p-4">
-          <p className="mb-3 text-xs font-bold uppercase tracking-wider text-muted-foreground">Ücretsiz</p>
+        <div className="rounded-[24px] border border-border bg-card p-5 shadow-card">
+          <p className="mb-3 text-[11px] font-bold uppercase tracking-[.16em] text-muted-foreground">Ücretsiz</p>
           <ul className="space-y-2 text-sm text-foreground/80">
             {FREE_FEATURES.map((f) => (
               <li key={f} className="flex gap-2"><Minus className="mt-0.5 size-4 shrink-0 text-muted-foreground/60" />{f}</li>
             ))}
           </ul>
         </div>
-        <div className="rounded-2xl border-2 border-[#f5b301] bg-card p-4">
-          <p className="mb-3 text-xs font-bold uppercase tracking-wider text-[#b58200] dark:text-amber-300">Premium</p>
+        <div className="rounded-[24px] border-2 border-brand/60 bg-brand/[0.04] p-5 shadow-card">
+          <p className="mb-3 text-[11px] font-bold uppercase tracking-[.16em] text-brand">Premium</p>
           <ul className="space-y-2 text-sm text-foreground">
             {PREMIUM_FEATURES.map((f) => (
               <li key={f} className="flex gap-2"><Check className="mt-0.5 size-4 shrink-0 text-emerald-600" />{f}</li>
@@ -53,12 +54,12 @@ export function PremiumView({ isGuest = false, onLogin }: { isGuest?: boolean; o
         </div>
       </div>
 
-      {message && <p className="rounded-xl bg-muted px-4 py-3 text-sm text-foreground/80">{message}</p>}
+      {message && <p className="rounded-2xl bg-muted px-4 py-3 text-sm text-foreground/80">{message}</p>}
 
       {!isPremium && isGuest && (
-        <div className="space-y-2 rounded-2xl border border-border bg-card p-4 text-center">
+        <div className="space-y-3 rounded-[24px] border border-border bg-card p-5 text-center shadow-card">
           <p className="text-sm text-foreground/80">Premium almak için önce ücretsiz üye olun veya giriş yapın. Abonelik hesabınıza bağlanır, telefon değiştirseniz de korunur.</p>
-          <button onClick={onLogin} className="h-12 w-full rounded-xl bg-primary text-sm font-bold text-primary-foreground hover:opacity-90">Giriş Yap / Kayıt Ol</button>
+          <button onClick={onLogin} className="h-14 w-full rounded-2xl bg-brand-gradient text-[15px] font-extrabold text-white shadow-lg shadow-[#d64526]/25 active:scale-[.98]">Giriş Yap / Kayıt Ol</button>
         </div>
       )}
 
@@ -68,13 +69,13 @@ export function PremiumView({ isGuest = false, onLogin }: { isGuest?: boolean; o
             <button
               onClick={buy}
               disabled={busy || loading}
-              className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-brand text-sm font-bold text-white transition-colors hover:bg-[#c13a1c] disabled:opacity-60"
+              className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-brand-gradient text-[15px] font-extrabold text-white shadow-lg shadow-[#d64526]/25 transition active:scale-[.98] disabled:opacity-60"
             >
               {busy && <Loader2 className="size-4 animate-spin" />}
               Premium'a Geç
             </button>
           ) : (
-            <div className="rounded-xl border border-border bg-card p-4 text-sm text-foreground/80">
+            <div className="rounded-[24px] border border-border bg-card p-5 text-sm text-foreground/80 shadow-card">
               Premium satın alımı Google Play'den indirilen Nakliye Cepte uygulamasında yapılır. Zaten Premium aldıysanız aynı hesapla uygulamaya giriş yapmanız yeterli; Premium otomatik açılır.
               {storeUrl && <> <a href={storeUrl} className="font-semibold text-foreground/80 underline">Google Play'de aç</a></>}
             </div>
@@ -89,7 +90,7 @@ export function PremiumView({ isGuest = false, onLogin }: { isGuest?: boolean; o
       )}
 
       {isPremium && (
-        <a href={manageUrl} className="block h-12 w-full rounded-xl border border-border bg-card text-center text-sm font-semibold leading-[3rem] text-foreground/80 hover:bg-muted">
+        <a href={manageUrl} className="block h-14 w-full rounded-2xl border border-border bg-card text-center text-sm font-bold leading-[3.5rem] text-foreground/80 shadow-card active:scale-[.98]">
           Aboneliği yönet / iptal et
         </a>
       )}
