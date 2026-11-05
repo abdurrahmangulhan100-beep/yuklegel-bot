@@ -1,7 +1,7 @@
-// Şehirler arası TAHMİNİ karayolu mesafesi: kuş uçuşu (haversine) × yol katsayısı.
-// 81x81 tablo yerine 81 koordinat: küçük, bakımı kolay, ±%5-8 sapma (tahmindir).
+// Şehir koordinatları, yalnızca yol ağı tablosunu üretme betiğinde kullanılır.
+// Uygulama ekranında kuş uçuşu katsayısıyla sahte karayolu mesafesi üretilmez.
 import { CITY_NAMES } from "@/lib/route"
-import ROAD from "@/lib/road-km.json" // scripts/fetch-google-km.mjs ile Google Haritalar'dan üretilir; boşsa tahmin kullanılır
+import ROAD from "@/lib/road-km.json" // OSRM/Google yol ağı verisi; boşsa mesafe gösterilmez
 
 const C: Record<string, [number, number]> = {
   Adana: [37.0, 35.32], Adıyaman: [37.76, 38.28], Afyonkarahisar: [38.76, 30.54], Ağrı: [39.72, 43.05], Aksaray: [38.37, 34.03],
@@ -23,7 +23,6 @@ const C: Record<string, [number, number]> = {
   Zonguldak: [41.45, 31.79],
 }
 
-const ROAD_FACTOR = 1.27 // Türkiye'de kuş uçuşu → karayolu ortalaması
 
 export const CITY_LIST: string[] = [...CITY_NAMES].sort((a, b) => a.localeCompare(b, "tr"))
 
@@ -33,17 +32,11 @@ export const AVG_CONSUMPTION = 32
 const roadTable = ROAD as Record<string, number>
 const pairKey = (a: string, b: string) => (a.localeCompare(b, "tr") < 0 ? `${a}|${b}` : `${b}|${a}`)
 
-/** İki şehir arası yol km: önce Google Haritalar tablosu, yoksa kuş uçuşu tahmini (5'e yuvarlı). Bilinmiyorsa null. */
+/** Yalnızca doğrulanmış karayolu tablosundaki mesafe. Tahmini/kuş uçuşu değer üretmez. */
 export function estimateKm(a?: string | null, b?: string | null): number | null {
-  const p = a ? C[a] : undefined
-  const q = b ? C[b] : undefined
-  if (!a || !b || !p || !q || a === b) return null
+  if (!a || !b || a === b) return null
   const known = roadTable[pairKey(a, b)]
-  if (known > 0) return known
-  const r = (d: number) => (d * Math.PI) / 180
-  const h = Math.sin(r(q[0] - p[0]) / 2) ** 2 + Math.cos(r(p[0])) * Math.cos(r(q[0])) * Math.sin(r(q[1] - p[1]) / 2) ** 2
-  const air = 2 * 6371 * Math.asin(Math.sqrt(h))
-  return Math.max(5, Math.round((air * ROAD_FACTOR) / 5) * 5)
+  return Number.isFinite(known) && known > 0 ? known : null
 }
 
 /** Tek yön km, yakıt litresi ve maliyeti (fuelPrice yoksa maliyet null) */
@@ -52,7 +45,7 @@ export function tripEstimate(a?: string | null, b?: string | null, fuelPrice?: n
   if (!km) return null
   const liters = Math.round((km / 100) * consumption)
   const cost = fuelPrice && fuelPrice > 0 ? Math.round(liters * fuelPrice / 10) * 10 : null
-  return { km, liters, cost, hours: driveHours(km), exact: Boolean(roadTable[pairKey(a as string, b as string)]) }
+  return { km, liters, cost, hours: driveHours(km), exact: true }
 }
 
 /** Tır için ortalama sürüş süresi (saat): ort. 62 km/s + her 4,5 saatte 45 dk zorunlu mola (tahmini) */
@@ -81,7 +74,7 @@ const run = <T,>(fn: () => Promise<T>): Promise<T> => new Promise((res, rej) => 
 
 /**
  * İlçe dahil KESİN yol km'si (OpenStreetMap yol ağı). Sunucuda önbelleğe alınır: aynı güzergâh bir kez hesaplanır.
- * Edge Function (route-km) kurulu değilse null döner ve kart il bazlı değeri göstermeye devam eder.
+ * Edge Function (route-km) kurulu değilse null döner; doğrulanmamış mesafe ekranda gösterilmez.
  */
 export function placeKm(fromCity: string, fromDistrict: string | undefined, toCity: string, toDistrict: string | undefined): Promise<PlaceKm | null> {
   const a = fromDistrict ? `${fromCity}/${fromDistrict}` : fromCity
