@@ -1,17 +1,27 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import { ArrowLeftRight, Fuel, MapPin, Navigation, RefreshCw, Route, Truck } from "lucide-react"
-import { placeKm } from "@/lib/distance"
+import { ArrowDownUp, Fuel, Gauge, MapPin, Navigation, RefreshCw, Route, Wallet } from "lucide-react"
+import { CITY_LIST, placeKm } from "@/lib/distance"
 import { useFuelPrice, agoLabel } from "@/lib/fuel"
 import { cn } from "@/lib/utils"
 
-const number = (value: string, fallback = 0) => {
+const num = (value: string, fallback = 0) => {
   const parsed = Number(String(value).trim().replace(",", "."))
-  return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback
 }
-const kmText = (value: number) => new Intl.NumberFormat("tr-TR", { maximumFractionDigits: 0 }).format(value)
-const money = (value: number) => new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY", maximumFractionDigits: 0 }).format(value)
+const tr = new Intl.NumberFormat("tr-TR", { maximumFractionDigits: 0 })
+const tr1 = new Intl.NumberFormat("tr-TR", { maximumFractionDigits: 1 })
+const try0 = new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY", maximumFractionDigits: 0 })
+const try2 = new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY", minimumFractionDigits: 2, maximumFractionDigits: 2 })
+
+// "kayseri" / "KAYSERİ" yazılsa da listedeki doğru yazımı bulur (yakıt fiyatı il koduyla eşleşsin diye)
+const canon = (value: string) => {
+  const v = value.trim().toLocaleLowerCase("tr-TR")
+  return CITY_LIST.find((c) => c.toLocaleLowerCase("tr-TR") === v) ?? value.trim()
+}
+
+const PRESETS = ["28", "32", "35", "40"]
 
 export function CalculatorView() {
   const [fromCity, setFromCity] = useState("Kayseri")
@@ -19,125 +29,140 @@ export function CalculatorView() {
   const [toCity, setToCity] = useState("Bitlis")
   const [toDistrict, setToDistrict] = useState("Ahlat")
   const [consumption, setConsumption] = useState("32")
-  const [route, setRoute] = useState<{ km: number; hours: number } | null>(null)
-  const [routeLoading, setRouteLoading] = useState(false)
-  const [routeError, setRouteError] = useState("")
-  const [lastRoute, setLastRoute] = useState("")
+  const [km, setKm] = useState<number | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState("")
+  const [label, setLabel] = useState("")
 
-  const fuel = useFuelPrice(fromCity.trim())
-  const litres = useMemo(() => route ? (route.km / 100) * number(consumption, 32) : 0, [route, consumption])
-  const fuelCost = fuel.price && route ? litres * fuel.price : null
+  const fuel = useFuelPrice(canon(fromCity))
+  const unit = fuel.price ?? fuel.lastPrice // taze yoksa son bilinen fiyat (etiketle gösterilir)
+  const stale = fuel.price === null && fuel.lastPrice !== null
+  const litres = useMemo(() => (km ? (km / 100) * num(consumption, 32) : null), [km, consumption])
+  const cost = litres !== null && unit ? litres * unit : null
 
   const calculate = async () => {
-    if (!fromCity.trim() || !toCity.trim()) {
-      setRouteError("Çıkış ve varış ilini girin.")
-      return
-    }
-    setRouteLoading(true)
-    setRouteError("")
-    setRoute(null)
+    const a = canon(fromCity), b = canon(toCity)
+    if (!a || !b) { setError("Çıkış ve varış ilini yazın."); return }
+    if (a === b && !fromDistrict.trim() && !toDistrict.trim()) { setError("Çıkış ve varış aynı görünüyor."); return }
+    setLoading(true); setError(""); setKm(null)
     try {
-      const result = await placeKm(fromCity.trim(), fromDistrict.trim() || undefined, toCity.trim(), toDistrict.trim() || undefined)
-      if (!result) {
-        setRouteError("Bu güzergâhın yol mesafesi alınamadı. İl ve ilçe adlarını kontrol edip tekrar deneyin.")
-      } else {
-        setRoute(result)
-        setLastRoute(`${fromCity}${fromDistrict ? ` / ${fromDistrict}` : ""} → ${toCity}${toDistrict ? ` / ${toDistrict}` : ""}`)
+      const r = await placeKm(a, fromDistrict.trim() || undefined, b, toDistrict.trim() || undefined)
+      if (!r) setError("Yol mesafesi alınamadı. İl/ilçe adını kontrol edin ya da bağlantınızı kontrol edip tekrar deneyin.")
+      else {
+        setKm(r.km)
+        setFromCity(a); setToCity(b)
+        setLabel(`${a}${fromDistrict.trim() ? ` / ${fromDistrict.trim()}` : ""} → ${b}${toDistrict.trim() ? ` / ${toDistrict.trim()}` : ""}`)
       }
     } catch {
-      setRouteError("Mesafe servisine şu anda ulaşılamıyor. Lütfen tekrar deneyin.")
+      setError("Mesafe servisine şu anda ulaşılamıyor. Biraz sonra tekrar deneyin.")
     } finally {
-      setRouteLoading(false)
+      setLoading(false)
     }
   }
 
   const swap = () => {
     setFromCity(toCity); setToCity(fromCity)
     setFromDistrict(toDistrict); setToDistrict(fromDistrict)
-    setRoute(null); setRouteError("")
+    setKm(null); setError("")
   }
 
   return (
-    <div className="mx-auto w-full max-w-2xl space-y-4 pb-4">
-      <header className="flex items-center justify-between gap-3">
-        <div>
-          <p className="text-[11px] font-bold uppercase tracking-[.18em] text-brand">Yol & yakıt</p>
-          <h1 className="mt-1 text-2xl font-black tracking-tight text-foreground sm:text-3xl">Sefer Hesapla</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Gerçek yol mesafesi ve güncel motorin fiyatı.</p>
-        </div>
-        <div className="grid size-12 shrink-0 place-items-center rounded-2xl bg-brand/10 text-brand">
-          <Route className="size-6" />
-        </div>
+    <div className="mx-auto w-full max-w-xl space-y-4 pb-4">
+      <datalist id="calc-cities">{CITY_LIST.map((c) => <option key={c} value={c} />)}</datalist>
+
+      <header>
+        <p className="text-[11px] font-bold uppercase tracking-[.18em] text-brand">Yol & yakıt</p>
+        <h1 className="mt-1 text-[26px] font-black tracking-tight text-foreground sm:text-3xl">Sefer Hesapla</h1>
       </header>
 
-      <section className="rounded-3xl border border-border bg-card p-4 shadow-sm sm:p-5">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-sm font-bold text-foreground">Güzergâh</h2>
-          <button type="button" onClick={swap} className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-2 text-xs font-semibold text-muted-foreground active:scale-95">
-            <ArrowLeftRight className="size-3.5" /> Yer değiştir
-          </button>
+      {/* Sonuç: en üstte, tek bakışta */}
+      <section aria-live="polite" className="overflow-hidden rounded-[28px] bg-navy-gradient p-5 text-white shadow-card sm:p-6">
+        <div className="flex items-center justify-between gap-3">
+          <span className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-white/70"><Wallet className="size-4" /> Ortalama masraf</span>
+          {loading && <RefreshCw className="size-4 animate-spin text-white/70" />}
         </div>
-        <div className="grid gap-3 sm:grid-cols-[1fr_auto_1fr] sm:items-end">
-          <PlaceFields title="Nereden" city={fromCity} district={fromDistrict} onCity={setFromCity} onDistrict={setFromDistrict} icon="from" />
-          <div className="hidden h-10 items-center justify-center text-muted-foreground sm:flex"><ArrowLeftRight className="size-4" /></div>
-          <PlaceFields title="Nereye" city={toCity} district={toDistrict} onCity={setToCity} onDistrict={setToDistrict} icon="to" />
+        <p className="mt-2 text-[44px] font-black leading-none tracking-tight tabular-nums sm:text-5xl">{cost !== null ? try0.format(cost) : "—"}</p>
+        <p className="mt-2 min-h-4 truncate text-xs font-medium text-white/60">{km ? label : "Güzergâhı seçip Hesapla'ya basın"}</p>
+
+        <div className="mt-5 grid grid-cols-2 gap-3">
+          <Stat icon={<Route className="size-4" />} label="Mesafe" value={km ? `${tr.format(km)} km` : "—"} />
+          <Stat icon={<Fuel className="size-4" />} label="Yakıt" value={litres !== null ? `${tr1.format(litres)} L` : "—"} />
         </div>
-        <div className="mt-4 grid gap-2 sm:grid-cols-[1fr_auto] sm:items-end">
-          <label className="block">
-            <span className="mb-1.5 block text-xs font-semibold text-muted-foreground">Ortalama tüketim (L / 100 km)</span>
-            <div className="relative">
-              <input value={consumption} onChange={(e) => setConsumption(e.target.value)} inputMode="decimal" className="h-12 w-full rounded-xl border border-input bg-muted/40 px-3.5 pr-12 text-base font-bold text-foreground outline-none focus:border-brand" />
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-muted-foreground">L / 100</span>
-            </div>
-          </label>
-          <button type="button" onClick={calculate} disabled={routeLoading} className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-brand px-6 text-sm font-bold text-white shadow-sm transition active:scale-[.98] disabled:opacity-60">
-            {routeLoading ? <RefreshCw className="size-4 animate-spin" /> : <Navigation className="size-4" />}
-            {routeLoading ? "Hesaplanıyor" : "Hesapla"}
-          </button>
-        </div>
-        {routeError && <p role="alert" className="mt-3 rounded-xl bg-red-500/10 px-3 py-2.5 text-xs font-medium text-red-600">{routeError}</p>}
       </section>
 
-      <section aria-live="polite" className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <ResultCard icon={<Route className="size-5" />} label="Mesafe" value={route ? `${kmText(route.km)} km` : "—"} detail={route ? "Karayolu güzergâhı" : "Güzergâhı hesaplayın"} />
-        <ResultCard icon={<Fuel className="size-5" />} label="Yakıt" value={route ? `${new Intl.NumberFormat("tr-TR", { maximumFractionDigits: 1 }).format(litres)} L` : "—"} detail={fuel.price ? `${money(fuel.price)} / litre` : fuel.loading ? "Motorin fiyatı alınıyor…" : "Canlı fiyat alınamadı"} />
-        <ResultCard icon={<Truck className="size-5" />} label="Ortalama Masraf" value={fuelCost !== null ? money(fuelCost) : "—"} detail={fuelCost !== null ? "Yakıt maliyeti" : "Canlı fiyat ve mesafe gerekli"} accent />
-      </section>
-
-      <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-border bg-card/70 px-4 py-3 text-xs text-muted-foreground">
-        <span className="inline-flex items-center gap-2"><span className={cn("size-2 rounded-full", fuel.live ? "bg-emerald-500" : "bg-amber-500")} />
-          {fuel.live ? `Opet motorin · ${agoLabel(fuel.updatedAt)}` : fuel.loading ? "Motorin fiyatı kontrol ediliyor" : "Motorin fiyatı güncel değil"}
+      {/* Canlı yakıt durumu */}
+      <div className="flex items-center justify-between gap-3 rounded-2xl border border-border bg-card px-4 py-3 shadow-card">
+        <span className="inline-flex min-w-0 items-center gap-2.5 text-xs">
+          <span className={cn("size-2.5 shrink-0 rounded-full", fuel.live ? "bg-emerald-500 shadow-[0_0_0_4px_rgba(16,185,129,.18)]" : fuel.loading ? "animate-pulse bg-amber-400" : "bg-amber-500")} />
+          <span className="min-w-0">
+            <span className="block truncate font-bold text-foreground">
+              {unit ? `Motorin ${try2.format(unit)} / L` : fuel.loading ? "Motorin fiyatı alınıyor…" : "Motorin fiyatı alınamadı"}
+            </span>
+            <span className="block truncate text-muted-foreground">
+              {fuel.live ? `Opet · ${canon(fromCity)} · ${agoLabel(fuel.updatedAt)}` : stale ? `Güncel değil · son bilinen: ${agoLabel(fuel.lastUpdatedAt)}` : "Çıkış ilinin canlı fiyatı gerekli"}
+            </span>
+          </span>
         </span>
-        {lastRoute && <span className="max-w-full truncate">{lastRoute}</span>}
       </div>
-      <p className="px-1 text-[11px] leading-relaxed text-muted-foreground">Masraf, seçilen tüketim ve çıkış ilinin güncel motorin fiyatıyla hesaplanır. Otoyol, köprü ve diğer giderler dahil değildir.</p>
+
+      {/* Güzergâh */}
+      <section className="rounded-[28px] border border-border bg-card p-4 shadow-card sm:p-5">
+        <div className="relative space-y-3">
+          <Place title="Nereden" tone="from" city={fromCity} district={fromDistrict} onCity={setFromCity} onDistrict={setFromDistrict} />
+          <button type="button" onClick={swap} aria-label="Yerleri değiştir" className="absolute right-3 top-1/2 z-10 grid size-10 -translate-y-1/2 place-items-center rounded-full border border-border bg-card text-muted-foreground shadow-card transition active:scale-90">
+            <ArrowDownUp className="size-4" />
+          </button>
+          <Place title="Nereye" tone="to" city={toCity} district={toDistrict} onCity={setToCity} onDistrict={setToDistrict} />
+        </div>
+
+        <div className="mt-4">
+          <div className="mb-2 flex items-center justify-between">
+            <span className="inline-flex items-center gap-1.5 text-xs font-bold text-muted-foreground"><Gauge className="size-4" /> Tüketim (L / 100 km)</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="flex flex-1 gap-1.5">
+              {PRESETS.map((p) => (
+                <button key={p} type="button" onClick={() => setConsumption(p)} className={cn("h-11 flex-1 rounded-xl text-sm font-bold transition active:scale-95", consumption === p ? "bg-brand text-white shadow-sm" : "bg-muted text-foreground/80")}>{p}</button>
+              ))}
+            </div>
+            <input value={consumption} onChange={(e) => setConsumption(e.target.value)} inputMode="decimal" aria-label="Tüketim" className="h-11 w-20 rounded-xl border border-input bg-muted/40 px-3 text-center text-base font-bold text-foreground outline-none focus:border-brand" />
+          </div>
+        </div>
+
+        {error && <p role="alert" className="mt-3 rounded-xl bg-red-500/10 px-3 py-2.5 text-xs font-medium text-red-600">{error}</p>}
+
+        <button type="button" onClick={calculate} disabled={loading} className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-brand-gradient py-3.5 text-[15px] font-extrabold text-white shadow-lg shadow-[#d64526]/25 transition active:scale-[.98] disabled:opacity-60">
+          {loading ? <RefreshCw className="size-5 animate-spin" /> : <Navigation className="size-5" />}
+          {loading ? "Hesaplanıyor…" : "Hesapla"}
+        </button>
+      </section>
+
+      <p className="px-1 text-[11px] leading-relaxed text-muted-foreground">
+        Mesafe OpenStreetMap yol ağından, motorin fiyatı Opet'ten (çıkış ili) alınır. Masraf yalnızca yakıttır; otoyol, köprü ve diğer giderler dahil değildir.
+      </p>
     </div>
   )
 }
 
-function PlaceFields({ title, city, district, onCity, onDistrict, icon }: { title: string; city: string; district: string; onCity: (v: string) => void; onDistrict: (v: string) => void; icon: "from" | "to" }) {
+function Stat({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
   return (
-    <div className="min-w-0 rounded-2xl bg-muted/45 p-3">
+    <div className="rounded-2xl bg-white/10 px-4 py-3">
+      <span className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-white/65">{icon}{label}</span>
+      <p className="mt-1 text-2xl font-black tabular-nums">{value}</p>
+    </div>
+  )
+}
+
+function Place({ title, tone, city, district, onCity, onDistrict }: { title: string; tone: "from" | "to"; city: string; district: string; onCity: (v: string) => void; onDistrict: (v: string) => void }) {
+  return (
+    <div className="rounded-2xl bg-muted/50 p-3 pr-14">
       <div className="mb-2 flex items-center gap-2 text-xs font-bold text-muted-foreground">
-        <MapPin className={cn("size-4", icon === "from" ? "text-emerald-600" : "text-brand")} /> {title}
+        <MapPin className={cn("size-4", tone === "from" ? "text-emerald-600" : "text-brand")} /> {title}
       </div>
       <div className="grid grid-cols-2 gap-2">
-        <input aria-label={`${title} il`} value={city} onChange={(e) => onCity(e.target.value)} placeholder="İl" className="h-11 min-w-0 rounded-xl border border-input bg-card px-3 text-sm font-semibold text-foreground outline-none focus:border-brand" />
-        <input aria-label={`${title} ilçe`} value={district} onChange={(e) => onDistrict(e.target.value)} placeholder="İlçe (isteğe bağlı)" className="h-11 min-w-0 rounded-xl border border-input bg-card px-3 text-sm text-foreground outline-none focus:border-brand" />
+        <input list="calc-cities" aria-label={`${title} il`} value={city} onChange={(e) => onCity(e.target.value)} placeholder="İl" autoComplete="off" className="h-11 min-w-0 rounded-xl border border-input bg-card px-3 text-sm font-bold text-foreground outline-none focus:border-brand" />
+        <input aria-label={`${title} ilçe`} value={district} onChange={(e) => onDistrict(e.target.value)} placeholder="İlçe (ops.)" autoComplete="off" className="h-11 min-w-0 rounded-xl border border-input bg-card px-3 text-sm text-foreground outline-none focus:border-brand" />
       </div>
-    </div>
-  )
-}
-
-function ResultCard({ icon, label, value, detail, accent = false }: { icon: React.ReactNode; label: string; value: string; detail: string; accent?: boolean }) {
-  return (
-    <div className={cn("rounded-2xl border p-4 shadow-sm", accent ? "border-brand/25 bg-brand/5" : "border-border bg-card")}>
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-xs font-bold text-muted-foreground">{label}</span>
-        <span className={cn("grid size-9 place-items-center rounded-xl", accent ? "bg-brand/10 text-brand" : "bg-muted text-muted-foreground")}>{icon}</span>
-      </div>
-      <p className="mt-3 text-2xl font-black tracking-tight text-foreground">{value}</p>
-      <p className="mt-1 text-[11px] font-medium text-muted-foreground">{detail}</p>
     </div>
   )
 }
