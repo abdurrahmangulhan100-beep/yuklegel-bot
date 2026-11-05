@@ -21,12 +21,12 @@ function load(): Promise<number | null> {
   return pending
 }
 
-export function useFuelPrice(): number {
+export function useFuelPrice(): { price: number; live: boolean } {
   const [price, setPrice] = useState<number | null>(cached)
   useEffect(() => {
     let alive = true
     load().then((v) => { if (alive && v) setPrice(v) })
     return () => { alive = false }
   }, [])
-  return price ?? DEFAULT_FUEL_PRICE
+  return { price: price ?? DEFAULT_FUEL_PRICE, live: price !== null }
 }
