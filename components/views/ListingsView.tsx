@@ -3,11 +3,11 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { Load, LoadCard } from "@/components/LoadCard"
 import { VehicleIcon, type VehicleKind } from "@/components/VehicleIcon"
-import { PackageSearch, Plus, Phone, X, MapPin, Crown, Clock, ArrowLeftRight, Zap, TrendingUp } from "lucide-react"
+import { PackageSearch, Plus, X, MapPin, Crown, ArrowLeftRight, TrendingUp } from "lucide-react"
 import { usePremium } from "@/components/PremiumProvider"
 import { FREE_DELAY_MINUTES, openPremium } from "@/lib/premium"
 import { cn } from "@/lib/utils"
-import { isMissing } from "@/lib/route"
+import { CITY_NAMES } from "@/lib/route"
 import { SourceInfoButton } from "@/components/SourceInfo"
 
 type ListingsViewProps = {
@@ -34,6 +34,10 @@ type ListingsViewProps = {
   onLoadMore?: () => void
   /** Ücretsiz kullanıcı için: son gecikme penceresinde gelen ama henüz gösterilmeyen ilan sayısı */
   lockedCount?: number
+  /** Nereden / Nereye: sunucuda TÜM ilanlar arasında filtrelenir (page.tsx) */
+  from?: string
+  to?: string
+  onRouteChange?: (from: string, to: string) => void
 }
 
 const FILTER_ICON: Record<string, VehicleKind> = { "Tümü": "tumu", Acil: "acil", "Kapalı Dorse": "tir", Kamyon: "kamyon", Kamyonet: "kamyon", Frigo: "frigo", "Kırkayak": "kirkayak", "13.60 Açık Dorse": "acikdorse", Damperli: "damperli" }
@@ -60,28 +64,28 @@ export function ListingsView({
   onCitySearch,
   hasMore = false,
   onLoadMore,
-  lockedCount = 0
+  lockedCount = 0,
+  from = "",
+  to = "",
+  onRouteChange
 }: ListingsViewProps) {
   const fmt = (n: number) => n.toLocaleString("tr-TR")
   const { isPremium, loading: premiumLoading } = usePremium()
 
-  // Güzergâh filtresi: Nereden / Nereye (yönü belli olmayan ilanlarda metinde geçen şehir de sayılır)
-  const [from, setFrom] = useState("")
-  const [to, setTo] = useState("")
-  const [age, setAge] = useState<"" | "1h" | "6h" | "today">("")
-  const [onlyPhone, setOnlyPhone] = useState(false)
-  const [urgentFirst, setUrgentFirst] = useState(false)
+  const setRoute = (f: string, t: string) => onRouteChange?.(f, t)
+  const setFrom = (f: string) => setRoute(f, to)
+  const setTo = (t: string) => setRoute(from, t)
 
-  // Son seçilen GÜZERGÂH bu cihazda hatırlansın. "Zaman" ve "Sadece telefonlu" filtreleri bilerek hatırlanmaz:
-  // eskiden bunlar da saklanıyordu ve kullanıcı bir hafta sonra uygulamayı açınca "1 saat" filtresi yüzünden listeyi boş görüyordu.
-  const PREF_KEY = "listing_filters_v2"
+  // Son seçilen güzergâh bu cihazda hatırlansın (açılışta bir kez uygulanır)
+  const PREF_KEY = "listing_filters_v3"
   const prefsLoaded = useRef(false)
   useEffect(() => {
     try {
       const p = JSON.parse(localStorage.getItem(PREF_KEY) || "null")
-      if (p) { setFrom(p.from || ""); setTo(p.to || "") }
+      if (p && (p.from || p.to)) onRouteChange?.(p.from || "", p.to || "")
     } catch {}
     prefsLoaded.current = true
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
   useEffect(() => {
     if (!prefsLoaded.current) return
@@ -91,38 +95,17 @@ export function ListingsView({
   const matchFrom = (l: Load, c: string) => (l.fromCity ? l.fromCity === c : (l.cities ?? []).includes(c))
   const matchTo = (l: Load, c: string) => (l.toCity ? l.toCity === c || (l.destinations ?? []).includes(c) : (l.cities ?? []).includes(c))
 
-  // Seçenek sayıları diğer seçime göre hesaplanır: "Nereden: Konya" seçiliyken Nereye listesinde yalnızca Konya çıkışlı yüklerin gittiği şehirler görünür
-  const fromOptions = useMemo(() => {
-    const m = new Map<string, number>()
-    for (const l of loads) {
-      if (to && !matchTo(l, to)) continue
-      for (const c of Array.from(new Set([l.fromCity, ...(l.fromCity ? [] : l.cities ?? [])].filter(Boolean) as string[]))) m.set(c, (m.get(c) ?? 0) + 1)
-    }
-    return Array.from(m.entries()).sort((a, b) => b[1] - a[1] || byTr(a[0], b[0]))
-  }, [loads, to])
-  const toOptions = useMemo(() => {
-    const m = new Map<string, number>()
-    for (const l of loads) {
-      if (from && !matchFrom(l, from)) continue
-      for (const c of Array.from(new Set([l.toCity, ...(l.destinations ?? []), ...(l.toCity ? [] : l.cities ?? [])].filter(Boolean) as string[]))) m.set(c, (m.get(c) ?? 0) + 1)
-    }
-    return Array.from(m.entries()).sort((a, b) => b[1] - a[1] || byTr(a[0], b[0]))
-  }, [loads, from])
+  // Şehir listesi tüm iller (sunucu tüm ilanlarda arar); sayfadaki 60 ilana bağlı değildir
+  const cityList = useMemo(() => [...CITY_NAMES].sort(byTr), [])
 
   const visibleLoads = useMemo(() => {
-    const now = Date.now()
-    const maxAge = age === "1h" ? 3600_000 : age === "6h" ? 6 * 3600_000 : age === "today" ? 24 * 3600_000 : 0
-    const list = loads.filter((l) => {
+    return loads.filter((l) => {
       if (from && !matchFrom(l, from)) return false
       if (to && !matchTo(l, to)) return false
       if (from && to && from !== to && l.fromCity && l.toCity && !(l.fromCity === from && matchTo(l, to))) return false
-      if (maxAge && (!l.createdAt || now - Date.parse(l.createdAt) > maxAge)) return false
-      if (onlyPhone && isMissing(l.phone)) return false
       return true
     })
-    // Array.sort kararlıdır: acil olanlar öne gelir, kendi aralarında yeni→eski sıra korunur
-    return urgentFirst ? [...list].sort((a, b) => Number(Boolean(b.urgent)) - Number(Boolean(a.urgent))) : list
-  }, [loads, from, to, age, onlyPhone, urgentFirst])
+  }, [loads, from, to])
 
   // Tek dokunuşla güzergâh: ilanlarda en çok geçen çıkış → varış çiftleri
   const popularRoutes = useMemo(() => {
@@ -141,7 +124,7 @@ export function ListingsView({
   const CHUNK = 20
   const [shown, setShown] = useState(CHUNK)
   const sentinelRef = useRef<HTMLDivElement | null>(null)
-  const filterKey = `${activeFilter}|${sourceFilter}|${from}|${to}|${age}|${onlyPhone}|${urgentFirst}|${searchQuery}`
+  const filterKey = `${activeFilter}|${sourceFilter}|${from}|${to}|${searchQuery}`
   useEffect(() => { setShown(CHUNK) }, [filterKey])
 
   const renderedItems = useMemo(() => visibleLoads.slice(0, shown), [visibleLoads, shown])
@@ -160,22 +143,16 @@ export function ListingsView({
 
   const favoriteSet = useMemo(() => new Set(favoriteIds), [favoriteIds])
 
-  const hasExtraFilters = Boolean(from || to || age || onlyPhone || urgentFirst)
-  const clearExtra = () => { setFrom(""); setTo(""); setAge(""); setOnlyPhone(false); setUrgentFirst(false) }
+  const hasExtraFilters = Boolean(from || to)
+  const clearExtra = () => setRoute("", "")
   const clearAll = () => { setActiveFilter("Tümü"); setSourceFilter("all"); clearExtra() }
-  const swapRoute = () => { setFrom(to); setTo(from) }
+  const swapRoute = () => setRoute(to, from)
 
   const sources: { key: "all" | "user" | "bot"; label: string; count?: number; active: string }[] = [
     { key: "all", label: "Tümü", count: stats.activeTotal, active: "bg-primary text-primary-foreground shadow-sm" },
     { key: "user", label: "Nakliye Cepte", count: stats.todayUserCount, active: "bg-brand text-white shadow-sm" },
     { key: "bot", label: "Saha Ağı", count: stats.botCount, active: "bg-[#315d83] text-white shadow-sm" },
   ]
-
-  const chip = (on: boolean) =>
-    cn(
-      "inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border px-3.5 text-[12.5px] font-semibold transition-all active:scale-95",
-      on ? "border-brand bg-brand/10 text-foreground shadow-sm" : "border-border bg-card text-muted-foreground"
-    )
 
   return (
     <div className="space-y-3.5 sm:space-y-5">
@@ -249,8 +226,7 @@ export function ListingsView({
             <MapPin aria-hidden className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-emerald-500" />
             <select aria-label="Nereden" value={from} onChange={(e) => setFrom(e.target.value)} className={cn(selectClass, "w-full bg-muted/50 pl-9")}>
               <option value="">Nereden</option>
-              {from && !fromOptions.some(([c]) => c === from) && <option value={from}>{from} (0)</option>}
-              {fromOptions.map(([c, n]) => (<option key={c} value={c}>{c} ({n})</option>))}
+              {cityList.map((c) => (<option key={c} value={c}>{c}</option>))}
             </select>
           </div>
           <button
@@ -265,30 +241,9 @@ export function ListingsView({
             <MapPin aria-hidden className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-brand" />
             <select aria-label="Nereye" value={to} onChange={(e) => setTo(e.target.value)} className={cn(selectClass, "w-full bg-muted/50 pl-9")}>
               <option value="">Nereye</option>
-              {to && !toOptions.some(([c]) => c === to) && <option value={to}>{to} (0)</option>}
-              {toOptions.map(([c, n]) => (<option key={c} value={c}>{c} ({n})</option>))}
+              {cityList.map((c) => (<option key={c} value={c}>{c}</option>))}
             </select>
           </div>
-        </div>
-
-        {/* Hızlı filtreler (yatay kaydırma) */}
-        <div className="no-scrollbar -mx-2.5 mt-2.5 flex items-center gap-2 overflow-x-auto px-2.5 sm:mx-0 sm:flex-wrap sm:px-0">
-          {([["1h", "Son 1 saat"], ["6h", "6 saat"], ["today", "24 saat"]] as const).map(([k, label]) => (
-            <button key={k} type="button" onClick={() => setAge(age === k ? "" : k)} aria-pressed={age === k} className={chip(age === k)}>
-              <Clock className="size-3.5" />{label}
-            </button>
-          ))}
-          <button type="button" onClick={() => setOnlyPhone((v) => !v)} aria-pressed={onlyPhone} className={chip(onlyPhone)}>
-            <Phone className="size-3.5" />Telefonlu
-          </button>
-          <button type="button" onClick={() => setUrgentFirst((v) => !v)} aria-pressed={urgentFirst} className={chip(urgentFirst)}>
-            <Zap className="size-3.5" />Acil önce
-          </button>
-          {hasExtraFilters && (
-            <button type="button" onClick={clearExtra} className="inline-flex h-9 shrink-0 items-center gap-1 rounded-full px-2.5 text-xs font-semibold text-brand active:scale-95">
-              <X className="size-3.5" />Temizle
-            </button>
-          )}
         </div>
       </div>
 
@@ -296,14 +251,14 @@ export function ListingsView({
       {!loading && !from && !to && popularRoutes.length > 0 && (
         <div>
           <div className="mb-1.5 flex items-center gap-1.5 px-1 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-            <TrendingUp className="size-3.5 text-brand" />Popüler güzergâhlar
+            <TrendingUp className="size-3.5 text-brand" />Son ilanlardaki güzergâhlar
           </div>
           <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 sm:mx-0 sm:flex-wrap sm:px-0">
             {popularRoutes.map((r) => (
               <button
                 key={`${r.from}>${r.to}`}
                 type="button"
-                onClick={() => { setFrom(r.from); setTo(r.to) }}
+                onClick={() => setRoute(r.from, r.to)}
                 className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-border bg-card px-3 text-[12.5px] font-semibold text-foreground active:scale-95"
               >
                 {r.from}<span aria-hidden className="text-muted-foreground">→</span>{r.to}
