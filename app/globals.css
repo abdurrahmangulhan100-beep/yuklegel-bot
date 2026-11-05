@@ -49,23 +49,23 @@
 
 :root {
   color-scheme: light;
-  --background: #f3f6fb;
-  --foreground: #122c4a;
+  --background: #f5f7fb;
+  --foreground: #172b43;
   --card: #ffffff;
   --card-foreground: #122c4a;
   --popover: #ffffff;
   --popover-foreground: #122c4a;
-  --primary: #122c4a;
+  --primary: #172b43;
   --primary-foreground: #ffffff;
-  --secondary: #eef4f8;
+  --secondary: #edf2f7;
   --secondary-foreground: #122c4a;
-  --muted: #eef2f8;
-  --muted-foreground: #5a6f88;
+  --muted: #f0f3f8;
+  --muted-foreground: #64758b;
   --accent: #eef4f8;
   --accent-foreground: #122c4a;
   --destructive: #d64526;
-  --border: #e2e8f1;
-  --input: #dbe3ec;
+  --border: #e4eaf1;
+  --input: #dce4ed;
   --ring: #315d83;
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
@@ -73,7 +73,7 @@
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
   --radius: 0.875rem;
-  --brand: #d64526;
+  --brand: #e65332;
   --sidebar: #ffffff;
   --sidebar-foreground: #122c4a;
   --sidebar-primary: #d64526;
@@ -121,7 +121,7 @@
   }
   html {
     -webkit-text-size-adjust: 100%;
-    background-color: #f3f6fb;
+    background-color: #f5f7fb;
     /* Hiçbir öğe ekran genişliğini aşıp sayfayı yana kaydırmasın / küçültmesin */
     overflow-x: clip;
   }
