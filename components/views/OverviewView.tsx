@@ -15,6 +15,8 @@ type OverviewProps = {
   onOpenCreate: () => void;
   setActiveTab: (tab: string) => void;
   totalCount?: number;
+  /** Son 24 saatte eklenen gerçek ilan sayısı */
+  last24h?: number;
   urgentCount?: number;
   userName?: string;
   /** Şehir çipine dokununca o şehrin ilanlarını açar */
@@ -35,7 +37,7 @@ const headline = (l: Load) => {
 }
 const subline = (l: Load) => [(l.cities ?? []).slice(0, 3).join(" · "), l.vehicle, l.time].filter(Boolean).join(" • ")
 
-export function OverviewView({ loads, currentUserId, onOpenCreate, setActiveTab, totalCount, urgentCount, userName, onSelectCity, onOpenUrgent, onPickFilter, favoritesCount = 0 }: OverviewProps) {
+export function OverviewView({ loads, currentUserId, onOpenCreate, setActiveTab, totalCount, last24h, urgentCount, userName, onSelectCity, onOpenUrgent, onPickFilter, favoritesCount = 0 }: OverviewProps) {
   const { isPremium } = usePremium()
   // SADECE O ANKİ KULLANICININ İLANLARINI FİLTRELE
   const userLoads = loads.filter(
@@ -77,7 +79,11 @@ export function OverviewView({ loads, currentUserId, onOpenCreate, setActiveTab,
           <h1 className="mt-1 text-[24px] font-extrabold leading-tight tracking-tight sm:text-3xl">
             <span className="text-[#ff8a65]">{total}</span> aktif yük<br className="sm:hidden" /> sizi bekliyor
           </h1>
-          <p className="mt-1 text-xs text-white/55">Yükünü taşı, yolun açık olsun.</p>
+          <p className="mt-1 text-xs text-white/55">
+            {typeof last24h === "number" && last24h > 0 ? (
+              <><span className="font-bold text-white/85">{last24h.toLocaleString("tr-TR")}</span> yeni ilan son 24 saatte · yolun açık olsun.</>
+            ) : "Yükünü taşı, yolun açık olsun."}
+          </p>
           <button
             type="button"
             onClick={() => setActiveTab("İlanlar")}
