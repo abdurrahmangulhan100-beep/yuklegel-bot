@@ -52,9 +52,51 @@ export function tripEstimate(a?: string | null, b?: string | null, fuelPrice?: n
   if (!km) return null
   const liters = Math.round((km / 100) * consumption)
   const cost = fuelPrice && fuelPrice > 0 ? Math.round(liters * fuelPrice / 10) * 10 : null
-  return { km, liters, cost, exact: Boolean(roadTable[pairKey(a as string, b as string)]) }
+  return { km, liters, cost, hours: driveHours(km), exact: Boolean(roadTable[pairKey(a as string, b as string)]) }
 }
 
-/** Google Haritalar'da rota aç */
-export const mapsUrl = (a: string, b: string) =>
-  `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(a + ", Türkiye")}&destination=${encodeURIComponent(b + ", Türkiye")}&travelmode=driving`
+/** Tır için ortalama sürüş süresi (saat): ort. 62 km/s + her 4,5 saatte 45 dk zorunlu mola (tahmini) */
+export const driveHours = (km: number) => {
+  const drive = km / 62
+  return Math.round((drive + Math.floor(drive / 4.5) * 0.75) * 10) / 10
+}
+
+/** 7,5 → "7 sa 30 dk", 26 → "1 gün 2 sa" */
+export function fmtHours(h: number): string {
+  const total = Math.round(h * 60)
+  if (total < 60) return `${total} dk`
+  if (total >= 24 * 60) { const d = Math.floor(total / 1440); const r = Math.round((total % 1440) / 60); return r ? `${d} gün ${r} sa` : `${d} gün` }
+  const hh = Math.floor(total / 60), mm = total % 60
+  return mm ? `${hh} sa ${mm} dk` : `${hh} sa`
+}
+
+export type PlaceKm = { km: number; hours: number }
+const placeCache = new Map<string, Promise<PlaceKm | null>>()
+let active = 0
+const queue: (() => void)[] = []
+const run = <T,>(fn: () => Promise<T>): Promise<T> => new Promise((res, rej) => {
+  const go = () => { active++; fn().then(res, rej).finally(() => { active--; queue.shift()?.() }) }
+  active < 2 ? go() : queue.push(go) // aynı anda en fazla 2 istek: ücretsiz kaynakları yormamak için
+})
+
+/**
+ * İlçe dahil KESİN yol km'si (OpenStreetMap yol ağı). Sunucuda önbelleğe alınır: aynı güzergâh bir kez hesaplanır.
+ * Edge Function (route-km) kurulu değilse null döner ve kart il bazlı değeri göstermeye devam eder.
+ */
+export function placeKm(fromCity: string, fromDistrict: string | undefined, toCity: string, toDistrict: string | undefined): Promise<PlaceKm | null> {
+  const a = fromDistrict ? `${fromCity}/${fromDistrict}` : fromCity
+  const b = toDistrict ? `${toCity}/${toDistrict}` : toCity
+  const key = `${a}>${b}`
+  let p = placeCache.get(key)
+  if (!p) {
+    const base = process.env.NEXT_PUBLIC_SUPABASE_URL
+    p = base
+      ? run(() => fetch(`${base}/functions/v1/route-km?from=${encodeURIComponent(a)}&to=${encodeURIComponent(b)}`, { headers: { apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "" } })
+          .then((r) => (r.ok ? r.json() : null))
+          .then((j) => (j && j.km > 0 ? { km: j.km as number, hours: driveHours(j.km) } : null))
+          .catch(() => null))
+      : Promise.resolve(null)
+    placeCache.set(key, p)
+  }
+  return p
+}
