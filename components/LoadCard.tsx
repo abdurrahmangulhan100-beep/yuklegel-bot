@@ -5,6 +5,8 @@ import { hidePhones } from "@/lib/listings"
 import { Phone, MessageCircle, Star, Check, Ban, Zap, ChevronDown, Share2, Copy, Flag, MoreHorizontal, MapPin, Truck, Clock, Weight, Ruler, Repeat2 } from "lucide-react"
 import { Fragment, memo, useEffect, useRef, useState } from "react"
 import { isMissing } from "@/lib/route"
+import { AVG_CONSUMPTION, mapsUrl, tripEstimate } from "@/lib/distance"
+import { useFuelPrice } from "@/lib/fuel"
 import { supabase } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
 import { Sheet } from "@/components/Sheet"
@@ -545,6 +547,8 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
           </div>
         )}
 
+        <RouteCost from={load.fromCity} to={load.toCity} />
+
         {/* Yük detayı */}
         <div className="flex-1">
           <div className="rounded-xl bg-muted/60 px-3 py-2.5">
@@ -646,6 +650,7 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
                 {hasPrice && <Tag tone="bg-emerald-600 text-white">{load.price}</Tag>}
               </div>
             )}
+            <RouteCost from={load.fromCity} to={load.toCity} />
             <div className="rounded-xl bg-muted/60 px-3.5 py-3">
               <p className="whitespace-pre-line break-words text-[14.5px] leading-[1.65] text-foreground/80">{cargoShown}</p>
             </div>
@@ -755,6 +760,23 @@ function Place({ caption, dot, label, sub, align, onClick, name = "" }: { captio
       <span className={cn("mt-0.5 line-clamp-2 break-words font-extrabold leading-tight text-foreground", size)}>{label}</span>
       {sub && <span className="block truncate text-[12px] font-semibold text-muted-foreground">{sub}</span>}
     </button>
+  )
+}
+
+/** Mesafe + yakıt tahmini (32 lt/100 km): yalnızca çıkış ve varış şehri belliyse görünür */
+const fmt = (n: number) => n.toLocaleString("tr-TR")
+function RouteCost({ from, to }: { from?: string; to?: string }) {
+  const fuel = useFuelPrice()
+  const t = tripEstimate(from, to, fuel)
+  if (!t || !from || !to) return null
+  return (
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-border bg-card px-3 py-2 text-[12.5px] text-muted-foreground">
+      <span className="inline-flex items-center gap-1 font-bold text-foreground"><MapPin className="size-3.5 text-brand" />{t.exact ? "" : "≈ "}{fmt(t.km)} km</span>
+      <span>~{fmt(t.liters)} lt</span>
+      {t.cost !== null && <span className="font-semibold text-foreground">~₺{fmt(t.cost)} yakıt</span>}
+      <a href={mapsUrl(from, to)} target="_blank" rel="noopener noreferrer" className="ml-auto font-semibold text-brand active:scale-95" onClick={(e) => e.stopPropagation()}>Haritada aç</a>
+      <span className="basis-full text-[11px] leading-snug text-muted-foreground/80">{t.exact ? "Google Haritalar yol mesafesi" : "Tahmini yol mesafesi"} · tek yön · ort. {AVG_CONSUMPTION} lt/100 km</span>
+    </div>
   )
 }
 
