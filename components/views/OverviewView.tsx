@@ -69,14 +69,14 @@ export function OverviewView({ loads, currentUserId, onOpenCreate, setActiveTab,
   ]
 
   return (
-    <div className="space-y-5 sm:space-y-6">
+    <div className="space-y-5 pb-2 sm:space-y-6">
       {/* Karşılama + arama */}
-      <section className="animate-rise relative overflow-hidden rounded-[28px] bg-gradient-to-br from-[#163a63] via-[#122c4a] to-[#0b1d33] p-5 text-white shadow-[0_14px_34px_rgba(18,44,74,0.28)] sm:p-7">
+      <section className="animate-rise relative overflow-hidden rounded-[26px] bg-gradient-to-br from-[#183e68] via-[#122c4a] to-[#0b1d33] p-[18px] text-white shadow-[0_12px_30px_rgba(18,44,74,0.22)] sm:rounded-[28px] sm:p-7">
         <div className="pointer-events-none absolute -right-10 -top-12 size-48 rounded-full bg-brand/30 blur-2xl" />
         <div className="pointer-events-none absolute -bottom-16 -left-10 size-40 rounded-full bg-[#315d83]/40 blur-2xl" />
         <div className="relative">
           <p className="text-sm font-medium text-white/65">{firstName ? `Merhaba, ${firstName}` : "Hoş geldiniz"}</p>
-          <h1 className="mt-1 text-[24px] font-extrabold leading-tight tracking-tight sm:text-3xl">
+          <h1 className="mt-1 text-[23px] font-extrabold leading-[1.13] tracking-tight sm:text-3xl">
             <span className="text-[#ff8a65]">{total}</span> aktif yük<br className="sm:hidden" /> sizi bekliyor
           </h1>
           <p className="mt-1 text-xs text-white/55">
@@ -87,7 +87,7 @@ export function OverviewView({ loads, currentUserId, onOpenCreate, setActiveTab,
           <button
             type="button"
             onClick={() => setActiveTab("İlanlar")}
-            className="mt-4 flex h-14 w-full items-center gap-3 rounded-2xl bg-card px-4 text-left shadow-lg shadow-black/20 transition-transform active:scale-[0.99] sm:max-w-lg"
+            className="mt-4 flex h-[54px] w-full items-center gap-3 rounded-[18px] bg-card px-3.5 text-left shadow-lg shadow-black/20 transition-transform active:scale-[0.99] sm:max-w-lg sm:px-4"
           >
             <Search className="size-5 shrink-0 text-muted-foreground" />
             <span className="min-w-0 flex-1 truncate text-[15px] text-muted-foreground">Nereden nereye yük arıyorsunuz?</span>
@@ -97,18 +97,18 @@ export function OverviewView({ loads, currentUserId, onOpenCreate, setActiveTab,
       </section>
 
       {/* Kısayollar */}
-      <section className="grid grid-cols-3 gap-2.5 sm:gap-4">
+      <section className="grid grid-cols-3 gap-2 sm:gap-4">
         {shortcuts.map((x) => (
           <button
             key={x.label}
             onClick={() => setActiveTab(x.tab)}
-            className="flex flex-col items-center gap-2 rounded-3xl border border-border bg-card px-1 py-4 shadow-card transition-all active:scale-95"
+            className="flex min-h-[112px] flex-col items-center justify-center gap-2 rounded-[21px] border border-border/80 bg-card px-1.5 py-3 shadow-[0_3px_12px_rgba(18,44,74,0.045)] transition-all active:scale-[0.97]"
           >
-            <span className="relative grid size-14 place-items-center rounded-full bg-muted/60 dark:bg-brand/15 text-brand">
-              <x.icon className="size-6" />
+            <span className="relative grid size-12 place-items-center rounded-[17px] bg-[#edf2f8] text-[#315d83] dark:bg-brand/15 dark:text-brand">
+              <x.icon className="size-[21px]" />
               {x.badge && <span className="absolute -right-2 -top-1.5 rounded-full bg-brand px-1.5 py-0.5 text-[10px] font-bold leading-none text-white ring-2 ring-card">{x.badge}</span>}
             </span>
-            <span className="text-[12px] font-bold text-foreground">{x.label}</span>
+            <span className="text-[11.5px] font-bold text-foreground">{x.label}</span>
           </button>
         ))}
       </section>
