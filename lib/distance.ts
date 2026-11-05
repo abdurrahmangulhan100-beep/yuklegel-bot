@@ -64,6 +64,72 @@ export function fmtHours(h: number): string {
 }
 
 export type PlaceKm = { km: number; hours: number }
+
+// ---- Gerçek yol mesafesi (OpenStreetMap yol ağı: Nominatim + OSRM) ----
+// Sıra: 1) cihazdaki kayıt  2) Supabase route-km (sunucu önbelleği)  3) doğrudan OSM (Edge Function kurulu değilse de çalışır)
+const LS_KEY = "route_km_v2"
+const readLocal = (key: string): number | null => {
+  try {
+    const v = Number(JSON.parse(localStorage.getItem(LS_KEY) || "{}")[key])
+    return Number.isFinite(v) && v > 0 ? v : null
+  } catch { return null }
+}
+const writeLocal = (key: string, km: number) => {
+  try {
+    const all = JSON.parse(localStorage.getItem(LS_KEY) || "{}")
+    all[key] = km
+    const keys = Object.keys(all)
+    if (keys.length > 300) for (const k of keys.slice(0, keys.length - 300)) delete all[k] // sınırsız büyümesin
+    localStorage.setItem(LS_KEY, JSON.stringify(all))
+  } catch { /* depolama kapalıysa sorun değil */ }
+}
+const timeout = (ms: number) => (typeof AbortSignal !== "undefined" && "timeout" in AbortSignal ? AbortSignal.timeout(ms) : undefined)
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
+
+async function viaEdge(a: string, b: string): Promise<number | null> {
+  const base = process.env.NEXT_PUBLIC_SUPABASE_URL
+  if (!base) return null
+  try {
+    const r = await fetch(`${base}/functions/v1/route-km?from=${encodeURIComponent(a)}&to=${encodeURIComponent(b)}`, {
+      headers: { apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "" },
+      signal: timeout(25000),
+    })
+    if (!r.ok) return null
+    const j = await r.json()
+    return j && j.km > 0 ? Math.round(j.km) : null
+  } catch { return null }
+}
+
+const geoCache = new Map<string, [number, number]>()
+async function geocode(place: string): Promise<[number, number] | null> {
+  const hit = geoCache.get(place)
+  if (hit) return hit
+  const [city, district] = place.split("/")
+  const q = district ? `${district}, ${city}, Türkiye` : `${city}, Türkiye`
+  try {
+    const r = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=tr&accept-language=tr&q=${encodeURIComponent(q)}`, { signal: timeout(12000) })
+    if (!r.ok) return null
+    const j = await r.json()
+    const lat = parseFloat(j?.[0]?.lat), lon = parseFloat(j?.[0]?.lon)
+    if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null
+    geoCache.set(place, [lat, lon])
+    return [lat, lon]
+  } catch { return null }
+}
+
+async function viaOsm(a: string, b: string): Promise<number | null> {
+  const from = await geocode(a)
+  await sleep(1100) // Nominatim: saniyede en fazla 1 istek
+  const to = await geocode(b)
+  if (!from || !to) return null
+  try {
+    const r = await fetch(`https://router.project-osrm.org/route/v1/driving/${from[1]},${from[0]};${to[1]},${to[0]}?overview=false`, { signal: timeout(15000) })
+    const j = await r.json()
+    const m = j?.routes?.[0]?.distance
+    return j?.code === "Ok" && m > 0 ? Math.round(m / 1000) : null
+  } catch { return null }
+}
+
 const placeCache = new Map<string, Promise<PlaceKm | null>>()
 let active = 0
 const queue: (() => void)[] = []
@@ -73,23 +139,25 @@ const run = <T,>(fn: () => Promise<T>): Promise<T> => new Promise((res, rej) => 
 })
 
 /**
- * İlçe dahil KESİN yol km'si (OpenStreetMap yol ağı). Sunucuda önbelleğe alınır: aynı güzergâh bir kez hesaplanır.
- * Edge Function (route-km) kurulu değilse null döner; doğrulanmamış mesafe ekranda gösterilmez.
+ * İlçe dahil gerçek yol km'si. Başarısız sonuç önbelleğe alınmaz: ağ düzelince tekrar denendiğinde hesaplanır.
+ * Doğrulanmamış (kuş uçuşu/tahmini) mesafe ASLA üretilmez; alınamazsa null döner.
  */
 export function placeKm(fromCity: string, fromDistrict: string | undefined, toCity: string, toDistrict: string | undefined): Promise<PlaceKm | null> {
   const a = fromDistrict ? `${fromCity}/${fromDistrict}` : fromCity
   const b = toDistrict ? `${toCity}/${toDistrict}` : toCity
   const key = `${a}>${b}`
-  let p = placeCache.get(key)
-  if (!p) {
-    const base = process.env.NEXT_PUBLIC_SUPABASE_URL
-    p = base
-      ? run(() => fetch(`${base}/functions/v1/route-km?from=${encodeURIComponent(a)}&to=${encodeURIComponent(b)}`, { headers: { apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "" } })
-          .then((r) => (r.ok ? r.json() : null))
-          .then((j) => (j && j.km > 0 ? { km: j.km as number, hours: driveHours(j.km) } : null))
-          .catch(() => null))
-      : Promise.resolve(null)
-    placeCache.set(key, p)
-  }
+  const cached = placeCache.get(key)
+  if (cached) return cached
+  const saved = typeof window !== "undefined" ? readLocal(key) : null
+  const p: Promise<PlaceKm | null> = saved
+    ? Promise.resolve({ km: saved, hours: driveHours(saved) })
+    : run(async () => (await viaEdge(a, b)) ?? (await viaOsm(a, b)))
+        .then((km) => {
+          if (!km) { placeCache.delete(key); return null }
+          if (typeof window !== "undefined") writeLocal(key, km)
+          return { km, hours: driveHours(km) }
+        })
+        .catch(() => { placeCache.delete(key); return null })
+  placeCache.set(key, p)
   return p
 }
