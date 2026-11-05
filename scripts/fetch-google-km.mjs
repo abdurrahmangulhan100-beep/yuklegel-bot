@@ -1,27 +1,25 @@
-// Tek seferlik: 81 il arası GERÇEK karayolu km'sini Google Haritalar'dan çekip lib/road-km.json'a yazar.
-// Kullanım:  GOOGLE_MAPS_KEY=xxxx node scripts/fetch-google-km.mjs
-// Gerekli: Google Cloud'da "Distance Matrix API" açık + faturalandırma (aylık 200$ ücretsiz kredi bu işe fazlasıyla yeter, ~3240 çift).
+// ÜCRETSİZ, anahtarsız, kartsız: 81 il arası karayolu km'sini OSRM (OpenStreetMap yol ağı) ile tek istekte alıp lib/road-km.json'a yazar.
+// Kullanım:  node scripts/fetch-road-km.mjs      (Node 18+)
+// Not: Google Haritalar ile genelde birkaç km farkla çıkar; birebir Google değeri için scripts/fetch-google-km.mjs kullan.
 import { readFileSync, writeFileSync } from "node:fs"
-
-const KEY = process.env.GOOGLE_MAPS_KEY
-if (!KEY) { console.error("GOOGLE_MAPS_KEY ortam değişkeni yok"); process.exit(1) }
 
 const src = readFileSync(new URL("../lib/distance.ts", import.meta.url), "utf8")
 const block = src.slice(src.indexOf("const C:"), src.indexOf("const ROAD_FACTOR"))
-const cities = [...block.matchAll(/([A-Za-zÇĞİÖŞÜçğıöşü]+): \[/g)].map((m) => m[1])
-const out = JSON.parse(readFileSync(new URL("../lib/road-km.json", import.meta.url), "utf8"))
-const key = (a, b) => (a.localeCompare(b, "tr") < 0 ? `${a}|${b}` : `${b}|${a}`)
-const q = (c) => encodeURIComponent(`${c}, Türkiye`)
+const cities = [...block.matchAll(/([A-Za-zÇĞİÖŞÜçğıöşü]+): \[([\d.]+), ([\d.]+)\]/g)].map((m) => ({ name: m[1], lat: m[2], lon: m[3] }))
+if (cities.length !== 81) { console.error(`81 il bekleniyordu, ${cities.length} bulundu`); process.exit(1) }
 
-for (const from of cities) {
-  const todo = cities.filter((c) => c !== from && !out[key(from, c)])
-  for (let i = 0; i < todo.length; i += 25) {           // istek başına en fazla 25 varış
-    const chunk = todo.slice(i, i + 25)
-    const url = `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${q(from)}&destinations=${chunk.map(q).join("|")}&mode=driving&key=${KEY}`
-    const j = await (await fetch(url)).json()
-    if (j.status !== "OK") { console.error(j.status, j.error_message); process.exit(1) }
-    j.rows[0].elements.forEach((e, k) => { if (e.status === "OK") out[key(from, chunk[k])] = Math.round(e.distance.value / 1000) })
-  }
-  writeFileSync(new URL("../lib/road-km.json", import.meta.url), JSON.stringify(out))   // her şehirden sonra kaydet: yarıda kalırsa devam eder
-  console.log(from, "tamam", Object.keys(out).length)
-}
+const coords = cities.map((c) => `${c.lon},${c.lat}`).join(";")
+const url = `https://router.project-osrm.org/table/v1/driving/${coords}?annotations=distance`
+const res = await fetch(url, { headers: { "User-Agent": "nakliye-cepte-km-script" } })
+const j = await res.json()
+if (j.code !== "Ok" || !j.distances) { console.error("OSRM hatası:", j.code, j.message); process.exit(1) }
+
+const key = (a, b) => (a.localeCompare(b, "tr") < 0 ? `${a}|${b}` : `${b}|${a}`)
+const out = {}
+cities.forEach((a, i) => cities.forEach((b, k) => {
+  if (k <= i) return
+  const m = j.distances[i][k] ?? j.distances[k][i]
+  if (m > 0) out[key(a.name, b.name)] = Math.round(m / 1000)
+}))
+writeFileSync(new URL("../lib/road-km.json", import.meta.url), JSON.stringify(out))
+console.log(`${Object.keys(out).length} şehir çifti yazıldı (beklenen 3240)`)
