@@ -5,7 +5,7 @@ import { hidePhones } from "@/lib/listings"
 import { Phone, MessageCircle, Star, Check, Ban, Zap, ChevronDown, Share2, Copy, Flag, MoreHorizontal, MapPin, Truck, Clock, Weight, Ruler, Repeat2 } from "lucide-react"
 import { Fragment, memo, useEffect, useRef, useState } from "react"
 import { isMissing } from "@/lib/route"
-import { AVG_CONSUMPTION, mapsUrl, tripEstimate } from "@/lib/distance"
+import { mapsUrl, tripEstimate } from "@/lib/distance"
 import { useFuelPrice } from "@/lib/fuel"
 import { supabase } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
@@ -775,7 +775,6 @@ function RouteCost({ from, to }: { from?: string; to?: string }) {
       <span>~{fmt(t.liters)} lt</span>
       {t.cost !== null && <span className="font-semibold text-foreground">~₺{fmt(t.cost)} yakıt</span>}
       <a href={mapsUrl(from, to)} target="_blank" rel="noopener noreferrer" className="ml-auto font-semibold text-brand active:scale-95" onClick={(e) => e.stopPropagation()}>Haritada aç</a>
-      <span className="basis-full text-[11px] leading-snug text-muted-foreground/80">{t.exact ? "Google Haritalar yol mesafesi" : "Tahmini yol mesafesi"} · tek yön · ort. {AVG_CONSUMPTION} lt/100 km</span>
     </div>
   )
 }
