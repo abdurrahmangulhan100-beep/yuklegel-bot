@@ -1,6 +1,7 @@
 // Şehirler arası TAHMİNİ karayolu mesafesi: kuş uçuşu (haversine) × yol katsayısı.
 // 81x81 tablo yerine 81 koordinat: küçük, bakımı kolay, ±%5-8 sapma (tahmindir).
 import { CITY_NAMES } from "@/lib/route"
+import ROAD from "@/lib/road-km.json" // scripts/fetch-google-km.mjs ile Google Haritalar'dan üretilir; boşsa tahmin kullanılır
 
 const C: Record<string, [number, number]> = {
   Adana: [37.0, 35.32], Adıyaman: [37.76, 38.28], Afyonkarahisar: [38.76, 30.54], Ağrı: [39.72, 43.05], Aksaray: [38.37, 34.03],
@@ -26,13 +27,34 @@ const ROAD_FACTOR = 1.27 // Türkiye'de kuş uçuşu → karayolu ortalaması
 
 export const CITY_LIST: string[] = [...CITY_NAMES].sort((a, b) => a.localeCompare(b, "tr"))
 
-/** İki şehir arası tahmini yol km (5'e yuvarlı). Bilinmiyorsa null. */
+/** Ortalama yakıt tüketimi (lt / 100 km) – tır için varsayılan */
+export const AVG_CONSUMPTION = 32
+
+const roadTable = ROAD as Record<string, number>
+const pairKey = (a: string, b: string) => (a.localeCompare(b, "tr") < 0 ? `${a}|${b}` : `${b}|${a}`)
+
+/** İki şehir arası yol km: önce Google Haritalar tablosu, yoksa kuş uçuşu tahmini (5'e yuvarlı). Bilinmiyorsa null. */
 export function estimateKm(a?: string | null, b?: string | null): number | null {
   const p = a ? C[a] : undefined
   const q = b ? C[b] : undefined
-  if (!p || !q || a === b) return null
+  if (!a || !b || !p || !q || a === b) return null
+  const known = roadTable[pairKey(a, b)]
+  if (known > 0) return known
   const r = (d: number) => (d * Math.PI) / 180
   const h = Math.sin(r(q[0] - p[0]) / 2) ** 2 + Math.cos(r(p[0])) * Math.cos(r(q[0])) * Math.sin(r(q[1] - p[1]) / 2) ** 2
   const air = 2 * 6371 * Math.asin(Math.sqrt(h))
   return Math.max(5, Math.round((air * ROAD_FACTOR) / 5) * 5)
 }
+
+/** Tek yön km, yakıt litresi ve maliyeti (fuelPrice yoksa maliyet null) */
+export function tripEstimate(a?: string | null, b?: string | null, fuelPrice?: number | null, consumption = AVG_CONSUMPTION) {
+  const km = estimateKm(a, b)
+  if (!km) return null
+  const liters = Math.round((km / 100) * consumption)
+  const cost = fuelPrice && fuelPrice > 0 ? Math.round(liters * fuelPrice / 10) * 10 : null
+  return { km, liters, cost, exact: Boolean(roadTable[pairKey(a as string, b as string)]) }
+}
+
+/** Google Haritalar'da rota aç */
+export const mapsUrl = (a: string, b: string) =>
+  `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(a + ", Türkiye")}&destination=${encodeURIComponent(b + ", Türkiye")}&travelmode=driving`
