@@ -117,12 +117,15 @@ export function CompanyProfileView({ onProfileUpdated }: { onProfileUpdated?: ()
       }
 
       // Tüm kullanıcı verilerini ve giriş hesabını (auth.users) kalıcı olarak siler.
-      // Fonksiyon supabase/001_play_store_uyumluluk.sql dosyasında tanımlıdır.
+      // Fonksiyon supabase/008_hesap_silme.sql dosyasında tanımlıdır.
       const { error: rpcError } = await supabase.rpc("delete_my_account")
       if (rpcError) throw rpcError
 
+      // Yalnızca Supabase oturum anahtarlarını temizle; uygulamanın diğer yerel ayarlarını koru.
       await supabase.auth.signOut()
-      localStorage.clear()
+      for (const key of Object.keys(localStorage)) {
+        if (key.startsWith("sb-") && key.endsWith("-auth-token")) localStorage.removeItem(key)
+      }
 
       toast("Hesabınız ve tüm verileriniz kalıcı olarak silindi.", "success")
       setTimeout(() => { window.location.href = "/" }, 1800)
