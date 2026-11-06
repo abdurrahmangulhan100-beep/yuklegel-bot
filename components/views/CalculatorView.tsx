@@ -1,9 +1,8 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
-import { ArrowDownUp, Fuel, Gauge, MapPin, Navigation, RefreshCw, Route, Wallet } from "lucide-react"
-import { CITY_CENTERS, CITY_LIST, getRouteDiag, placeKm } from "@/lib/distance"
-import { districtKm, districtNames, type DistrictCoords } from "@/lib/district-km"
+import { useMemo, useState } from "react"
+import { ArrowDownUp, Fuel, Gauge, MapPin, Navigation, Route, Wallet } from "lucide-react"
+import { CITY_LIST, districtNames, routeKm } from "@/lib/distance"
 import { useFuelPrice, agoLabel, getFuelDiag, provinceCode } from "@/lib/fuel"
 import { DISTRICTS } from "@/lib/districts"
 import { cn } from "@/lib/utils"
@@ -33,15 +32,11 @@ export function CalculatorView() {
   const [consumption, setConsumption] = useState("32")
   const [km, setKm] = useState<number | null>(null)
   const [approx, setApprox] = useState(false)
-  const [byDistrict, setByDistrict] = useState(false)
-  const [coords, setCoords] = useState<DistrictCoords | null>(null)
-  useEffect(() => { import("@/lib/district-coords.json").then((m) => setCoords(m.default as DistrictCoords)).catch(() => {}) }, [])
+  const [custom, setCustom] = useState("")
   const [manualPrice, setManualPrice] = useState(() => { try { return localStorage.getItem("calc_fuel") || "" } catch { return "" } })
   const setPrice = (v: string) => { setManualPrice(v); try { localStorage.setItem("calc_fuel", v) } catch {} }
-  const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   const [label, setLabel] = useState("")
-  const [diagText, setDiagText] = useState("")
 
   const fuel = useFuelPrice(canon(fromCity))
   const auto = fuel.price ?? fuel.lastPrice // otomatik fiyat; kullanıcı kutuya yazarsa o geçerli olur
@@ -49,31 +44,15 @@ export function CalculatorView() {
   const litres = useMemo(() => (km ? (km / 100) * num(consumption, 32) : null), [km, consumption])
   const cost = litres !== null && unit ? litres * unit : null
 
-  const calculate = async () => {
+  const calculate = () => {
     const a = canon(fromCity), b = canon(toCity)
     if (!a || !b) { setError("Çıkış ve varış ilini seçin."); return }
     if (a === b && !fromDistrict.trim() && !toDistrict.trim()) { setError("Çıkış ve varış aynı görünüyor."); return }
-    setLoading(true); setError(""); setKm(null); setApprox(false)
-    try {
-      const fd = fromDistrict.trim() || undefined, td = toDistrict.trim() || undefined
-      let r = await placeKm(a, fd, b, td)
-      // Canlı yol servisi yoksa ilçe konumlarıyla (cihazdaki veri) hesapla; yoksa il merkezleri arası
-      if ((!r || r.approx) && (fd || td) && coords && Object.keys(coords).length) {
-        const dk = districtKm(a, fd, b, td, coords, CITY_CENTERS)
-        if (dk) r = { km: dk, hours: 0, approx: true, byDistrict: true } as typeof r
-      }
-      setDiagText(r && !r.approx ? "" : getRouteDiag())
-      if (!r) setError("Bu iki il için mesafe bulunamadı. İl adlarını listeden seçin.")
-      else {
-        setKm(r.km); setApprox(Boolean(r.approx)); setByDistrict(Boolean((r as { byDistrict?: boolean }).byDistrict))
-        setFromCity(a); setToCity(b)
-        setLabel(`${a}${fromDistrict.trim() ? ` / ${fromDistrict.trim()}` : ""} → ${b}${toDistrict.trim() ? ` / ${toDistrict.trim()}` : ""}`)
-      }
-    } catch {
-      setError("Mesafe bulunamadı. İl adlarını listeden seçin.")
-    } finally {
-      setLoading(false)
-    }
+    const r = routeKm(a, fromDistrict.trim() || undefined, b, toDistrict.trim() || undefined)
+    if (!r) { setKm(null); setError("Bu güzergâh için mesafe bulunamadı. İl adlarını listeden seçin."); return }
+    setError(""); setKm(r.km); setApprox(!r.exact)
+    setFromCity(a); setToCity(b)
+    setLabel(`${a}${fromDistrict.trim() ? ` / ${fromDistrict.trim()}` : ""} → ${b}${toDistrict.trim() ? ` / ${toDistrict.trim()}` : ""}`)
   }
 
   const swap = () => {
@@ -93,7 +72,6 @@ export function CalculatorView() {
       <section aria-live="polite" className="overflow-hidden rounded-[28px] bg-navy-gradient p-5 text-white shadow-card sm:p-6">
         <div className="flex items-center justify-between gap-3">
           <span className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-white/70"><Wallet className="size-4" /> Ortalama masraf</span>
-          {loading && <RefreshCw className="size-4 animate-spin text-white/70" />}
         </div>
         <p className="mt-2 text-[44px] font-black leading-none tracking-tight tabular-nums sm:text-5xl">{cost !== null ? try0.format(cost) : "—"}</p>
         <p className="mt-2 min-h-4 truncate text-xs font-medium text-white/60">{km ? label : "Güzergâhı seçip Hesapla'ya basın"}</p>
@@ -113,11 +91,11 @@ export function CalculatorView() {
       {/* Güzergâh */}
       <section className="rounded-[28px] border border-border bg-card p-4 shadow-card sm:p-5">
         <div className="relative space-y-3">
-          <Place coords={coords} title="Nereden" tone="from" city={fromCity} district={fromDistrict} onCity={setFromCity} onDistrict={setFromDistrict} />
+          <Place title="Nereden" tone="from" city={fromCity} district={fromDistrict} onCity={setFromCity} onDistrict={setFromDistrict} />
           <button type="button" onClick={swap} aria-label="Yerleri değiştir" className="absolute right-3 top-1/2 z-10 grid size-10 -translate-y-1/2 place-items-center rounded-full border border-border bg-card text-muted-foreground shadow-card transition active:scale-90">
             <ArrowDownUp className="size-4" />
           </button>
-          <Place coords={coords} title="Nereye" tone="to" city={toCity} district={toDistrict} onCity={setToCity} onDistrict={setToDistrict} />
+          <Place title="Nereye" tone="to" city={toCity} district={toDistrict} onCity={setToCity} onDistrict={setToDistrict} />
         </div>
 
         <div className="mt-4">
@@ -127,20 +105,19 @@ export function CalculatorView() {
           <div className="flex items-center gap-2">
             <div className="flex flex-1 gap-1.5">
               {PRESETS.map((p) => (
-                <button key={p} type="button" onClick={() => setConsumption(p)} className={cn("h-11 flex-1 rounded-xl text-sm font-bold transition active:scale-95", consumption === p ? "bg-brand text-white shadow-sm" : "bg-muted text-foreground/80")}>{p}</button>
+                <button key={p} type="button" onClick={() => { setConsumption(p); setCustom("") }} className={cn("h-11 flex-1 rounded-xl text-sm font-bold transition active:scale-95", consumption === p && !custom ? "bg-brand text-white shadow-sm" : "bg-muted text-foreground/80")}>{p}</button>
               ))}
             </div>
-            <input value={consumption} onChange={(e) => setConsumption(e.target.value)} inputMode="decimal" aria-label="Tüketim" className="h-11 w-20 rounded-xl border border-input bg-muted/40 px-3 text-center text-base font-bold text-foreground outline-none focus:border-brand" />
+            <input value={custom} placeholder="Özel" onChange={(e) => { setCustom(e.target.value); setConsumption(e.target.value) }} inputMode="decimal" aria-label="Özel tüketim" className="h-11 w-20 rounded-xl border border-input bg-muted/40 px-3 text-center text-base font-bold text-foreground outline-none focus:border-brand" />
           </div>
         </div>
 
-        {!error && approx && <p className="mt-3 rounded-xl bg-amber-500/10 px-3 py-2.5 text-xs font-medium text-amber-700 dark:text-amber-400">{fromDistrict.trim() || toDistrict.trim() ? (byDistrict ? "İlçe konumlarına göre yaklaşık (≈) mesafe; gerçek rota birkaç km farklı olabilir." : "İlçe verisi yüklü değil: il merkezleri arası yaklaşık (≈) mesafe gösteriliyor.") : "Mesafe yaklaşıktır (≈); gerçek rota biraz farklı olabilir."}</p>}
+        {!error && approx && <p className="mt-3 rounded-xl bg-amber-500/10 px-3 py-2.5 text-xs font-medium text-amber-700 dark:text-amber-400">İlçe konumuna göre yaklaşık (≈) mesafe; gerçek rota birkaç km farklı olabilir.</p>}
 
         {error && <p role="alert" className="mt-3 rounded-xl bg-red-500/10 px-3 py-2.5 text-xs font-medium text-red-600">{error}</p>}
 
-        <button type="button" onClick={calculate} disabled={loading} className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-brand-gradient py-3.5 text-[15px] font-extrabold text-white shadow-lg shadow-[#d64526]/25 transition active:scale-[.98] disabled:opacity-60">
-          {loading ? <RefreshCw className="size-5 animate-spin" /> : <Navigation className="size-5" />}
-          {loading ? "Hesaplanıyor…" : "Hesapla"}
+        <button type="button" onClick={calculate} className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-brand-gradient py-3.5 text-[15px] font-extrabold text-white shadow-lg shadow-[#d64526]/25 transition active:scale-[.98]">
+          <Navigation className="size-5" /> Hesapla
         </button>
       </section>
 
@@ -160,10 +137,9 @@ function Stat({ icon, label, value }: { icon: React.ReactNode; label: string; va
   )
 }
 
-function Place({ coords, title, tone, city, district, onCity, onDistrict }: { coords: DistrictCoords | null; title: string; tone: "from" | "to"; city: string; district: string; onCity: (v: string) => void; onDistrict: (v: string) => void }) {
+function Place({ title, tone, city, district, onCity, onDistrict }: { title: string; tone: "from" | "to"; city: string; district: string; onCity: (v: string) => void; onDistrict: (v: string) => void }) {
   // İlçe önerileri: seçili ilin bilinen ilçeleri (liste dışındaki ilçe de elle yazılabilir)
-  const full = coords && city ? districtNames(coords, city) : []
-  const suggestions = full.length ? full : city ? Array.from(new Set(Array.from(DISTRICTS.values()).filter((d) => d.city === city).map((d) => d.name))).sort((a, b) => a.localeCompare(b, "tr")) : []
+  const suggestions = city ? Array.from(new Set([...districtNames(city), ...Array.from(DISTRICTS.values()).filter((d) => d.city === city).map((d) => d.name)])).sort((a, b) => a.localeCompare(b, "tr")) : []
   const id = `dl-${tone}`
   return (
     <div className="rounded-2xl bg-muted/50 p-3 pr-14">
