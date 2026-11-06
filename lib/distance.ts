@@ -1,5 +1,5 @@
-// Şehir koordinatları, yalnızca yol ağı tablosunu üretme betiğinde kullanılır.
-// Uygulama ekranında kuş uçuşu katsayısıyla sahte karayolu mesafesi üretilmez.
+// Şehir koordinatları: yol ağı tablosu üretme betiği + canlı servis çalışmazsa "≈ yaklaşık" km (kuş uçuşu × yol katsayısı).
+// Yaklaşık değer her zaman `approx: true` ile işaretlenir; ekranda "≈" ile gösterilir, önbelleğe yazılmaz.
 import { CITY_NAMES } from "@/lib/route"
 import ROAD from "@/lib/road-km.json" // OSRM/Google yol ağı verisi; boşsa mesafe gösterilmez
 
@@ -39,6 +39,16 @@ export function estimateKm(a?: string | null, b?: string | null): number | null 
   return Number.isFinite(known) && known > 0 ? known : null
 }
 
+const RAD = Math.PI / 180
+/** İl merkezleri arası yaklaşık karayolu km'si (kuş uçuşu × 1,28, 5'e yuvarlı). Tablo/servis yoksa son çare. */
+export function approxKm(a?: string | null, b?: string | null): number | null {
+  const p = a ? C[a] : undefined, q = b ? C[b] : undefined
+  if (!p || !q || a === b) return null
+  const dLat = (q[0] - p[0]) * RAD, dLon = (q[1] - p[1]) * RAD
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(p[0] * RAD) * Math.cos(q[0] * RAD) * Math.sin(dLon / 2) ** 2
+  return Math.max(5, Math.round((2 * 6371 * Math.asin(Math.sqrt(h)) * 1.28) / 5) * 5)
+}
+
 /** Tek yön km, yakıt litresi ve maliyeti (fuelPrice yoksa maliyet null) */
 export function tripEstimate(a?: string | null, b?: string | null, fuelPrice?: number | null, consumption = AVG_CONSUMPTION) {
   const km = estimateKm(a, b)
@@ -63,7 +73,7 @@ export function fmtHours(h: number): string {
   return mm ? `${hh} sa ${mm} dk` : `${hh} sa`
 }
 
-export type PlaceKm = { km: number; hours: number }
+export type PlaceKm = { km: number; hours: number; approx?: boolean }
 
 // ---- Gerçek yol mesafesi (OpenStreetMap yol ağı: Nominatim + OSRM) ----
 // Sıra: 1) cihazdaki kayıt  2) Supabase route-km (sunucu önbelleği)  3) doğrudan OSM (Edge Function kurulu değilse de çalışır)
@@ -86,6 +96,9 @@ const writeLocal = (key: string, km: number) => {
 const timeout = (ms: number) => (typeof AbortSignal !== "undefined" && "timeout" in AbortSignal ? AbortSignal.timeout(ms) : undefined)
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 let diag: string[] = []
+// Canlı servisler art arda başarısız olursa 5 dk boyunca denenmez (her kart için dakikalarca beklemeyi önler)
+let remoteFails = 0
+let remoteDownUntil = 0
 /** Son mesafe denemesinde hangi adımın neden başarısız olduğu (ekranda küçük tanı satırı için) */
 export const getRouteDiag = () => diag.join(" · ")
 
@@ -95,7 +108,7 @@ async function viaEdge(a: string, b: string): Promise<number | null> {
   try {
     const r = await fetch(`${base}/functions/v1/route-km?from=${encodeURIComponent(a)}&to=${encodeURIComponent(b)}`, {
       headers: { apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "" },
-      signal: timeout(25000),
+      signal: timeout(8000),
     })
     if (!r.ok) { diag.push(`sunucu: HTTP ${r.status}`); return null }
     const j = await r.json()
@@ -111,7 +124,7 @@ async function geocode(place: string): Promise<[number, number] | null> {
   const [city, district] = place.split("/")
   const q = district ? `${district}, ${city}, Türkiye` : `${city}, Türkiye`
   try {
-    const r = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=tr&accept-language=tr&q=${encodeURIComponent(q)}`, { signal: timeout(12000) })
+    const r = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=tr&accept-language=tr&q=${encodeURIComponent(q)}`, { signal: timeout(8000) })
     if (!r.ok) { diag.push(`konum(${place}): HTTP ${r.status}`); return null }
     const j = await r.json()
     const lat = parseFloat(j?.[0]?.lat), lon = parseFloat(j?.[0]?.lon)
@@ -127,7 +140,7 @@ async function viaOsm(a: string, b: string): Promise<number | null> {
   const to = await geocode(b)
   if (!from || !to) return null
   try {
-    const r = await fetch(`https://router.project-osrm.org/route/v1/driving/${from[1]},${from[0]};${to[1]},${to[0]}?overview=false`, { signal: timeout(15000) })
+    const r = await fetch(`https://router.project-osrm.org/route/v1/driving/${from[1]},${from[0]};${to[1]},${to[0]}?overview=false`, { signal: timeout(10000) })
     const j = await r.json()
     const m = j?.routes?.[0]?.distance
     if (!(j?.code === "Ok" && m > 0)) { diag.push(`yol: ${j?.code ?? "yanıt yok"}`); return null }
@@ -145,7 +158,7 @@ const run = <T,>(fn: () => Promise<T>): Promise<T> => new Promise((res, rej) => 
 
 /**
  * İlçe dahil gerçek yol km'si. Başarısız sonuç önbelleğe alınmaz: ağ düzelince tekrar denendiğinde hesaplanır.
- * Doğrulanmamış (kuş uçuşu/tahmini) mesafe ASLA üretilmez; alınamazsa null döner.
+ * Canlı/tabloda yoksa yaklaşık değer (`approx: true`) döner; il bilinmiyorsa null.
  */
 export function placeKm(fromCity: string, fromDistrict: string | undefined, toCity: string, toDistrict: string | undefined): Promise<PlaceKm | null> {
   const a = fromDistrict ? `${fromCity}/${fromDistrict}` : fromCity
@@ -154,15 +167,26 @@ export function placeKm(fromCity: string, fromDistrict: string | undefined, toCi
   const cached = placeCache.get(key)
   if (cached) return cached
   const saved = typeof window !== "undefined" ? readLocal(key) : null
+  const fallback = (): PlaceKm | null => {
+    const ap = approxKm(fromCity, toCity)
+    return ap ? { km: ap, hours: driveHours(ap), approx: true } : null
+  }
   const p: Promise<PlaceKm | null> = saved
     ? Promise.resolve({ km: saved, hours: driveHours(saved) })
-    : run(async () => { diag = []; return (await viaEdge(a, b)) ?? (await viaOsm(a, b)) })
+    : run(async () => {
+        diag = []
+        if (Date.now() < remoteDownUntil) { diag.push("canlı servis geçici kapalı"); return null }
+        const km = (await viaEdge(a, b)) ?? (await viaOsm(a, b))
+        if (km) remoteFails = 0
+        else if (++remoteFails >= 2) remoteDownUntil = Date.now() + 5 * 60000
+        return km
+      })
         .then((km) => {
-          if (!km) { placeCache.delete(key); return null }
+          if (!km) { placeCache.delete(key); return fallback() } // başarısız sonuç önbelleğe alınmaz; ağ düzelince gerçek km denenir
           if (typeof window !== "undefined") writeLocal(key, km)
           return { km, hours: driveHours(km) }
         })
-        .catch(() => { placeCache.delete(key); return null })
+        .catch(() => { placeCache.delete(key); return fallback() })
   placeCache.set(key, p)
   return p
 }
