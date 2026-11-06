@@ -24,6 +24,7 @@ export const PREMIUM_FEATURES = [
   "Reklamsız kullanım",
   "Sınırsız Ara / WhatsApp ile iletişim",
   "Sınırsız favori ve aynı anda sınırsız aktif ilan",
+  "Gelir & Gider takibi",
   "Varış Süresi Planlayıcı, Belge Hatırlatıcı ve Yakıt Defteri",
 ]
 
