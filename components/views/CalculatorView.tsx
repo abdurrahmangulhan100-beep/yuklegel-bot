@@ -1,8 +1,9 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { ArrowDownUp, Fuel, Gauge, MapPin, Navigation, RefreshCw, Route, Wallet } from "lucide-react"
-import { CITY_LIST, getRouteDiag, placeKm } from "@/lib/distance"
+import { CITY_CENTERS, CITY_LIST, getRouteDiag, placeKm } from "@/lib/distance"
+import { districtKm, districtNames, type DistrictCoords } from "@/lib/district-km"
 import { useFuelPrice, agoLabel, getFuelDiag, provinceCode } from "@/lib/fuel"
 import { DISTRICTS } from "@/lib/districts"
 import { cn } from "@/lib/utils"
@@ -32,6 +33,9 @@ export function CalculatorView() {
   const [consumption, setConsumption] = useState("32")
   const [km, setKm] = useState<number | null>(null)
   const [approx, setApprox] = useState(false)
+  const [byDistrict, setByDistrict] = useState(false)
+  const [coords, setCoords] = useState<DistrictCoords | null>(null)
+  useEffect(() => { import("@/lib/district-coords.json").then((m) => setCoords(m.default as DistrictCoords)).catch(() => {}) }, [])
   const [manualPrice, setManualPrice] = useState(() => { try { return localStorage.getItem("calc_fuel") || "" } catch { return "" } })
   const setPrice = (v: string) => { setManualPrice(v); try { localStorage.setItem("calc_fuel", v) } catch {} }
   const [loading, setLoading] = useState(false)
@@ -51,11 +55,17 @@ export function CalculatorView() {
     if (a === b && !fromDistrict.trim() && !toDistrict.trim()) { setError("Çıkış ve varış aynı görünüyor."); return }
     setLoading(true); setError(""); setKm(null); setApprox(false)
     try {
-      const r = await placeKm(a, fromDistrict.trim() || undefined, b, toDistrict.trim() || undefined)
+      const fd = fromDistrict.trim() || undefined, td = toDistrict.trim() || undefined
+      let r = await placeKm(a, fd, b, td)
+      // Canlı yol servisi yoksa ilçe konumlarıyla (cihazdaki veri) hesapla; yoksa il merkezleri arası
+      if ((!r || r.approx) && (fd || td) && coords && Object.keys(coords).length) {
+        const dk = districtKm(a, fd, b, td, coords, CITY_CENTERS)
+        if (dk) r = { km: dk, hours: 0, approx: true, byDistrict: true } as typeof r
+      }
       setDiagText(r && !r.approx ? "" : getRouteDiag())
       if (!r) setError("Bu iki il için mesafe bulunamadı. İl adlarını listeden seçin.")
       else {
-        setKm(r.km); setApprox(Boolean(r.approx))
+        setKm(r.km); setApprox(Boolean(r.approx)); setByDistrict(Boolean((r as { byDistrict?: boolean }).byDistrict))
         setFromCity(a); setToCity(b)
         setLabel(`${a}${fromDistrict.trim() ? ` / ${fromDistrict.trim()}` : ""} → ${b}${toDistrict.trim() ? ` / ${toDistrict.trim()}` : ""}`)
       }
@@ -103,11 +113,11 @@ export function CalculatorView() {
       {/* Güzergâh */}
       <section className="rounded-[28px] border border-border bg-card p-4 shadow-card sm:p-5">
         <div className="relative space-y-3">
-          <Place title="Nereden" tone="from" city={fromCity} district={fromDistrict} onCity={setFromCity} onDistrict={setFromDistrict} />
+          <Place coords={coords} title="Nereden" tone="from" city={fromCity} district={fromDistrict} onCity={setFromCity} onDistrict={setFromDistrict} />
           <button type="button" onClick={swap} aria-label="Yerleri değiştir" className="absolute right-3 top-1/2 z-10 grid size-10 -translate-y-1/2 place-items-center rounded-full border border-border bg-card text-muted-foreground shadow-card transition active:scale-90">
             <ArrowDownUp className="size-4" />
           </button>
-          <Place title="Nereye" tone="to" city={toCity} district={toDistrict} onCity={setToCity} onDistrict={setToDistrict} />
+          <Place coords={coords} title="Nereye" tone="to" city={toCity} district={toDistrict} onCity={setToCity} onDistrict={setToDistrict} />
         </div>
 
         <div className="mt-4">
@@ -124,7 +134,7 @@ export function CalculatorView() {
           </div>
         </div>
 
-        {!error && approx && <p className="mt-3 rounded-xl bg-amber-500/10 px-3 py-2.5 text-xs font-medium text-amber-700 dark:text-amber-400">{fromDistrict.trim() || toDistrict.trim() ? "Canlı yol servisine ulaşılamadı: ilçeler dikkate alınmadan il merkezleri arası yaklaşık (≈) mesafe gösteriliyor." : "Mesafe yaklaşıktır (≈); gerçek rota biraz farklı olabilir."}</p>}
+        {!error && approx && <p className="mt-3 rounded-xl bg-amber-500/10 px-3 py-2.5 text-xs font-medium text-amber-700 dark:text-amber-400">{fromDistrict.trim() || toDistrict.trim() ? (byDistrict ? "İlçe konumlarına göre yaklaşık (≈) mesafe; gerçek rota birkaç km farklı olabilir." : "İlçe verisi yüklü değil: il merkezleri arası yaklaşık (≈) mesafe gösteriliyor.") : "Mesafe yaklaşıktır (≈); gerçek rota biraz farklı olabilir."}</p>}
 
         {error && <p role="alert" className="mt-3 rounded-xl bg-red-500/10 px-3 py-2.5 text-xs font-medium text-red-600">{error}</p>}
 
@@ -150,9 +160,10 @@ function Stat({ icon, label, value }: { icon: React.ReactNode; label: string; va
   )
 }
 
-function Place({ title, tone, city, district, onCity, onDistrict }: { title: string; tone: "from" | "to"; city: string; district: string; onCity: (v: string) => void; onDistrict: (v: string) => void }) {
+function Place({ coords, title, tone, city, district, onCity, onDistrict }: { coords: DistrictCoords | null; title: string; tone: "from" | "to"; city: string; district: string; onCity: (v: string) => void; onDistrict: (v: string) => void }) {
   // İlçe önerileri: seçili ilin bilinen ilçeleri (liste dışındaki ilçe de elle yazılabilir)
-  const suggestions = city ? Array.from(new Set(Array.from(DISTRICTS.values()).filter((d) => d.city === city).map((d) => d.name))).sort((a, b) => a.localeCompare(b, "tr")) : []
+  const full = coords && city ? districtNames(coords, city) : []
+  const suggestions = full.length ? full : city ? Array.from(new Set(Array.from(DISTRICTS.values()).filter((d) => d.city === city).map((d) => d.name))).sort((a, b) => a.localeCompare(b, "tr")) : []
   const id = `dl-${tone}`
   return (
     <div className="rounded-2xl bg-muted/50 p-3 pr-14">
