@@ -24,6 +24,9 @@ export type ListingAnalysis = {
   cities: string[]
   /** il -> metinde geçen ilçe adı (varsa), etikette "Tekirdağ · Çerkezköy" göstermek için */
   districtOf: Record<string, string>
+  /** Yönü belirlenmiş başlangıç ve varış ilçeleri; diğer metin geçişleriyle karıştırılmaz. */
+  fromDistrict?: string
+  toDistrict?: string
   from?: Place
   to?: Place
   /** Güzergahta geçen ama yükleme/teslimat olarak ayrılamayan diğer şehirler */
@@ -561,6 +564,8 @@ export function analyzeListing(input: AnalyzeInput): ListingAnalysis {
   return {
     cities: cityList.slice(0, 6),
     districtOf,
+    fromDistrict: from?.district,
+    toDistrict: to?.district,
     from,
     to,
     extraCities,
