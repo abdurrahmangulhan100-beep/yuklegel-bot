@@ -72,6 +72,7 @@ export function PremiumProvider({ children }: { children: React.ReactNode }) {
   const [price, setPrice] = useState<string | null>(null)
   const restoredFor = useRef<string | null>(null)
   const loadingRef = useRef(false) // aynı anda birden fazla doğrulama isteği gitmesin
+  const reloadQueued = useRef(false) // devam eden sorgu sırasında gelen yenileme isteği kaybolmasın
   const lastLoad = useRef(0)
 
   const callVerify = useCallback(async (purchaseToken?: string) => {
@@ -80,12 +81,16 @@ export function PremiumProvider({ children }: { children: React.ReactNode }) {
     if (!session) return null
     // Statik yayında sunucu rotası yok: doğrulama Supabase Edge Function üzerinden yapılır
     const base = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    if (!base || !anonKey) {
+      return { ok: false, code: "E_CONFIG", error: "Premium doğrulaması için Supabase uygulama ayarları eksik." } as VerifyResult
+    }
     const res = await fetch(`${base}/functions/v1/premium-verify`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${session.access_token}`,
-        apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "",
+        apikey: anonKey,
       },
       body: JSON.stringify(purchaseToken ? { purchaseToken } : {}),
     })
@@ -116,17 +121,18 @@ export function PremiumProvider({ children }: { children: React.ReactNode }) {
 
   const load = useCallback(async () => {
     if (!supabase) { setLoading(false); return }
-    if (loadingRef.current) return
+    if (loadingRef.current) { reloadQueued.current = true; return }
     loadingRef.current = true
     lastLoad.current = Date.now()
     try {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) { setIsPremium(false); setStatus(null); setExpiresAt(null); return }
-      const { data } = await supabase
+      const { data, error: subscriptionError } = await supabase
         .from("subscriptions")
         .select("status,expires_at")
         .eq("user_id", session.user.id)
         .maybeSingle()
+      if (subscriptionError) throw subscriptionError
       let entitled = isEntitled(data)
       if (!entitled) void syncContactUsage()
       setIsPremium(entitled)
@@ -148,6 +154,10 @@ export function PremiumProvider({ children }: { children: React.ReactNode }) {
     } finally {
       loadingRef.current = false
       setLoading(false)
+      if (reloadQueued.current) {
+        reloadQueued.current = false
+        queueMicrotask(() => { void load() })
+      }
     }
   }, [callVerify])
 
@@ -214,7 +224,8 @@ export function PremiumProvider({ children }: { children: React.ReactNode }) {
     if (!supabase) return
     const { data } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "SIGNED_OUT") { setIsPremium(false); setStatus(null); setExpiresAt(null); restoredFor.current = null; return }
-      if (session) load()
+      // Auth callback içinden Supabase isteği başlatmak auth lock kilitlenmesine yol açabilir.
+      if (session) queueMicrotask(() => { void load() })
     })
     return () => data.subscription.unsubscribe()
   }, [load])
