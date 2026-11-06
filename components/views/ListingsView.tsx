@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react"
 import { Load, LoadCard } from "@/components/LoadCard"
-import { estimateKm } from "@/lib/distance"
+import { estimateKm, approxKm } from "@/lib/distance"
 import { VehicleIcon, type VehicleKind } from "@/components/VehicleIcon"
 import { PackageSearch, Plus, X, MapPin, Crown, ArrowLeftRight, TrendingUp, Search } from "lucide-react"
 import { usePremium } from "@/components/PremiumProvider"
@@ -230,7 +230,7 @@ export function ListingsView({
     })
     if (sort === "new") return list
     // Mesafe sırası: km'si bilinmeyen ilanlar (şehir çifti yok) sona gider
-    const km = (l: Load) => estimateKm(l.fromCity, l.toCity) ?? Infinity
+    const km = (l: Load) => estimateKm(l.fromCity, l.toCity) ?? approxKm(l.fromCity, l.toCity) ?? Infinity
     return [...list].sort((a, b) => (sort === "near" ? km(a) - km(b) : (km(b) === Infinity ? -1 : km(b)) - (km(a) === Infinity ? -1 : km(a))))
   }, [loads, from, to, sort])
 
