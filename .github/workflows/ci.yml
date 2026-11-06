@@ -1,0 +1,26 @@
+# Her push ve pull request'te: kurulum -> tip kontrolü -> test -> derleme.
+# Hata varsa GitHub'da kırmızı çarpı görürsünüz; böylece bozuk sürüm yayına gitmeden yakalanır.
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-placeholder
+          NEXT_PUBLIC_PLAY_PACKAGE: online.nakliyecepte.twa

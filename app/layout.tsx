@@ -1,0 +1,87 @@
+import type { Metadata, Viewport } from 'next'
+import { Inter } from 'next/font/google'
+import { OfflineNotice } from '@/components/OfflineNotice'
+import { ServiceWorkerRegister } from '@/components/ServiceWorkerRegister'
+import { PremiumProvider } from '@/components/PremiumProvider'
+import { Toaster } from '@/components/Toaster'
+import './globals.css'
+
+// Türkçe karakterler (ğ, ş, ı, İ...) için latin-ext alt kümesi gerekli
+const inter = Inter({
+  subsets: ['latin', 'latin-ext'],
+  variable: '--font-inter',
+  display: 'swap',
+})
+
+export const metadata: Metadata = {
+  title: 'Nakliye Cepte | Yük ve İlan Platformu',
+  description: 'Türkiye’nin güncel ve güvenilir yük, taşıma ve Nakliye ilanları platformu.',
+  manifest: '/manifest.json', // PWABuilder için zorunlu olan Web App Manifest bağlantısı
+  applicationName: 'Nakliye Cepte',
+  appleWebApp: {
+    capable: true,
+    title: 'Nakliye Cepte',
+    statusBarStyle: 'default',
+  },
+  formatDetection: { telephone: false },
+  // AdSense site doğrulaması için (NEXT_PUBLIC_ADSENSE_CLIENT tanımlıysa eklenir)
+  other: process.env.NEXT_PUBLIC_ADSENSE_CLIENT
+    ? { 'google-adsense-account': process.env.NEXT_PUBLIC_ADSENSE_CLIENT }
+    : undefined,
+  icons: {
+    icon: [
+      {
+        url: '/icon-light-32x32.png',
+        media: '(prefers-color-scheme: light)',
+      },
+      {
+        url: '/icon-dark-32x32.png',
+        media: '(prefers-color-scheme: dark)',
+      },
+      {
+        url: '/icon.svg',
+        type: 'image/svg+xml',
+      },
+    ],
+    apple: '/apple-icon.png',
+  },
+}
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover', // çentik / alt çubuk güvenli alanları için
+  interactiveWidget: 'resizes-content', // Android'de klavye açılınca arama/form alanları ekrandan taşmasın
+  colorScheme: 'light dark',
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#122c4a' },
+    { media: '(prefers-color-scheme: dark)', color: '#0b1220' },
+  ],
+}
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode
+}>) {
+  return (
+    <html lang="tr" className={inter.variable} suppressHydrationWarning>
+      <head>
+        {/* Tema: kayıtlı seçim yoksa cihaz ayarını izler; ilk boyamadan önce uygulanır (yanıp sönme olmaz) */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `try{var t=localStorage.getItem('theme');var d=t?t==='dark':matchMedia('(prefers-color-scheme: dark)').matches;document.documentElement.classList.add(d?'dark':'light')}catch(e){document.documentElement.classList.add('light')}`,
+          }}
+        />
+      </head>
+      <body className="antialiased">
+        {/* İnternet bağlantısı koptuğunda otomatik beliren çevrimdışı uyarı ekranı */}
+        <OfflineNotice />
+        <ServiceWorkerRegister />
+        
+        <PremiumProvider>{children}</PremiumProvider>
+        <Toaster />
+      </body>
+    </html>
+  )
+}
