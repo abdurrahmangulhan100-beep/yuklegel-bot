@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { Load, LoadCard } from "@/components/LoadCard"
 import { estimateKm, approxKm } from "@/lib/distance"
 import { VehicleIcon, type VehicleKind } from "@/components/VehicleIcon"
-import { PackageSearch, Plus, X, MapPin, Crown, ArrowLeftRight, TrendingUp, Search } from "lucide-react"
+import { PackageSearch, Plus, X, MapPin, Crown, ArrowLeftRight, Search } from "lucide-react"
 import { usePremium } from "@/components/PremiumProvider"
 import { FREE_DELAY_MINUTES, openPremium } from "@/lib/premium"
 import { cn } from "@/lib/utils"
@@ -234,19 +234,6 @@ export function ListingsView({
     return [...list].sort((a, b) => (sort === "near" ? km(a) - km(b) : (km(b) === Infinity ? -1 : km(b)) - (km(a) === Infinity ? -1 : km(a))))
   }, [loads, from, to, sort])
 
-  // Tek dokunuşla güzergâh: ilanlarda en çok geçen çıkış → varış çiftleri
-  const popularRoutes = useMemo(() => {
-    const m = new Map<string, { from: string; to: string; n: number }>()
-    for (const l of loads) {
-      if (!l.fromCity || !l.toCity || l.fromCity === l.toCity) continue
-      const k = `${l.fromCity}>${l.toCity}`
-      const e = m.get(k)
-      if (e) e.n++
-      else m.set(k, { from: l.fromCity, to: l.toCity, n: 1 })
-    }
-    return Array.from(m.values()).sort((a, b) => b.n - a.n || byTr(a.from, b.from)).slice(0, 8)
-  }, [loads])
-
   // Uzun listeyi tek seferde çizmek mobilde kasmaya yol açar: ekran kaydıkça parça parça ekle
   const CHUNK = 20
   const [shown, setShown] = useState(CHUNK)
@@ -391,28 +378,6 @@ export function ListingsView({
           </p>
         )}
       </div>
-
-      {/* Popüler güzergâhlar: tek dokunuşla uygula */}
-      {!loading && !from && !to && popularRoutes.length > 0 && (
-        <div>
-          <div className="mb-1.5 flex items-center gap-1.5 px-1 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-            <TrendingUp className="size-3.5 text-brand" />Son ilanlardaki güzergâhlar
-          </div>
-          <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 sm:mx-0 sm:flex-wrap sm:px-0">
-            {popularRoutes.map((r) => (
-              <button
-                key={`${r.from}>${r.to}`}
-                type="button"
-                onClick={() => setRoute(r.from, r.to)}
-                className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-border bg-card px-3 text-[12.5px] font-semibold text-foreground active:scale-95"
-              >
-                {r.from}<span aria-hidden className="text-muted-foreground">→</span>{r.to}
-                <span className="rounded-full bg-brand/10 px-1.5 text-[11px] font-bold tabular-nums text-brand">{r.n}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* Araç / tip çipleri (yatay kaydırma) */}
       <div className="-mx-4 sm:mx-0">
