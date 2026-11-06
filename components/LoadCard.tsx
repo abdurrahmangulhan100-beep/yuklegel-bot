@@ -5,7 +5,7 @@ import { hidePhones } from "@/lib/listings"
 import { Phone, MessageCircle, Star, Check, Ban, Zap, ChevronDown, Share2, Copy, Flag, MoreHorizontal, MapPin, Truck, Clock, Weight, Ruler, Repeat2, Route as RouteIcon, Fuel, Wallet } from "lucide-react"
 import { Component, Fragment, memo, useEffect, useRef, useState } from "react"
 import { isMissing } from "@/lib/route"
-import { estimateKm, approxKm, AVG_CONSUMPTION } from "@/lib/distance"
+import { routeKm, AVG_CONSUMPTION } from "@/lib/distance"
 import { useDieselPrice } from "@/lib/fuel"
 import { supabase } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
@@ -782,12 +782,12 @@ class SafeBox extends Component<{ children: React.ReactNode }, { bad: boolean }>
 
 const nf = (n: number) => n.toLocaleString("tr-TR")
 /** Sade tahmin: ağ isteği yok, anında hesaplanır. Tablo varsa gerçek km, yoksa "≈" yaklaşık. Fiyat yoksa yalnızca litre gösterilir. */
-function RouteCostInner({ from, to }: { from?: string; to?: string; fromDistrict?: string; toDistrict?: string }) {
+function RouteCostInner({ from, to, fromDistrict, toDistrict }: { from?: string; to?: string; fromDistrict?: string; toDistrict?: string }) {
   const diesel = useDieselPrice()
   if (!from || !to || from === to) return null
-  const exact = estimateKm(from, to)
-  const km = exact ?? approxKm(from, to)
-  if (!km) return null
+  const r = routeKm(from, fromDistrict, to, toDistrict)
+  if (!r) return null
+  const { km, exact } = r
   const liters = Math.round((km / 100) * AVG_CONSUMPTION)
   const cost = diesel ? Math.round((liters * diesel) / 10) * 10 : null
   return (
