@@ -12,7 +12,7 @@ export default function Error({ error, reset }: { error: Error & { digest?: stri
     <div className="flex min-h-dvh flex-col items-center justify-center bg-muted/60 px-6 text-center">
       <h1 className="text-xl font-extrabold text-foreground/80">Bir sorun oluştu</h1>
       <p className="mt-2 max-w-sm text-sm text-muted-foreground">
-        Sayfa yüklenirken beklenmedik bir hata oldu. İnternet bağlantınızı kontrol edip tekrar deneyin.
+        Bir şeyler ters gitti. Aşağıdaki düğmeyle sayfayı yeniden açabilirsiniz.
       </p>
       <div className="mt-6 flex w-full max-w-xs flex-col gap-2">
         <button onClick={() => reset()} className="h-12 rounded-xl bg-[#122c4a] text-sm font-bold text-white">
