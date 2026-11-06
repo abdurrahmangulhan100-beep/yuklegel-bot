@@ -1,7 +1,7 @@
 "use client"
 
 import { useMemo } from "react"
-import { Truck, Package, Zap, ArrowRight, Plus, Calculator, WalletCards, CircleHelp, ChevronRight, MapPin, TrendingUp, Timer, Search, Star, Crown } from "lucide-react"
+import { Truck, Zap, ArrowRight, Calculator, WalletCards, MapPin, TrendingUp, Timer, Search, Crown } from "lucide-react"
 import { VehicleIcon, type VehicleKind } from "@/components/VehicleIcon"
 import { Load } from "@/components/LoadCard"
 import { cn } from "@/lib/utils"
@@ -37,7 +37,7 @@ const headline = (l: Load) => {
 }
 const subline = (l: Load) => [(l.cities ?? []).slice(0, 3).join(" · "), l.vehicle, l.time].filter(Boolean).join(" • ")
 
-export function OverviewView({ loads, currentUserId, onOpenCreate, setActiveTab, totalCount, last24h, urgentCount, userName, onSelectCity, onOpenUrgent, onPickFilter, favoritesCount = 0 }: OverviewProps) {
+export function OverviewView({ loads, currentUserId, setActiveTab, totalCount, last24h, userName, onSelectCity, onOpenUrgent, onPickFilter }: OverviewProps) {
   const { isPremium } = usePremium()
   // SADECE O ANKİ KULLANICININ İLANLARINI FİLTRELE
   const userLoads = loads.filter(
@@ -45,9 +45,7 @@ export function OverviewView({ loads, currentUserId, onOpenCreate, setActiveTab,
   )
   
   const urgentLoads = loads.filter((l) => l.urgent)
-  const latestLoads = loads.slice(0, 4)
   const total = (totalCount ?? loads.length).toLocaleString("tr-TR")
-  const urgent = (urgentCount ?? urgentLoads.length).toLocaleString("tr-TR")
   const firstName = userName ? userName.split(" ")[0] : ""
 
   // Elimizdeki ilanlarda en sık geçen şehirler
@@ -61,11 +59,6 @@ export function OverviewView({ loads, currentUserId, onOpenCreate, setActiveTab,
     { label: "Sefer Hesapla", icon: Calculator, tab: "Sefer Hesapla", tone: "bg-muted text-foreground/80" },
     { label: "Gelir & Gider", icon: WalletCards, tab: "Gelir Gider", tone: "bg-emerald-50 text-emerald-600" },
     { label: "Takograf Sayacı", icon: Timer, tab: "Araçlar", tone: "bg-amber-50 text-amber-600" },
-  ]
-  const shortcuts = [
-    { label: "İlanlar", icon: Package, tab: "İlanlar", badge: total },
-    { label: "Favorilerim", icon: Star, tab: "Favorilerim", badge: favoritesCount > 0 ? String(favoritesCount) : "" },
-    { label: "Seferlerim", icon: Truck, tab: "Seferlerim", badge: userLoads.length > 0 ? String(userLoads.length) : "" },
   ]
 
   return (
@@ -81,7 +74,7 @@ export function OverviewView({ loads, currentUserId, onOpenCreate, setActiveTab,
           </h1>
           <p className="mt-1 text-xs text-white/55">
             {typeof last24h === "number" && last24h > 0 ? (
-              <><span className="font-bold text-white/85">{last24h.toLocaleString("tr-TR")}</span> yeni ilan son 24 saatte · yolun açık olsun.</>
+              <><span className="font-bold text-white/85">{last24h.toLocaleString("tr-TR")}</span> ilan son 24 saatte girildi · yolun açık olsun.</>
             ) : "Yükünü taşı, yolun açık olsun."}
           </p>
           <button
@@ -96,19 +89,18 @@ export function OverviewView({ loads, currentUserId, onOpenCreate, setActiveTab,
         </div>
       </section>
 
-      {/* Kısayollar */}
-      <section className="grid grid-cols-3 gap-2 sm:gap-4">
-        {shortcuts.map((x) => (
+      {/* Araçlar: tek sıra (İlanlar/Favoriler/Seferlerim alt menüde zaten var) */}
+      <section className="grid grid-cols-3 gap-2.5 sm:gap-4">
+        {quickActions.map((a) => (
           <button
-            key={x.label}
-            onClick={() => setActiveTab(x.tab)}
-            className="flex min-h-[112px] flex-col items-center justify-center gap-2 rounded-[21px] border border-border/80 bg-card px-1.5 py-3 shadow-[0_3px_12px_rgba(18,44,74,0.045)] transition-all active:scale-[0.97]"
+            key={a.label}
+            onClick={() => setActiveTab(a.tab)}
+            className="flex flex-col items-center gap-2 rounded-2xl border border-border bg-card px-1 py-3.5 shadow-card transition-all hover:shadow-md active:scale-95"
           >
-            <span className="relative grid size-12 place-items-center rounded-[17px] bg-[#edf2f8] text-[#315d83] dark:bg-brand/15 dark:text-brand">
-              <x.icon className="size-[21px]" />
-              {x.badge && <span className="absolute -right-2 -top-1.5 rounded-full bg-brand px-1.5 py-0.5 text-[10px] font-bold leading-none text-white ring-2 ring-card">{x.badge}</span>}
+            <span className={cn("grid size-11 place-items-center rounded-2xl", a.tone)}>
+              <a.icon className="size-[22px]" />
             </span>
-            <span className="text-[11.5px] font-bold text-foreground">{x.label}</span>
+            <span className="text-center text-[11px] font-semibold leading-tight text-foreground/80">{a.label}</span>
           </button>
         ))}
       </section>
@@ -210,35 +202,15 @@ export function OverviewView({ loads, currentUserId, onOpenCreate, setActiveTab,
         </section>
       )}
 
-      {/* Hızlı erişim */}
-      <section>
-        <h2 className="mb-3 px-1 text-base font-bold text-foreground">Araçlar</h2>
-        <div className="grid grid-cols-3 gap-2.5 sm:gap-4">
-          {quickActions.map((a) => (
-            <button
-              key={a.label}
-              onClick={() => setActiveTab(a.tab)}
-              className="flex flex-col items-center gap-2 rounded-2xl border border-border bg-card px-1 py-3.5 shadow-card transition-all hover:shadow-md active:scale-95"
-            >
-              <span className={cn("grid size-11 place-items-center rounded-2xl", a.tone)}>
-                <a.icon className="size-[22px]" />
-              </span>
-              <span className="text-center text-[11px] font-semibold leading-tight text-foreground/80">{a.label}</span>
+      {/* Son seferlerim: yalnızca ilanı olan kullanıcıya */}
+      {userLoads.length > 0 && (
+        <section className="min-w-0 rounded-3xl border border-border bg-card p-4 shadow-card sm:p-6">
+          <div className="mb-2 flex items-center justify-between">
+            <h2 className="text-base font-bold text-foreground">Son Seferlerim</h2>
+            <button onClick={() => setActiveTab("Seferlerim")} className="flex items-center gap-1 text-xs font-semibold text-foreground/80">
+              Tümünü Gör <ArrowRight className="size-3.5" />
             </button>
-          ))}
-        </div>
-      </section>
-
-      <div className="grid grid-cols-1 gap-5 sm:gap-6 lg:grid-cols-2 lg:items-start">
-      {/* Son seferlerim */}
-      <section className="min-w-0 rounded-3xl border border-border bg-card p-4 shadow-card sm:p-6">
-        <div className="mb-2 flex items-center justify-between">
-          <h2 className="text-base font-bold text-foreground">Son Seferlerim</h2>
-          <button onClick={() => setActiveTab("Seferlerim")} className="flex items-center gap-1 text-xs font-semibold text-foreground/80">
-            Tümünü Gör <ArrowRight className="size-3.5" />
-          </button>
-        </div>
-        {userLoads.length > 0 ? (
+          </div>
           <ul className="divide-y divide-border">
             {userLoads.slice(0, 3).map((load) => (
               <li key={load.id} className="flex items-center justify-between gap-3 py-3">
@@ -252,70 +224,10 @@ export function OverviewView({ loads, currentUserId, onOpenCreate, setActiveTab,
               </li>
             ))}
           </ul>
-        ) : (
-          <div className="py-8 text-center">
-            <div className="mx-auto mb-3 grid size-14 place-items-center rounded-2xl bg-muted text-foreground/80">
-              <Truck className="size-7" />
-            </div>
-            <p className="text-sm text-muted-foreground">Henüz size ait bir sefer bulunmuyor.</p>
-            <button
-              onClick={onOpenCreate}
-              className="mt-4 inline-flex h-11 items-center gap-2 rounded-xl bg-brand px-5 text-sm font-semibold text-white transition-colors hover:bg-brand/90"
-            >
-              <Plus className="size-4" /> İlk ilanını oluştur
-            </button>
-          </div>
-        )}
-      </section>
-
-      {/* Güncel ilanlar */}
-      {latestLoads.length > 0 && (
-        <section className="min-w-0 rounded-3xl border border-border bg-card p-4 shadow-card sm:p-6">
-          <div className="mb-1 flex items-center justify-between">
-            <h2 className="text-base font-bold text-foreground">Güncel İlanlar</h2>
-            <button onClick={() => setActiveTab("İlanlar")} className="flex items-center gap-1 text-xs font-semibold text-foreground/80">
-              Tümü <ArrowRight className="size-3.5" />
-            </button>
-          </div>
-          <ul className="divide-y divide-border">
-            {latestLoads.map((l) => (
-              <li key={l.id}>
-                <button onClick={() => setActiveTab("İlanlar")} className="flex w-full min-w-0 items-center gap-3 py-3 text-left">
-                  <span className={cn(
-                    "grid size-10 shrink-0 place-items-center rounded-xl text-xs font-bold text-white",
-                    l.source === "user" ? "bg-brand" : "bg-[#315d83]"
-                  )}>
-                    {l.source === "user" ? (l.initials || "NK") : "SL"}
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-bold text-foreground">
-                      {headline(l)}
-                    </span>
-                    <span className="mt-0.5 block truncate text-xs text-muted-foreground">{subline(l)}</span>
-                  </span>
-                  <ChevronRight className="size-4 shrink-0 text-muted-foreground/60" />
-                </button>
-              </li>
-            ))}
-          </ul>
         </section>
       )}
 
-      </div>
-
       <AdSlot promoOnly />
-
-      <button
-        onClick={() => setActiveTab("Yardım Merkezi")}
-        className="flex w-full items-center gap-3 rounded-2xl border border-border bg-card p-4 text-left shadow-card transition-colors hover:bg-muted/50"
-      >
-        <span className="grid size-10 place-items-center rounded-xl bg-muted text-foreground/80"><CircleHelp className="size-5" /></span>
-        <span className="flex-1">
-          <span className="block text-sm font-bold text-foreground">Yardıma mı ihtiyacınız var?</span>
-          <span className="block text-xs text-muted-foreground">Sık sorulan sorular ve destek</span>
-        </span>
-        <ChevronRight className="size-4 text-muted-foreground/60" />
-      </button>
     </div>
   )
 }
