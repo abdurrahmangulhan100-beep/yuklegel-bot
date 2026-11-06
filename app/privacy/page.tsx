@@ -83,10 +83,6 @@ export default function PrivacyPage() {
               satın alma belirteci, abonelik durumu ve bitiş tarihi hesabınıza bağlı olarak saklanır.
             </p>
             <p className="mt-2">
-              <strong>Bildirimler:</strong> İlan bildirimlerini açarsanız cihazınızın bildirim adresi ve seçtiğiniz güzergâhlar
-              saklanır; bildirimleri uygulamadan istediğiniz zaman kapatabilirsiniz.
-            </p>
-            <p className="mt-2">
               <strong>Saklama süresi:</strong> Verileriniz hesabınız açık olduğu sürece saklanır. Hesabınızı sildiğinizde
               hesaba bağlı tüm veriler kalıcı olarak silinir.
             </p>
