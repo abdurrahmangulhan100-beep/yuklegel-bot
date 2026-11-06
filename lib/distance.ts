@@ -87,12 +87,15 @@ export function routeKm(aCity?: string | null, aDist?: string | null, bCity?: st
   if (!base) return null
   if (!pa && !pb) return { km: base, exact: Boolean(table) && !hasDistrict }
 
+  // Karşıya doğru olan ilçede km düşer, ters yöndeyse artar. Uzun mesafede yollar düz gitmediği için
+  // "karşıya doğru" indirimi yumuşatılır (ör. Manisa→Milas: Milas, Muğla yolu üzerinde değil, ayrı bir koldur).
+  const kToward = base <= 120 ? WIND : base >= 250 ? 0.5 : WIND - ((base - 120) * (WIND - 0.5)) / 130
   const adj = (c: LL, p: LL | null, other: LL) => {
     if (!p) return 0
     const v = vec(c, p), u = vec(c, other), un = Math.hypot(u[0], u[1]) || 1
     const along = (v[0] * u[0] + v[1] * u[1]) / un
     const lateral = Math.abs((v[0] * u[1] - v[1] * u[0]) / un)
-    return -along * WIND + lateral * 0.2
+    return (along > 0 ? -along * kToward : -along * WIND) + lateral * 0.25
   }
   const est = base + adj(ca, pa, cb) + adj(cb, pb, ca)
   const floor = dist(pa ?? ca, pb ?? cb) * 1.15 // yol, düz çizgiden kısa olamaz
