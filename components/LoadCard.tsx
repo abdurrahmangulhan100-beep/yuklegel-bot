@@ -6,6 +6,7 @@ import { Phone, MessageCircle, Star, Check, Ban, Zap, ChevronDown, Share2, Copy,
 import { Component, Fragment, memo, useEffect, useRef, useState } from "react"
 import { isMissing } from "@/lib/route"
 import { routeKm, AVG_CONSUMPTION } from "@/lib/distance"
+import { useRoadKm } from "@/lib/road-km-live"
 import { useDieselPrice } from "@/lib/fuel"
 import { supabase } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
@@ -781,8 +782,8 @@ const nf = (n: number) => n.toLocaleString("tr-TR")
 /** Sade tahmin: ağ isteği yok, anında hesaplanır. Tablo varsa gerçek km, yoksa "≈" yaklaşık. Fiyat yoksa yalnızca litre gösterilir. */
 function RouteCostInner({ from, to, fromDistrict, toDistrict }: { from?: string; to?: string; fromDistrict?: string; toDistrict?: string }) {
   const diesel = useDieselPrice()
+  const r = useRoadKm(from, fromDistrict, to, toDistrict) // ilçe varsa önce tahmin, sonra OSRM kesin değeri
   if (!from || !to || from === to) return null
-  const r = routeKm(from, fromDistrict, to, toDistrict)
   if (!r) return null
   const { km, exact } = r
   const liters = Math.round((km / 100) * AVG_CONSUMPTION)
