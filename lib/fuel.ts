@@ -108,3 +108,40 @@ export function useFuelPrice(originCity?: string): { price: number | null; live:
   // price/updatedAt yalnızca taze (6 sa) veride dolu; lastPrice son bilinen değeri (eski olsa da) verir, ekran "güncel değil" etiketiyle gösterebilir
   return { price: live ? fuel!.price : null, live, loading, updatedAt: live ? fuel!.updatedAt : null, lastPrice: fuel?.price ?? null, lastUpdatedAt: fuel?.updatedAt ?? null }
 }
+
+// ---- İlan kartları için: TEK fiyat, uygulama başına bir kez, sessiz (hata olursa null; kart yalnızca litreyi gösterir) ----
+let dieselCache: number | null | undefined
+let dieselTask: Promise<number | null> | null = null
+async function loadDiesel(): Promise<number | null> {
+  try {
+    if (!supabase) return null
+    const keys = ["fuel_diesel_34", "fuel_diesel_6", "fuel_diesel_35", "fuel_diesel_42"]
+    const read = async () => {
+      const { data } = await supabase!.from("app_settings").select("key,value,updated_at").in("key", keys)
+      const rows = (data ?? []) as { key: string; value: string; updated_at: string | null }[]
+      for (const k of keys) {
+        const r = rows.find((x) => x.key === k)
+        const v = r ? parseFloat(String(r.value).replace(",", ".")) : 0
+        if (v > 0) return { price: v, at: r?.updated_at ? new Date(r.updated_at).getTime() : 0 }
+      }
+      return null
+    }
+    let hit = await read()
+    if (!hit || Date.now() - hit.at > REFRESH_MS) {
+      await supabase.functions.invoke("fuel-price-sync", { body: { provinceCode: 34 } }).catch(() => null) // sessiz yenileme
+      hit = (await read()) ?? hit
+    }
+    return hit?.price ?? null
+  } catch { return null }
+}
+export function useDieselPrice(): number | null {
+  const [price, setPrice] = useState<number | null>(dieselCache ?? null)
+  useEffect(() => {
+    if (dieselCache !== undefined) { setPrice(dieselCache); return }
+    let alive = true
+    dieselTask ??= loadDiesel().then((v) => { dieselCache = v; return v })
+    dieselTask.then((v) => { if (alive) setPrice(v) })
+    return () => { alive = false }
+  }, [])
+  return price
+}
