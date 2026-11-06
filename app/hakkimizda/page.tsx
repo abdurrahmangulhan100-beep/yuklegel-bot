@@ -32,7 +32,7 @@ export default function AboutPage() {
         <li>Favori ilanlar, kayıtlı güzergâhlar ve ilan sahibini tek dokunuşla arama</li>
         <li>Sefer takibi, gelir-gider defteri ve sefer maliyet hesaplayıcı</li>
         <li>Şoför araçları: takograf süre hesabı, hacim hesabı, belge hatırlatıcı, yakıt defteri ve kontrol listesi</li>
-        <li>Premium üyelere: ilanları anında görme, seçilen şehir için anlık bildirim ve reklamsız kullanım</li>
+        <li>Premium üyelere: ilanları anında görme, gelir-gider takibi, gelişmiş şoför araçları ve reklamsız kullanım</li>
       </ul>
 
       <h2>Güvenlik hakkında</h2>
