@@ -2,9 +2,8 @@
 
 import { useMemo, useState } from "react"
 import { ArrowDownUp, Fuel, Gauge, MapPin, Navigation, Route, Wallet } from "lucide-react"
-import { CITY_LIST, districtNames, routeKm } from "@/lib/distance"
+import { CITY_LIST, routeKm } from "@/lib/distance"
 import { useFuelPrice, agoLabel, getFuelDiag, provinceCode } from "@/lib/fuel"
-import { DISTRICTS } from "@/lib/districts"
 import { cn } from "@/lib/utils"
 
 const num = (value: string, fallback = 0) => {
@@ -26,9 +25,7 @@ const PRESETS = ["28", "32", "35", "40"]
 
 export function CalculatorView() {
   const [fromCity, setFromCity] = useState("")
-  const [fromDistrict, setFromDistrict] = useState("")
   const [toCity, setToCity] = useState("")
-  const [toDistrict, setToDistrict] = useState("")
   const [consumption, setConsumption] = useState("32")
   const [km, setKm] = useState<number | null>(null)
   const [approx, setApprox] = useState(false)
@@ -47,17 +44,16 @@ export function CalculatorView() {
   const calculate = () => {
     const a = canon(fromCity), b = canon(toCity)
     if (!a || !b) { setError("Çıkış ve varış ilini seçin."); return }
-    if (a === b && !fromDistrict.trim() && !toDistrict.trim()) { setError("Çıkış ve varış aynı görünüyor."); return }
-    const r = routeKm(a, fromDistrict.trim() || undefined, b, toDistrict.trim() || undefined)
+    if (a === b) { setError("Çıkış ve varış aynı görünüyor."); return }
+    const r = routeKm(a, undefined, b, undefined)
     if (!r) { setKm(null); setError("Bu güzergâh için mesafe bulunamadı. İl adlarını listeden seçin."); return }
     setError(""); setKm(r.km); setApprox(!r.exact)
     setFromCity(a); setToCity(b)
-    setLabel(`${a}${fromDistrict.trim() ? ` / ${fromDistrict.trim()}` : ""} → ${b}${toDistrict.trim() ? ` / ${toDistrict.trim()}` : ""}`)
+    setLabel(`${a} → ${b}`)
   }
 
   const swap = () => {
     setFromCity(toCity); setToCity(fromCity)
-    setFromDistrict(toDistrict); setToDistrict(fromDistrict)
     setKm(null); setError("")
   }
 
@@ -91,11 +87,11 @@ export function CalculatorView() {
       {/* Güzergâh */}
       <section className="rounded-[28px] border border-border bg-card p-4 shadow-card sm:p-5">
         <div className="relative space-y-3">
-          <Place title="Nereden" tone="from" city={fromCity} district={fromDistrict} onCity={setFromCity} onDistrict={setFromDistrict} />
+          <Place title="Nereden" tone="from" city={fromCity} onCity={setFromCity} />
           <button type="button" onClick={swap} aria-label="Yerleri değiştir" className="absolute right-3 top-1/2 z-10 grid size-10 -translate-y-1/2 place-items-center rounded-full border border-border bg-card text-muted-foreground shadow-card transition active:scale-90">
             <ArrowDownUp className="size-4" />
           </button>
-          <Place title="Nereye" tone="to" city={toCity} district={toDistrict} onCity={setToCity} onDistrict={setToDistrict} />
+          <Place title="Nereye" tone="to" city={toCity} onCity={setToCity} />
         </div>
 
         <div className="mt-4">
@@ -112,7 +108,7 @@ export function CalculatorView() {
           </div>
         </div>
 
-        {!error && approx && <p className="mt-3 rounded-xl bg-amber-500/10 px-3 py-2.5 text-xs font-medium text-amber-700 dark:text-amber-400">İlçe konumuna göre yaklaşık (≈) mesafe; gerçek rota birkaç km farklı olabilir.</p>}
+        {!error && approx && <p className="mt-3 rounded-xl bg-amber-500/10 px-3 py-2.5 text-xs font-medium text-amber-700 dark:text-amber-400">Bu güzergâh için kuş uçuşuna göre yaklaşık (≈) mesafe gösteriliyor.</p>}
 
         {error && <p role="alert" className="mt-3 rounded-xl bg-red-500/10 px-3 py-2.5 text-xs font-medium text-red-600">{error}</p>}
 
@@ -137,23 +133,16 @@ function Stat({ icon, label, value }: { icon: React.ReactNode; label: string; va
   )
 }
 
-function Place({ title, tone, city, district, onCity, onDistrict }: { title: string; tone: "from" | "to"; city: string; district: string; onCity: (v: string) => void; onDistrict: (v: string) => void }) {
-  // İlçe önerileri: seçili ilin bilinen ilçeleri (liste dışındaki ilçe de elle yazılabilir)
-  const suggestions = city ? Array.from(new Set([...districtNames(city), ...Array.from(DISTRICTS.values()).filter((d) => d.city === city).map((d) => d.name)])).sort((a, b) => a.localeCompare(b, "tr")) : []
-  const id = `dl-${tone}`
+function Place({ title, tone, city, onCity }: { title: string; tone: "from" | "to"; city: string; onCity: (v: string) => void }) {
   return (
     <div className="rounded-2xl bg-muted/50 p-3 pr-14">
       <div className="mb-2 flex items-center gap-2 text-xs font-bold text-muted-foreground">
         <MapPin className={cn("size-4", tone === "from" ? "text-emerald-600" : "text-brand")} /> {title}
       </div>
-      <div className="grid grid-cols-2 gap-2">
-        <select aria-label={`${title} il`} value={city} onChange={(e) => { onCity(e.target.value); onDistrict("") }} className="h-11 min-w-0 rounded-xl border border-input bg-card px-2 text-sm font-bold text-foreground outline-none focus:border-brand">
-          <option value="">İl seçin</option>
-          {CITY_LIST.map((c) => <option key={c} value={c}>{c}</option>)}
-        </select>
-        <input list={id} aria-label={`${title} ilçe`} value={district} onChange={(e) => onDistrict(e.target.value)} placeholder={city ? "İlçe (isteğe bağlı)" : "Önce il seçin"} disabled={!city} autoComplete="off" className="h-11 min-w-0 rounded-xl border border-input bg-card px-3 text-sm text-foreground outline-none focus:border-brand disabled:opacity-50" />
-        <datalist id={id}>{suggestions.map((n) => <option key={n} value={n} />)}</datalist>
-      </div>
+      <select aria-label={`${title} il`} value={city} onChange={(e) => onCity(e.target.value)} className="h-11 w-full min-w-0 rounded-xl border border-input bg-card px-2 text-sm font-bold text-foreground outline-none focus:border-brand">
+        <option value="">İl seçin</option>
+        {CITY_LIST.map((c) => <option key={c} value={c}>{c}</option>)}
+      </select>
     </div>
   )
 }
