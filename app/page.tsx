@@ -254,8 +254,13 @@ export default function Page() {
       setTotals({ user: u.count ?? 0, bot: b.count ?? 0, urgent: (uu.count ?? 0) + (bu.count ?? 0) })
 
       // Son 24 saatte sisteme düşen gerçek ilan sayısı (yalnızca sayı döner; recent_listing_count zaten kurulu)
-      const { data: d24, error: e24 } = await supabase.rpc("recent_listing_count", { p_since: new Date(Date.now() - 86400000).toISOString() })
-      if (!e24 && typeof d24 === "number") setLast24h(d24)
+      // Önce silinen ilanları da sayan kalıcı sayaç (008_gunluk_sayac.sql); kurulu değilse eski yönteme düşer
+      const { data: c24, error: ec24 } = await supabase.rpc("listings_last_24h")
+      if (!ec24 && typeof c24 === "number") setLast24h(c24)
+      else {
+        const { data: d24, error: e24 } = await supabase.rpc("recent_listing_count", { p_since: new Date(Date.now() - 86400000).toISOString() })
+        if (!e24 && typeof d24 === "number") setLast24h(d24)
+      }
 
       // Ücretsiz plan: gecikme penceresindeki (henüz gösterilmeyen) ilan sayısı -> "Premium üyeler şu an görüyor" uyarısı
       if (dc) {
