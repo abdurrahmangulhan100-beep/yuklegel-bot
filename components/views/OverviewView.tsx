@@ -1,7 +1,7 @@
 "use client"
 
 import { useMemo } from "react"
-import { Truck, Zap, ArrowRight, Calculator, WalletCards, MapPin, TrendingUp, Timer, Search, Crown } from "lucide-react"
+import { Truck, Zap, ArrowRight, Calculator, MapPin, TrendingUp, Search, Crown } from "lucide-react"
 import { VehicleIcon, type VehicleKind } from "@/components/VehicleIcon"
 import { Load } from "@/components/LoadCard"
 import { cn } from "@/lib/utils"
@@ -57,8 +57,6 @@ export function OverviewView({ loads, currentUserId, setActiveTab, totalCount, l
 
   const quickActions = [
     { label: "Sefer Hesapla", icon: Calculator, tab: "Sefer Hesapla", tone: "bg-muted text-foreground/80" },
-    { label: "Gelir & Gider", icon: WalletCards, tab: "Gelir Gider", tone: "bg-emerald-50 text-emerald-600" },
-    { label: "Takograf Sayacı", icon: Timer, tab: "Araçlar", tone: "bg-amber-50 text-amber-600" },
   ]
 
   return (
@@ -90,12 +88,12 @@ export function OverviewView({ loads, currentUserId, setActiveTab, totalCount, l
       </section>
 
       {/* Araçlar: tek sıra (İlanlar/Favoriler/Seferlerim alt menüde zaten var) */}
-      <section className="grid grid-cols-3 gap-2.5 sm:gap-4">
+      <section className="grid grid-cols-1 gap-2.5 sm:gap-4">
         {quickActions.map((a) => (
           <button
             key={a.label}
             onClick={() => setActiveTab(a.tab)}
-            className="flex flex-col items-center gap-2 rounded-2xl border border-border bg-card px-1 py-3.5 shadow-card transition-all hover:shadow-md active:scale-95"
+            className="flex items-center justify-center gap-3 rounded-2xl border border-border bg-card px-4 py-3.5 shadow-card transition-all hover:shadow-md active:scale-95"
           >
             <span className={cn("grid size-11 place-items-center rounded-2xl", a.tone)}>
               <a.icon className="size-[22px]" />
