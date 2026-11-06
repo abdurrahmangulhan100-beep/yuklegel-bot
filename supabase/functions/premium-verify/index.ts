@@ -6,8 +6,10 @@ import { createClient } from "npm:@supabase/supabase-js@2"
 import { PACKAGE, PlayError, SKU, acknowledge, evaluate, fetchSubscription } from "../_shared/play.ts"
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || ""
-const ANON = Deno.env.get("SUPABASE_ANON_KEY") || ""
-const SERVICE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || ""
+// Anon anahtarına artık gerek yok (oturum, service role ile doğrulanır). Yeni API anahtarı sisteminde SUPABASE_ANON_KEY
+// bazen tanımlı gelmediği için eski kod "Sunucu ayarları eksik" (500) dönüyordu.
+// Service role için de, otomatik değişken yoksa kendi secret'ınızı (SERVICE_ROLE_KEY) yedek olarak okur.
+const SERVICE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || Deno.env.get("SERVICE_ROLE_KEY") || ""
 
 // CORS: bu uç nokta çerez değil, Authorization (Supabase JWT) ile korunur; kaynak (origin) kısıtı güvenlik sağlamaz.
 function corsHeaders(_req: Request) {
@@ -52,7 +54,6 @@ Deno.serve(async (req: Request) => {
     const missing = [
       !PACKAGE && "PLAY_PACKAGE_NAME",
       !SUPABASE_URL && "SUPABASE_URL",
-      !ANON && "SUPABASE_ANON_KEY",
       !SERVICE && "SUPABASE_SERVICE_ROLE_KEY",
     ].filter(Boolean)
     if (missing.length) {
@@ -64,12 +65,10 @@ Deno.serve(async (req: Request) => {
     stage = "auth"
     const jwt = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "")
     if (!jwt) return fail(req, 401, "E_NO_AUTH", "Giriş gerekli")
-    const userClient = createClient(SUPABASE_URL, ANON, { auth: { persistSession: false } })
-    const { data: userData, error: userErr } = await userClient.auth.getUser(jwt)
+    const admin = createClient(SUPABASE_URL, SERVICE, { auth: { persistSession: false } })
+    const { data: userData, error: userErr } = await admin.auth.getUser(jwt)
     if (userErr || !userData.user) return fail(req, 401, "E_BAD_SESSION", "Geçersiz oturum")
     const userId = userData.user.id
-
-    const admin = createClient(SUPABASE_URL, SERVICE, { auth: { persistSession: false } })
 
     // 2) Token: istekte varsa o, yoksa kullanıcının kayıtlı token'ı (yenileme)
     stage = "token"
