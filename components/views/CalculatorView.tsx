@@ -4,6 +4,7 @@ import { useMemo, useState } from "react"
 import { ArrowDownUp, Fuel, Gauge, MapPin, Navigation, RefreshCw, Route, Wallet } from "lucide-react"
 import { CITY_LIST, getRouteDiag, placeKm } from "@/lib/distance"
 import { useFuelPrice, agoLabel, getFuelDiag, provinceCode } from "@/lib/fuel"
+import { DISTRICTS } from "@/lib/districts"
 import { cn } from "@/lib/utils"
 
 const num = (value: string, fallback = 0) => {
@@ -24,14 +25,15 @@ const canon = (value: string) => {
 const PRESETS = ["28", "32", "35", "40"]
 
 export function CalculatorView() {
-  const [fromCity, setFromCity] = useState("Kayseri")
+  const [fromCity, setFromCity] = useState("")
   const [fromDistrict, setFromDistrict] = useState("")
-  const [toCity, setToCity] = useState("Bitlis")
-  const [toDistrict, setToDistrict] = useState("Ahlat")
+  const [toCity, setToCity] = useState("")
+  const [toDistrict, setToDistrict] = useState("")
   const [consumption, setConsumption] = useState("32")
   const [km, setKm] = useState<number | null>(null)
   const [approx, setApprox] = useState(false)
-  const [manualPrice, setManualPrice] = useState("")
+  const [manualPrice, setManualPrice] = useState(() => { try { return localStorage.getItem("calc_fuel") || "" } catch { return "" } })
+  const setPrice = (v: string) => { setManualPrice(v); try { localStorage.setItem("calc_fuel", v) } catch {} }
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   const [label, setLabel] = useState("")
@@ -45,7 +47,7 @@ export function CalculatorView() {
 
   const calculate = async () => {
     const a = canon(fromCity), b = canon(toCity)
-    if (!a || !b) { setError("Çıkış ve varış ilini yazın."); return }
+    if (!a || !b) { setError("Çıkış ve varış ilini seçin."); return }
     if (a === b && !fromDistrict.trim() && !toDistrict.trim()) { setError("Çıkış ve varış aynı görünüyor."); return }
     setLoading(true); setError(""); setKm(null); setApprox(false)
     try {
@@ -72,8 +74,6 @@ export function CalculatorView() {
 
   return (
     <div className="mx-auto w-full max-w-xl space-y-4 pb-4">
-      <datalist id="calc-cities">{CITY_LIST.map((c) => <option key={c} value={c} />)}</datalist>
-
       <header>
         <p className="text-[11px] font-bold uppercase tracking-[.18em] text-brand">Yol & yakıt</p>
         <h1 className="mt-1 text-[26px] font-black tracking-tight text-foreground sm:text-3xl">Sefer Hesapla</h1>
@@ -97,7 +97,7 @@ export function CalculatorView() {
       {/* Motorin fiyatı: otomatik gelir, istenirse elle yazılır (internet olmasa da hesap çalışır) */}
       <div className="flex items-center justify-between gap-3 rounded-2xl border border-border bg-card px-4 py-3 shadow-card">
         <span className="inline-flex items-center gap-2 text-sm font-bold text-foreground"><Fuel className="size-4 text-brand" /> Motorin ₺ / L</span>
-        <input value={manualPrice} onChange={(e) => setManualPrice(e.target.value)} inputMode="decimal" aria-label="Motorin litre fiyatı" placeholder={auto ? String(Math.round(auto * 100) / 100).replace(".", ",") : "örn. 42,50"} className="h-10 w-28 rounded-xl border border-input bg-muted/40 px-3 text-right text-base font-bold text-foreground outline-none focus:border-brand" />
+        <input value={manualPrice} onChange={(e) => setPrice(e.target.value)} inputMode="decimal" aria-label="Motorin litre fiyatı" placeholder={auto ? String(Math.round(auto * 100) / 100).replace(".", ",") : "örn. 42,50"} className="h-10 w-28 rounded-xl border border-input bg-muted/40 px-3 text-right text-base font-bold text-foreground outline-none focus:border-brand" />
       </div>
 
       {/* Güzergâh */}
@@ -124,7 +124,7 @@ export function CalculatorView() {
           </div>
         </div>
 
-        {!error && approx && <p className="mt-3 rounded-xl bg-amber-500/10 px-3 py-2.5 text-xs font-medium text-amber-700 dark:text-amber-400">Mesafe yaklaşıktır (≈); gerçek rota biraz farklı olabilir.</p>}
+        {!error && approx && <p className="mt-3 rounded-xl bg-amber-500/10 px-3 py-2.5 text-xs font-medium text-amber-700 dark:text-amber-400">{fromDistrict.trim() || toDistrict.trim() ? "Canlı yol servisine ulaşılamadı: ilçeler dikkate alınmadan il merkezleri arası yaklaşık (≈) mesafe gösteriliyor." : "Mesafe yaklaşıktır (≈); gerçek rota biraz farklı olabilir."}</p>}
 
         {error && <p role="alert" className="mt-3 rounded-xl bg-red-500/10 px-3 py-2.5 text-xs font-medium text-red-600">{error}</p>}
 
@@ -151,14 +151,21 @@ function Stat({ icon, label, value }: { icon: React.ReactNode; label: string; va
 }
 
 function Place({ title, tone, city, district, onCity, onDistrict }: { title: string; tone: "from" | "to"; city: string; district: string; onCity: (v: string) => void; onDistrict: (v: string) => void }) {
+  // İlçe önerileri: seçili ilin bilinen ilçeleri (liste dışındaki ilçe de elle yazılabilir)
+  const suggestions = city ? Array.from(new Set(Array.from(DISTRICTS.values()).filter((d) => d.city === city).map((d) => d.name))).sort((a, b) => a.localeCompare(b, "tr")) : []
+  const id = `dl-${tone}`
   return (
     <div className="rounded-2xl bg-muted/50 p-3 pr-14">
       <div className="mb-2 flex items-center gap-2 text-xs font-bold text-muted-foreground">
         <MapPin className={cn("size-4", tone === "from" ? "text-emerald-600" : "text-brand")} /> {title}
       </div>
       <div className="grid grid-cols-2 gap-2">
-        <input list="calc-cities" aria-label={`${title} il`} value={city} onChange={(e) => onCity(e.target.value)} placeholder="İl" autoComplete="off" className="h-11 min-w-0 rounded-xl border border-input bg-card px-3 text-sm font-bold text-foreground outline-none focus:border-brand" />
-        <input aria-label={`${title} ilçe`} value={district} onChange={(e) => onDistrict(e.target.value)} placeholder="İlçe (ops.)" autoComplete="off" className="h-11 min-w-0 rounded-xl border border-input bg-card px-3 text-sm text-foreground outline-none focus:border-brand" />
+        <select aria-label={`${title} il`} value={city} onChange={(e) => { onCity(e.target.value); onDistrict("") }} className="h-11 min-w-0 rounded-xl border border-input bg-card px-2 text-sm font-bold text-foreground outline-none focus:border-brand">
+          <option value="">İl seçin</option>
+          {CITY_LIST.map((c) => <option key={c} value={c}>{c}</option>)}
+        </select>
+        <input list={id} aria-label={`${title} ilçe`} value={district} onChange={(e) => onDistrict(e.target.value)} placeholder={city ? "İlçe (isteğe bağlı)" : "Önce il seçin"} disabled={!city} autoComplete="off" className="h-11 min-w-0 rounded-xl border border-input bg-card px-3 text-sm text-foreground outline-none focus:border-brand disabled:opacity-50" />
+        <datalist id={id}>{suggestions.map((n) => <option key={n} value={n} />)}</datalist>
       </div>
     </div>
   )
