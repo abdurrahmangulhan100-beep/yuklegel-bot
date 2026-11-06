@@ -3,10 +3,10 @@
 import { toast } from "@/lib/toast"
 import { hidePhones } from "@/lib/listings"
 import { Phone, MessageCircle, Star, Check, Ban, Zap, ChevronDown, Share2, Copy, Flag, MoreHorizontal, MapPin, Truck, Clock, Weight, Ruler, Repeat2, Route as RouteIcon, Fuel, Wallet } from "lucide-react"
-import { Fragment, memo, useEffect, useRef, useState } from "react"
+import { Component, Fragment, memo, useEffect, useRef, useState } from "react"
 import { isMissing } from "@/lib/route"
-import { placeKm, tripEstimate, AVG_CONSUMPTION } from "@/lib/distance"
-import { useFuelPrice, agoLabel } from "@/lib/fuel"
+import { estimateKm, approxKm, AVG_CONSUMPTION } from "@/lib/distance"
+import { useDieselPrice } from "@/lib/fuel"
 import { supabase } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
 import { Sheet } from "@/components/Sheet"
@@ -773,68 +773,33 @@ function Stat({ icon, label, value, strong }: { icon: React.ReactNode; label: st
     </div>
   )
 }
-function CostStat({ icon, label, value, strong }: { icon: React.ReactNode; label: string; value: string; strong?: boolean }) {
+// Hesap kutusunda beklenmedik bir hata olsa bile ilan listesi çökmesin: sessizce gizlenir
+class SafeBox extends Component<{ children: React.ReactNode }, { bad: boolean }> {
+  state = { bad: false }
+  static getDerivedStateFromError() { return { bad: true } }
+  render() { return this.state.bad ? null : this.props.children }
+}
+
+const nf = (n: number) => n.toLocaleString("tr-TR")
+/** Sade tahmin: ağ isteği yok, anında hesaplanır. Tablo varsa gerçek km, yoksa "≈" yaklaşık. Fiyat yoksa yalnızca litre gösterilir. */
+function RouteCostInner({ from, to }: { from?: string; to?: string; fromDistrict?: string; toDistrict?: string }) {
+  const diesel = useDieselPrice()
+  if (!from || !to || from === to) return null
+  const exact = estimateKm(from, to)
+  const km = exact ?? approxKm(from, to)
+  if (!km) return null
+  const liters = Math.round((km / 100) * AVG_CONSUMPTION)
+  const cost = diesel ? Math.round((liters * diesel) / 10) * 10 : null
   return (
-    <div className="flex min-w-0 flex-col items-center gap-1 px-1 text-center">
-      <span className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-[0.08em] text-muted-foreground">{icon}{label}</span>
-      <span className={cn("max-w-full truncate text-[14px] font-extrabold tabular-nums sm:text-[15px]", strong ? "text-brand" : "text-foreground")}>{value}</span>
+    <div className="flex items-center justify-between gap-3 rounded-2xl bg-muted/40 px-3.5 py-2.5 text-[13px] tabular-nums">
+      <span className="inline-flex items-center gap-1.5 font-bold text-foreground"><RouteIcon className="size-4 text-muted-foreground" />{exact ? "" : "≈ "}{nf(km)} km</span>
+      <span className="inline-flex items-center gap-1.5 font-semibold text-foreground/80"><Fuel className="size-4 text-muted-foreground" />{exact ? "" : "≈ "}{nf(liters)} lt</span>
+      {cost !== null && <span className="inline-flex items-center gap-1.5 font-extrabold text-brand"><Wallet className="size-4" />{exact ? "" : "≈ "}₺{nf(cost)}</span>}
     </div>
   )
 }
-function RouteCost({ from, to, fromDistrict, toDistrict }: { from?: string; to?: string; fromDistrict?: string; toDistrict?: string }) {
-  const { price, live, loading: fuelLoading, updatedAt, lastPrice } = useFuelPrice(from)
-  const tableEstimate = tripEstimate(from, to, null)
-  const [routeKm, setRouteKm] = useState<{ km: number; hours: number; approx?: boolean } | null>(null)
-  const [routeLoading, setRouteLoading] = useState(false)
-  const [routeFailed, setRouteFailed] = useState(false)
-
-  useEffect(() => {
-    let alive = true
-    setRouteKm(null)
-    setRouteFailed(false)
-    if (!from || !to || from === to) { setRouteLoading(false); return }
-    if (tableEstimate?.exact) {
-      setRouteKm({ km: tableEstimate.km, hours: tableEstimate.hours })
-      setRouteLoading(false)
-      return
-    }
-    setRouteLoading(true)
-    placeKm(from, fromDistrict, to, toDistrict).then((result) => {
-      if (!alive) return
-      setRouteKm(result)
-      setRouteFailed(!result)
-      setRouteLoading(false)
-    }).catch(() => {
-      if (alive) { setRouteFailed(true); setRouteLoading(false) }
-    })
-    return () => { alive = false }
-  }, [from, to, fromDistrict, toDistrict])
-
-  if (!from || !to) return null
-  const km = routeKm?.km ?? (tableEstimate?.exact ? tableEstimate.km : null)
-  const liters = km && km > 0 ? Math.round((km / 100) * AVG_CONSUMPTION) : null
-  const unitPrice = price ?? lastPrice // taze yoksa son bilinen fiyat ("güncel değil" etiketiyle)
-  const cost = liters !== null && unitPrice ? Math.round((liters * unitPrice) / 10) * 10 : null
-  const approx = Boolean(routeKm?.approx)
-  const routeValue = km ? `${approx ? "≈ " : ""}${fmt(km)} km` : routeLoading ? "Hesaplanıyor" : routeFailed ? "Rota bulunamadı" : "—"
-  const fuelMessage = live && price !== null
-    ? `Motorin ₺${price.toLocaleString("tr-TR", { maximumFractionDigits: 2 })}/lt · ${agoLabel(updatedAt)}`
-    : fuelLoading ? "Yakıt fiyatı alınıyor" : unitPrice ? `Motorin ₺${unitPrice.toLocaleString("tr-TR", { maximumFractionDigits: 2 })}/lt · güncel değil` : "Güncel yakıt verisi yok"
-  return (
-    <div className="overflow-hidden rounded-[18px] border border-border/80 bg-card shadow-[0_3px_12px_rgba(18,44,74,0.045)]">
-      <div className="grid grid-cols-3 divide-x divide-border/70 px-1 py-3.5">
-        <CostStat icon={<RouteIcon className="size-3.5" />} label="Mesafe" value={routeValue} />
-        <CostStat icon={<Fuel className="size-3.5" />} label="Yakıt" value={liters !== null ? `${fmt(liters)} lt` : "—"} />
-        <CostStat icon={<Wallet className="size-3.5" />} label="Ort. masraf" value={cost !== null ? `₺${fmt(cost)}` : "—"} strong />
-      </div>
-      <div aria-live="polite" className="flex items-center justify-between gap-2 border-t border-border/60 bg-muted/25 px-3 py-2 text-[10px] text-muted-foreground">
-        <span className="inline-flex min-w-0 items-center gap-1.5">
-          <span className={cn("size-1.5 shrink-0 rounded-full", live ? "bg-emerald-500" : fuelLoading ? "animate-pulse bg-amber-400" : "bg-slate-400")} />
-          <span className="truncate">{fuelMessage}</span>
-        </span>
-      </div>
-    </div>
-  )
+function RouteCost(props: { from?: string; to?: string; fromDistrict?: string; toDistrict?: string }) {
+  return <SafeBox><RouteCostInner {...props} /></SafeBox>
 }
 
 function Tag({ tone, icon, children }: { tone: string; icon?: React.ReactNode; children: React.ReactNode }) {
