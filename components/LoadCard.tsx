@@ -38,6 +38,9 @@ export type Load = {
   /** İlan metninde geçen şehirler (etiket olarak gösterilir, yön belirtmez) */
   cities?: string[]
   districtOf?: Record<string, string>
+  /** Mesafe hesabında yalnızca gerçek çıkış/varış ilçeleri kullanılır. */
+  fromDistrict?: string
+  toDistrict?: string
   /** Metinde geçen ama çıkış/varış olarak ayrılamayan diğer şehirler */
   extraCities?: string[]
   /** Varış alanında birden çok şehir varsa hepsi (ilk eleman ana varış) */
@@ -439,12 +442,6 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
                   {fresh && <span aria-hidden className={cn("size-1.5 rounded-full", fresh === "hot" ? "bg-emerald-500" : "bg-amber-500")} />}
                   {load.time}
                 </span>
-                {isUserLoad && (
-                  <>
-                    <span className="text-muted-foreground/50">•</span>
-                    <span className="truncate font-medium text-brand">Nakliye Cepte</span>
-                  </>
-                )}
               </div>
             </div>
           </div>
@@ -541,13 +538,13 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
             {hasVehicle && <Tag tone="bg-muted text-foreground/80">{highlightMatch(load.vehicle, cleanQuery)}</Tag>}
             {load.trailer && !/13[.,]60/.test(load.vehicle ?? "") && <Tag tone="bg-muted text-foreground/80" icon={<Ruler className="size-3" />}>{load.trailer}</Tag>}
             {load.tonnage && <Tag tone="bg-muted text-foreground/80" icon={<Weight className="size-3" />}>{load.tonnage}</Tag>}
-            {hasDistance && <Tag tone="bg-muted text-foreground/80">{load.distance}</Tag>}
+            {hasDistance && (!route || !routeKm(load.fromCity, load.fromDistrict, load.toCity, load.toDistrict)) && <Tag tone="bg-muted text-foreground/80">{load.distance}</Tag>}
             {hasPrice && <Tag tone="bg-emerald-600 text-white">{load.price}</Tag>}
             {(load.repeatCount ?? 0) > 1 && <Tag tone="bg-muted text-muted-foreground" icon={<Repeat2 className="size-3" />}>{load.repeatCount} kez paylaşıldı</Tag>}
           </div>
         )}
 
-        <RouteCost from={load.fromCity} to={load.toCity} fromDistrict={load.fromCity ? load.districtOf?.[load.fromCity] : undefined} toDistrict={load.toCity ? load.districtOf?.[load.toCity] : undefined} />
+        <RouteCost from={load.fromCity} to={load.toCity} fromDistrict={load.fromDistrict} toDistrict={load.toDistrict} />
 
         {/* Yük detayı */}
         <div className="flex-1">
@@ -646,11 +643,11 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
                 {hasVehicle && <Tag tone="bg-muted text-foreground/80">{load.vehicle}</Tag>}
                 {load.trailer && !/13[.,]60/.test(load.vehicle ?? "") && <Tag tone="bg-muted text-foreground/80" icon={<Ruler className="size-3" />}>{load.trailer}</Tag>}
                 {load.tonnage && <Tag tone="bg-muted text-foreground/80" icon={<Weight className="size-3" />}>{load.tonnage}</Tag>}
-                {hasDistance && <Tag tone="bg-muted text-foreground/80">{load.distance}</Tag>}
+                {hasDistance && (!route || !routeKm(load.fromCity, load.fromDistrict, load.toCity, load.toDistrict)) && <Tag tone="bg-muted text-foreground/80">{load.distance}</Tag>}
                 {hasPrice && <Tag tone="bg-emerald-600 text-white">{load.price}</Tag>}
               </div>
             )}
-            <RouteCost from={load.fromCity} to={load.toCity} fromDistrict={load.fromCity ? load.districtOf?.[load.fromCity] : undefined} toDistrict={load.toCity ? load.districtOf?.[load.toCity] : undefined} />
+            <RouteCost from={load.fromCity} to={load.toCity} fromDistrict={load.fromDistrict} toDistrict={load.toDistrict} />
             <div className="rounded-xl bg-muted/60 px-3.5 py-3">
               <p className="whitespace-pre-line break-words text-[14.5px] leading-[1.65] text-foreground/80">{cargoShown}</p>
             </div>
