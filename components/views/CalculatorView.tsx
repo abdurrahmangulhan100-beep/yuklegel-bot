@@ -30,6 +30,7 @@ export function CalculatorView() {
   const [toDistrict, setToDistrict] = useState("Ahlat")
   const [consumption, setConsumption] = useState("32")
   const [km, setKm] = useState<number | null>(null)
+  const [approx, setApprox] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   const [label, setLabel] = useState("")
@@ -45,13 +46,13 @@ export function CalculatorView() {
     const a = canon(fromCity), b = canon(toCity)
     if (!a || !b) { setError("Çıkış ve varış ilini yazın."); return }
     if (a === b && !fromDistrict.trim() && !toDistrict.trim()) { setError("Çıkış ve varış aynı görünüyor."); return }
-    setLoading(true); setError(""); setKm(null)
+    setLoading(true); setError(""); setKm(null); setApprox(false)
     try {
       const r = await placeKm(a, fromDistrict.trim() || undefined, b, toDistrict.trim() || undefined)
-      setDiagText(r ? "" : getRouteDiag())
+      setDiagText(r && !r.approx ? "" : getRouteDiag())
       if (!r) setError("Yol mesafesi alınamadı. İl/ilçe adını kontrol edin ya da bağlantınızı kontrol edip tekrar deneyin.")
       else {
-        setKm(r.km)
+        setKm(r.km); setApprox(Boolean(r.approx))
         setFromCity(a); setToCity(b)
         setLabel(`${a}${fromDistrict.trim() ? ` / ${fromDistrict.trim()}` : ""} → ${b}${toDistrict.trim() ? ` / ${toDistrict.trim()}` : ""}`)
       }
@@ -87,7 +88,7 @@ export function CalculatorView() {
         <p className="mt-2 min-h-4 truncate text-xs font-medium text-white/60">{km ? label : "Güzergâhı seçip Hesapla'ya basın"}</p>
 
         <div className="mt-5 grid grid-cols-2 gap-3">
-          <Stat icon={<Route className="size-4" />} label="Mesafe" value={km ? `${tr.format(km)} km` : "—"} />
+          <Stat icon={<Route className="size-4" />} label="Mesafe" value={km ? `${approx ? "≈ " : ""}${tr.format(km)} km` : "—"} />
           <Stat icon={<Fuel className="size-4" />} label="Yakıt" value={litres !== null ? `${tr1.format(litres)} L` : "—"} />
         </div>
       </section>
@@ -131,6 +132,8 @@ export function CalculatorView() {
           </div>
         </div>
 
+        {!error && approx && <p className="mt-3 rounded-xl bg-amber-500/10 px-3 py-2.5 text-xs font-medium text-amber-700 dark:text-amber-400">Canlı yol servisine ulaşılamadı; mesafe yaklaşık (≈) hesaplandı. Gerçek rota biraz farklı olabilir.</p>}
+
         {error && <p role="alert" className="mt-3 rounded-xl bg-red-500/10 px-3 py-2.5 text-xs font-medium text-red-600">{error}{diagText && <span className="mt-1 block text-[10px] font-normal opacity-80">Neden: {diagText}</span>}</p>}
 
         <button type="button" onClick={calculate} disabled={loading} className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-brand-gradient py-3.5 text-[15px] font-extrabold text-white shadow-lg shadow-[#d64526]/25 transition active:scale-[.98] disabled:opacity-60">
@@ -140,7 +143,7 @@ export function CalculatorView() {
       </section>
 
       <p className="px-1 text-[11px] leading-relaxed text-muted-foreground">
-        Mesafe OpenStreetMap yol ağından, motorin fiyatı Opet'ten (çıkış ili) alınır. Masraf yalnızca yakıttır; otoyol, köprü ve diğer giderler dahil değildir.
+        Mesafe OpenStreetMap yol ağından (ulaşılamazsa yaklaşık), motorin fiyatı Opet'ten (çıkış ili) alınır. Masraf yalnızca yakıttır; otoyol, köprü ve diğer giderler dahil değildir.
       </p>
     </div>
   )
