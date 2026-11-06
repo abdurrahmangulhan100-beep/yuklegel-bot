@@ -62,10 +62,10 @@ export default function TermsPage() {
         Bir hatırlatmanın gelmemesi, gecikmesi veya hatalı olması yasal sorumluluğu ortadan kaldırmaz. Araç kullanırken uygulamayı kullanmayınız; trafik güvenliği her zaman önceliklidir.
       </p>
 
-      <h2>7. Harita, konum ve bildirimler</h2>
+      <h2>7. Harita, konum ve mesafe</h2>
       <p>
-        Konum, harita, mesafe ve bildirim özellikleri cihaz, ağ ve üçüncü taraf hizmetlerine bağlıdır; kesinti, gecikme ve hata içerebilir.
-        Bildirimlerin zamanında ulaşacağı veya bir ilanın bildirim sonrasında hâlâ mevcut olacağı garanti edilmez.
+        Konum, harita ve mesafe özellikleri cihaz, ağ ve üçüncü taraf hizmetlerine bağlıdır; kesinti, gecikme ve hata içerebilir.
+        Mesafe ve maliyet değerleri tahminidir; bir ilanın görüntülendiği anda hâlâ mevcut olacağı garanti edilmez.
       </p>
 
       <h2>8. Premium abonelik</h2>
