@@ -2,8 +2,8 @@
 
 import Link from "next/link"
 import {
-  Calculator, CircleHelp, Crown, FileText, LayoutDashboard, LogIn, LogOut,
-  Package, ShieldCheck, Star, Truck, User, WalletCards, Wrench,
+  Calculator, CircleHelp, Crown, FileText, LogIn, LogOut,
+  ShieldCheck, Truck, User, WalletCards, Wrench,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Sheet } from "@/components/Sheet"
@@ -43,10 +43,7 @@ export function AppLauncher({
   const isHome = activeTab === "Genel Bakış" || activeTab === "overview"
 
   const tiles: Tile[] = [
-    { tab: "Genel Bakış", label: "Ana Sayfa", hint: "Özet ve kısayollar", icon: LayoutDashboard, tone: "bg-sky-500/12 text-sky-700 dark:text-sky-300", section: "Ana bölümler" },
-    { tab: "İlanlar", label: "İlanlar", hint: "Güncel yükler", icon: Package, tone: "bg-blue-500/12 text-blue-700 dark:text-blue-300", section: "Ana bölümler", badge: loadsCount > 0 ? loadsCount.toLocaleString("tr-TR") : undefined },
-    { tab: "Favorilerim", label: "Favoriler", hint: "Kaydettiklerim", icon: Star, tone: "bg-amber-500/15 text-amber-700 dark:text-amber-300", section: "Ana bölümler", badge: favoritesCount > 0 ? String(favoritesCount) : undefined },
-    { tab: "Seferlerim", label: "Seferlerim", hint: "İlanlarım", icon: Truck, tone: "bg-indigo-500/12 text-indigo-700 dark:text-indigo-300", section: "Ana bölümler" },
+    { tab: "Seferlerim", label: "Seferlerim", hint: "İlanlarım", icon: Truck, tone: "bg-indigo-500/12 text-indigo-700 dark:text-indigo-300", section: "İş ve araçlar" },
     { tab: "Gelir Gider", label: "Gelir & Gider", hint: "Kazanç takibi", icon: WalletCards, tone: "bg-emerald-500/12 text-emerald-700 dark:text-emerald-300", section: "İş ve araçlar" },
     { tab: "Sefer Hesapla", label: "Sefer Hesapla", hint: "Mesafe ve maliyet", icon: Calculator, tone: "bg-violet-500/12 text-violet-700 dark:text-violet-300", section: "İş ve araçlar" },
     { tab: "Araçlar", label: "Şoför Araçları", hint: "Takograf, yakıt ve daha fazlası", icon: Wrench, tone: "bg-teal-500/12 text-teal-700 dark:text-teal-300", section: "İş ve araçlar", badge: "YENİ" },
@@ -55,7 +52,7 @@ export function AppLauncher({
     { tab: "Yardım Merkezi", label: "Yardım Merkezi", hint: "Destek ve sık sorulanlar", icon: CircleHelp, tone: "bg-rose-500/12 text-rose-700 dark:text-rose-300", section: "Hesap" },
   ]
 
-  const sections: Tile["section"][] = ["Ana bölümler", "İş ve araçlar", "Hesap"]
+  const sections: Tile["section"][] = ["İş ve araçlar", "Hesap"]
 
   return (
     <Sheet
@@ -72,7 +69,6 @@ export function AppLauncher({
             <section key={section} aria-label={section}>
               <div className="mb-2.5 flex items-center justify-between">
                 <h3 className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">{section}</h3>
-                <span className="text-[10px] tabular-nums text-muted-foreground/70">{sectionTiles.length} bölüm</span>
               </div>
               <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-3 lg:grid-cols-4">
                 {sectionTiles.map((tile) => {
