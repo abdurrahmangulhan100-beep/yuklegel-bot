@@ -127,7 +127,11 @@ async function loadDiesel(): Promise<number | null> {
       return null
     }
     let hit = await read()
-    if (!hit || Date.now() - hit.at > REFRESH_MS) {
+    // Başarısız olsa bile en çok saatte bir deneme: ücretsiz Edge Function kotasını korur
+    let lastTry = 0
+    try { lastTry = Number(localStorage.getItem("fuel_try") || 0) } catch {}
+    if ((!hit || Date.now() - hit.at > REFRESH_MS) && Date.now() - lastTry > 60 * 60 * 1000) {
+      try { localStorage.setItem("fuel_try", String(Date.now())) } catch {}
       await supabase.functions.invoke("fuel-price-sync", { body: { provinceCode: 34 } }).catch(() => null) // sessiz yenileme
       hit = (await read()) ?? hit
     }
