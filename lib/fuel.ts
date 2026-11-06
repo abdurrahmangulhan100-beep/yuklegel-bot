@@ -16,7 +16,7 @@ const PROVINCE_CODES: Record<string, number> = {
   Zonguldak: 67, Aksaray: 68, Bayburt: 69, Karaman: 70, Kırıkkale: 71, Batman: 72, Şırnak: 73, Bartın: 74,
   Ardahan: 75, Iğdır: 76, Yalova: 77, Karabük: 78, Kilis: 79, Osmaniye: 80, Düzce: 81,
 }
-type Fuel = { price: number; updatedAt: string | null }
+type Fuel = { price: number; updatedAt: string | null; approx?: boolean }
 const fuelDiag = new Map<number, string>()
 /** Son yakıt denemesinin başarısızlık nedeni (tanı satırı için) */
 export const getFuelDiag = (code?: number) => (code ? fuelDiag.get(code) ?? "" : "")
@@ -32,10 +32,23 @@ async function readPrice(code: number): Promise<Fuel | null> {
   return price > 0 && data?.updated_at ? { price, updatedAt: data.updated_at } : null
 }
 
+// İlin kendi fiyatı yoksa (sunucu ulaşılamadıysa) bilinen büyük illerden biri yaklaşık değer olarak kullanılır; asla "canlı" sayılmaz
+async function readFallback(): Promise<Fuel | null> {
+  if (!supabase) return null
+  const keys = ["fuel_diesel_34", "fuel_diesel_6", "fuel_diesel_35", "fuel_diesel_42"]
+  const { data } = await supabase.from("app_settings").select("key,value,updated_at").in("key", keys)
+  for (const k of keys) {
+    const row = (data ?? []).find((r: any) => r.key === k)
+    const price = row ? parseFloat(String(row.value).replace(",", ".")) : 0
+    if (price > 0) return { price, updatedAt: row.updated_at ?? null, approx: true }
+  }
+  return null
+}
+
 async function load(code: number): Promise<Fuel | null> {
   if (!supabase) return null
   const hit = cache.get(code)
-  if (hit?.updatedAt && Date.now() - new Date(hit.updatedAt).getTime() < REFRESH_MS) return hit
+  if (hit?.updatedAt && !hit.approx && Date.now() - new Date(hit.updatedAt).getTime() < REFRESH_MS) return hit
   if (pending.has(code)) return pending.get(code)!
   const task = (async () => {
     let current = await readPrice(code)
@@ -46,6 +59,7 @@ async function load(code: number): Promise<Fuel | null> {
       if (reason) fuelDiag.set(code, reason); else fuelDiag.delete(code)
       current = await readPrice(code)
     }
+    if (!current) current = await readFallback().catch(() => null)
     cache.set(code, current)
     return current
   })().catch(() => cache.get(code) ?? null).finally(() => pending.delete(code))
@@ -90,7 +104,7 @@ export function useFuelPrice(originCity?: string): { price: number | null; live:
       window.removeEventListener("focus", onFocus)
     }
   }, [code])
-  const live = Boolean(fuel?.updatedAt) && Date.now() - new Date(fuel!.updatedAt as string).getTime() <= FRESH_MS
+  const live = !fuel?.approx && Boolean(fuel?.updatedAt) && Date.now() - new Date(fuel!.updatedAt as string).getTime() <= FRESH_MS
   // price/updatedAt yalnızca taze (6 sa) veride dolu; lastPrice son bilinen değeri (eski olsa da) verir, ekran "güncel değil" etiketiyle gösterebilir
   return { price: live ? fuel!.price : null, live, loading, updatedAt: live ? fuel!.updatedAt : null, lastPrice: fuel?.price ?? null, lastUpdatedAt: fuel?.updatedAt ?? null }
 }
