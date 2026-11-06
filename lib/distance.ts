@@ -24,6 +24,7 @@ const C: Record<string, [number, number]> = {
 }
 
 
+export const CITY_CENTERS = C
 export const CITY_LIST: string[] = [...CITY_NAMES].sort((a, b) => a.localeCompare(b, "tr"))
 
 /** Ortalama yakıt tüketimi (lt / 100 km) – tır için varsayılan */
