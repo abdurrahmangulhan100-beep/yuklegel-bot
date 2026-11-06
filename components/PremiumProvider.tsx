@@ -47,6 +47,15 @@ const getService = async (): Promise<any | null> => {
   }
 }
 
+type VerifyResult = { ok: boolean; premium?: boolean; status?: string; expiresAt?: string; error?: string; code?: string; pending?: boolean }
+
+// Sunucu tarafı ayar/veritabanı sorunları: tekrar denemek sonucu değiştirmez, yalnızca sunucuyu yorar
+const NO_RETRY_CODES = new Set(["E_CONFIG", "E_SA_MISSING", "E_SA_JSON", "E_SA_KEY", "E_GOOGLE_AUTH", "E_PLAY_ACCESS", "E_DB", "E_OWNED", "E_SKU", "E_BAD_SESSION", "E_NO_AUTH", "E_UNKNOWN"])
+
+/** Kullanıcıya gösterilecek hata metni; kod, destek/teşhis için sonuna eklenir */
+const errorText = (r: VerifyResult | null | undefined) =>
+  r?.error ? `${r.error}${r.code ? ` (${r.code})` : ""}` : null
+
 const isEntitled = (row: { status?: string; expires_at?: string | null } | null) =>
   !!row &&
   ["active", "grace", "canceled"].includes(String(row.status)) &&
@@ -81,7 +90,7 @@ export function PremiumProvider({ children }: { children: React.ReactNode }) {
       body: JSON.stringify(purchaseToken ? { purchaseToken } : {}),
     })
     const json = await res.json().catch(() => ({}))
-    return { ok: res.ok, ...json } as { ok: boolean; premium?: boolean; status?: string; expiresAt?: string; error?: string; pending?: boolean }
+    return { ok: res.ok, ...json } as VerifyResult
   }, [])
 
   // Doğrulama sonucunu doğrudan uygular: load() başka bir istek sürerken hemen dönüyordu ve satın alan kullanıcı Premium'u geç görüyordu
@@ -92,14 +101,15 @@ export function PremiumProvider({ children }: { children: React.ReactNode }) {
     setExpiresAt(r.expiresAt ?? null)
   }, [])
 
-  // Satın almadan hemen sonra Google kaydı birkaç saniye geç görünebilir veya ağ takılabilir: 3 kez dener
+  // Satın almadan hemen sonra Google kaydı birkaç saniye geç görünebilir veya ağ takılabilir: geçici hatalarda 3 kez dener.
+  // Kalıcı hatalarda (sunucu ayarı, veritabanı, başka hesaba bağlı abonelik) tekrar denemez.
   const verifyWithRetry = useCallback(async (purchaseToken: string) => {
     let last: Awaited<ReturnType<typeof callVerify>> = null
     for (let i = 0; i < 3; i++) {
       try { last = await callVerify(purchaseToken) } catch { last = null }
-      if (last?.ok && (last.premium || last.pending)) return last // bekleyen ödemede tekrar denemek faydasız
-      if (last && !last.ok && (last as { error?: string }).error?.includes("başka bir hesaba")) return last // tekrar denemenin anlamı yok
-      await new Promise((res) => setTimeout(res, 1500 * (i + 1)))
+      if (last?.ok) return last // doğrulandı (premium, bekleyen ya da süresi dolmuş): tekrar denemek faydasız
+      if (last?.code && NO_RETRY_CODES.has(last.code)) return last
+      if (i < 2) await new Promise((res) => setTimeout(res, 1500 * (i + 1)))
     }
     return last
   }, [callVerify])
@@ -153,7 +163,7 @@ export function PremiumProvider({ children }: { children: React.ReactNode }) {
       const r = await verifyWithRetry(mine.purchaseToken)
       if (r?.ok && r.premium) { applyResult(r); setMessage("Premium aboneliğiniz geri yüklendi.") }
       else if (r?.ok && r.pending) setMessage("Ödemeniz hâlâ onay bekliyor. Onaylanınca Premium otomatik açılır.")
-      else setMessage(r?.error || "Abonelik doğrulanamadı. İnternet bağlantınızı kontrol edip tekrar deneyin.")
+      else setMessage(errorText(r) || "Abonelik doğrulanamadı. İnternet bağlantınızı kontrol edip tekrar deneyin.")
     } catch (e) {
       const err = e as { name?: string; message?: string }
       setMessage(`Geri yükleme başarısız: ${err?.name || ""} ${err?.message || ""}`)
@@ -186,7 +196,7 @@ export function PremiumProvider({ children }: { children: React.ReactNode }) {
       } else {
         // Ödeme alınmış olabilir: "fail" demek yerine durumu belirsiz bırak, kullanıcı geri yükleyebilsin
         await response.complete("unknown")
-        setMessage(r?.error || "Ödemeniz alındı ancak doğrulama tamamlanamadı. Birkaç dakika sonra 'Satın alımı geri yükle'ye dokunun; ücret tekrar alınmaz.")
+        setMessage(errorText(r) || "Ödemeniz alındı ancak doğrulama tamamlanamadı. Birkaç dakika sonra 'Satın alımı geri yükle'ye dokunun; ücret tekrar alınmaz.")
       }
     } catch (e) {
       const err = e as { name?: string; message?: string }
