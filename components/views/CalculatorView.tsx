@@ -31,14 +31,15 @@ export function CalculatorView() {
   const [consumption, setConsumption] = useState("32")
   const [km, setKm] = useState<number | null>(null)
   const [approx, setApprox] = useState(false)
+  const [manualPrice, setManualPrice] = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   const [label, setLabel] = useState("")
   const [diagText, setDiagText] = useState("")
 
   const fuel = useFuelPrice(canon(fromCity))
-  const unit = fuel.price ?? fuel.lastPrice // taze yoksa son bilinen fiyat (etiketle gösterilir)
-  const stale = fuel.price === null && fuel.lastPrice !== null
+  const auto = fuel.price ?? fuel.lastPrice // otomatik fiyat; kullanıcı kutuya yazarsa o geçerli olur
+  const unit = num(manualPrice, 0) || auto
   const litres = useMemo(() => (km ? (km / 100) * num(consumption, 32) : null), [km, consumption])
   const cost = litres !== null && unit ? litres * unit : null
 
@@ -50,14 +51,14 @@ export function CalculatorView() {
     try {
       const r = await placeKm(a, fromDistrict.trim() || undefined, b, toDistrict.trim() || undefined)
       setDiagText(r && !r.approx ? "" : getRouteDiag())
-      if (!r) setError("Yol mesafesi alınamadı. İl/ilçe adını kontrol edin ya da bağlantınızı kontrol edip tekrar deneyin.")
+      if (!r) setError("Bu iki il için mesafe bulunamadı. İl adlarını listeden seçin.")
       else {
         setKm(r.km); setApprox(Boolean(r.approx))
         setFromCity(a); setToCity(b)
         setLabel(`${a}${fromDistrict.trim() ? ` / ${fromDistrict.trim()}` : ""} → ${b}${toDistrict.trim() ? ` / ${toDistrict.trim()}` : ""}`)
       }
     } catch {
-      setError("Mesafe servisine şu anda ulaşılamıyor. Biraz sonra tekrar deneyin.")
+      setError("Mesafe bulunamadı. İl adlarını listeden seçin.")
     } finally {
       setLoading(false)
     }
@@ -93,19 +94,10 @@ export function CalculatorView() {
         </div>
       </section>
 
-      {/* Canlı yakıt durumu */}
+      {/* Motorin fiyatı: otomatik gelir, istenirse elle yazılır (internet olmasa da hesap çalışır) */}
       <div className="flex items-center justify-between gap-3 rounded-2xl border border-border bg-card px-4 py-3 shadow-card">
-        <span className="inline-flex min-w-0 items-center gap-2.5 text-xs">
-          <span className={cn("size-2.5 shrink-0 rounded-full", fuel.live ? "bg-emerald-500 shadow-[0_0_0_4px_rgba(16,185,129,.18)]" : fuel.loading ? "animate-pulse bg-amber-400" : "bg-amber-500")} />
-          <span className="min-w-0">
-            <span className="block truncate font-bold text-foreground">
-              {unit ? `Motorin ${try2.format(unit)} / L` : fuel.loading ? "Motorin fiyatı alınıyor…" : "Motorin fiyatı alınamadı"}
-            </span>
-            <span className="block truncate text-muted-foreground">
-              {!unit && !fuel.loading && getFuelDiag(provinceCode(canon(fromCity))) ? `Neden: ${getFuelDiag(provinceCode(canon(fromCity)))}` : fuel.live ? `Opet · ${canon(fromCity)} · ${agoLabel(fuel.updatedAt)}` : stale ? `Güncel değil · son bilinen: ${agoLabel(fuel.lastUpdatedAt)}` : "Çıkış ilinin canlı fiyatı gerekli"}
-            </span>
-          </span>
-        </span>
+        <span className="inline-flex items-center gap-2 text-sm font-bold text-foreground"><Fuel className="size-4 text-brand" /> Motorin ₺ / L</span>
+        <input value={manualPrice} onChange={(e) => setManualPrice(e.target.value)} inputMode="decimal" aria-label="Motorin litre fiyatı" placeholder={auto ? String(Math.round(auto * 100) / 100).replace(".", ",") : "örn. 42,50"} className="h-10 w-28 rounded-xl border border-input bg-muted/40 px-3 text-right text-base font-bold text-foreground outline-none focus:border-brand" />
       </div>
 
       {/* Güzergâh */}
@@ -132,9 +124,9 @@ export function CalculatorView() {
           </div>
         </div>
 
-        {!error && approx && <p className="mt-3 rounded-xl bg-amber-500/10 px-3 py-2.5 text-xs font-medium text-amber-700 dark:text-amber-400">Canlı yol servisine ulaşılamadı; mesafe yaklaşık (≈) hesaplandı. Gerçek rota biraz farklı olabilir.</p>}
+        {!error && approx && <p className="mt-3 rounded-xl bg-amber-500/10 px-3 py-2.5 text-xs font-medium text-amber-700 dark:text-amber-400">Mesafe yaklaşıktır (≈); gerçek rota biraz farklı olabilir.</p>}
 
-        {error && <p role="alert" className="mt-3 rounded-xl bg-red-500/10 px-3 py-2.5 text-xs font-medium text-red-600">{error}{diagText && <span className="mt-1 block text-[10px] font-normal opacity-80">Neden: {diagText}</span>}</p>}
+        {error && <p role="alert" className="mt-3 rounded-xl bg-red-500/10 px-3 py-2.5 text-xs font-medium text-red-600">{error}</p>}
 
         <button type="button" onClick={calculate} disabled={loading} className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-brand-gradient py-3.5 text-[15px] font-extrabold text-white shadow-lg shadow-[#d64526]/25 transition active:scale-[.98] disabled:opacity-60">
           {loading ? <RefreshCw className="size-5 animate-spin" /> : <Navigation className="size-5" />}
@@ -143,7 +135,7 @@ export function CalculatorView() {
       </section>
 
       <p className="px-1 text-[11px] leading-relaxed text-muted-foreground">
-        Mesafe OpenStreetMap yol ağından (ulaşılamazsa yaklaşık), motorin fiyatı Opet'ten (çıkış ili) alınır. Masraf yalnızca yakıttır; otoyol, köprü ve diğer giderler dahil değildir.
+        Mesafe karayolu üzerinden tahminidir; motorin fiyatını kutuya yazarak değiştirebilirsiniz. Masraf yalnızca yakıttır; otoyol, köprü ve diğer giderler dahil değildir.
       </p>
     </div>
   )
