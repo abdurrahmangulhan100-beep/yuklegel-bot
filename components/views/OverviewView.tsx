@@ -60,13 +60,16 @@ export function OverviewView({ loads, currentUserId, setActiveTab, totalCount, l
   ]
 
   return (
-    <div className="space-y-5 pb-2 sm:space-y-6">
+    <div className="stagger space-y-6 pb-2 sm:space-y-7">
       {/* Karşılama + arama */}
       <section className="animate-rise relative overflow-hidden rounded-[26px] bg-gradient-to-br from-[#183e68] via-[#122c4a] to-[#0b1d33] p-[18px] text-white shadow-[0_12px_30px_rgba(18,44,74,0.22)] sm:rounded-[28px] sm:p-7">
         <div className="pointer-events-none absolute -right-10 -top-12 size-48 rounded-full bg-brand/30 blur-2xl" />
         <div className="pointer-events-none absolute -bottom-16 -left-10 size-40 rounded-full bg-[#315d83]/40 blur-2xl" />
         <div className="relative">
-          <p className="text-sm font-medium text-white/65">{firstName ? `Merhaba, ${firstName}` : "Hoş geldiniz"}</p>
+          <p className="flex items-center gap-2 text-sm font-medium text-white/65">
+            <span className="live-dot relative inline-block size-2 rounded-full bg-emerald-400" />
+            {firstName ? `Merhaba, ${firstName}` : "Hoş geldiniz"}
+          </p>
           <h1 className="mt-1 text-[23px] font-extrabold leading-[1.13] tracking-tight sm:text-3xl">
             <span className="text-[#ff8a65]">{total}</span> aktif yük<br className="sm:hidden" /> sizi bekliyor
           </h1>
@@ -131,7 +134,7 @@ export function OverviewView({ loads, currentUserId, setActiveTab, totalCount, l
               <button
                 key={name}
                 onClick={() => (onPickFilter ? onPickFilter(name) : setActiveTab("İlanlar"))}
-                className="flex h-[92px] w-[104px] shrink-0 flex-col items-center justify-between gap-1 rounded-2xl border border-border bg-card px-1.5 pb-2 pt-2 text-[11px] font-bold leading-tight text-foreground/80 shadow-card transition-all active:scale-95"
+                className="flex h-[98px] w-[108px] shrink-0 flex-col items-center justify-between gap-1 rounded-[20px] border border-border bg-card px-1.5 pb-2 pt-2 text-[11px] font-bold leading-tight text-foreground/80 shadow-card transition-all active:scale-95"
               >
                 <span className="flex h-11 w-full items-center justify-center rounded-xl dark:px-1"><VehicleIcon kind={kind} className="h-[84%] w-full" /></span>
                 <span className="line-clamp-1 w-full text-center">{name}</span>
