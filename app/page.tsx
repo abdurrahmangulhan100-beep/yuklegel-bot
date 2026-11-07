@@ -760,7 +760,7 @@ export default function Page() {
           </div>
         </header>
 
-        <main className="mx-auto max-w-[1450px] px-4 pb-[calc(6.5rem+env(safe-area-inset-bottom))] pt-4 sm:px-8 sm:pt-6 lg:pb-10 lg:pt-8">
+        <main key={effectiveTab} className="animate-rise mx-auto max-w-[1450px] px-4 pb-[calc(6.5rem+env(safe-area-inset-bottom))] pt-4 sm:px-8 sm:pt-6 lg:pb-10 lg:pt-8">
           {effectiveTab === "__guest" && <GuestGate onLogin={handleLogout} />}
           {(effectiveTab === "Genel Bakış" || effectiveTab === "overview") && (
             <OverviewView 
