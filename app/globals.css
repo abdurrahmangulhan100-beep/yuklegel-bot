@@ -72,7 +72,7 @@
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
-  --radius: 0.875rem;
+  --radius: 1rem;
   --brand: #e65332;
   --sidebar: #ffffff;
   --sidebar-foreground: #122c4a;
@@ -321,7 +321,7 @@
   background-image: linear-gradient(135deg, #1b4572 0%, #122c4a 60%, #0b1d33 100%);
 }
 @utility shadow-card {
-  box-shadow: 0 1px 2px rgba(18, 44, 74, 0.05), 0 6px 20px rgba(18, 44, 74, 0.06);
+  box-shadow: 0 1px 2px rgba(18, 44, 74, 0.04), 0 10px 30px rgba(18, 44, 74, 0.07);
 }
 @utility shadow-card-hover {
   box-shadow: 0 2px 4px rgba(18, 44, 74, 0.06), 0 12px 28px rgba(18, 44, 74, 0.10);
@@ -335,3 +335,28 @@
 .dark .shadow-card-hover {
   box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 8px 24px rgba(0, 0, 0, 0.35);
 }
+
+
+/* ---- Ferah görünüm turu: yumuşak zemin, akıcı geçişler, küçük animasyonlar ---- */
+html:not(.dark) body {
+  background-image: linear-gradient(180deg, #eaf2fb 0, #f5f7fb 340px);
+  background-repeat: no-repeat;
+}
+.shadow-card { transition: box-shadow 0.2s ease, transform 0.2s ease; }
+@media (hover: hover) {
+  .shadow-card:hover { box-shadow: 0 2px 4px rgba(18, 44, 74, 0.05), 0 14px 34px rgba(18, 44, 74, 0.11); }
+}
+/* Kartlar sırayla yumuşakça belirir */
+.stagger > * { animation: soft-rise 380ms cubic-bezier(0.22, 1, 0.36, 1) backwards; }
+.stagger > *:nth-child(1) { animation-delay: 0ms; }
+.stagger > *:nth-child(2) { animation-delay: 50ms; }
+.stagger > *:nth-child(3) { animation-delay: 100ms; }
+.stagger > *:nth-child(4) { animation-delay: 150ms; }
+.stagger > *:nth-child(5) { animation-delay: 200ms; }
+.stagger > *:nth-child(n+6) { animation-delay: 250ms; }
+/* Alt menüde seçilen sekmenin ikonu küçük bir zıplama yapar */
+nav[aria-label="Ana gezinme"] [aria-current="page"] svg { animation: nav-pop 280ms cubic-bezier(0.34, 1.56, 0.64, 1); }
+@keyframes nav-pop { from { transform: scale(0.78); } to { transform: scale(1); } }
+/* Canlı nokta */
+@keyframes live-ping { 0% { transform: scale(1); opacity: 0.7; } 80%, 100% { transform: scale(2.6); opacity: 0; } }
+.live-dot::after { content: ""; position: absolute; inset: 0; border-radius: 9999px; background: inherit; animation: live-ping 1.8s ease-out infinite; }
