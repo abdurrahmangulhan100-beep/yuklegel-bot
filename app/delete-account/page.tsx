@@ -39,6 +39,14 @@ export default function DeleteAccountPage() {
           </section>
 
           <section>
+            <h2 className="text-base font-bold text-foreground/80 mb-2">Premium aboneliğiniz varsa</h2>
+            <p>
+              Hesabın silinmesi Google Play aboneliğini otomatik iptal etmez. Ücretlendirmenin durması için Google Play uygulaması
+              &gt; Profil &gt; Ödemeler ve abonelikler &gt; Abonelikler bölümünden Nakliye Cepte Premium&apos;u ayrıca iptal edin.
+            </p>
+          </section>
+
+          <section>
             <h2 className="text-base font-bold text-foreground/80 mb-2">Uygulamaya erişemiyorsanız</h2>
             <p>
               Hesabınıza kayıtlı e-posta adresinden{" "}
