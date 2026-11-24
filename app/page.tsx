@@ -30,6 +30,7 @@ import { PremiumLock } from "@/components/PremiumLock"
 import { usePremium } from "@/components/PremiumProvider"
 import { AdSlot } from "@/components/AdSlot"
 import { FREE_DELAY_MINUTES, FREE_LIMITS, OPEN_PREMIUM_EVENT } from "@/lib/premium"
+import { normalizeSearchInput, searchVariants } from "@/lib/search"
 
 const PAGE_SIZE = 60
 
@@ -103,6 +104,8 @@ export default function Page() {
   const [sourceFilter, setSourceFilter] = useState<"all" | "user" | "bot">("all")
   
   const [query, setQuery] = useState("")
+  const [searchFocused, setSearchFocused] = useState(false)
+  const [recentSearches, setRecentSearches] = useState<string[]>([])
   const [debouncedQuery, setDebouncedQuery] = useState("")
   const queryRef = useRef("")
 
@@ -136,7 +139,7 @@ export default function Page() {
     const timer = setTimeout(() => {
       setDebouncedQuery(query)
       queryRef.current = query
-    }, 500)
+    }, 300)
     return () => clearTimeout(timer)
   }, [query])
 
@@ -290,28 +293,23 @@ export default function Page() {
         botReq = botReq.lte("created_at", dc)
       }
 
-      // PostgREST filtre sözdizimini bozan karakterleri temizle
-      const s = searchStr.replace(/[,()\\"%_*:]/g, " ").replace(/\s+/g, " ").trim()
-
+      // Her kelimeyi ayrı ayrı arar; kelimelerin sırası önemli değildir.
+      // Türkçe karakterler ASCII karşılıklarıyla da eşleştirilir (ör. "soguk" / "soğuk").
+      const s = normalizeSearchInput(searchStr)
       if (s) {
-        const sLower = s.toLocaleLowerCase('tr-TR')
-        const sUpper = s.toLocaleUpperCase('tr-TR')
-        const sCap = s.charAt(0).toLocaleUpperCase('tr-TR') + s.slice(1).toLocaleLowerCase('tr-TR')
-
-        const qOrig = `%${s}%`
-        const qLow = `%${sLower}%`
-        const qUp = `%${sUpper}%`
-        const qCap = `%${sCap}%`
-
-        const uFields = ['from_city', 'to_city', 'cargo_detail', 'company_name', 'message', 'vehicle_type']
-        const bFields = ['from_city', 'to_city', 'cargo_detail', 'company_name']
-
-        const buildOr = (fields: string[]) => {
-          return fields.map(f => `${f}.ilike.${qOrig},${f}.ilike.${qLow},${f}.ilike.${qUp},${f}.ilike.${qCap}`).join(',')
+        const uFields = ["from_city", "to_city", "cargo_detail", "company_name", "message", "vehicle_type"]
+        const bFields = ["from_city", "to_city", "cargo_detail", "company_name"]
+        const applyTokenSearch = (query: typeof userReq, fields: string[], token: string) => {
+          const clauses = searchVariants(token).flatMap((variant) =>
+            fields.map((field) => `${field}.ilike.%${variant}%`)
+          )
+          return query.or(clauses.join(","))
         }
 
-        userReq = userReq.or(buildOr(uFields))
-        botReq = botReq.or(buildOr(bFields))
+        for (const token of s.split(" ").filter(Boolean)) {
+          userReq = applyTokenSearch(userReq, uFields, token)
+          botReq = applyTokenSearch(botReq, bFields, token)
+        }
       }
 
       // Kategori seçiliyse sunucuda da daralt ve daha geniş bir havuzdan çek
@@ -416,6 +414,15 @@ export default function Page() {
     fetchListings(queryRef.current, pageSizeRef.current)
     fetchCounts()
   }, [isPremium, premiumLoading, isCheckingAuth, fetchListings, fetchCounts])
+
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem("nakliye_search_history") || "[]")
+      if (Array.isArray(saved)) setRecentSearches(saved.filter((v): v is string => typeof v === "string").slice(0, 6))
+    } catch {
+      setRecentSearches([])
+    }
+  }, [])
 
   useEffect(() => {
     try {
@@ -718,11 +725,45 @@ export default function Page() {
                 onChange={(e) => {
                   setQuery(e.target.value)
                   if (e.target.value.trim().length > 0) setActiveTab("İlanlar")
-                }} 
-                placeholder="Şehir, firma veya yük ara..." 
+                }}
+                onFocus={() => setSearchFocused(true)}
+                onBlur={() => setSearchFocused(false)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && query.trim()) {
+                    const next = [query.trim(), ...recentSearches.filter((item) => item.toLocaleLowerCase("tr-TR") !== query.trim().toLocaleLowerCase("tr-TR"))].slice(0, 6)
+                    setRecentSearches(next)
+                    try { localStorage.setItem("nakliye_search_history", JSON.stringify(next)) } catch {}
+                    setSearchFocused(false)
+                    setActiveTab("İlanlar")
+                  }
+                }}
+                placeholder="Şehir, ilçe, güzergâh, araç, yük veya firma ara..." 
                 enterKeyHint="search"
                 className="h-11 w-full rounded-xl border-border bg-card pl-10 pr-10 text-base shadow-[0_1px_2px_rgba(18,44,74,0.04)] md:text-sm" 
               />
+              {searchFocused && recentSearches.length > 0 && (
+                <div className="absolute left-0 right-0 top-full z-50 mt-2 rounded-xl border border-border bg-card p-2 shadow-xl">
+                  <div className="flex items-center justify-between px-2 py-1">
+                    <span className="text-[11px] font-bold text-muted-foreground">Son aramalar</span>
+                    <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => {
+                      setRecentSearches([])
+                      try { localStorage.removeItem("nakliye_search_history") } catch {}
+                    }} className="text-[11px] font-semibold text-muted-foreground">Temizle</button>
+                  </div>
+                  {recentSearches.map((item) => (
+                    <button key={item} type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => {
+                      setQuery(item)
+                      setDebouncedQuery(item)
+                      queryRef.current = item
+                      setSearchFocused(false)
+                      setActiveTab("İlanlar")
+                    }} className="flex min-h-10 w-full items-center gap-2 rounded-lg px-2 text-left text-sm hover:bg-muted">
+                      <Search className="size-3.5 shrink-0 text-muted-foreground" />
+                      <span className="truncate">{item}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
               {query && (
                 <button
                   type="button"
