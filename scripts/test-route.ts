@@ -3,6 +3,7 @@
 import test from "node:test"
 import assert from "node:assert/strict"
 import { analyzeListing, classifyListing, classifyVehicle, fold } from "../lib/route"
+import { normalizeSearchInput, searchVariants } from "../lib/search"
 
 type Case = { text: string; from?: string; to?: string; note?: string }
 const rota = ({ text, from, to }: Case) => {
@@ -75,4 +76,15 @@ test("kullanıcı ilanında formdaki araç tipi esastır, metindeki 'tır' onu e
 test("saha ilanında metin esastır, alan yalnızca yedektir", () => {
   assert.equal(classifyListing("Kamyon", "Konya Ankara 13.60 açık tır", false), "Açık Dorse")
   assert.equal(classifyListing("Frigo", "Konya Ankara yük var", false), "Frigo")
+})
+
+// --- Türkçe karakter duyarlı ilan araması ---
+test("ASCII ve Türkçe yazımlar aynı arama varyantlarını üretir", () => {
+  assert.deepEqual(searchVariants("soguk").sort(), searchVariants("soğuk").sort())
+  assert.ok(searchVariants("soguk").includes("soğuk"))
+  assert.ok(searchVariants("soğuk").includes("soguk"))
+})
+
+test("arama girdisi PostgREST ayraçlarını temizler", () => {
+  assert.equal(normalizeSearchInput("  soğuk, yük (acil)  "), "soğuk yük acil")
 })
