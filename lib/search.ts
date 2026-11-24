@@ -1,25 +1,22 @@
 /**
  * Turkish-aware search helpers for PostgREST ilike filters.
- * Both ASCII and Turkish spellings are expanded from the same canonical form:
- * "soguk" and "soğuk" therefore search the same set of spellings.
+ * Generates bounded spelling variants for Turkish letters and ASCII keyboards.
  */
-const TURKISH_TO_ASCII: Record<string, string> = {
-  "ı": "i",
-  "ş": "s",
-  "ğ": "g",
-  "ü": "u",
-  "ö": "o",
-  "ç": "c",
-}
+const TURKISH_PAIRS: ReadonlyArray<readonly [string, string]> = [
+  ["i", "ı"],
+  ["s", "ş"],
+  ["g", "ğ"],
+  ["u", "ü"],
+  ["o", "ö"],
+  ["c", "ç"],
+]
 
-const ASCII_TO_TURKISH: Record<string, string> = {
-  i: "ı",
-  s: "ş",
-  g: "ğ",
-  u: "ü",
-  o: "ö",
-  c: "ç",
-}
+const TURKISH_ALTERNATES = new Map<string, string>(
+  TURKISH_PAIRS.flatMap(([ascii, turkish]) => [
+    [ascii, turkish],
+    [turkish, ascii],
+  ]),
+)
 
 export function normalizeSearchInput(value: string): string {
   return value
@@ -28,41 +25,35 @@ export function normalizeSearchInput(value: string): string {
     .trim()
 }
 
-const canonicalize = (value: string) =>
-  value
-    .toLocaleLowerCase("tr-TR")
-    .replace(/[ışğüöç]/g, (char) => TURKISH_TO_ASCII[char] ?? char)
-
 /**
- * Produces equivalent Turkish spellings, bounded to keep PostgREST URLs small.
- * The default limit covers every spelling for common words with up to four
- * Turkish-variant characters. Postgres ILIKE handles letter casing.
+ * Returns the original Turkish spelling plus ASCII/Turkish keyboard variants.
+ * Breadth-first expansion ensures combinations (e.g. soguk -> soğuk) are tried
+ * before less likely variants. The limit keeps PostgREST .or() URLs bounded.
  */
-export function searchVariants(token: string, max = 16): string[] {
-  const clean = token.trim()
-  const limit = Math.max(1, Math.floor(max))
-  if (!clean) return []
+export function searchVariants(token: string, max = 32): string[] {
+  const clean = token.trim().toLocaleLowerCase("tr-TR")
+  if (!clean || max <= 0) return []
 
-  const lower = clean.toLocaleLowerCase("tr-TR")
-  const canonical = canonicalize(clean)
-  const chars = Array.from(canonical)
-  const positions = chars
-    .map((char, index) => ({ char, index }))
-    .filter(({ char }) => Boolean(ASCII_TO_TURKISH[char]))
+  const variants = new Set<string>([clean])
+  const queue = [clean]
 
-  if (limit === 1) return [clean]
-  const variants = new Set<string>([canonical])
+  while (queue.length > 0 && variants.size < max) {
+    const current = queue.shift()!
+    const chars = Array.from(current)
 
-  // Generate combinations from the canonical spelling, not from the user's
-  // original spelling. This makes matching symmetric in both directions.
-  const combinations = 2 ** positions.length
-  for (let mask = 1; mask < combinations && variants.size < limit; mask++) {
-    const candidate = [...chars]
-    positions.forEach(({ char, index }, bit) => {
-      if (mask & (1 << bit)) candidate[index] = ASCII_TO_TURKISH[char]
-    })
-    variants.add(candidate.join(""))
+    for (let index = 0; index < chars.length && variants.size < max; index += 1) {
+      const alternate = TURKISH_ALTERNATES.get(chars[index])
+      if (!alternate) continue
+
+      const nextChars = [...chars]
+      nextChars[index] = alternate
+      const next = nextChars.join("")
+      if (!variants.has(next)) {
+        variants.add(next)
+        queue.push(next)
+      }
+    }
   }
 
-  return Array.from(variants).slice(0, limit)
+  return Array.from(variants)
 }
