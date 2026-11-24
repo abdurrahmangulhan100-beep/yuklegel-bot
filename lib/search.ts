@@ -1,9 +1,24 @@
 /**
  * Turkish-aware search helpers for PostgREST ilike filters.
- * Supports both native Turkish letters and ASCII keyboard input.
+ * Both ASCII and Turkish spellings are expanded from the same canonical form:
+ * "soguk" and "soğuk" therefore search the same set of spellings.
  */
-const TURKISH_VARIANTS: Record<string, string> = {
-  i: "ı", s: "ş", g: "ğ", u: "ü", o: "ö", c: "ç",
+const TURKISH_TO_ASCII: Record<string, string> = {
+  "ı": "i",
+  "ş": "s",
+  "ğ": "g",
+  "ü": "u",
+  "ö": "o",
+  "ç": "c",
+}
+
+const ASCII_TO_TURKISH: Record<string, string> = {
+  i: "ı",
+  s: "ş",
+  g: "ğ",
+  u: "ü",
+  o: "ö",
+  c: "ç",
 }
 
 export function normalizeSearchInput(value: string): string {
@@ -13,28 +28,41 @@ export function normalizeSearchInput(value: string): string {
     .trim()
 }
 
-export function searchVariants(token: string, max = 8): string[] {
+const canonicalize = (value: string) =>
+  value
+    .toLocaleLowerCase("tr-TR")
+    .replace(/[ışğüöç]/g, (char) => TURKISH_TO_ASCII[char] ?? char)
+
+/**
+ * Produces equivalent Turkish spellings, bounded to keep PostgREST URLs small.
+ * The default limit covers every spelling for common words with up to four
+ * Turkish-variant characters. Postgres ILIKE handles letter casing.
+ */
+export function searchVariants(token: string, max = 16): string[] {
   const clean = token.trim()
+  const limit = Math.max(1, Math.floor(max))
   if (!clean) return []
 
-  const lowerClean = clean.toLocaleLowerCase("tr-TR")
-  const variants = new Set<string>([clean, lowerClean])
-  const chars = Array.from(lowerClean)
-  const expandable = chars
+  const lower = clean.toLocaleLowerCase("tr-TR")
+  const canonical = canonicalize(clean)
+  const chars = Array.from(canonical)
+  const positions = chars
     .map((char, index) => ({ char, index }))
-    .filter(({ char }) => TURKISH_VARIANTS[char])
+    .filter(({ char }) => Boolean(ASCII_TO_TURKISH[char]))
 
-  // Keep PostgREST URLs bounded while trying the most common Turkish spellings.
-  for (const item of expandable.slice(0, 3)) {
-    const snapshot = Array.from(variants)
-    for (const variant of snapshot) {
-      const lower = Array.from(variant)
-      lower[item.index] = TURKISH_VARIANTS[item.char]
-      variants.add(lower.join(""))
-      if (variants.size >= max) break
-    }
-    if (variants.size >= max) break
+  if (limit === 1) return [clean]
+  const variants = new Set<string>([canonical])
+
+  // Generate combinations from the canonical spelling, not from the user's
+  // original spelling. This makes matching symmetric in both directions.
+  const combinations = 2 ** positions.length
+  for (let mask = 1; mask < combinations && variants.size < limit; mask++) {
+    const candidate = [...chars]
+    positions.forEach(({ char, index }, bit) => {
+      if (mask & (1 << bit)) candidate[index] = ASCII_TO_TURKISH[char]
+    })
+    variants.add(candidate.join(""))
   }
 
-  return Array.from(variants).slice(0, max)
+  return Array.from(variants).slice(0, limit)
 }
