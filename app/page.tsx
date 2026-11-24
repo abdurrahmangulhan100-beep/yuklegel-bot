@@ -30,9 +30,19 @@ import { PremiumLock } from "@/components/PremiumLock"
 import { usePremium } from "@/components/PremiumProvider"
 import { AdSlot } from "@/components/AdSlot"
 import { FREE_DELAY_MINUTES, FREE_LIMITS, OPEN_PREMIUM_EVENT } from "@/lib/premium"
-import { normalizeSearchInput, searchVariants } from "@/lib/search"
+import { normalizeSearchInput, searchTokens, searchVariants } from "@/lib/search"
 
 const PAGE_SIZE = 60
+// search_norm sütunu (009_arama_performans.sql) var mı? null: henüz bilinmiyor, false: yok -> eski yöntem
+let searchNormOk: boolean | null = null
+// search_norm sütunu her satırda metni ikinci kez taşır (veri/egress israfı). İlk yanıttan sütun adları öğrenilir, sonraki isteklerde o sütun hariç tutulur.
+let userCols = "*"
+let botCols = "*"
+const colsWithout = (row: object | undefined, fallback: string) => {
+  if (!row) return fallback
+  const keys = Object.keys(row).filter((k) => k !== "search_norm")
+  return keys.length > 0 ? keys.join(",") : fallback
+}
 
 // Saha (bot) ilanları bu günden eskiyse listelenmez; eski ilan yığılmasını ve yanlış yük aramasını önler
 const BOT_MAX_AGE_DAYS = 14
@@ -277,14 +287,14 @@ export default function Page() {
     }
   }, [])
 
-  const fetchListings = useCallback(async (searchStr = "", size = PAGE_SIZE) => {
+  const fetchListings = useCallback(async (searchStr = "", size = PAGE_SIZE): Promise<void> => {
     const reqId = ++reqIdRef.current
     if (!hasLoadedRef.current) setIsLoading(true)
     try {
       if (!supabase) return
 
-      let userReq = supabase.from("listings").select("*")
-      let botReq = supabase.from("bot_listings").select("*").gte("created_at", botCutoff())
+      let userReq = supabase.from("listings").select(userCols as "*")
+      let botReq = supabase.from("bot_listings").select(botCols as "*").gte("created_at", botCutoff())
 
       // Kullanıcı ilanları tüm hesaplarda anında görünür.
       // Ücretsiz plan gecikmesi yalnızca bot/saha ilanlarına uygulanır.
@@ -297,18 +307,26 @@ export default function Page() {
       // Türkçe karakterler ASCII karşılıklarıyla da eşleştirilir (ör. "soguk" / "soğuk").
       const s = normalizeSearchInput(searchStr)
       if (s) {
-        const uFields = ["from_city", "to_city", "cargo_detail", "company_name", "message", "vehicle_type"]
-        const bFields = ["from_city", "to_city", "cargo_detail", "company_name"]
-        const applyTokenSearch = (query: typeof userReq, fields: string[], token: string) => {
-          const clauses = searchVariants(token).flatMap((variant) =>
-            fields.map((field) => `${field}.ilike.%${variant}%`)
-          )
-          return query.or(clauses.join(","))
-        }
-
-        for (const token of s.split(" ").filter(Boolean)) {
-          userReq = applyTokenSearch(userReq, uFields, token)
-          botReq = applyTokenSearch(botReq, bFields, token)
+        if (searchNormOk !== false) {
+          // Hızlı yol: katlanmış tek sütun (009_arama_performans.sql). Kelime başına tek koşul; indeksli.
+          for (const token of searchTokens(s)) {
+            userReq = userReq.ilike("search_norm", `%${token}%`)
+            botReq = botReq.ilike("search_norm", `%${token}%`)
+          }
+        } else {
+          // Yedek yol (SQL henüz çalıştırılmadıysa): eski varyant yöntemi, URL'yi taşırmamak için kelime ve varyant sayısı sınırlı
+          const uFields = ["from_city", "to_city", "cargo_detail", "company_name", "message", "vehicle_type"]
+          const bFields = ["from_city", "to_city", "cargo_detail", "company_name"]
+          const applyTokenSearch = (query: typeof userReq, fields: string[], token: string) => {
+            const clauses = searchVariants(token, 12).flatMap((variant) =>
+              fields.map((field) => `${field}.ilike.%${variant}%`)
+            )
+            return query.or(clauses.join(","))
+          }
+          for (const token of s.split(" ").filter(Boolean).slice(0, 3)) {
+            userReq = applyTokenSearch(userReq, uFields, token)
+            botReq = applyTokenSearch(botReq, bFields, token)
+          }
         }
       }
 
@@ -343,6 +361,14 @@ export default function Page() {
 
       if (reqId !== reqIdRef.current) return // daha yeni bir istek başlamış, bu sonucu at
 
+      // search_norm sütunu veritabanında yoksa (009 henüz çalışmadı) bir kez yedek yönteme geç ve aynı aramayı yeniden yap
+      if (s && searchNormOk !== false && [userRes.error, botRes.error].some((e) => e && (e.code === "42703" || /search_norm/i.test(e.message ?? "")))) {
+        searchNormOk = false
+        return fetchListings(searchStr, size)
+      }
+      if (s && !userRes.error && !botRes.error) searchNormOk = true
+      if (!userRes.error && userRes.data?.[0]) userCols = colsWithout(userRes.data[0], userCols)
+      if (!botRes.error && botRes.data?.[0]) botCols = colsWithout(botRes.data[0], botCols)
       if (userRes.error) console.error("User listings hatası:", userRes.error)
       if (botRes.error) console.error("Bot listings hatası:", botRes.error)
 
