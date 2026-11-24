@@ -56,6 +56,8 @@ const NO_RETRY_CODES = new Set(["E_CONFIG", "E_SA_MISSING", "E_SA_JSON", "E_SA_K
 const errorText = (r: VerifyResult | null | undefined) =>
   r?.error ? `${r.error}${r.code ? ` (${r.code})` : ""}` : null
 
+const VERIFY_AT_KEY = "premium_verify_at"
+
 const isEntitled = (row: { status?: string; expires_at?: string | null } | null) =>
   !!row &&
   ["active", "grace", "canceled"].includes(String(row.status)) &&
@@ -139,14 +141,22 @@ export function PremiumProvider({ children }: { children: React.ReactNode }) {
       setStatus(data?.status ?? null)
       setExpiresAt(data?.expires_at ?? null)
 
-      // Yenileme / iptal takibi: süre bitmişse veya 1 günden az kaldıysa Google'dan tekrar sor
+      // Yenileme / iptal takibi: süre bitmişse veya 1 günden az kaldıysa Google'dan tekrar sor.
+      // Sık sormayız: süresi dolmuş kullanıcı her uygulama açılışında Edge Function + Google Play API'sini yoruyordu.
+      // (Yenileme/iptal zaten play-rtdn ile veritabanına anında yazılır; burası yalnızca yedek kontroldür.)
       if (data && (!data.expires_at || new Date(data.expires_at).getTime() - Date.now() < 86400000)) {
-        const r = await callVerify()
-        if (r?.ok) {
-          entitled = !!r.premium
-          setIsPremium(entitled)
-          setStatus(r.status ?? null)
-          setExpiresAt(r.expiresAt ?? null)
+        const gap = entitled ? 10 * 60_000 : 6 * 60 * 60_000
+        let last = 0
+        try { last = Number(localStorage.getItem(VERIFY_AT_KEY) || 0) } catch {}
+        if (Date.now() - last >= gap) {
+          try { localStorage.setItem(VERIFY_AT_KEY, String(Date.now())) } catch {}
+          const r = await callVerify()
+          if (r?.ok) {
+            entitled = !!r.premium
+            setIsPremium(entitled)
+            setStatus(r.status ?? null)
+            setExpiresAt(r.expiresAt ?? null)
+          }
         }
       }
     } catch (e) {
