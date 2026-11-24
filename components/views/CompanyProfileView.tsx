@@ -6,8 +6,13 @@ import { supabase } from "@/lib/supabase"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { AlertTriangle, Trash2 } from "lucide-react"
+import { usePremium } from "@/components/PremiumProvider"
+
+// "SIL", "sil", "SİL" (Türkçe klavye) hepsi kabul edilir
+const isDeleteWord = (v: string) => v.trim().toLocaleUpperCase("tr-TR").replace(/İ/g, "I") === "SIL"
 
 export function CompanyProfileView({ onProfileUpdated }: { onProfileUpdated?: () => void }) {
+  const { isPremium } = usePremium()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [msg, setMsg] = useState("")
@@ -101,7 +106,7 @@ export function CompanyProfileView({ onProfileUpdated }: { onProfileUpdated?: ()
 
   // GOOGLE PLAY ZORUNLU HESAP VE VERİ SİLME İŞLEVİ
   const handleDeleteAccount = async () => {
-    if (deleteConfirmation !== "SIL") {
+    if (!isDeleteWord(deleteConfirmation)) {
       toast("Lütfen işlemi onaylamak için 'SIL' yazın.")
       return
     }
@@ -121,8 +126,8 @@ export function CompanyProfileView({ onProfileUpdated }: { onProfileUpdated?: ()
       const { error: rpcError } = await supabase.rpc("delete_my_account")
       if (rpcError) throw rpcError
 
-      // Yalnızca Supabase oturum anahtarlarını temizle; uygulamanın diğer yerel ayarlarını koru.
-      await supabase.auth.signOut()
+      // Hesap artık yok: sunucuya "çıkış" isteği göndermek hata verir, bu yüzden yalnızca bu cihazdaki oturum kapatılır.
+      await supabase.auth.signOut({ scope: "local" }).catch(() => {})
       for (const key of Object.keys(localStorage)) {
         if (key.startsWith("sb-") && key.endsWith("-auth-token")) localStorage.removeItem(key)
       }
@@ -131,7 +136,7 @@ export function CompanyProfileView({ onProfileUpdated }: { onProfileUpdated?: ()
       setTimeout(() => { window.location.href = "/" }, 1800)
     } catch (err: any) {
       console.error("Hesap silme hatası:", err)
-      toast("Hesap silinirken bir hata oluştu: " + err.message)
+      toast("Hesap silinemedi. İnternetinizi kontrol edip tekrar deneyin; sorun sürerse destek e-postasına yazın. (" + (err?.message || "bilinmeyen hata") + ")")
     } finally {
       setDeleting(false)
     }
@@ -228,15 +233,21 @@ export function CompanyProfileView({ onProfileUpdated }: { onProfileUpdated?: ()
       {/* HESAP SİLME ONAY POP-UP / MODAL */}
       {showDeleteModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-card rounded-xl max-w-md w-full p-6 shadow-2xl border border-gray-100 space-y-4">
+          <div role="dialog" aria-modal="true" aria-label="Hesap silme onayı" className="bg-card rounded-xl max-w-md w-full p-6 shadow-2xl border border-gray-100 space-y-4">
             <div className="flex items-center gap-3 text-red-600">
               <AlertTriangle className="size-6 shrink-0" />
               <h3 className="text-base font-bold">Hesabınızı silmek istediğinize emin misiniz?</h3>
             </div>
 
             <p className="text-xs text-gray-600 leading-relaxed">
-              Devam etmek istiyorsanız aşağıya büyük harflerle <strong className="text-red-600">SIL</strong> yazınız.
+              Devam etmek istiyorsanız aşağıya <strong className="text-red-600">SIL</strong> yazınız.
             </p>
+
+            {isPremium && (
+              <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs font-medium leading-relaxed text-amber-800">
+                Premium aboneliğiniz Google Play&apos;de ayrıca yönetilir: hesabı silmek aboneliği iptal etmez. Ücretlendirmeyi durdurmak için Play Store &gt; Abonelikler bölümünden iptal edin.
+              </p>
+            )}
 
             <Input
               type="text"
@@ -257,7 +268,7 @@ export function CompanyProfileView({ onProfileUpdated }: { onProfileUpdated?: ()
               <button
                 type="button"
                 onClick={handleDeleteAccount}
-                disabled={deleting || deleteConfirmation !== "SIL"}
+                disabled={deleting || !isDeleteWord(deleteConfirmation)}
                 className="px-4 py-2 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white rounded-lg text-xs font-semibold transition-colors cursor-pointer"
               >
                 {deleting ? "Siliniyor..." : "Evet, Hesabımı Sil"}
