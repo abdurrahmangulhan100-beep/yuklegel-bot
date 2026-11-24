@@ -57,3 +57,23 @@ export function searchVariants(token: string, max = 32): string[] {
 
   return Array.from(variants)
 }
+
+// ---- Sunucu tarafı aramanın TEK sütunlu hali (supabase/009_arama_performans.sql ile birebir aynı katlama) ----
+// search_norm sütunu: lower(translate(metin, SEARCH_FOLD_FROM, SEARCH_FOLD_TO)). Böylece "soguk", "SOĞUK", "Soğuk" aynı kayda gider
+// ve her kelime için tek bir ilike koşulu yeter (eski yöntemde kelime başına en fazla 192 koşul vardı: URL çok uzayıp 4+ kelimede hata veriyordu).
+export const SEARCH_FOLD_FROM = "ıİIşŞğĞüÜöÖçÇâÂîÎûÛ"
+export const SEARCH_FOLD_TO = "iiisSgGuUoOcCaAiIuU"
+
+export function foldSearch(value: string): string {
+  let out = ""
+  for (const ch of normalizeSearchInput(value)) {
+    const at = SEARCH_FOLD_FROM.indexOf(ch)
+    out += at >= 0 ? SEARCH_FOLD_TO[at] : ch
+  }
+  return out.toLowerCase()
+}
+
+/** Katlanmış, tekrarsız arama kelimeleri (en fazla 6) */
+export function searchTokens(value: string, max = 6): string[] {
+  return Array.from(new Set(foldSearch(value).split(" ").filter(Boolean))).slice(0, max)
+}
