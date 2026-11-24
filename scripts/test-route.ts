@@ -1,6 +1,6 @@
 import test from "node:test"
 import assert from "node:assert/strict"
-import { normalizeSearchInput, searchVariants } from "../lib/search"
+import { foldSearch, normalizeSearchInput, searchTokens, searchVariants } from "../lib/search"
 
 const hasBoth = (value: string, expected: string[]) => {
   const variants = searchVariants(value)
@@ -28,4 +28,18 @@ test("varyant sayısı sınırlandırılır", () => {
 
 test("arama metni PostgREST ayraçlarını temizler", () => {
   assert.equal(normalizeSearchInput("Konya, (Ankara) % yük"), "Konya AnKara yük".replace("AnKara", "Ankara"))
+})
+
+test("sunucu araması katlaması: Türkçe/ASCII/büyük-küçük harf aynı sonucu verir", () => {
+  for (const v of ["soguk", "SOĞUK", "Soğuk", "SOGUK"]) assert.equal(foldSearch(v), "soguk")
+  assert.equal(foldSearch("İstanbul"), "istanbul")
+  assert.equal(foldSearch("ISPARTA"), "isparta")
+  assert.equal(foldSearch("Kırıkkale"), "kirikkale")
+  assert.equal(foldSearch("güzergâh"), "guzergah")
+})
+
+test("arama kelimeleri tekrarsız ve en fazla 6", () => {
+  assert.deepEqual(searchTokens("Konya konya KONYA ankara"), ["konya", "ankara"])
+  assert.equal(searchTokens("a b c d e f g h").length, 6)
+  assert.deepEqual(searchTokens("  %  ,  "), [])
 })
