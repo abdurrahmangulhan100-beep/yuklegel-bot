@@ -111,20 +111,31 @@ export function mapBotListing(item: DatabaseListing): Load {
   let rawCompany = cleanText(item.company_name || "Nakliye Ağı")
   if (rawCompany.toLowerCase().includes("whatsapp")) rawCompany = "Nakliye Ağı"
 
+  // Ham metin değişmez; yalnızca kart için çıkış/varış/araç bilgisi ayrıca çıkarılır. Hata olursa eski görünüm korunur.
+  let a: ReturnType<typeof analyzeListing> | null = null
+  try { a = analyzeListing({ cargo: rawDetail, trustFields: false }) } catch { a = null }
+
   return {
     id: `bot-${item.id}`,
     company: rawCompany,
     initials: "NA",
-    from: "",
-    to: "",
-    cities: [],
-    districtOf: {},
-    extraCities: [],
-    destinations: [],
-    routes: [],
+    from: a?.from?.label ?? "",
+    to: a?.to?.label ?? "",
+    fromCity: a?.from?.city,
+    toCity: a?.to?.city,
+    fromDistrict: a?.from?.district,
+    toDistrict: a?.to?.district,
+    cities: a?.cities ?? [],
+    districtOf: a?.districtOf ?? {},
+    extraCities: a?.extraCities ?? [],
+    destinations: a?.destinations ?? [],
+    routes: a?.routes ?? [],
+    trailer: a?.trailer,
+    tonnage: a?.tonnage,
+    timing: a?.timing,
     cargo: rawDetail,
     message: "",
-    vehicle: "",
+    vehicle: a?.vehicle ?? "",
     price: "",
     urgent: false,
     time: timeAgo(item.created_at),
