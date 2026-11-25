@@ -1,7 +1,7 @@
 "use client"
 
 import { toast } from "@/lib/toast"
-import { hidePhones } from "@/lib/listings"
+import { hidePhones, cleanRaw } from "@/lib/listings"
 import { Phone, MessageCircle, Star, Check, Ban, Zap, ChevronDown, Share2, Copy, Flag, MoreHorizontal, MapPin, Truck, Clock, Weight, Ruler, Repeat2, Route as RouteIcon, Fuel, Wallet } from "lucide-react"
 import { Component, Fragment, memo, useEffect, useRef, useState } from "react"
 import { isMissing, type DestinationInfo } from "@/lib/route"
@@ -122,6 +122,28 @@ const toDisplayLines = (text: string) =>
     .map((l) => l.trim())
     .filter((l) => l && !isAdLine(l))
 
+// Ekran için: emoji/dekoratif semboller silinir (oklar "→" olur), süs çizgileri ve reklam satırları düşer.
+// Kelimelere, rakamlara, telefon ve satır sırasına dokunulmaz; veritabanındaki metin değişmez.
+const ARROWS = /[\u2190-\u21FF\u27F5-\u27FF\u2B00-\u2B11\u2794\u279C\u27A1\u27A4\u25B6\u25BA\u23E9]+/gu
+const toCleanDisplay = (text: string) =>
+  cleanRaw(text.replace(ARROWS, " {>} "))
+    .replace(/ ?\{>\} ?/g, " → ")
+    .split("\n")
+    .map((l) => l.trim())
+    .filter((l) => l && /[\p{L}\p{N}]/u.test(l) && !isAdLine(l))
+    .join("\n")
+
+const PREVIEW_PX = 112 // ~5 satır: bundan uzun ilanlar solarak kesilir, "Tamamını gör" çıkar
+const FADE = "linear-gradient(to bottom, #000 62%, transparent 100%)"
+
+// Yüklenme saati (sabit Türkiye saati: sunucu/cihaz farkı olmasın)
+const clockOf = (iso?: string) => {
+  if (!iso) return ""
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ""
+  return d.toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Istanbul" })
+}
+
 // 05321234567 -> 0532 123 45 67
 const formatPhone = (phone: string) => {
   const d = phone.replace(/\D/g, "")
@@ -159,7 +181,7 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
   const cargoClean = !isMissing(load.cargo) ? load.cargo : ""
   const cargoText = cargoClean || "Yük detayı belirtilmedi."
   // Bot ilanında veritabanından gelen metin aynen gösterilir; satır, emoji ve telefon silinmez.
-  const cargoShown = cargoText
+  const cargoShown = toCleanDisplay(cargoText)
 
   // Önizleme gerçekten kırpıldı mı? (satır kaydırmaları dahil, ekranda ölçülür)
   useEffect(() => {
@@ -375,13 +397,14 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
 
   // Çıkış ve varış şehri ikisi de biliniyorsa net bir güzergâh satırı göster; diğer şehirler etiket olarak kalır
   const route =
-    isUserLoad && load.fromCity && load.toCity && load.fromCity !== load.toCity ? { from: load.fromCity, to: load.toCity } : null
+    load.fromCity && load.toCity && load.fromCity !== load.toCity ? { from: load.fromCity, to: load.toCity } : null
   // Güzergâh bilinmiyorsa şehirler tek satırda, sade metin olarak gösterilir (kutucuk / rozet yok)
   const places = route ? [] : cityTags
   // İlanın tazeliği: ilk dakikalar en değerli, rengiyle anlaşılır
   const ageMin = load.createdAt ? (Date.now() - Date.parse(load.createdAt)) / 60000 : NaN
   const fresh = Number.isFinite(ageMin) && ageMin >= 0 ? (ageMin < 15 ? "hot" : ageMin < 60 ? "warm" : "") : ""
-  const hasTags = isUserLoad && (load.urgent || hasVehicle || load.trailer || load.tonnage || load.timing || (load.repeatCount ?? 0) > 1)
+  const clockTime = clockOf(load.createdAt)
+  const hasTags = Boolean(load.urgent || hasVehicle || load.trailer || load.tonnage || load.timing || (load.repeatCount ?? 0) > 1)
 
   const openMenu = () => {
     setSheetView("menu")
@@ -400,7 +423,7 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
     setTimeout(closeSheet, 700)
   }
 
-  const hasSpecs = isUserLoad && (hasTags || hasPrice || hasDistance)
+  const hasSpecs = hasTags || hasPrice || hasDistance
 
   // Detay alanları: yalnızca formdan / ilan metninden bulunabilen bilgi satır olur. Bilinmeyen alan hiç gösterilmez.
   const placeLabel = (given: string, city?: string, district?: string) =>
@@ -409,9 +432,9 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
   const toLabel = placeLabel(load.to, load.toCity, load.toDistrict)
   const multiRoutes = (load.routes?.length ?? 0) > 1 ? load.routes! : null
   const vehicleLabel = [hasVehicle ? load.vehicle : "", load.trailer && !/13[.,]60/.test(load.vehicle ?? "") ? load.trailer : ""].filter(Boolean).join(" · ")
-  const hasFieldRows = isUserLoad && Boolean(fromLabel || toLabel || multiRoutes || vehicleLabel || load.tonnage || load.timing)
+  const hasFieldRows = Boolean(fromLabel || toLabel || multiRoutes || vehicleLabel || load.tonnage || load.timing)
   const showDistanceTag = hasDistance && (!route || !routeKm(load.fromCity, load.fromDistrict, load.toCity, load.toDistrict))
-  const otherPlaces = isUserLoad ? places.filter((t) => t.city !== load.fromCity && t.city !== load.toCity) : []
+  const otherPlaces = cityTags.filter((t) => t.city !== load.fromCity && t.city !== load.toCity)
 
   return (
     <article
@@ -430,82 +453,26 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
       {load.urgent && <span aria-hidden className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-[#e5522f] to-[#f4a259]" />}
 
       <div className="flex flex-1 flex-col gap-3 p-3.5 sm:gap-3.5 sm:p-4">
-        {/* Üst: kaynak + zaman + aksiyonlar */}
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex min-w-0 items-center gap-3">
+        {/* 1) Çıkış — araç sembolü — Varış. Kullanıcı logosu yalnızca kullanıcı ilanında, köşede */}
+        <div className={cn("relative rounded-2xl bg-muted/60 px-3.5 py-3 sm:px-4 sm:py-3.5", isUserLoad && "mt-2.5 pt-4")}>
+          {isUserLoad && (
             <div
-              className={cn(
-                "grid size-10 shrink-0 place-items-center rounded-full text-[12.5px] font-bold text-white",
-                isUserLoad ? "bg-gradient-to-br from-[#e5522f] to-[#c13a1c]" : "bg-gradient-to-br from-[#3f7199] to-[#274f73]"
-              )}
+              aria-label={displayCompany}
+              className="absolute -left-1.5 -top-3 grid size-8 place-items-center rounded-full border-2 border-card bg-gradient-to-br from-[#e5522f] to-[#c13a1c] text-[11px] font-bold text-white shadow-sm"
             >
-              {isUserLoad ? (load.initials || "NK") : "SL"}
+              {load.initials || "NK"}
             </div>
-            <div className="min-w-0">
-              <div className="truncate text-[14px] font-bold leading-tight text-foreground">
-                {isUserLoad ? highlightMatch(displayCompany, cleanQuery) : "Saha İlanı"}
-              </div>
-              <div className="mt-1 flex items-center gap-1.5 text-[11.5px] text-muted-foreground">
-                <span
-                  className={cn(
-                    "inline-flex shrink-0 items-center gap-1",
-                    fresh === "hot" && "font-semibold text-emerald-600",
-                    fresh === "warm" && "font-medium text-amber-600"
-                  )}
-                >
-                  {fresh && <span aria-hidden className={cn("size-1.5 rounded-full", fresh === "hot" ? "bg-emerald-500" : "bg-amber-500")} />}
-                  {load.time}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <div className="-mr-1.5 flex shrink-0 items-center">
-            <button
-              onClick={handleFavoriteClick}
-              disabled={isFavLoading}
-              aria-pressed={isFavorite}
-              aria-label={isFavorite ? "Favorilerden çıkar" : "Favorilere ekle"}
-              className={cn(
-                "grid size-10 place-items-center rounded-full active:scale-90",
-                isFavLoading && "opacity-50",
-                isFavorite ? "text-amber-500" : "text-muted-foreground/60"
-              )}
-            >
-              <Star className={cn("size-[21px]", isFavorite && "fill-amber-400")} />
-            </button>
-            <button
-              onClick={openMenu}
-              aria-label="İlan işlemleri"
-              className="grid size-10 place-items-center rounded-full text-muted-foreground active:bg-muted"
-            >
-              <MoreHorizontal className="size-5" />
-            </button>
-          </div>
-        </div>
-
-        {/* Güzergâh: tek bakışta nereden → nereye */}
-        {route ? (
-          <div className="rounded-2xl bg-muted/60 px-3.5 py-3 sm:px-4 sm:py-3.5">
+          )}
+          {route ? (
             <div className="flex items-center gap-3">
-              <Place dot="bg-emerald-500" caption="Çıkış" name={route.from} label={highlightMatch(route.from, cleanQuery)} sub={load.districtOf?.[route.from]} align="left" onClick={onCitySearch ? () => onCitySearch(route.from) : undefined} />
+              <Place dot="bg-emerald-500" caption="Çıkış" name={route.from} label={highlightMatch(route.from, cleanQuery)} sub={load.fromDistrict ?? load.districtOf?.[route.from]} align="left" onClick={onCitySearch ? () => onCitySearch(route.from) : undefined} />
               <div className="flex w-[78px] shrink-0 flex-col items-center sm:w-[108px]">
                 <VehicleIcon vehicle={load.vehicle} className="h-9 w-full sm:h-[50px]" />
                 <span aria-hidden className="mt-1 h-0 w-full border-t-2 border-dotted border-muted-foreground/40" />
               </div>
-              <Place dot="bg-brand" caption="Varış" name={route.to} label={highlightMatch(route.to, cleanQuery)} sub={load.districtOf?.[route.to]} align="right" onClick={onCitySearch ? () => onCitySearch(route.to) : undefined} />
+              <Place dot="bg-brand" caption="Varış" name={route.to} label={highlightMatch(route.to, cleanQuery)} sub={load.toDistrict ?? load.districtOf?.[route.to]} align="right" onClick={onCitySearch ? () => onCitySearch(route.to) : undefined} />
             </div>
-            {(load.routes?.length ?? 0) > 1 && (
-              <div className="mt-2.5 flex items-center border-t border-border pt-2.5">
-                <button type="button" onClick={() => setDetailOpen(true)} className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1 text-[12.5px] font-bold text-foreground active:opacity-60">
-                  <RouteIcon aria-hidden className="size-3.5 text-brand" />
-                  +{load.routes!.length - 1} rota daha
-                </button>
-              </div>
-            )}
-          </div>
-        ) : isUserLoad ? (
-          <div className="rounded-2xl bg-muted/60 px-3.5 py-3 sm:px-4 sm:py-3.5">
+          ) : (
             <div className="flex items-center gap-3">
               <div className="min-w-0 flex-1">
                 <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground"><i className="size-1.5 rounded-full bg-brand" />Konum</span>
@@ -533,10 +500,42 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
                 <span aria-hidden className="mt-1 h-0 w-full border-t-2 border-dotted border-muted-foreground/40" />
               </div>
             </div>
-          </div>
-        ) : null}
+          )}
+          {route && (load.routes?.length ?? 0) > 1 && (
+            <div className="mt-2.5 flex items-center border-t border-border pt-2.5">
+              <button type="button" onClick={() => setDetailOpen(true)} className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1 text-[12.5px] font-bold text-foreground active:opacity-60">
+                <RouteIcon aria-hidden className="size-3.5 text-brand" />
+                +{load.routes!.length - 1} rota daha
+              </button>
+            </div>
+          )}
+        </div>
 
-        {/* Özellikler: yalnızca kullanıcı tarafından oluşturulan form ilanlarında */}
+        {/* 2) İlanın yüklenme zamanı (dakika + saat) ve aksiyonlar */}
+        <div className="-mt-1 flex items-center justify-between gap-2">
+          <div className="flex min-w-0 items-center gap-1.5 text-[12px] text-muted-foreground">
+            <Clock aria-hidden className={cn("size-3.5 shrink-0", fresh === "hot" && "text-emerald-600", fresh === "warm" && "text-amber-600")} />
+            <span className={cn("shrink-0 font-semibold", fresh === "hot" ? "text-emerald-600" : fresh === "warm" ? "text-amber-600" : "text-foreground/80")}>{load.time}</span>
+            {clockTime && <span className="shrink-0">· {clockTime}</span>}
+            {isUserLoad && <span className="truncate">· {highlightMatch(displayCompany, cleanQuery)}</span>}
+          </div>
+          <div className="-mr-1.5 flex shrink-0 items-center">
+            <button
+              onClick={handleFavoriteClick}
+              disabled={isFavLoading}
+              aria-pressed={isFavorite}
+              aria-label={isFavorite ? "Favorilerden çıkar" : "Favorilere ekle"}
+              className={cn("grid size-9 place-items-center rounded-full active:scale-90", isFavLoading && "opacity-50", isFavorite ? "text-amber-500" : "text-muted-foreground/60")}
+            >
+              <Star className={cn("size-[20px]", isFavorite && "fill-amber-400")} />
+            </button>
+            <button onClick={openMenu} aria-label="İlan işlemleri" className="grid size-9 place-items-center rounded-full text-muted-foreground active:bg-muted">
+              <MoreHorizontal className="size-5" />
+            </button>
+          </div>
+        </div>
+
+        {/* 3) Araç / dorse / tonaj / zamanlama / acil / fiyat */}
         {hasSpecs && (
           <div className="flex flex-wrap items-center gap-1.5">
             {load.urgent && (
@@ -545,39 +544,43 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
                 ACİL
               </Tag>
             )}
-            {load.timing && <Tag tone="bg-emerald-50 text-emerald-700" icon={<Clock className="size-3" />}>{load.timing}</Tag>}
-            {hasVehicle && <Tag tone="bg-muted text-foreground/80">{highlightMatch(load.vehicle, cleanQuery)}</Tag>}
+            {hasVehicle && <Tag tone="bg-muted text-foreground/80" icon={<Truck className="size-3" />}>{highlightMatch(load.vehicle, cleanQuery)}</Tag>}
             {load.trailer && !/13[.,]60/.test(load.vehicle ?? "") && <Tag tone="bg-muted text-foreground/80" icon={<Ruler className="size-3" />}>{load.trailer}</Tag>}
             {load.tonnage && <Tag tone="bg-muted text-foreground/80" icon={<Weight className="size-3" />}>{load.tonnage}</Tag>}
-            {hasDistance && (!route || !routeKm(load.fromCity, load.fromDistrict, load.toCity, load.toDistrict)) && <Tag tone="bg-muted text-foreground/80">{load.distance}</Tag>}
+            {load.timing && <Tag tone="bg-emerald-50 text-emerald-700" icon={<Clock className="size-3" />}>{load.timing}</Tag>}
+            {showDistanceTag && <Tag tone="bg-muted text-foreground/80">{load.distance}</Tag>}
             {hasPrice && <Tag tone="bg-emerald-600 text-white">{load.price}</Tag>}
             {(load.repeatCount ?? 0) > 1 && <Tag tone="bg-muted text-muted-foreground" icon={<Repeat2 className="size-3" />}>{load.repeatCount} kez paylaşıldı</Tag>}
           </div>
         )}
 
-        {isUserLoad && <RouteCost from={load.fromCity} to={load.toCity} fromDistrict={load.fromDistrict} toDistrict={load.toDistrict} />}
+        {/* 4) Km, yakıt ve gider */}
+        <RouteCost from={load.fromCity} to={load.toCity} fromDistrict={load.fromDistrict} toDistrict={load.toDistrict} />
 
-        {/* Yük detayı */}
+        {/* 5) İlan içeriği: botdan geldiği gibi, sembolsüz, hepsinde aynı font/boyut; uzunsa solar + "Tamamını gör" */}
         <div className="flex-1">
           <div className="rounded-2xl border border-border/70 bg-muted/45 px-3.5 py-3">
             <div className="mb-2 text-[10px] font-bold tracking-[0.12em] text-muted-foreground">İLAN İÇERİĞİ</div>
             <p
               ref={textRef}
-              className="line-clamp-5 whitespace-pre-line break-words text-[14px] leading-[1.7] font-medium text-foreground"
+              style={{ maxHeight: PREVIEW_PX, ...(clamped ? { maskImage: FADE, WebkitMaskImage: FADE } : null) }}
+              className="overflow-hidden whitespace-pre-line break-words text-[13.5px] font-medium leading-[1.65] text-foreground"
             >
               {highlightMatch(cargoShown, cleanQuery)}
             </p>
+            {clamped && (
+              <button
+                type="button"
+                onClick={() => setDetailOpen(true)}
+                className="mt-1.5 inline-flex items-center gap-1 rounded-full bg-background px-3 py-1.5 text-xs font-bold text-foreground ring-1 ring-border active:opacity-70"
+              >
+                Tamamını gör
+                <ChevronDown className="size-3.5 -rotate-90" />
+              </button>
+            )}
           </div>
-          <button
-            type="button"
-            onClick={() => setDetailOpen(true)}
-            className="mt-1 inline-flex items-center gap-1 py-1 text-xs font-semibold text-foreground/80"
-          >
-            {clamped ? "Tamamını gör" : "İlan detayı"}
-            <ChevronDown className="size-3.5 -rotate-90" />
-          </button>
           {showMessage && (
-            <p className="mt-1 line-clamp-2 text-xs italic leading-relaxed text-muted-foreground">
+            <p className="mt-1.5 line-clamp-2 text-xs italic leading-relaxed text-muted-foreground">
               {highlightMatch(load.message as string, cleanQuery)}
             </p>
           )}
@@ -614,7 +617,7 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
           open={detailOpen}
           onClose={() => setDetailOpen(false)}
           title={isUserLoad ? displayCompany : "Saha İlanı"}
-          subtitle={load.time}
+          subtitle={clockTime ? `${load.time} · ${clockTime}` : load.time}
           footer={
             hasPhone ? (
               <div className="grid grid-cols-2 gap-2.5">
@@ -661,14 +664,14 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
                 ))}
               </div>
             )}
-            {isUserLoad && (load.urgent || hasPrice || showDistanceTag) && (
+            {(load.urgent || hasPrice || showDistanceTag) && (
               <div className="flex flex-wrap items-center gap-1.5">
                 {load.urgent && <Tag tone="bg-brand text-white"><Zap className="size-3 fill-white" />ACİL</Tag>}
                 {showDistanceTag && <Tag tone="bg-muted text-foreground/80">{load.distance}</Tag>}
                 {hasPrice && <Tag tone="bg-emerald-600 text-white">{load.price}</Tag>}
               </div>
             )}
-            {isUserLoad && <RouteCost from={load.fromCity} to={load.toCity} fromDistrict={load.fromDistrict} toDistrict={load.toDistrict} />}
+            <RouteCost from={load.fromCity} to={load.toCity} fromDistrict={load.fromDistrict} toDistrict={load.toDistrict} />
             <div className="rounded-2xl border border-border/70 bg-muted/45 px-3.5 py-3.5">
               <div className="mb-2 text-[10px] font-bold tracking-[0.12em] text-muted-foreground">İLAN İÇERİĞİ</div>
               <p className="whitespace-pre-line break-words text-[14px] leading-[1.7] font-medium text-foreground">{cargoShown}</p>
