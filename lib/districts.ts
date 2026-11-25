@@ -4,7 +4,7 @@
  * başka anlamı olan (Ulaş, Kale, Pazar, Çay, Bala...) adlar bilerek EKLENMEDİ.
  */
 const RAW: Record<string, string> = {
-  "İstanbul": "Arnavutköy,Hadımköy,Sazlıbosna,İkitelli,Esenyurt,Beylikdüzü,Avcılar,Küçükçekmece,Büyükçekmece,Başakşehir,Bağcılar,Bahçelievler,Bakırköy,Bayrampaşa,Esenler,Gaziosmanpaşa,Sultangazi,Eyüpsultan,Kağıthane,Şişli,Beşiktaş,Sarıyer,Beyoğlu,Zeytinburnu,Güngören,Silivri,Çatalca,Şile,Beykoz,Ümraniye,Ataşehir,Kadıköy,Üsküdar,Maltepe,Kartal,Pendik,Tuzla,Sancaktepe,Sultanbeyli,Çekmeköy,Dudullu,Yenibosna,Halkalı",
+  "İstanbul": "Arnavutköy,Hadımköy,Sazlıbosna,İkitelli,Esenyurt,Beylikdüzü,Avcılar,Küçükçekmece,Büyükçekmece,Başakşehir,Bağcılar,Bahçelievler,Bakırköy,Bayrampaşa,Esenler,Gaziosmanpaşa,Sultangazi,Eyüpsultan,Kağıthane,Şişli,Beşiktaş,Sarıyer,Beyoğlu,Zeytinburnu,Güngören,Silivri,Çatalca,Şile,Beykoz,Ümraniye,Ataşehir,Kadıköy,Üsküdar,Maltepe,Kartal,Pendik,Tuzla,Sancaktepe,Sultanbeyli,Çekmeköy,Dudullu,Yenibosna,Halkalı,Orhanlı",
   "Kocaeli": "Gebze,Dilovası,Darıca,Çayırova,Körfez,Derince,İzmit,Gölcük,Kartepe,Kandıra,Başiskele,Karamürsel",
   "Sakarya": "Adapazarı,Hendek,Arifiye,Akyazı,Karasu,Sapanca,Serdivan,Erenler,Kaynarca,Pamukova,Geyve,Ferizli",
   "Tekirdağ": "Çorlu,Çerkezköy,Çerkezkoy,Kapaklı,Süleymanpaşa,Ergene,Malkara,Şarköy,Hayrabolu,Muratlı,Marmaraereğlisi",
@@ -193,20 +193,3 @@ for (const table of [RAW, EXTRA]) {
 DISTRICTS.set("eregli", { city: "Konya", name: "Ereğli" })
 // "araç" günlük dilde taşıt demek ("4 araç", "araç lazım"); Kastamonu/Araç ilçesi hayalet şehir üretiyordu
 DISTRICTS.delete("arac")
-
-
-/** İl bazında arama/seçim için bilinen ilçe adları. Aynı adlı ilçeler il bağlamında ayrı tutulur. */
-export const DISTRICTS_BY_CITY: Record<string, string[]> = (() => {
-  const result: Record<string, Set<string>> = {}
-  for (const table of [RAW, EXTRA]) {
-    for (const [city, names] of Object.entries(table)) {
-      result[city] ??= new Set<string>()
-      for (const name of names.split(",")) {
-        const clean = name.trim()
-        // Sanayi bölgesi/mahalle takma adlarını ilçe listesine karıştırma.
-        if (clean && !clean.includes(" ")) result[city].add(clean)
-      }
-    }
-  }
-  return Object.fromEntries(Object.entries(result).map(([city, names]) => [city, [...names].sort((a, b) => a.localeCompare(b, "tr-TR"))]))
-})()
