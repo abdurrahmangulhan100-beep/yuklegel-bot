@@ -95,33 +95,6 @@ const highlightMatch = (text: string, query: string) => {
 }
 
 
-// ── Ekranda okunaklı gösterim (veritabanındaki metne dokunulmaz) ──
-
-// Başka uygulama / kanal reklamı satırları ekranda gösterilmez (eski kayıtlar için)
-const AD_LINE = [
-  /\bgetir nakliye\b|\bucretsiz indir\w*|\bdiger ilanlar icin\b|\b(?:google play|play store|app store|apk)\b/,
-  /^(?:android|ios|iphone)(?: (?:android|ios|iphone))*$/,
-  /\buygulama\w*\b.{0,25}\b(?:indir\w*|yukle\w*)\b|\bindir\w*\b.{0,20}\b(?:android|ios)\b/,
-  /\b(?:kanalimiza|kanalimiz|bizi takip|abone ol\w*|takip edin)\b/,
-  /\bilanlari\s+\d+\s+ilan\b/,
-]
-const foldText = (line: string) =>
-  line
-    .normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/ı/g, "i").toLowerCase()
-    .replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim()
-const isAdLine = (line: string) => {
-  const n = foldText(line)
-  return AD_LINE.some((r) => r.test(n))
-}
-
-const toDisplayLines = (text: string) =>
-  text
-    .replace(/[ \t]+•[ \t]+/g, "\n")
-    .replace(/^•\s*/, "")
-    .split("\n")
-    .map((l) => l.trim())
-    .filter((l) => l && !isAdLine(l))
-
 // 05321234567 -> 0532 123 45 67
 const formatPhone = (phone: string) => {
   const d = phone.replace(/\D/g, "")
@@ -158,8 +131,9 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
   const hasPrice = Boolean(load.price) && load.price !== "₺0"
   const cargoClean = !isMissing(load.cargo) ? (isUserLoad ? load.cargo : hidePhones(load.cargo)) : ""
   const cargoText = cargoClean || "Yük detayı belirtilmedi."
-  // Saha ilanı: WhatsApp mesajı olduğu gibi gösterilir (satırlar korunur); yalnızca reklam satırları ayıklanır
-  const cargoShown = isUserLoad ? cargoText : toDisplayLines(cargoText).join("\n")
+  // Saha ilanlarında kaynak metnin satır düzenini koru. Veritabanındaki ham içerik değiştirilmez;
+  // iletişim gizliliği için cargoClean içindeki mevcut telefon maskelemesi korunur.
+  const cargoShown = cargoText
 
   // Önizleme gerçekten kırpıldı mı? (satır kaydırmaları dahil, ekranda ölçülür)
   useEffect(() => {
@@ -422,8 +396,8 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
       }}
       style={{ contentVisibility: "auto", containIntrinsicSize: "auto 280px" }}
       className={cn(
-        "relative flex h-full cursor-pointer flex-col overflow-hidden rounded-3xl border bg-card transition-shadow",
-        "shadow-sm hover:shadow-md dark:shadow-none",
+        "group relative flex h-full cursor-pointer flex-col overflow-hidden rounded-[1.35rem] border bg-card transition-all duration-200",
+        "shadow-[0_2px_10px_rgba(18,44,74,0.045)] hover:-translate-y-0.5 hover:shadow-[0_12px_30px_rgba(18,44,74,0.10)] dark:shadow-none",
         load.urgent ? "border-brand/40" : "border-border"
       )}
     >
@@ -486,7 +460,7 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
 
         {/* Güzergâh: tek bakışta nereden → nereye */}
         {route ? (
-          <div className="rounded-2xl bg-muted/60 px-3.5 py-3 sm:px-4 sm:py-3.5">
+          <div className="rounded-2xl border border-border/70 bg-gradient-to-br from-muted/75 to-muted/35 px-3.5 py-3 sm:px-4 sm:py-3.5">
             <div className="flex items-center gap-3">
               <Place dot="bg-emerald-500" caption="Çıkış" name={route.from} label={highlightMatch(route.from, cleanQuery)} sub={load.districtOf?.[route.from]} align="left" onClick={onCitySearch ? () => onCitySearch(route.from) : undefined} />
               <div className="flex w-[78px] shrink-0 flex-col items-center sm:w-[108px]">
@@ -505,7 +479,7 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
             )}
           </div>
         ) : (
-          <div className="rounded-2xl bg-muted/60 px-3.5 py-3 sm:px-4 sm:py-3.5">
+          <div className="rounded-2xl border border-border/70 bg-gradient-to-br from-muted/75 to-muted/35 px-3.5 py-3 sm:px-4 sm:py-3.5">
             <div className="flex items-center gap-3">
               <div className="min-w-0 flex-1">
                 <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground"><i className="size-1.5 rounded-full bg-brand" />Konum</span>
@@ -559,10 +533,10 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
 
         {/* Yük detayı */}
         <div className="flex-1">
-          <div className="rounded-xl bg-muted/60 px-3 py-2.5">
+          <div className="rounded-2xl border border-border/70 bg-muted/45 px-3.5 py-3">
             <p
               ref={textRef}
-              className="line-clamp-4 whitespace-pre-line break-words text-[13.5px] leading-[1.6] text-foreground/80"
+              className="line-clamp-4 whitespace-pre-line break-words text-[13.5px] leading-[1.7] text-foreground/85"
             >
               {highlightMatch(cargoShown, cleanQuery)}
             </p>
@@ -570,7 +544,7 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
           <button
             type="button"
             onClick={() => setDetailOpen(true)}
-            className="mt-1 inline-flex items-center gap-1 py-1 text-xs font-semibold text-foreground/80"
+            className="mt-1 inline-flex min-h-8 items-center gap-1 rounded-lg px-1.5 py-1 text-xs font-bold text-brand transition-colors hover:bg-brand/5"
           >
             {clamped ? "Tamamını gör" : "İlan detayı"}
             <ChevronDown className="size-3.5 -rotate-90" />
