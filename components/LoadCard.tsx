@@ -53,6 +53,14 @@ export type Load = {
   timing?: string
   /** Aynı saha ilanı kaç kez paylaşılmış (tekrarlar tek kartta birleştirilir) */
   repeatCount?: number
+  /** Ham saha mesajından güvenle çıkarılan ayrı güzergâh satırları (tek kart içinde). */
+  displayRoutes?: { from: string; to: string; detail?: string }[]
+  /** Kartta gösterilecek temiz yük notları; ham mesaj cargo alanında korunur. */
+  displayNotes?: string[]
+  /** Araç tipinin kartta gösterilecek kullanıcı dostu etiketi. */
+  vehicleLabel?: string
+  /** Firma/kişi adı ham mesajdan güvenle çıkarıldıysa true. */
+  companyFromMessage?: boolean
 }
 
 type LoadCardProps = {
@@ -149,17 +157,19 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
   // Engellenebilecek kimlik: kullanıcı ilanında kullanıcı id'si, saha ilanında telefon numarası
   const blockTarget = isUserLoad ? load.userId : (hasPhone ? load.phone : undefined)
 
-  const displayCompany = isUserLoad 
+  const displayCompany = isUserLoad
     ? (load.company || "İsimsiz Firma")
-    : (load.company && !load.company.toLowerCase().includes("whatsapp") ? load.company : "Saha Lojistik Ağı")
+    : (load.company && !/whatsapp|nakliye ağı/i.test(load.company) ? load.company : "Saha İlanı")
 
   const hasVehicle = !isMissing(load.vehicle)
   const hasDistance = !isMissing(load.distance)
   const hasPrice = Boolean(load.price) && load.price !== "₺0"
   const cargoClean = !isMissing(load.cargo) ? (isUserLoad ? load.cargo : hidePhones(load.cargo)) : ""
   const cargoText = cargoClean || "Yük detayı belirtilmedi."
-  // Saha ilanı: WhatsApp mesajı olduğu gibi gösterilir (satırlar korunur); yalnızca reklam satırları ayıklanır
-  const cargoShown = cargoText
+  // Saha ilanında kart ham WhatsApp metnini değil, güvenle çıkarılan temiz alanları gösterir.
+  // Ham mesaj load.cargo içinde aynen tutulur ve detayda isteğe bağlı açılır.
+  const cargoShown = isUserLoad ? cargoText : (load.displayNotes ?? []).join("\n")
+  const [originalOpen, setOriginalOpen] = useState(false)
 
   // Önizleme gerçekten kırpıldı mı? (satır kaydırmaları dahil, ekranda ölçülür)
   useEffect(() => {
@@ -408,7 +418,7 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
   const fromLabel = placeLabel(load.from, load.fromCity, load.fromDistrict)
   const toLabel = placeLabel(load.to, load.toCity, load.toDistrict)
   const multiRoutes = (load.routes?.length ?? 0) > 1 ? load.routes! : null
-  const vehicleLabel = [hasVehicle ? load.vehicle : "", load.trailer && !/13[.,]60/.test(load.vehicle ?? "") ? load.trailer : ""].filter(Boolean).join(" · ")
+  const vehicleLabel = [hasVehicle ? (load.vehicleLabel || load.vehicle) : "", load.trailer && !/13[.,]60/.test(load.vehicle ?? "") ? load.trailer : ""].filter(Boolean).join(" · ")
   const hasFieldRows = Boolean(fromLabel || toLabel || multiRoutes || vehicleLabel || load.tonnage || load.timing)
   const showDistanceTag = hasDistance && (!route || !routeKm(load.fromCity, load.fromDistrict, load.toCity, load.toDistrict))
   const otherPlaces = places.filter((t) => t.city !== load.fromCity && t.city !== load.toCity)
@@ -439,11 +449,11 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
                 isUserLoad ? "bg-gradient-to-br from-[#e5522f] to-[#c13a1c]" : "bg-gradient-to-br from-[#3f7199] to-[#274f73]"
               )}
             >
-              {isUserLoad ? (load.initials || "NK") : "SL"}
+              {isUserLoad ? (load.initials || "NK") : (load.companyFromMessage ? (load.initials || "SL") : "SL")}
             </div>
             <div className="min-w-0">
               <div className="truncate text-[14px] font-bold leading-tight text-foreground">
-                {isUserLoad ? highlightMatch(displayCompany, cleanQuery) : "Saha İlanı"}
+                {highlightMatch(displayCompany, cleanQuery)}
               </div>
               <div className="mt-1 flex items-center gap-1.5 text-[11.5px] text-muted-foreground">
                 <span
@@ -485,7 +495,26 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
         </div>
 
         {/* Güzergâh: tek bakışta nereden → nereye */}
-        {route ? (
+        {!isUserLoad && (load.displayRoutes?.length ?? 0) > 1 ? (
+          <div className="rounded-2xl bg-muted/60 px-3.5 py-3 sm:px-4 sm:py-3.5">
+            <div className="mb-2 flex items-center justify-between">
+              <span className="text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground">Güzergâhlar</span>
+              <span className="rounded-full bg-background px-2 py-0.5 text-[11px] font-semibold text-foreground">{load.displayRoutes!.length} rota</span>
+            </div>
+            <div className="space-y-2">
+              {load.displayRoutes!.slice(0, 4).map((r, i) => (
+                <div key={`${r.from}-${r.to}-${i}`} className="flex items-start gap-2 border-b border-border/70 pb-2 last:border-0 last:pb-0">
+                  <span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-background text-[10px] font-bold text-muted-foreground">{i + 1}</span>
+                  <div className="min-w-0 flex-1">
+                    <div className="text-[13px] font-bold leading-snug text-foreground">{r.from} <span className="text-brand">→</span> {r.to}</div>
+                    {r.detail && <div className="mt-0.5 text-[11.5px] leading-snug text-muted-foreground">{r.detail}</div>}
+                  </div>
+                </div>
+              ))}
+              {load.displayRoutes!.length > 4 && <button type="button" onClick={() => setDetailOpen(true)} className="text-xs font-semibold text-brand">+{load.displayRoutes!.length - 4} güzergâh daha</button>}
+            </div>
+          </div>
+        ) : route ? (
           <div className="rounded-2xl bg-muted/60 px-3.5 py-3 sm:px-4 sm:py-3.5">
             <div className="flex items-center gap-3">
               <Place dot="bg-emerald-500" caption="Çıkış" name={route.from} label={highlightMatch(route.from, cleanQuery)} sub={load.districtOf?.[route.from]} align="left" onClick={onCitySearch ? () => onCitySearch(route.from) : undefined} />
@@ -496,21 +525,11 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
               <Place dot="bg-brand" caption="Varış" name={route.to} label={highlightMatch(route.to, cleanQuery)} sub={load.districtOf?.[route.to]} align="right" onClick={onCitySearch ? () => onCitySearch(route.to) : undefined} />
             </div>
             {(load.routes?.length ?? 0) > 1 && (
-              <div className="mt-2.5 border-t border-border pt-2.5">
-                <div className="mb-1.5 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.08em] text-muted-foreground">
+              <div className="mt-2.5 flex items-center border-t border-border pt-2.5">
+                <button type="button" onClick={() => setDetailOpen(true)} className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1 text-[12.5px] font-bold text-foreground active:opacity-60">
                   <RouteIcon aria-hidden className="size-3.5 text-brand" />
-                  {load.routes!.length} boşaltma noktası · tek ilan
-                </div>
-                <div className="grid gap-1">
-                  {load.routes!.slice(0, 3).map((stop, index) => (
-                    <div key={`${stop.city}-${stop.district ?? stop.label}-${index}`} className="flex min-w-0 items-center gap-2 text-[12px] font-semibold text-foreground/85">
-                      <span className="grid size-5 shrink-0 place-items-center rounded-full bg-brand/10 text-[10px] font-extrabold text-brand">{index + 1}</span>
-                      <span className="truncate">{stop.label}</span>
-                      {stop.count ? <span className="ml-auto shrink-0 text-[10px] text-muted-foreground">{stop.count} araç</span> : null}
-                    </div>
-                  ))}
-                </div>
-                {load.routes!.length > 3 && <button type="button" onClick={() => setDetailOpen(true)} className="mt-1 text-[11px] font-bold text-brand">Diğer noktaları gör</button>}
+                  +{load.routes!.length - 1} rota daha
+                </button>
               </div>
             )}
           </div>
@@ -556,7 +575,7 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
               </Tag>
             )}
             {load.timing && <Tag tone="bg-emerald-50 text-emerald-700" icon={<Clock className="size-3" />}>{load.timing}</Tag>}
-            {hasVehicle && <Tag tone="bg-muted text-foreground/80">{highlightMatch(load.vehicle, cleanQuery)}</Tag>}
+            {hasVehicle && <Tag tone="bg-muted text-foreground/80">{highlightMatch(load.vehicleLabel || load.vehicle, cleanQuery)}</Tag>}
             {load.trailer && !/13[.,]60/.test(load.vehicle ?? "") && <Tag tone="bg-muted text-foreground/80" icon={<Ruler className="size-3" />}>{load.trailer}</Tag>}
             {load.tonnage && <Tag tone="bg-muted text-foreground/80" icon={<Weight className="size-3" />}>{load.tonnage}</Tag>}
             {hasDistance && (!route || !routeKm(load.fromCity, load.fromDistrict, load.toCity, load.toDistrict)) && <Tag tone="bg-muted text-foreground/80">{load.distance}</Tag>}
@@ -569,15 +588,16 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
 
         {/* Yük detayı */}
         <div className="flex-1">
-          <div className="rounded-xl bg-muted/60 px-3 py-2.5">
-            <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.08em] text-muted-foreground">Orijinal ilan mesajı</p>
-            <p
-              ref={textRef}
-              className="line-clamp-4 whitespace-pre-line break-words text-[13.5px] leading-[1.6] text-foreground/80"
-            >
-              {highlightMatch(cargoShown, cleanQuery)}
-            </p>
-          </div>
+          {(isUserLoad || cargoShown || (!isUserLoad && !load.displayRoutes?.length)) && (
+            <div className="rounded-xl bg-muted/60 px-3 py-2.5">
+              <p
+                ref={textRef}
+                className="line-clamp-4 whitespace-pre-line break-words text-[13.5px] leading-[1.6] text-foreground/80"
+              >
+                {highlightMatch(isUserLoad ? cargoShown : (cargoShown || "Yük açıklaması belirtilmemiş."), cleanQuery)}
+              </p>
+            </div>
+          )}
           <button
             type="button"
             onClick={() => setDetailOpen(true)}
@@ -623,7 +643,7 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
         <Sheet
           open={detailOpen}
           onClose={() => setDetailOpen(false)}
-          title={isUserLoad ? displayCompany : "Saha İlanı"}
+          title={displayCompany}
           subtitle={load.time}
           footer={
             hasPhone ? (
@@ -644,14 +664,12 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
             {hasFieldRows && (
               <div className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-muted/60">
                 {multiRoutes
-                  ? <>
-                      {fromLabel && <FieldRow icon={MapPin} tone="text-emerald-600" label="Yükleme yeri">{fromLabel}</FieldRow>}
-                      {multiRoutes.map((r, i) => (
-                        <FieldRow key={`${r.city}-${r.district ?? r.label}-${i}`} icon={RouteIcon} tone="text-brand" label={`Boşaltma noktası ${i + 1}`}>
-                          {r.label}{r.count ? <span className="font-medium text-muted-foreground"> · {r.count} araç</span> : null}
-                        </FieldRow>
-                      ))}
-                    </>
+                  ? multiRoutes.map((r, i) => (
+                      <FieldRow key={r.label} icon={RouteIcon} tone="text-brand" label={`Rota ${i + 1}`}>
+                        {fromLabel ? `${fromLabel} → ` : ""}{r.label}
+                        {r.count ? <span className="font-medium text-muted-foreground"> · {r.count} araç</span> : null}
+                      </FieldRow>
+                    ))
                   : (
                     <>
                       {fromLabel && <FieldRow icon={MapPin} tone="text-emerald-600" label="Yükleme yeri">{fromLabel}</FieldRow>}
@@ -681,10 +699,31 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
               </div>
             )}
             <RouteCost from={load.fromCity} to={load.toCity} fromDistrict={load.fromDistrict} toDistrict={load.toDistrict} />
-            <div className="rounded-xl bg-muted/60 px-3.5 py-3">
-              <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.08em] text-muted-foreground">Orijinal ilan mesajı</p>
-              <p className="whitespace-pre-line break-words text-[14.5px] leading-[1.65] text-foreground/80">{cargoShown}</p>
-            </div>
+            {!isUserLoad && (load.displayRoutes?.length ?? 0) > 0 && (
+              <div className="space-y-2 rounded-xl bg-muted/60 px-3.5 py-3">
+                <div className="text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground">Tespit edilen güzergâhlar</div>
+                {load.displayRoutes!.map((r, i) => (
+                  <div key={`${r.from}-${r.to}-${i}`} className="text-[13px] leading-relaxed">
+                    <span className="font-semibold text-foreground">{r.from} → {r.to}</span>
+                    {r.detail && <span className="block text-xs text-muted-foreground">{r.detail}</span>}
+                  </div>
+                ))}
+              </div>
+            )}
+            {(isUserLoad || cargoShown) && (
+              <div className="rounded-xl bg-muted/60 px-3.5 py-3">
+                <p className="whitespace-pre-line break-words text-[14.5px] leading-[1.65] text-foreground/80">{cargoShown}</p>
+              </div>
+            )}
+            {!isUserLoad && (
+              <div className="rounded-xl border border-border">
+                <button type="button" onClick={() => setOriginalOpen((v) => !v)} className="flex w-full items-center justify-between px-3.5 py-3 text-left text-[13px] font-semibold text-foreground">
+                  Orijinal mesajı {originalOpen ? "gizle" : "göster"}
+                  <ChevronDown className={cn("size-4 transition-transform", originalOpen && "rotate-180")} />
+                </button>
+                {originalOpen && <p className="border-t border-border px-3.5 py-3 whitespace-pre-line break-words text-xs leading-relaxed text-muted-foreground">{hidePhones(load.cargo || "")}</p>}
+              </div>
+            )}
             {showMessage && <p className="text-xs italic leading-relaxed text-muted-foreground">{load.message}</p>}
           </div>
         </Sheet>
