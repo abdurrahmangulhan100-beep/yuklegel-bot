@@ -105,162 +105,33 @@ export function mapUserListing(item: DatabaseListing): Load {
   }
 }
 
-type ParsedBotDisplay = {
-  company?: string
-  companyFromMessage: boolean
-  routes: { from: string; to: string; detail?: string }[]
-  notes: string[]
-}
-
-const PRESENTATION_JUNK = /[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{1F1E6}-\u{1F1FF}]/gu
-const VEHICLE_TERMS = ["kapalı", "açık", "tenteli", "perdeli", "tır", "tırlar", "dorse", "kamyon", "kamyonet", "damperli", "damper", "frigo", "frigorifik", "kırkayak", "ambar", "avrupa", "anadolu", "ist"]
-
-function removePhrase(source: string, phrase: string): string {
-  const needle = fold(phrase)
-  if (!needle) return source
-  let result = source
-  for (;;) {
-    const normalized = fold(result)
-    const index = normalized.indexOf(needle)
-    if (index < 0) return result
-    const before = index > 0 ? normalized[index - 1] : " "
-    const afterIndex = index + needle.length
-    const after = afterIndex < normalized.length ? normalized[afterIndex] : " "
-    if (/[\p{L}\p{N}]/u.test(before) || /[\p{L}\p{N}]/u.test(after)) {
-      // Kelime sınırında değilse sonraki eşleşmeyi ara.
-      const next = normalized.indexOf(needle, index + 1)
-      if (next < 0) return result
-      const b = next > 0 ? normalized[next - 1] : " "
-      const a = next + needle.length < normalized.length ? normalized[next + needle.length] : " "
-      if (/[\p{L}\p{N}]/u.test(b) || /[\p{L}\p{N}]/u.test(a)) return result
-      result = result.slice(0, next) + " " + result.slice(next + needle.length)
-    } else {
-      result = result.slice(0, index) + " " + result.slice(afterIndex)
-    }
-  }
-}
-
-/** Ham metni değiştirmeden, kart için güvenli alanları çıkarır. Emin olunmayan satırlar not olarak kalır. */
-function parseBotDisplay(raw: string, fallbackCompany?: string): ParsedBotDisplay {
-  let text = raw.replace(/orhan[’']lı/gi, "Orhanlı").replace(PRESENTATION_JUNK, " ").replace(/[★☆✦✧❌❎✔️☑️⚡🔥📍🚛🚚📦⏰🕒]/gu, " ")
-  text = text.replace(/[＊*_*~`]/g, "").replace(/[ \t]+/g, " ").trim()
-  const lines = text.split(/\r?\n/).map((x) => x.trim()).filter(Boolean)
-  let company = ""
-  let companyFromMessage = false
-
-  // Açık firma ibaresi olan başlık: "Beyyılmaz Nakliyat İstanbul ..."
-  const firmPrefix = text.match(/^(.{2,55}?\b(?:nakliyat|nakliye|lojistik|taşımacılık|tasimacilik)\b)[\s,:;|—-]+([\s\S]+)$/i)
-  if (firmPrefix) {
-    company = firmPrefix[1].trim().split(/\s+/).map((word) => word ? word[0].toLocaleUpperCase("tr-TR") + word.slice(1).toLocaleLowerCase("tr-TR") : word).join(" ")
-    text = firmPrefix[2].trim()
-    companyFromMessage = true
-  } else {
-    // Çok satırlı mesajın sonundaki tek başına firma/kişi imzası (örn. HATİP ARSLAN).
-    const last = lines[lines.length - 1] ?? ""
-    const lastAnalysis = analyzeListing({ cargo: last })
-    const hasVehicleOrLoad = /\b(?:tir|dorse|kamyon|kamyonet|damper|frigo|ton|hafif|agir|kargo|palet|yuk|hayvan|araba)\b/i.test(last)
-    if (last && lastAnalysis.cities.length === 0 && !hasVehicleOrLoad && /^[\p{L}][\p{L} .'-]{2,45}$/u.test(last) && last.split(/\s+/).length <= 3) {
-      company = last.replace(/\s+/g, " ").trim().split(" ").map((word) => word ? word[0].toLocaleUpperCase("tr-TR") + word.slice(1).toLocaleLowerCase("tr-TR") : word).join(" ")
-      companyFromMessage = true
-      lines.pop()
-      text = lines.join("\n")
-    }
-  }
-
-  const routes: { from: string; to: string; detail?: string }[] = []
-  const notes: string[] = []
-  for (const originalLine of text.split(/\r?\n/).map((x) => x.trim()).filter(Boolean)) {
-    let line = originalLine
-    // Yaygın kısaltma: "İST AVRUPA" / "İST ANADOLU".
-    line = line.replace(/^\s*(?:İST|IST|ist)\s+(avrupa|anadolu)\b/iu, (_m, side) => `İstanbul ${side} `)
-    const a = analyzeListing({ cargo: line })
-    if (a.cities.length >= 2) {
-      const labels = a.cities.map((city) => {
-        const district = a.districtOf[city]
-        const side = city === "İstanbul" && /\bavrupa\b/i.test(line) ? " (Avrupa)" : city === "İstanbul" && /\banadolu\b/i.test(line) ? " (Anadolu)" : ""
-        return `${city}${district ? ` / ${district}` : ""}${side}`
-      })
-      const from = labels[0]
-      for (const to of labels.slice(1)) {
-        if (from !== to) routes.push({ from, to, detail: extractRouteDetail(line, a) || undefined })
-      }
-    } else if (a.cities.length === 1) {
-      // Tek şehirli ama anlamlı açıklamayı kaybetme.
-      const note = line.replace(PRESENTATION_JUNK, " ").trim()
-      if (note && !notes.includes(note)) notes.push(note)
-    } else {
-      const note = line.replace(PRESENTATION_JUNK, " ").trim()
-      if (note && !notes.includes(note)) notes.push(note)
-    }
-  }
-
-  return {
-    company: company || (fallbackCompany && !/whatsapp|nakliye ağı/i.test(fallbackCompany) ? fallbackCompany : undefined),
-    companyFromMessage,
-    routes: routes.filter((r, i) => routes.findIndex((x) => x.from === r.from && x.to === r.to && (x.detail ?? "") === (r.detail ?? "")) === i),
-    notes,
-  }
-}
-
-function escapeRegex(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
-}
-
-function extractRouteDetail(line: string, analysis: ReturnType<typeof analyzeListing>): string {
-  let detail = line
-  for (const city of analysis.cities) detail = removePhrase(detail, city)
-  for (const district of Object.values(analysis.districtOf)) detail = removePhrase(detail, district)
-  for (const term of VEHICLE_TERMS) detail = removePhrase(detail, term)
-  for (const term of ["şimdi sarar", "şimdi", "hemen", "yarın", "bugün", "sabah", "akşam", "öğle", "gece"]) detail = removePhrase(detail, term)
-  detail = detail.replace(/\b\d{1,2}\s*[:–-]\s*\d{1,2}\s*ton\b/gi, " ")
-    .replace(/\b\d{1,2}(?:[.,]\d)?\s*ton(?:luk)?\b/gi, " ")
-  return detail.replace(/[+/,;:|—–>-]+/g, " ").replace(/\s+/g, " ").trim()
-}
-
 export function mapBotListing(item: DatabaseListing): Load {
-  // Saha ilanları ham mesaj olarak gösterilir; yalnızca emoji/biçim işaretleri temizlenir ve satır sonları korunur
-  // Ham WhatsApp metni değiştirilmeden saklanır; yalnızca kart sunumu ayrı olarak temizlenir.
-  const rawDetail = item.cargo_detail || "Saha İlanı"
+  // Saha ilanlarında otomatik metin ayrıştırması yapılmaz; orijinal içerik ve satırları korunur.
+  const rawDetail = (item.cargo_detail ?? "").replace(/\r\n?/g, "\n").trim() || "Saha İlanı"
   let rawCompany = cleanText(item.company_name || "Nakliye Ağı")
   if (rawCompany.toLowerCase().includes("whatsapp")) rawCompany = "Nakliye Ağı"
-  const display = parseBotDisplay(rawDetail, rawCompany)
-  if (display.company) rawCompany = cleanText(display.company)
-
-  // Metinden şehirleri, araç / dorse / tonaj / zaman bilgisini ayrıştırırız (ekrana yön olarak değil, etiket olarak)
-  const a = analyzeListing({
-    from: item.from_city,
-    to: item.to_city,
-    cargo: rawDetail.replace(/orhan[’']lı/gi, "Orhanlı"),
-    vehicle: item.vehicle_type,
-    trustFields: false,
-  })
 
   return {
     id: `bot-${item.id}`,
     company: rawCompany,
-    initials: rawCompany.split(" ").filter(Boolean).map((x) => x[0]).join("").slice(0, 2).toLocaleUpperCase("tr-TR") || "NA",
-    displayRoutes: display.routes.length > 0 ? display.routes : undefined,
-    displayNotes: display.notes.length > 0 ? display.notes : undefined,
-    vehicleLabel: /\btir\b/i.test(fold(rawDetail)) ? "TIR" : undefined,
-    companyFromMessage: display.companyFromMessage,
+    initials: "NA",
     from: "",
     to: "",
-    cities: a.cities,
-    districtOf: a.districtOf,
-    fromDistrict: a.from?.district,
-    toDistrict: a.to?.district,
-    fromCity: a.from?.city,
-    toCity: a.to?.city,
-    destinations: a.destinations,
-    routes: a.routes,
+    // Saha ilanında konum/araç metinden çıkarılmaz; kartta orijinal mesaj gösterilir.
+    cities: [],
+    districtOf: {},
+    fromCity: undefined,
+    toCity: undefined,
+    destinations: [],
+    routes: undefined,
     cargo: rawDetail,
     message: "",
-    vehicle: a.vehicle ?? "",
-    trailer: a.trailer,
-    tonnage: a.tonnage,
-    timing: a.timing,
+    vehicle: "",
+    trailer: undefined,
+    tonnage: undefined,
+    timing: undefined,
     price: "",
-    urgent: Boolean(item.urgent) || /\bacil\b/.test(fold(`${item.cargo_detail ?? ""} ${item.company_name ?? ""}`)),
+    urgent: Boolean(item.urgent),
     time: timeAgo(item.created_at),
     createdAt: item.created_at,
     color: "bg-[#315d83]",
