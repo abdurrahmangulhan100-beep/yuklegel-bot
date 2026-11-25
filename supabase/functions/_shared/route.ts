@@ -16,6 +16,14 @@ export type Place = {
   district?: string
 }
 
+export type DestinationInfo = {
+  city: string
+  /** Ekranda gösterilecek metin: "Bursa", "İstanbul (Avrupa)", "Tekirdağ / Çerkezköy" */
+  label: string
+  /** "1 TIR Bursa" gibi açıkça yazılmış araç adedi */
+  count?: number
+}
+
 export type ListingAnalysis = {
   /**
    * İlan metninde geçen tüm şehirler (metindeki sırayla, tekrarsız, en fazla 6).
@@ -24,10 +32,20 @@ export type ListingAnalysis = {
   cities: string[]
   /** il -> metinde geçen ilçe adı (varsa), etikette "Tekirdağ · Çerkezköy" göstermek için */
   districtOf: Record<string, string>
+  /** Yönü belirlenmiş başlangıç ve varış ilçeleri; diğer metin geçişleriyle karıştırılmaz. */
+  fromDistrict?: string
+  toDistrict?: string
   from?: Place
   to?: Place
   /** Güzergahta geçen ama yükleme/teslimat olarak ayrılamayan diğer şehirler */
   extraCities: string[]
+  /**
+   * Birden çok varış: yalnızca net kalıplarda dolar ("1 TIR BURSA, 1 TIR İSTANBUL", "Bursa'ya ..., Ankara'ya ...").
+   * İlk eleman ana varıştır. Belirsizse tanımsız kalır; o zaman ilan tek rota sayılır.
+   */
+  routes?: DestinationInfo[]
+  /** routes içindeki benzersiz il adları (ana varış önce); filtre / arama için */
+  destinations?: string[]
   vehicle?: string
   trailer?: string
   tonnage?: string
@@ -468,6 +486,39 @@ function placeFromMention(m: { city: string; district?: string }): Place {
   return { label: m.district ? `${m.city} / ${m.district}` : m.city, city: m.city, district: m.district }
 }
 
+// "1 TIR BURSA" / "2 kamyon Ankara": şehirden hemen önce gelen araç adedi
+const COUNT_BEFORE = /(?:^|[^0-9])(\d{1,2})\s*(?:adet\s+)?(?:tir|tirlar|dorse|kamyon|arac|kirkayak|frigo)\s*[-:]?\s*$/
+// "İstanbul Avrupa", "İstanbul Anadolu'ya"
+const SIDE_AFTER = /^\s*(avrupa|anadolu)(\s*['’`]?\s*(?:ya|ye|a|e))?(?![a-z])/
+
+/**
+ * Çoklu varış, yalnızca net kalıplarda ayrılır (tahmin yok):
+ *  - çıkış ve ana varış biliniyor,
+ *  - her varış ya "-a/-e" ekiyle ("Bursa'ya") ya da "N tır X" biçiminde yazılmış,
+ *  - ana varışın kendisi de bu kalıplardan biri.
+ * "Konya Bursa İstanbul Ankara" gibi çıplak şehir dizisi belirsiz sayılır ve tek rota kalır.
+ */
+function findDestinations(text: string, ms: Mention[], from?: Place, to?: Place): DestinationInfo[] | undefined {
+  if (!from?.city || !to?.city) return undefined
+  const found: DestinationInfo[] = []
+  for (const m of ms) {
+    if (m.city === from.city) continue
+    const before = fold(text.slice(Math.max(0, m.start - 18), m.start))
+    const after = fold(text.slice(m.end, m.end + 16))
+    const cm = before.match(COUNT_BEFORE)
+    const side = after.match(SIDE_AFTER)
+    if (!(m.kind === "to" || cm || side?.[2])) continue
+    const base = m.district ? `${m.city} / ${m.district}` : m.city
+    const label = side ? `${base} (${side[1] === "avrupa" ? "Avrupa" : "Anadolu"})` : base
+    if (found.some((f) => f.label === label)) continue
+    found.push({ city: m.city, label, count: cm ? Number(cm[1]) : undefined })
+  }
+  if (found.length < 2 || !found.some((f) => f.city === to.city)) return undefined
+  const primary = found.findIndex((f) => f.city === to.city)
+  const ordered = [found[primary], ...found.filter((_, i) => i !== primary)]
+  return ordered.slice(0, 5)
+}
+
 export function analyzeListing(input: AnalyzeInput): ListingAnalysis {
   const rawText = [input.cargo, input.message]
     .filter((v): v is string => !isMissing(v))
@@ -555,15 +606,22 @@ export function analyzeListing(input: AnalyzeInput): ListingAnalysis {
   const used = new Set([from?.city, to?.city].filter(Boolean) as string[])
   const extraCities = Array.from(new Set(ms.map((m) => m.city))).filter((c) => !used.has(c)).slice(0, 3)
 
+  const routes = findDestinations(text, ms, from, to)
+  const destinations = routes ? Array.from(new Set(routes.map((r) => r.city))) : undefined
+
   const fieldVehicle = isMissing(input.vehicle) ? undefined : tidy(String(input.vehicle)).slice(0, 24)
   const inferred = inferVehicle(folded)
 
   return {
     cities: cityList.slice(0, 6),
     districtOf,
+    fromDistrict: from?.district,
+    toDistrict: to?.district,
     from,
     to,
     extraCities,
+    routes,
+    destinations,
     vehicle: input.trustFields ? (fieldVehicle ?? inferred) : (inferred ?? fieldVehicle),
     trailer: inferTrailer(folded),
     tonnage: inferTonnage(folded),
