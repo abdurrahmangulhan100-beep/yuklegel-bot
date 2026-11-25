@@ -131,16 +131,46 @@ export function ListingsView({
   const fmt = (n: number) => n.toLocaleString("tr-TR")
   const { isPremium, loading: premiumLoading } = usePremium()
   const [showBackToTop, setShowBackToTop] = useState(false)
+  const topMarkerRef = useRef<HTMLDivElement | null>(null)
 
-  // Uzun ilan listelerinde tek dokunuşla listenin başına dön.
+  // Mobil webview/TWA ve tarayıcılarda kaydırma window yerine bir kapsayıcıda
+  // gerçekleşebilir. Capture aşamasındaki document dinleyicisi tüm scroll
+  // alanlarını yakalar; üst işaretçinin ekrandaki konumu gerçek kaydırmayı ölçer.
   useEffect(() => {
-    const update = () => setShowBackToTop(window.scrollY > 650)
+    let frame = 0
+    const update = () => {
+      if (frame) return
+      frame = window.requestAnimationFrame(() => {
+        frame = 0
+        const markerTop = topMarkerRef.current?.getBoundingClientRect().top
+        const scrolled = typeof markerTop === "number"
+          ? markerTop < -480
+          : (window.scrollY || document.documentElement.scrollTop || document.body.scrollTop) > 480
+        setShowBackToTop((current) => current === scrolled ? current : scrolled)
+      })
+    }
+
     update()
+    document.addEventListener("scroll", update, { passive: true, capture: true })
     window.addEventListener("scroll", update, { passive: true })
-    return () => window.removeEventListener("scroll", update)
+    window.addEventListener("resize", update, { passive: true })
+    return () => {
+      document.removeEventListener("scroll", update, true)
+      window.removeEventListener("scroll", update)
+      window.removeEventListener("resize", update)
+      if (frame) window.cancelAnimationFrame(frame)
+    }
   }, [])
 
-  const backToTop = () => window.scrollTo({ top: 0, behavior: "smooth" })
+  // scrollIntoView, sayfanın veya iç kaydırma alanının doğru olanını kaydırır.
+  const backToTop = () => {
+    const marker = topMarkerRef.current
+    if (marker) {
+      marker.scrollIntoView({ behavior: "smooth", block: "start" })
+      return
+    }
+    window.scrollTo({ top: 0, behavior: "smooth" })
+  }
 
   const setRoute = (f: string, t: string) => onRouteChange?.(f, t)
   const setFrom = (f: string) => setRoute(f, to)
@@ -281,6 +311,7 @@ export function ListingsView({
 
   return (
     <div className="space-y-3.5 sm:space-y-5">
+      <div ref={topMarkerRef} aria-hidden="true" className="h-px scroll-mt-3" />
       {/* Ücretsiz plan: tek satırlık, sakin Premium bilgisi */}
       {!premiumLoading && !isPremium && (
         <button
@@ -530,7 +561,7 @@ export function ListingsView({
           onClick={backToTop}
           aria-label="Sayfanın başına çık"
           title="Yukarı çık"
-          className="fixed bottom-[calc(5.6rem+env(safe-area-inset-bottom))] right-4 z-40 grid size-12 place-items-center rounded-full border border-white/20 bg-[#173b60] text-white shadow-[0_8px_24px_rgba(15,40,66,0.28)] transition-all hover:-translate-y-1 hover:bg-[#214f7b] active:scale-90 sm:bottom-6 sm:right-6"
+          className="fixed bottom-[calc(5.6rem+env(safe-area-inset-bottom))] right-4 z-[60] grid size-12 place-items-center rounded-full border border-white/25 bg-[#173b60] text-white shadow-[0_8px_24px_rgba(15,40,66,0.32)] transition-all hover:-translate-y-1 hover:bg-[#214f7b] active:scale-90 sm:bottom-6 sm:right-6"
         >
           <ArrowUp className="size-5" />
         </button>
