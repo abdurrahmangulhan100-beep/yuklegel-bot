@@ -106,8 +106,8 @@ export function mapUserListing(item: DatabaseListing): Load {
 }
 
 export function mapBotListing(item: DatabaseListing): Load {
-  // Saha ilanlarında otomatik metin ayrıştırması yapılmaz; orijinal içerik ve satırları korunur.
-  const rawDetail = (item.cargo_detail ?? "").replace(/\r\n?/g, "\n").trim() || "Saha İlanı"
+  // Bot ilanları ayrıştırılmaz: kaynak mesaj olduğu gibi korunur ve yalnızca tipografiyle sunulur.
+  const rawDetail = item.cargo_detail ?? ""
   let rawCompany = cleanText(item.company_name || "Nakliye Ağı")
   if (rawCompany.toLowerCase().includes("whatsapp")) rawCompany = "Nakliye Ağı"
 
@@ -117,25 +117,21 @@ export function mapBotListing(item: DatabaseListing): Load {
     initials: "NA",
     from: "",
     to: "",
-    // Saha ilanında konum/araç metinden çıkarılmaz; kartta orijinal mesaj gösterilir.
     cities: [],
     districtOf: {},
-    fromCity: undefined,
-    toCity: undefined,
+    extraCities: [],
     destinations: [],
-    routes: undefined,
+    routes: [],
     cargo: rawDetail,
     message: "",
     vehicle: "",
-    trailer: undefined,
-    tonnage: undefined,
-    timing: undefined,
     price: "",
-    urgent: Boolean(item.urgent),
+    urgent: false,
     time: timeAgo(item.created_at),
     createdAt: item.created_at,
     color: "bg-[#315d83]",
     source: "bot",
+    // Telefon yalnızca mevcut Ara / WhatsApp işlevleri için çıkarılır; metinden silinmez.
     phone: extractPhone(rawDetail) || normalizeStoredPhone(item.phone) || "Belirtilmedi",
   }
 }
