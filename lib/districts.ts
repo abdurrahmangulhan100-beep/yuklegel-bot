@@ -193,3 +193,20 @@ for (const table of [RAW, EXTRA]) {
 DISTRICTS.set("eregli", { city: "Konya", name: "Ereğli" })
 // "araç" günlük dilde taşıt demek ("4 araç", "araç lazım"); Kastamonu/Araç ilçesi hayalet şehir üretiyordu
 DISTRICTS.delete("arac")
+
+/** il -> ilçe adları (alfabetik, tekrarsız; çok kelimeli adlar dahil). Konum arama önerileri için (app/page.tsx). */
+export const DISTRICTS_BY_CITY: Record<string, string[]> = (() => {
+  const out: Record<string, Set<string>> = {}
+  for (const table of [RAW, EXTRA]) {
+    for (const [city, list] of Object.entries(table)) {
+      const set = (out[city] ??= new Set<string>())
+      for (const name of list.split(",")) {
+        const n = name.trim()
+        if (n) set.add(n)
+      }
+    }
+  }
+  const res: Record<string, string[]> = {}
+  for (const [city, set] of Object.entries(out)) res[city] = Array.from(set).sort((a, b) => a.localeCompare(b, "tr"))
+  return res
+})()
