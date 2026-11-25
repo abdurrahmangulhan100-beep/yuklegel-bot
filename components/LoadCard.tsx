@@ -4,7 +4,7 @@ import { toast } from "@/lib/toast"
 import { hidePhones } from "@/lib/listings"
 import { Phone, MessageCircle, Star, Check, Ban, Zap, ChevronDown, Share2, Copy, Flag, MoreHorizontal, MapPin, Truck, Clock, Weight, Ruler, Repeat2, Route as RouteIcon, Fuel, Wallet } from "lucide-react"
 import { Component, Fragment, memo, useEffect, useRef, useState } from "react"
-import { isMissing } from "@/lib/route"
+import { isMissing, type DestinationInfo } from "@/lib/route"
 import { routeKm, AVG_CONSUMPTION } from "@/lib/distance"
 import { useRoadKm } from "@/lib/road-km-live"
 import { useDieselPrice } from "@/lib/fuel"
@@ -46,6 +46,8 @@ export type Load = {
   extraCities?: string[]
   /** Varış alanında birden çok şehir varsa hepsi (ilk eleman ana varış) */
   destinations?: string[]
+  /** Net kalıpla ayrılmış çoklu rota (ilk eleman ana varış). Belirsizse tanımsız. */
+  routes?: DestinationInfo[]
   trailer?: string
   tonnage?: string
   timing?: string
@@ -400,6 +402,17 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
 
   const hasSpecs = hasTags || hasPrice || hasDistance
 
+  // Detay alanları: yalnızca formdan / ilan metninden bulunabilen bilgi satır olur. Bilinmeyen alan hiç gösterilmez.
+  const placeLabel = (given: string, city?: string, district?: string) =>
+    !isMissing(given) ? given : city ? (district ? `${city} / ${district}` : city) : ""
+  const fromLabel = placeLabel(load.from, load.fromCity, load.fromDistrict)
+  const toLabel = placeLabel(load.to, load.toCity, load.toDistrict)
+  const multiRoutes = (load.routes?.length ?? 0) > 1 ? load.routes! : null
+  const vehicleLabel = [hasVehicle ? load.vehicle : "", load.trailer && !/13[.,]60/.test(load.vehicle ?? "") ? load.trailer : ""].filter(Boolean).join(" · ")
+  const hasFieldRows = Boolean(fromLabel || toLabel || multiRoutes || vehicleLabel || load.tonnage || load.timing)
+  const showDistanceTag = hasDistance && (!route || !routeKm(load.fromCity, load.fromDistrict, load.toCity, load.toDistrict))
+  const otherPlaces = places.filter((t) => t.city !== load.fromCity && t.city !== load.toCity)
+
   return (
     <article
       onClick={(e) => {
@@ -482,15 +495,12 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
               </div>
               <Place dot="bg-brand" caption="Varış" name={route.to} label={highlightMatch(route.to, cleanQuery)} sub={load.districtOf?.[route.to]} align="right" onClick={onCitySearch ? () => onCitySearch(route.to) : undefined} />
             </div>
-            {(load.destinations?.length ?? 0) > 1 && (
-              <div className="mt-2.5 flex flex-wrap items-center gap-1.5 border-t border-border pt-2.5">
-                <span className="text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground">Varışlar</span>
-                {load.destinations!.slice(0, 6).map((c) => (
-                  <button key={c} type="button" disabled={!onCitySearch} onClick={() => onCitySearch?.(c)} className="inline-flex items-center rounded-full border border-border bg-card px-2.5 py-1 text-[12.5px] font-bold text-foreground active:opacity-60">
-                    {highlightMatch(c, cleanQuery)}
-                  </button>
-                ))}
-                {load.destinations!.length > 6 && <span className="text-xs font-semibold text-muted-foreground">+{load.destinations!.length - 6}</span>}
+            {(load.routes?.length ?? 0) > 1 && (
+              <div className="mt-2.5 flex items-center border-t border-border pt-2.5">
+                <button type="button" onClick={() => setDetailOpen(true)} className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1 text-[12.5px] font-bold text-foreground active:opacity-60">
+                  <RouteIcon aria-hidden className="size-3.5 text-brand" />
+                  +{load.routes!.length - 1} rota daha
+                </button>
               </div>
             )}
           </div>
@@ -620,16 +630,29 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
           }
         >
           <div className="space-y-3 pt-1">
-            {route && (
-              <div className="flex items-center gap-2 rounded-2xl border border-border bg-muted/60 px-3.5 py-3 text-[15px] font-extrabold text-foreground">
-                <span className="min-w-0 truncate">{route.from}</span>
-                <span aria-hidden className="shrink-0 text-muted-foreground">→</span>
-                <span className="min-w-0 truncate">{route.to}</span>
+            {hasFieldRows && (
+              <div className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-muted/60">
+                {multiRoutes
+                  ? multiRoutes.map((r, i) => (
+                      <FieldRow key={r.label} icon={RouteIcon} tone="text-brand" label={`Rota ${i + 1}`}>
+                        {fromLabel ? `${fromLabel} → ` : ""}{r.label}
+                        {r.count ? <span className="font-medium text-muted-foreground"> · {r.count} araç</span> : null}
+                      </FieldRow>
+                    ))
+                  : (
+                    <>
+                      {fromLabel && <FieldRow icon={MapPin} tone="text-emerald-600" label="Yükleme yeri">{fromLabel}</FieldRow>}
+                      {toLabel && <FieldRow icon={MapPin} tone="text-brand" label="Boşaltma yeri">{toLabel}</FieldRow>}
+                    </>
+                  )}
+                {vehicleLabel && <FieldRow icon={Truck} label="Araç tipi">{vehicleLabel}</FieldRow>}
+                {load.tonnage && <FieldRow icon={Weight} label="Tonaj">{load.tonnage}</FieldRow>}
+                {load.timing && <FieldRow icon={Clock} label="Zamanlama">{load.timing}</FieldRow>}
               </div>
             )}
-            {!route && places.length > 0 && (
+            {otherPlaces.length > 0 && (
               <div className="flex flex-wrap gap-1.5">
-                {places.map((t) => (
+                {otherPlaces.map((t) => (
                   <span key={t.city} className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/60 py-1.5 pl-2.5 pr-3 text-[13.5px] font-bold text-foreground">
                     <MapPin aria-hidden className="size-3.5 shrink-0 text-brand" />
                     {t.label}
@@ -637,14 +660,10 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
                 ))}
               </div>
             )}
-            {hasSpecs && (
+            {(load.urgent || hasPrice || showDistanceTag) && (
               <div className="flex flex-wrap items-center gap-1.5">
                 {load.urgent && <Tag tone="bg-brand text-white"><Zap className="size-3 fill-white" />ACİL</Tag>}
-                {load.timing && <Tag tone="bg-emerald-50 text-emerald-700" icon={<Clock className="size-3" />}>{load.timing}</Tag>}
-                {hasVehicle && <Tag tone="bg-muted text-foreground/80">{load.vehicle}</Tag>}
-                {load.trailer && !/13[.,]60/.test(load.vehicle ?? "") && <Tag tone="bg-muted text-foreground/80" icon={<Ruler className="size-3" />}>{load.trailer}</Tag>}
-                {load.tonnage && <Tag tone="bg-muted text-foreground/80" icon={<Weight className="size-3" />}>{load.tonnage}</Tag>}
-                {hasDistance && (!route || !routeKm(load.fromCity, load.fromDistrict, load.toCity, load.toDistrict)) && <Tag tone="bg-muted text-foreground/80">{load.distance}</Tag>}
+                {showDistanceTag && <Tag tone="bg-muted text-foreground/80">{load.distance}</Tag>}
                 {hasPrice && <Tag tone="bg-emerald-600 text-white">{load.price}</Tag>}
               </div>
             )}
@@ -798,6 +817,18 @@ function RouteCostInner({ from, to, fromDistrict, toDistrict }: { from?: string;
 }
 function RouteCost(props: { from?: string; to?: string; fromDistrict?: string; toDistrict?: string }) {
   return <SafeBox><RouteCostInner {...props} /></SafeBox>
+}
+
+function FieldRow({ icon: Icon, tone, label, children }: { icon: React.ComponentType<{ className?: string }>; tone?: string; label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex items-start gap-3 px-3.5 py-2.5">
+      <Icon aria-hidden className={cn("mt-0.5 size-4 shrink-0", tone ?? "text-muted-foreground")} />
+      <div className="min-w-0 flex-1">
+        <div className="text-[10.5px] font-bold uppercase tracking-[0.08em] text-muted-foreground">{label}</div>
+        <div className="break-words text-[14.5px] font-semibold leading-snug text-foreground">{children}</div>
+      </div>
+    </div>
+  )
 }
 
 function Tag({ tone, icon, children }: { tone: string; icon?: React.ReactNode; children: React.ReactNode }) {
