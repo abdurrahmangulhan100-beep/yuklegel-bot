@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { Load, LoadCard } from "@/components/LoadCard"
 import { estimateKm, approxKm } from "@/lib/distance"
 import { VehicleIcon, type VehicleKind } from "@/components/VehicleIcon"
-import { PackageSearch, Plus, X, MapPin, Crown, ArrowLeftRight, Search } from "lucide-react"
+import { PackageSearch, Plus, X, MapPin, Crown, ArrowLeftRight, Search, ArrowUp } from "lucide-react"
 import { usePremium } from "@/components/PremiumProvider"
 import { FREE_DELAY_MINUTES, openPremium } from "@/lib/premium"
 import { cn } from "@/lib/utils"
@@ -130,6 +130,17 @@ export function ListingsView({
 }: ListingsViewProps) {
   const fmt = (n: number) => n.toLocaleString("tr-TR")
   const { isPremium, loading: premiumLoading } = usePremium()
+  const [showBackToTop, setShowBackToTop] = useState(false)
+
+  // Uzun ilan listelerinde tek dokunuşla listenin başına dön.
+  useEffect(() => {
+    const update = () => setShowBackToTop(window.scrollY > 650)
+    update()
+    window.addEventListener("scroll", update, { passive: true })
+    return () => window.removeEventListener("scroll", update)
+  }, [])
+
+  const backToTop = () => window.scrollTo({ top: 0, behavior: "smooth" })
 
   const setRoute = (f: string, t: string) => onRouteChange?.(f, t)
   const setFrom = (f: string) => setRoute(f, to)
@@ -511,6 +522,18 @@ export function ListingsView({
             Daha fazla ilan göster
           </button>
         </div>
+      )}
+
+      {showBackToTop && (
+        <button
+          type="button"
+          onClick={backToTop}
+          aria-label="Sayfanın başına çık"
+          title="Yukarı çık"
+          className="fixed bottom-[calc(5.6rem+env(safe-area-inset-bottom))] right-4 z-40 grid size-12 place-items-center rounded-full border border-white/20 bg-[#173b60] text-white shadow-[0_8px_24px_rgba(15,40,66,0.28)] transition-all hover:-translate-y-1 hover:bg-[#214f7b] active:scale-90 sm:bottom-6 sm:right-6"
+        >
+          <ArrowUp className="size-5" />
+        </button>
       )}
     </div>
   )
