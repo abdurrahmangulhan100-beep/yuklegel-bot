@@ -2,7 +2,7 @@
 
 import { toast } from "@/lib/toast"
 import { hidePhones } from "@/lib/listings"
-import { Phone, MessageCircle, Star, Check, Ban, Zap, ChevronDown, Share2, Copy, Flag, MoreHorizontal, MapPin, Truck, Clock, Weight, Ruler, Repeat2, Route as RouteIcon, Fuel, Wallet, FileText } from "lucide-react"
+import { Phone, MessageCircle, Star, Check, Ban, Zap, ChevronDown, Share2, Copy, Flag, MoreHorizontal, MapPin, Truck, Clock, Weight, Ruler, Repeat2, Route as RouteIcon, Fuel, Wallet } from "lucide-react"
 import { Component, Fragment, memo, useEffect, useRef, useState } from "react"
 import { isMissing, type DestinationInfo } from "@/lib/route"
 import { routeKm, AVG_CONSUMPTION } from "@/lib/distance"
@@ -95,39 +95,32 @@ const highlightMatch = (text: string, query: string) => {
 }
 
 
-// İlan metni ekranda yeniden yazılmaz veya satırları atılmaz.
-// Yalnızca açıkça etiketlenmiş yükleme/boşaltma satırları görsel olarak belirginleştirilir.
-function renderListingMessage(text: string, query: string) {
-  const lines = text.replace(/\r\n?/g, "\n").split("\n")
-  return lines.map((rawLine, index) => {
-    const line = rawLine.trim()
-    if (!line) return <Fragment key={`blank-${index}`}>{"\n"}</Fragment>
+// ── Ekranda okunaklı gösterim (veritabanındaki metne dokunulmaz) ──
 
-    const loading = line.match(/^\s*(yükleme(?:\s+(?:yeri|adresi))?|yük alınacak yer)\s*[:：\-–—]\s*(.+)$/i)
-    const unloading = line.match(/^\s*(boşaltma(?:\s+(?:yeri|adresi))?|teslim(?:\s+yeri)?|indirilecek yer)\s*[:：\-–—]\s*(.+)$/i)
-    const address = loading || unloading
-
-    return (
-      <Fragment key={`line-${index}`}>
-        {index > 0 ? "\n" : null}
-        {address ? (
-          <span className="inline">
-            <span className={cn(
-              "inline-flex items-center gap-1 font-semibold",
-              loading ? "text-emerald-700 dark:text-emerald-400" : "text-orange-700 dark:text-orange-400"
-            )}>
-              <MapPin className="inline size-3.5 shrink-0" />
-              {loading ? "Yükleme:" : "Boşaltma:"}
-            </span>{" "}
-            {highlightMatch(address[2], query)}
-          </span>
-        ) : (
-          highlightMatch(line, query)
-        )}
-      </Fragment>
-    )
-  })
+// Başka uygulama / kanal reklamı satırları ekranda gösterilmez (eski kayıtlar için)
+const AD_LINE = [
+  /\bgetir nakliye\b|\bucretsiz indir\w*|\bdiger ilanlar icin\b|\b(?:google play|play store|app store|apk)\b/,
+  /^(?:android|ios|iphone)(?: (?:android|ios|iphone))*$/,
+  /\buygulama\w*\b.{0,25}\b(?:indir\w*|yukle\w*)\b|\bindir\w*\b.{0,20}\b(?:android|ios)\b/,
+  /\b(?:kanalimiza|kanalimiz|bizi takip|abone ol\w*|takip edin)\b/,
+  /\bilanlari\s+\d+\s+ilan\b/,
+]
+const foldText = (line: string) =>
+  line
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/ı/g, "i").toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim()
+const isAdLine = (line: string) => {
+  const n = foldText(line)
+  return AD_LINE.some((r) => r.test(n))
 }
+
+const toDisplayLines = (text: string) =>
+  text
+    .replace(/[ \t]+•[ \t]+/g, "\n")
+    .replace(/^•\s*/, "")
+    .split("\n")
+    .map((l) => l.trim())
+    .filter((l) => l && !isAdLine(l))
 
 // 05321234567 -> 0532 123 45 67
 const formatPhone = (phone: string) => {
@@ -163,10 +156,9 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
   const hasVehicle = !isMissing(load.vehicle)
   const hasDistance = !isMissing(load.distance)
   const hasPrice = Boolean(load.price) && load.price !== "₺0"
-  const cargoClean = !isMissing(load.cargo) ? (isUserLoad ? load.cargo : hidePhones(load.cargo)) : ""
+  const cargoClean = !isMissing(load.cargo) ? load.cargo : ""
   const cargoText = cargoClean || "Yük detayı belirtilmedi."
-  // İlanın metni yeniden yazılmaz, özetlenmez veya satır kaybına uğratılmaz.
-  // Saha ilanlarında yalnızca mevcut telefon gizliliği uygulanır.
+  // Bot ilanında veritabanından gelen metin aynen gösterilir; satır, emoji ve telefon silinmez.
   const cargoShown = cargoText
 
   // Önizleme gerçekten kırpıldı mı? (satır kaydırmaları dahil, ekranda ölçülür)
@@ -383,13 +375,13 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
 
   // Çıkış ve varış şehri ikisi de biliniyorsa net bir güzergâh satırı göster; diğer şehirler etiket olarak kalır
   const route =
-    load.fromCity && load.toCity && load.fromCity !== load.toCity ? { from: load.fromCity, to: load.toCity } : null
+    isUserLoad && load.fromCity && load.toCity && load.fromCity !== load.toCity ? { from: load.fromCity, to: load.toCity } : null
   // Güzergâh bilinmiyorsa şehirler tek satırda, sade metin olarak gösterilir (kutucuk / rozet yok)
   const places = route ? [] : cityTags
   // İlanın tazeliği: ilk dakikalar en değerli, rengiyle anlaşılır
   const ageMin = load.createdAt ? (Date.now() - Date.parse(load.createdAt)) / 60000 : NaN
   const fresh = Number.isFinite(ageMin) && ageMin >= 0 ? (ageMin < 15 ? "hot" : ageMin < 60 ? "warm" : "") : ""
-  const hasTags = load.urgent || hasVehicle || load.trailer || load.tonnage || load.timing || (load.repeatCount ?? 0) > 1
+  const hasTags = isUserLoad && (load.urgent || hasVehicle || load.trailer || load.tonnage || load.timing || (load.repeatCount ?? 0) > 1)
 
   const openMenu = () => {
     setSheetView("menu")
@@ -417,9 +409,9 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
   const toLabel = placeLabel(load.to, load.toCity, load.toDistrict)
   const multiRoutes = (load.routes?.length ?? 0) > 1 ? load.routes! : null
   const vehicleLabel = [hasVehicle ? load.vehicle : "", load.trailer && !/13[.,]60/.test(load.vehicle ?? "") ? load.trailer : ""].filter(Boolean).join(" · ")
-  const hasFieldRows = Boolean(fromLabel || toLabel || multiRoutes || vehicleLabel || load.tonnage || load.timing)
+  const hasFieldRows = isUserLoad && Boolean(fromLabel || toLabel || multiRoutes || vehicleLabel || load.tonnage || load.timing)
   const showDistanceTag = hasDistance && (!route || !routeKm(load.fromCity, load.fromDistrict, load.toCity, load.toDistrict))
-  const otherPlaces = places.filter((t) => t.city !== load.fromCity && t.city !== load.toCity)
+  const otherPlaces = isUserLoad ? places.filter((t) => t.city !== load.fromCity && t.city !== load.toCity) : []
 
   return (
     <article
@@ -493,7 +485,7 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
         </div>
 
         {/* Güzergâh: tek bakışta nereden → nereye */}
-        {isUserLoad && (route ? (
+        {route ? (
           <div className="rounded-2xl bg-muted/60 px-3.5 py-3 sm:px-4 sm:py-3.5">
             <div className="flex items-center gap-3">
               <Place dot="bg-emerald-500" caption="Çıkış" name={route.from} label={highlightMatch(route.from, cleanQuery)} sub={load.districtOf?.[route.from]} align="left" onClick={onCitySearch ? () => onCitySearch(route.from) : undefined} />
@@ -512,7 +504,7 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
               </div>
             )}
           </div>
-        ) : (
+        ) : isUserLoad ? (
           <div className="rounded-2xl bg-muted/60 px-3.5 py-3 sm:px-4 sm:py-3.5">
             <div className="flex items-center gap-3">
               <div className="min-w-0 flex-1">
@@ -542,9 +534,9 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
               </div>
             </div>
           </div>
-        ))}
+        ) : null}
 
-        {/* Özellikler: tek tip, sakin görünüm; yalnızca acil ve zamanlama renkli */}
+        {/* Özellikler: yalnızca kullanıcı tarafından oluşturulan form ilanlarında */}
         {hasSpecs && (
           <div className="flex flex-wrap items-center gap-1.5">
             {load.urgent && (
@@ -568,15 +560,12 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
         {/* Yük detayı */}
         <div className="flex-1">
           <div className="rounded-2xl border border-border/70 bg-muted/45 px-3.5 py-3">
-            <div className="mb-2 flex items-center gap-1.5 text-[10px] font-bold tracking-[0.12em] text-muted-foreground">
-              <FileText className="size-3.5" />
-              İLAN İÇERİĞİ
-            </div>
+            <div className="mb-2 text-[10px] font-bold tracking-[0.12em] text-muted-foreground">İLAN İÇERİĞİ</div>
             <p
               ref={textRef}
               className="line-clamp-5 whitespace-pre-line break-words text-[14px] leading-[1.7] font-medium text-foreground"
             >
-              {renderListingMessage(cargoShown, cleanQuery)}
+              {highlightMatch(cargoShown, cleanQuery)}
             </p>
           </div>
           <button
@@ -642,7 +631,7 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
           }
         >
           <div className="space-y-3 pt-1">
-            {isUserLoad && hasFieldRows && (
+            {hasFieldRows && (
               <div className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-muted/60">
                 {multiRoutes
                   ? multiRoutes.map((r, i) => (
@@ -662,7 +651,7 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
                 {load.timing && <FieldRow icon={Clock} label="Zamanlama">{load.timing}</FieldRow>}
               </div>
             )}
-            {isUserLoad && otherPlaces.length > 0 && (
+            {otherPlaces.length > 0 && (
               <div className="flex flex-wrap gap-1.5">
                 {otherPlaces.map((t) => (
                   <span key={t.city} className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/60 py-1.5 pl-2.5 pr-3 text-[13.5px] font-bold text-foreground">
@@ -681,13 +670,8 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
             )}
             {isUserLoad && <RouteCost from={load.fromCity} to={load.toCity} fromDistrict={load.fromDistrict} toDistrict={load.toDistrict} />}
             <div className="rounded-2xl border border-border/70 bg-muted/45 px-3.5 py-3.5">
-              <div className="mb-2 flex items-center gap-1.5 text-[10px] font-bold tracking-[0.12em] text-muted-foreground">
-                <FileText className="size-3.5" />
-                İLAN İÇERİĞİ
-              </div>
-              <p className="whitespace-pre-line break-words text-[14px] leading-[1.7] font-medium text-foreground">
-                {renderListingMessage(cargoShown, "")}
-              </p>
+              <div className="mb-2 text-[10px] font-bold tracking-[0.12em] text-muted-foreground">İLAN İÇERİĞİ</div>
+              <p className="whitespace-pre-line break-words text-[14px] leading-[1.7] font-medium text-foreground">{cargoShown}</p>
             </div>
             {showMessage && <p className="text-xs italic leading-relaxed text-muted-foreground">{load.message}</p>}
           </div>
