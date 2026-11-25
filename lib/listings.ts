@@ -107,7 +107,7 @@ export function mapUserListing(item: DatabaseListing): Load {
 
 export function mapBotListing(item: DatabaseListing): Load {
   // Saha ilanları ham mesaj olarak gösterilir; yalnızca emoji/biçim işaretleri temizlenir ve satır sonları korunur
-  const rawDetail = cleanRaw(item.cargo_detail) || "Saha İlanı"
+  const rawDetail = (typeof item.cargo_detail === "string" ? item.cargo_detail : "").trim() || "Saha İlanı"
   let rawCompany = cleanText(item.company_name || "Nakliye Ağı")
   if (rawCompany.toLowerCase().includes("whatsapp")) rawCompany = "Nakliye Ağı"
 
