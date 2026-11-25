@@ -4,7 +4,7 @@ import { toast } from "@/lib/toast"
 import { realName } from "@/lib/names"
 import { useEffect, useMemo, useState, useRef, useCallback } from "react"
 import { useRouter } from "next/navigation"
-import { Bell, Search, LogIn, X, LayoutGrid } from "lucide-react"
+import { Bell, Search, LogIn, X, LayoutGrid, MapPin } from "lucide-react"
 import { ThemeToggle } from "@/components/ThemeToggle"
 import { Input } from "@/components/ui/input"
 import { cn, timeAgo } from "@/lib/utils"
@@ -31,8 +31,11 @@ import { usePremium } from "@/components/PremiumProvider"
 import { AdSlot } from "@/components/AdSlot"
 import { FREE_DELAY_MINUTES, FREE_LIMITS, OPEN_PREMIUM_EVENT } from "@/lib/premium"
 import { normalizeSearchInput, searchTokens, searchVariants } from "@/lib/search"
+import { CITY_NAMES } from "@/lib/route"
+import { DISTRICTS_BY_CITY } from "@/lib/districts"
 
 const PAGE_SIZE = 60
+const foldLocation = (value: string) => value.toLocaleLowerCase("tr-TR").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/ı/g, "i")
 // search_norm sütunu (009_arama_performans.sql) var mı? null: henüz bilinmiyor, false: yok -> eski yöntem
 let searchNormOk: boolean | null = null
 // search_norm sütunu her satırda metni ikinci kez taşır (veri/egress israfı). İlk yanıttan sütun adları öğrenilir, sonraki isteklerde o sütun hariç tutulur.
@@ -115,6 +118,7 @@ export default function Page() {
   
   const [query, setQuery] = useState("")
   const [searchFocused, setSearchFocused] = useState(false)
+  const [locationProvince, setLocationProvince] = useState("")
   const [recentSearches, setRecentSearches] = useState<string[]>([])
   const [debouncedQuery, setDebouncedQuery] = useState("")
   const queryRef = useRef("")
@@ -749,8 +753,10 @@ export default function Page() {
               <Input 
                 value={query} 
                 onChange={(e) => {
-                  setQuery(e.target.value)
-                  if (e.target.value.trim().length > 0) setActiveTab("İlanlar")
+                  const next = e.target.value
+                  setQuery(next)
+                  if (!locationProvince || !foldLocation(next).startsWith(foldLocation(locationProvince))) setLocationProvince("")
+                  if (next.trim().length > 0) setActiveTab("İlanlar")
                 }}
                 onFocus={() => setSearchFocused(true)}
                 onBlur={() => setSearchFocused(false)}
@@ -767,7 +773,39 @@ export default function Page() {
                 enterKeyHint="search"
                 className="h-11 w-full rounded-xl border-border bg-card pl-10 pr-10 text-base shadow-[0_1px_2px_rgba(18,44,74,0.04)] md:text-sm" 
               />
-              {searchFocused && recentSearches.length > 0 && (
+              {searchFocused && query.trim().length > 0 && (() => {
+                const q = foldLocation(query.trim())
+                const province = locationProvince || (CITY_NAMES.find((name) => foldLocation(name) === q) ?? "")
+                const provinceMatches = !locationProvince && !province
+                  ? CITY_NAMES.filter((name) => foldLocation(name).startsWith(q)).slice(0, 8)
+                  : []
+                const districtMatches = province
+                  ? (DISTRICTS_BY_CITY[province] ?? []).filter((name) => foldLocation(name).includes(locationProvince ? q.replace(foldLocation(province), "").trim() : ""))
+                  : []
+                const chooseLocation = (value: string) => {
+                  setQuery(value)
+                  setDebouncedQuery(value)
+                  queryRef.current = value
+                  setLocationProvince("")
+                  setSearchFocused(false)
+                  setActiveTab("İlanlar")
+                  const next = [value, ...recentSearches.filter((item) => foldLocation(item) !== foldLocation(value))].slice(0, 6)
+                  setRecentSearches(next)
+                  try { localStorage.setItem("nakliye_search_history", JSON.stringify(next)) } catch {}
+                }
+                if (!provinceMatches.length && !province) return null
+                return <div className="absolute left-0 right-0 top-full z-[60] mt-2 max-h-[min(65vh,420px)] overflow-y-auto rounded-2xl border border-border bg-card p-2 shadow-2xl">
+                  {provinceMatches.length > 0 && <>
+                    <p className="px-2 py-1.5 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">İller</p>
+                    {provinceMatches.map((name) => <button key={name} type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => { setLocationProvince(name); setQuery(`${name} `); }} className="flex min-h-11 w-full items-center justify-between rounded-xl px-3 text-left text-sm font-semibold hover:bg-muted"><span>{name}</span><span className="text-xs text-muted-foreground">İlçe seç <span aria-hidden>›</span></span></button>)}
+                  </>}
+                  {province && <>
+                    <div className="flex items-center justify-between px-2 py-1.5"><p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">{province} ilçeleri</p><button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => chooseLocation(province)} className="text-xs font-semibold text-brand">Tüm {province}</button></div>
+                    {(DISTRICTS_BY_CITY[province] ?? []).filter((name) => !locationProvince || foldLocation(name).includes(foldLocation(query).replace(foldLocation(province), "").trim())).map((name) => <button key={`${province}-${name}`} type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => chooseLocation(`${province} ${name}`)} className="flex min-h-10 w-full items-center gap-2 rounded-xl px-3 text-left text-sm hover:bg-muted"><MapPin className="size-3.5 text-brand"/><span>{name}</span><span className="ml-auto text-[11px] text-muted-foreground">{province}</span></button>)}
+                  </>}
+                </div>
+              })()}
+              {searchFocused && !query.trim() && recentSearches.length > 0 && (
                 <div className="absolute left-0 right-0 top-full z-50 mt-2 rounded-xl border border-border bg-card p-2 shadow-xl">
                   <div className="flex items-center justify-between px-2 py-1">
                     <span className="text-[11px] font-bold text-muted-foreground">Son aramalar</span>
