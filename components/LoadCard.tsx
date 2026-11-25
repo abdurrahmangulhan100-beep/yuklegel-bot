@@ -2,7 +2,7 @@
 
 import { toast } from "@/lib/toast"
 import { hidePhones } from "@/lib/listings"
-import { Phone, MessageCircle, Star, Check, Ban, Zap, ChevronDown, Share2, Copy, Flag, MoreHorizontal, MapPin, Truck, Clock, Weight, Ruler, Repeat2, Route as RouteIcon, Fuel, Wallet } from "lucide-react"
+import { Phone, MessageCircle, Star, Check, Ban, Zap, ChevronDown, Share2, Copy, Flag, MoreHorizontal, MapPin, Truck, Clock, Weight, Ruler, Repeat2, Route as RouteIcon, Fuel, Wallet, FileText } from "lucide-react"
 import { Component, Fragment, memo, useEffect, useRef, useState } from "react"
 import { isMissing, type DestinationInfo } from "@/lib/route"
 import { routeKm, AVG_CONSUMPTION } from "@/lib/distance"
@@ -95,6 +95,40 @@ const highlightMatch = (text: string, query: string) => {
 }
 
 
+// İlan metni ekranda yeniden yazılmaz veya satırları atılmaz.
+// Yalnızca açıkça etiketlenmiş yükleme/boşaltma satırları görsel olarak belirginleştirilir.
+function renderListingMessage(text: string, query: string) {
+  const lines = text.replace(/\r\n?/g, "\n").split("\n")
+  return lines.map((rawLine, index) => {
+    const line = rawLine.trim()
+    if (!line) return <Fragment key={`blank-${index}`}>{"\n"}</Fragment>
+
+    const loading = line.match(/^\s*(yükleme(?:\s+(?:yeri|adresi))?|yük alınacak yer)\s*[:：\-–—]\s*(.+)$/i)
+    const unloading = line.match(/^\s*(boşaltma(?:\s+(?:yeri|adresi))?|teslim(?:\s+yeri)?|indirilecek yer)\s*[:：\-–—]\s*(.+)$/i)
+    const address = loading || unloading
+
+    return (
+      <Fragment key={`line-${index}`}>
+        {index > 0 ? "\n" : null}
+        {address ? (
+          <span className="inline">
+            <span className={cn(
+              "inline-flex items-center gap-1 font-semibold",
+              loading ? "text-emerald-700 dark:text-emerald-400" : "text-orange-700 dark:text-orange-400"
+            )}>
+              <MapPin className="inline size-3.5 shrink-0" />
+              {loading ? "Yükleme:" : "Boşaltma:"}
+            </span>{" "}
+            {highlightMatch(address[2], query)}
+          </span>
+        ) : (
+          highlightMatch(line, query)
+        )}
+      </Fragment>
+    )
+  })
+}
+
 // 05321234567 -> 0532 123 45 67
 const formatPhone = (phone: string) => {
   const d = phone.replace(/\D/g, "")
@@ -131,7 +165,8 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
   const hasPrice = Boolean(load.price) && load.price !== "₺0"
   const cargoClean = !isMissing(load.cargo) ? (isUserLoad ? load.cargo : hidePhones(load.cargo)) : ""
   const cargoText = cargoClean || "Yük detayı belirtilmedi."
-  // Kullanıcı ve saha ilanlarında içerik aynı şekilde korunur; yalnızca telefon gizliliği uygulanır.
+  // İlanın metni yeniden yazılmaz, özetlenmez veya satır kaybına uğratılmaz.
+  // Saha ilanlarında yalnızca mevcut telefon gizliliği uygulanır.
   const cargoShown = cargoText
 
   // Önizleme gerçekten kırpıldı mı? (satır kaydırmaları dahil, ekranda ölçülür)
@@ -373,7 +408,7 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
     setTimeout(closeSheet, 700)
   }
 
-  const hasSpecs = hasTags || hasPrice || hasDistance
+  const hasSpecs = isUserLoad && (hasTags || hasPrice || hasDistance)
 
   // Detay alanları: yalnızca formdan / ilan metninden bulunabilen bilgi satır olur. Bilinmeyen alan hiç gösterilmez.
   const placeLabel = (given: string, city?: string, district?: string) =>
@@ -458,7 +493,7 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
         </div>
 
         {/* Güzergâh: tek bakışta nereden → nereye */}
-        {route ? (
+        {isUserLoad && (route ? (
           <div className="rounded-2xl bg-muted/60 px-3.5 py-3 sm:px-4 sm:py-3.5">
             <div className="flex items-center gap-3">
               <Place dot="bg-emerald-500" caption="Çıkış" name={route.from} label={highlightMatch(route.from, cleanQuery)} sub={load.districtOf?.[route.from]} align="left" onClick={onCitySearch ? () => onCitySearch(route.from) : undefined} />
@@ -507,7 +542,7 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
               </div>
             </div>
           </div>
-        )}
+        ))}
 
         {/* Özellikler: tek tip, sakin görünüm; yalnızca acil ve zamanlama renkli */}
         {hasSpecs && (
@@ -528,17 +563,20 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
           </div>
         )}
 
-        <RouteCost from={load.fromCity} to={load.toCity} fromDistrict={load.fromDistrict} toDistrict={load.toDistrict} />
+        {isUserLoad && <RouteCost from={load.fromCity} to={load.toCity} fromDistrict={load.fromDistrict} toDistrict={load.toDistrict} />}
 
         {/* Yük detayı */}
         <div className="flex-1">
-          <div className="rounded-xl bg-muted/60 px-3 py-2.5">
-            <div className="mb-1.5 text-[10px] font-semibold tracking-[0.12em] text-muted-foreground">İLAN İÇERİĞİ</div>
+          <div className="rounded-2xl border border-border/70 bg-muted/45 px-3.5 py-3">
+            <div className="mb-2 flex items-center gap-1.5 text-[10px] font-bold tracking-[0.12em] text-muted-foreground">
+              <FileText className="size-3.5" />
+              İLAN İÇERİĞİ
+            </div>
             <p
               ref={textRef}
-              className="line-clamp-4 whitespace-pre-line break-words text-[14px] leading-[1.65] text-foreground/80"
+              className="line-clamp-5 whitespace-pre-line break-words text-[14px] leading-[1.7] font-medium text-foreground"
             >
-              {highlightMatch(cargoShown, cleanQuery)}
+              {renderListingMessage(cargoShown, cleanQuery)}
             </p>
           </div>
           <button
@@ -604,7 +642,7 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
           }
         >
           <div className="space-y-3 pt-1">
-            {hasFieldRows && (
+            {isUserLoad && hasFieldRows && (
               <div className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-muted/60">
                 {multiRoutes
                   ? multiRoutes.map((r, i) => (
@@ -624,7 +662,7 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
                 {load.timing && <FieldRow icon={Clock} label="Zamanlama">{load.timing}</FieldRow>}
               </div>
             )}
-            {otherPlaces.length > 0 && (
+            {isUserLoad && otherPlaces.length > 0 && (
               <div className="flex flex-wrap gap-1.5">
                 {otherPlaces.map((t) => (
                   <span key={t.city} className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/60 py-1.5 pl-2.5 pr-3 text-[13.5px] font-bold text-foreground">
@@ -634,17 +672,22 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
                 ))}
               </div>
             )}
-            {(load.urgent || hasPrice || showDistanceTag) && (
+            {isUserLoad && (load.urgent || hasPrice || showDistanceTag) && (
               <div className="flex flex-wrap items-center gap-1.5">
                 {load.urgent && <Tag tone="bg-brand text-white"><Zap className="size-3 fill-white" />ACİL</Tag>}
                 {showDistanceTag && <Tag tone="bg-muted text-foreground/80">{load.distance}</Tag>}
                 {hasPrice && <Tag tone="bg-emerald-600 text-white">{load.price}</Tag>}
               </div>
             )}
-            <RouteCost from={load.fromCity} to={load.toCity} fromDistrict={load.fromDistrict} toDistrict={load.toDistrict} />
-            <div className="rounded-xl bg-muted/60 px-3.5 py-3">
-              <div className="mb-2 text-[10px] font-semibold tracking-[0.12em] text-muted-foreground">İLAN İÇERİĞİ</div>
-              <p className="whitespace-pre-line break-words text-[14px] leading-[1.65] text-foreground/80">{cargoShown}</p>
+            {isUserLoad && <RouteCost from={load.fromCity} to={load.toCity} fromDistrict={load.fromDistrict} toDistrict={load.toDistrict} />}
+            <div className="rounded-2xl border border-border/70 bg-muted/45 px-3.5 py-3.5">
+              <div className="mb-2 flex items-center gap-1.5 text-[10px] font-bold tracking-[0.12em] text-muted-foreground">
+                <FileText className="size-3.5" />
+                İLAN İÇERİĞİ
+              </div>
+              <p className="whitespace-pre-line break-words text-[14px] leading-[1.7] font-medium text-foreground">
+                {renderListingMessage(cargoShown, "")}
+              </p>
             </div>
             {showMessage && <p className="text-xs italic leading-relaxed text-muted-foreground">{load.message}</p>}
           </div>
