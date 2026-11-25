@@ -18,6 +18,8 @@ export type Place = {
 
 export type DestinationInfo = {
   city: string
+  /** Varsa ilçe adı; aynı ildeki farklı boşaltma noktaları ayrı kalır. */
+  district?: string
   /** Ekranda gösterilecek metin: "Bursa", "İstanbul (Avrupa)", "Tekirdağ / Çerkezköy" */
   label: string
   /** "1 TIR Bursa" gibi açıkça yazılmış araç adedi */
@@ -265,7 +267,11 @@ function findMentions(text: string): Mention[] {
 
     // Aynı şehir arka arkaya geçiyorsa tekrar ekleme
     const prev = result[result.length - 1]
-    if (prev && prev.city === city && prev.kind === kind) { if (!prev.district && district) prev.district = district; continue }
+    if (prev && prev.city === city && prev.kind === kind) {
+      if (!prev.district && district) { prev.district = district; continue }
+      // Aynı ilde farklı ilçeler aynı mesajda geçiyorsa (çoklu boşaltma) ikisini de koru.
+      if (!district || prev.district === district) continue
+    }
     result.push({ city, district, kind, start, end })
   }
   return result
@@ -519,6 +525,28 @@ function findDestinations(text: string, ms: Mention[], from?: Place, to?: Place)
   return ordered.slice(0, 5)
 }
 
+/** Açıkça yükleme noktası belirtilmiş ve devamında eğik çizgiyle sıralanmış durakları toplar.
+ * Örn: "Konya Ilgın yüklemeli / Gebze / Kocaeli Derince / Pendik".
+ * Yalnızca yükleme sinyali + slash zinciri varsa çalışır; sıradan şehir dizilerini rota saymaz.
+ */
+function findSlashDestinations(text: string, ms: Mention[], from?: Place): DestinationInfo[] | undefined {
+  if (!from?.city || !/(?:yukleme|yuklemeli|yuklenecek|cikis\s*yeri)/i.test(fold(text))) return undefined
+  const originMention = ms.find((m) => m.city === from.city && (!from.district || m.district === from.district))
+  if (!originMention) return undefined
+  const afterOrigin = ms.filter((m) => m.start > originMention.end && (m.city !== from.city || Boolean(m.district && m.district !== from.district)))
+  if (afterOrigin.length < 2) return undefined
+  const stops: DestinationInfo[] = []
+  for (let i = 0; i < afterOrigin.length; i++) {
+    const m = afterOrigin[i]
+    // İl adını hemen ardından aynı ile ait ilçe takip ediyorsa genel il kaydını alma.
+    const next = afterOrigin[i + 1]
+    if (!m.district && next?.city === m.city && next.district && next.start - m.end < 28) continue
+    const label = m.district ? `${m.city} / ${m.district}` : m.city
+    if (!stops.some((stop) => stop.label === label)) stops.push({ city: m.city, district: m.district, label })
+  }
+  return stops.length >= 2 ? stops.slice(0, 8) : undefined
+}
+
 export function analyzeListing(input: AnalyzeInput): ListingAnalysis {
   const rawText = [input.cargo, input.message]
     .filter((v): v is string => !isMissing(v))
@@ -606,7 +634,12 @@ export function analyzeListing(input: AnalyzeInput): ListingAnalysis {
   const used = new Set([from?.city, to?.city].filter(Boolean) as string[])
   const extraCities = Array.from(new Set(ms.map((m) => m.city))).filter((c) => !used.has(c)).slice(0, 3)
 
-  const routes = findDestinations(text, ms, from, to)
+  const slashRoutes = findSlashDestinations(text, ms, from)
+  const routes = slashRoutes ?? findDestinations(text, ms, from, to)
+  if (slashRoutes?.length) {
+    const first = slashRoutes[0]
+    if (!to || to.city === first.city && !to.district) to = { label: first.label, city: first.city, district: first.district }
+  }
   const destinations = routes ? Array.from(new Set(routes.map((r) => r.city))) : undefined
 
   const fieldVehicle = isMissing(input.vehicle) ? undefined : tidy(String(input.vehicle)).slice(0, 24)
