@@ -1,7 +1,8 @@
 "use client"
 
 import { toast } from "@/lib/toast"
-import { hidePhones, cleanRaw } from "@/lib/listings"
+import { hidePhones, maskPhones, cleanRaw } from "@/lib/listings"
+import { RichListingText, SummaryChips } from "@/components/RichListingText"
 import { Phone, MessageCircle, Star, Check, Ban, Zap, ChevronDown, Share2, Copy, Flag, MoreHorizontal, MapPin, Truck, Clock, Weight, Ruler, Repeat2, Route as RouteIcon, Fuel, Wallet } from "lucide-react"
 import { Component, Fragment, memo, useEffect, useRef, useState } from "react"
 import { isMissing, type DestinationInfo } from "@/lib/route"
@@ -156,7 +157,7 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
   const [copied, setCopied] = useState(false)
   const [detailOpen, setDetailOpen] = useState(false)
   const [clamped, setClamped] = useState(false)
-  const textRef = useRef<HTMLParagraphElement>(null)
+  const textRef = useRef<HTMLDivElement>(null)
   const [isReportOpen, setIsReportOpen] = useState(false)
   const [sheetView, setSheetView] = useState<"menu" | "report">("menu")
   const [reportReason, setReportReason] = useState(REPORT_REASONS[0])
@@ -182,6 +183,8 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
   const cargoText = cargoClean || "Yük detayı belirtilmedi."
   // Bot ilanında veritabanından gelen metin aynen gösterilir; satır, emoji ve telefon silinmez.
   const cargoShown = toCleanDisplay(cargoText)
+  // Kartta numaralar kısmen gizli (gizlilik); tam numara ilan detayında ve Ara / WhatsApp butonlarında
+  const cargoPreview = maskPhones(cargoShown)
 
   // Önizleme gerçekten kırpıldı mı? (satır kaydırmaları dahil, ekranda ölçülür)
   useEffect(() => {
@@ -193,7 +196,7 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
     const ro = new ResizeObserver(check)
     ro.observe(el)
     return () => ro.disconnect()
-  }, [cargoShown])
+  }, [cargoPreview])
 
   // Şehir etiketleri. "Nereden → nereye" başlığı yok: saha ilanında ham mesaj gösterilir,
   // metinden bulunan şehirler dokunulabilir etiket olur. Formla açılan ilanlarda çıkış / varış etiketle belirtilir.
@@ -481,13 +484,14 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
 
         {/* İlan metni: botdan geldiği gibi, sembolsüz; uzunsa solar ve tamamı detayda */}
         <div className="flex-1">
-          <p
+          {cargoClean && <div className="mb-2"><SummaryChips text={cargoPreview} /></div>}
+          <div
             ref={textRef}
             style={{ maxHeight: PREVIEW_PX, ...(clamped ? { maskImage: FADE, WebkitMaskImage: FADE } : null) }}
-            className="overflow-hidden whitespace-pre-line break-words px-0.5 text-[14px] font-medium leading-[1.65] text-foreground"
+            className="overflow-hidden px-0.5"
           >
-            {highlightMatch(cargoShown, cleanQuery)}
-          </p>
+            <RichListingText text={cargoPreview} renderPlain={(t) => highlightMatch(t, cleanQuery)} />
+          </div>
           {clamped && (
             <button
               type="button"
@@ -554,7 +558,8 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
         >
           <div className="space-y-3 pt-1">
             <RouteRow load={load} route={route} places={places} query="" />
-            <p className="whitespace-pre-line break-words px-0.5 text-[14.5px] font-medium leading-[1.7] text-foreground">{cargoShown}</p>
+            {cargoClean && <SummaryChips text={cargoShown} />}
+            <RichListingText text={cargoShown} textClass="text-[14.5px] leading-[1.65]" />
             {showMessage && <p className="text-xs italic leading-relaxed text-muted-foreground">{load.message}</p>}
           </div>
         </Sheet>
