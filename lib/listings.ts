@@ -208,3 +208,16 @@ export function hidePhones(text: string): string {
   }
   return out.join("\n").trim()
 }
+
+/** Yalnızca EKRANDA (ilan kartında) numaraları kısmen gizler: "0532 682 5338" -> "0532 *** ** **". Veritabanındaki metin değişmez; tam numara ilan detayında görünür. */
+const PHONE_MASK_RE = new RegExp(PHONE_CORE, "g")
+export function maskPhones(text: string): string {
+  if (!text) return text
+  PHONE_MASK_RE.lastIndex = 0
+  return text.replace(PHONE_MASK_RE, (m) => {
+    let d = m.replace(/\D/g, "")
+    if (d.startsWith("90") && d.length >= 12) d = d.slice(2)
+    if (d.length === 10) d = "0" + d
+    return d.length === 11 ? `${d.slice(0, 4)} *** ** **` : "*** *** ** **"
+  })
+}
