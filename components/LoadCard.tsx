@@ -2,7 +2,7 @@
 
 import { toast } from "@/lib/toast"
 import { hidePhones, maskPhones, cleanRaw } from "@/lib/listings"
-import { RichListingText, SummaryChips } from "@/components/RichListingText"
+import { RichListingText } from "@/components/RichListingText"
 import { Phone, MessageCircle, Star, Check, Ban, Zap, ChevronDown, Share2, Copy, Flag, MoreHorizontal, MapPin, Truck, Clock, Weight, Ruler, Repeat2, Route as RouteIcon, Fuel, Wallet } from "lucide-react"
 import { Component, Fragment, memo, useEffect, useRef, useState } from "react"
 import { isMissing, type DestinationInfo } from "@/lib/route"
@@ -484,7 +484,6 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
 
         {/* İlan metni: botdan geldiği gibi, sembolsüz; uzunsa solar ve tamamı detayda */}
         <div className="flex-1">
-          {cargoClean && <div className="mb-2"><SummaryChips text={cargoPreview} /></div>}
           <div
             ref={textRef}
             style={{ maxHeight: PREVIEW_PX, ...(clamped ? { maskImage: FADE, WebkitMaskImage: FADE } : null) }}
@@ -558,7 +557,6 @@ export const LoadCard = memo(function LoadCard({ load, searchQuery = "", isFavor
         >
           <div className="space-y-3 pt-1">
             <RouteRow load={load} route={route} places={places} query="" />
-            {cargoClean && <SummaryChips text={cargoShown} />}
             <RichListingText text={cargoShown} textClass="text-[14.5px] leading-[1.65]" />
             {showMessage && <p className="text-xs italic leading-relaxed text-muted-foreground">{load.message}</p>}
           </div>
