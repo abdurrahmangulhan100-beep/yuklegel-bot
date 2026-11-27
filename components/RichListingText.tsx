@@ -1,8 +1,8 @@
 "use client"
 
-// İlan metnini SATIR SATIR gösterir ve önemli kelimeleri renkle vurgular.
-// Metin değiştirilmez: yalnızca ilanda aynen geçen ifadeler boyanır. Bulunamayan bilgi için hiçbir şey uydurulmaz.
-import { Fragment, memo, type ReactNode } from "react"
+// İlan metnini SATIR SATIR gösterir. Metin içi renkli vurgular KALDIRILDI (temiz metin);
+// satır başı ikonlar ve üstteki özet etiketleri (SummaryChips) korunur. Metin değiştirilmez, hiçbir bilgi uydurulmaz.
+import { memo, type ReactNode } from "react"
 import { Banknote, Clock, MapPin, Package, Phone, ShieldAlert, Truck, Weight, Zap } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -133,7 +133,7 @@ type Props = {
   textClass?: string
 }
 
-/** Metni satır satır gösterir. Her satırın solunda içeriğine uygun küçük ikon, içinde renkli vurgular. */
+/** Metni satır satır gösterir. Her satırın solunda içeriğine uygun küçük ikon; metin düz ve temiz. */
 export const RichListingText = memo(function RichListingText({ text, renderPlain, className, textClass }: Props) {
   const lines = text.split("\n")
   return (
@@ -152,15 +152,7 @@ export const RichListingText = memo(function RichListingText({ text, renderPlain
               {Icon ? <Icon className={cn("size-[15px]", tone)} /> : <i className="size-1 rounded-full bg-muted-foreground/40" />}
             </span>
             <p className={cn("min-w-0 flex-1 break-words text-[14px] font-medium leading-[1.55] text-foreground", textClass)}>
-              {pieces.map((p, j) =>
-                p.kind ? (
-                  <mark key={j} className={cn("rounded px-1 py-px font-bold", STYLE[p.kind].mark)}>
-                    {renderPlain ? renderPlain(p.text) : p.text}
-                  </mark>
-                ) : (
-                  <Fragment key={j}>{renderPlain ? renderPlain(p.text) : p.text}</Fragment>
-                )
-              )}
+              {renderPlain ? renderPlain(line) : line}
             </p>
           </div>
         )
